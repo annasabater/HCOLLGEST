@@ -1,0 +1,113 @@
+/**
+ * Seed inicial — Hostal Coll.
+ *   - Establiment con los datos fijos (§2.5 del plan).
+ *   - 3 usuarios, uno por rol (ADMIN / RECEPCIO / CONSULTA).
+ *   - Categorías de gasto seed (§5C).
+ *   - Habitaciones de ejemplo.
+ *
+ * Idempotente (usa upsert). Ejecutar con:  pnpm db:seed
+ */
+import { PrismaClient, Role } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+
+const prisma = new PrismaClient();
+
+const SEED_PASSWORD = process.env.SEED_PASSWORD ?? 'Hostal2026!';
+
+const CATEGORIES_GASTO = [
+  'Neteja',
+  'Manteniment',
+  'Electricitat',
+  'Aigua',
+  'Internet',
+  'Assegurances',
+  'Màrqueting',
+  'Personal',
+  'Mobiliari',
+  'Electrodomèstics',
+  'Reformes',
+  'Animals',
+  'Altres',
+];
+
+const USUARIS: { email: string; nom: string; role: Role }[] = [
+  { email: 'admin@hostalcoll.cat', nom: 'Administrador', role: Role.ADMIN },
+  { email: 'recepcio@hostalcoll.cat', nom: 'Recepció', role: Role.RECEPCIO },
+  { email: 'consulta@hostalcoll.cat', nom: 'Consulta', role: Role.CONSULTA },
+];
+
+async function main() {
+  console.log('🌱 Seeding Hostal Coll…');
+
+  // --- Establiment (§2.5) ---------------------------------------------------
+  const establiment = await prisma.establiment.upsert({
+    where: { id: 'hostal-coll' },
+    update: {},
+    create: {
+      id: 'hostal-coll',
+      idPolicial: '000000550',
+      fileIdentifier: process.env.MOSSOS_FILE_IDENTIFIER || null, // §9.2 pendiente
+      nom: 'HOSTAL COLL',
+      cif: '40331905W',
+      provincia: 'Barcelona',
+      encoding: process.env.MOSSOS_ENCODING || 'latin1',
+      teInternetDefault: true,
+      retencioPolicialAnys: 3,
+    },
+  });
+  console.log(`  ✓ Establiment: ${establiment.nom} (id policial ${establiment.idPolicial})`);
+
+  // --- Usuarios (uno por rol) ----------------------------------------------
+  const passwordHash = await bcrypt.hash(SEED_PASSWORD, 12);
+  for (const u of USUARIS) {
+    await prisma.usuari.upsert({
+      where: { email: u.email },
+      update: { nom: u.nom, role: u.role, actiu: true },
+      create: { email: u.email, nom: u.nom, role: u.role, passwordHash, actiu: true },
+    });
+    console.log(`  ✓ Usuari ${u.email} (${u.role})`);
+  }
+  console.log(`  ⚠ Contraseña inicial de los 3 usuarios: "${SEED_PASSWORD}" — cámbiala.`);
+
+  // --- Categorías de gasto (§5C) -------------------------------------------
+  for (const nom of CATEGORIES_GASTO) {
+    await prisma.categoriaGasto.upsert({ where: { nom }, update: {}, create: { nom } });
+  }
+  console.log(`  ✓ ${CATEGORIES_GASTO.length} categorías de gasto`);
+
+  // --- Habitaciones de ejemplo ---------------------------------------------
+  for (let i = 1; i <= 6; i++) {
+    const nom = String(i);
+    const existing = await prisma.habitacio.findFirst({ where: { nom } });
+    if (!existing) {
+      await prisma.habitacio.create({ data: { nom, capacitat: 2, estat: 'DISPONIBLE' } });
+    }
+  }
+  console.log('  ✓ Habitaciones 1–6');
+
+  // --- Treballador (dona de neteja) ----------------------------------------
+  const dniNeteja = '00000000T';
+  const existingTreb = await prisma.treballador.findFirst({ where: { dni: dniNeteja } });
+  if (!existingTreb) {
+    await prisma.treballador.create({
+      data: {
+        nom: 'Dona de neteja',
+        dni: dniNeteja,
+        carrec: 'Neteja',
+        dataContractacio: new Date('2024-01-01'),
+      },
+    });
+  }
+  console.log('  ✓ Treballador de neteja');
+
+  console.log('✅ Seed completado.');
+}
+
+main()
+  .catch((e) => {
+    console.error('❌ Seed error:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

@@ -1,0 +1,57 @@
+import { prisma } from '@/lib/db';
+import { authorize, clientIp } from '@/lib/auth/guard';
+import { ROLES_WRITE } from '@/lib/auth/rbac';
+import { created, handleApiError, ok } from '@/lib/http';
+import { RegistreSchema } from '@/lib/validation/registre';
+import { createRegistre } from '@/lib/services/registre';
+import type { Prisma } from '@prisma/client';
+
+// GET /api/estancies?estat=&desde=&fins=&q=
+export async function GET(req: Request) {
+  const auth = await authorize();
+  if (auth instanceof Response) return auth;
+
+  const url = new URL(req.url);
+  const estat = url.searchParams.get('estat');
+  const desde = url.searchParams.get('desde');
+  const fins = url.searchParams.get('fins');
+
+  const where: Prisma.EstanciaWhereInput = { deletedAt: null };
+  if (estat) where.estat = estat as Prisma.EstanciaWhereInput['estat'];
+  if (desde || fins) {
+    where.dataEntrada = {};
+    if (desde) where.dataEntrada.gte = new Date(desde);
+    if (fins) where.dataEntrada.lte = new Date(fins);
+  }
+
+  const estancies = await prisma.estancia.findMany({
+    where,
+    orderBy: { dataEntrada: 'desc' },
+    take: 100,
+    include: {
+      viatgers: { include: { huesped: true } },
+      enviaments: { orderBy: { createdAt: 'desc' }, take: 1 },
+      habitacio: true,
+    },
+  });
+
+  return ok({ estancies });
+}
+
+// POST /api/estancies — alta de estancia + viajeros (formulario maestro §2.3)
+export async function POST(req: Request) {
+  try {
+    const auth = await authorize(ROLES_WRITE);
+    if (auth instanceof Response) return auth;
+
+    const body = await req.json().catch(() => null);
+    const input = RegistreSchema.parse(body);
+
+    const result = await createRegistre(input, { id: auth.id }, clientIp(req));
+    return created(result);
+  } catch (err) {
+    return handleApiError(err);
+  }
+}
+
+export const dynamic = 'force-dynamic';

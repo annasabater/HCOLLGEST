@@ -1,0 +1,799 @@
+// ============================================================================
+// Hostal Coll — PMS + ERP  ·  Modelo de datos único (Prisma + PostgreSQL)
+//
+// Filosofía: "introducir cada dato una sola vez y reutilizarlo en todo".
+// El huésped del registro policial ES el cliente del CRM y ES el de facturación.
+// Convenciones: tablas/columnas en snake_case (@map); enums en MAYÚSCULAS;
+// todas las tablas con id, created_at, updated_at; deleted_at donde aplique.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // Runtime: conexión "pooled" (transaction pooler de Supabase, puerto 6543) —
+  // apta para serverless (Vercel). Migraciones/introspección: DIRECT_URL
+  // (conexión de sesión, puerto 5432). En local pueden apuntar al mismo Postgres.
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ----------------------------------------------------------------------------
+// ENUMS
+// ----------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  RECEPCIO
+  CONSULTA
+}
+
+enum TipusRegistre {
+  CONTRACTE_EN_CURS
+  RESERVA
+}
+
+enum EstatEstancia {
+  RESERVA
+  EN_CURS
+  FINALITZADA
+  CANCELLADA
+}
+
+enum TipusDocument {
+  DNI_NIF
+  NIE
+  PASSAPORT
+  ALTRES
+}
+
+enum Sexe {
+  HOME
+  DONA
+}
+
+enum TipusPagament {
+  DESTINACIO
+  EFECTIU
+  MOBIL
+  PLATAFORMA
+  TARGETA_CREDIT
+  TRANSFERENCIA
+  TARGETA_REGAL
+}
+
+enum EstatEnviament {
+  PENDENT
+  ENVIAT
+  ACCEPTAT
+  REBUTJAT
+  ERROR
+}
+
+enum Parentesc {
+  AVI_AVIA
+  BESAVI_BESAVIA
+  BESNET_BESNETA
+  CUNYAT_CUNYADA
+  CONJUGE
+  FILL_FILLA
+  GERMA_GERMANA
+  NET_NETA
+  PARE_MARE
+  NEBOT_NEBODA
+  SOGRE_SOGRA
+  ONCLE_TIA
+  TUTOR_TUTORA
+  GENDRE_NORA
+  ALTRES
+}
+
+enum TipusDocumentPujat {
+  DNI_ANVERS
+  DNI_REVERS
+  PASSAPORT
+  NIE
+  RESIDENCIA
+  ALTRES
+}
+
+enum SentitAnotacio {
+  POSITIVA
+  NEGATIVA
+  NEUTRA
+}
+
+enum AccioAudit {
+  CREACIO
+  MODIFICACIO
+  ELIMINACIO
+  ENVIAMENT
+  FIRMA
+  IMPRESSIO
+  DESCARREGA
+  ACCES
+  LOGIN
+  LOGOUT
+}
+
+enum MetodeCobrament {
+  EFECTIU
+  TARGETA
+  TRANSFERENCIA
+  BIZUM
+  ALTRES
+}
+
+enum EstatFactura {
+  PENDENT
+  COBRADA
+}
+
+// Veri*Factu — tipo de documento de cobro emitido.
+enum TipusDocumentFiscal {
+  RECIBO // no és factura fiscal (no Veri*Factu)
+  FACTURA // factura completa (AEAT F1)
+  FACTURA_SIMPLIFICADA // factura simplificada / tiquet (AEAT F2)
+}
+
+// AEAT TipoFactura (subconjunto rellevant per a un hostal).
+enum TipusFacturaVerifactu {
+  F1
+  F2
+  R1
+  R2
+  R3
+  R4
+  R5
+}
+
+enum EstatVerifactu {
+  GENERAT // registre creat i encadenat localment
+  ENVIAT // enviat a l'AEAT (servei web)
+  ACCEPTAT
+  ANULLAT
+  ERROR
+}
+
+enum ConcepteLinia {
+  ALLOTJAMENT
+  EXTRA
+  DESCOMPTE
+  TASA
+}
+
+enum TipusNeteja {
+  CANVI_COMPLET // "esbancar"
+  REPAS // "polir"
+}
+
+enum EstatTasca {
+  PENDENT
+  FETA
+}
+
+enum EstatActiu {
+  NOU
+  BO
+  REGULAR
+  SUBSTITUCIO_RECOMANADA
+  OBSOLET
+}
+
+enum TipusHistorialActiu {
+  REPARACIO
+  AVARIA
+  CANVI_UBICACIO
+  SUBSTITUCIO
+}
+
+enum TipusAbsencia {
+  VACANCES
+  BAIXA
+  ALTRES
+}
+
+// ----------------------------------------------------------------------------
+// F. SISTEMA (Fase 0, transversal)
+// ----------------------------------------------------------------------------
+
+model Establiment {
+  id             String  @id @default(cuid())
+  idPolicial     String  @map("id_policial") // 000000550
+  fileIdentifier String? @map("file_identifier") // §9.2 — 9-10 car., NO es el id policial
+  nom            String
+  cif            String
+  provincia      String
+  encoding       String  @default("latin1") // §9.3
+  mossosUser     String? @map("mossos_user")
+  mossosPassEnc  String? @map("mossos_pass_enc") // cifrado AES-256-GCM
+  teInternetDefault Boolean @default(true) @map("te_internet_default")
+
+  // RGPD — plazos de retención parametrizables (§7)
+  retencioPolicialAnys Int  @default(3) @map("retencio_policial_anys")
+  retencioCrmAnys      Int? @map("retencio_crm_anys")
+
+  // Facturación — IEET (§9.7, configurable)
+  ieetImportPersonaNit Decimal? @map("ieet_import_persona_nit") @db.Decimal(10, 2)
+
+  // Veri*Factu (AEAT) — sèrie i mode de proves del QR de cotejo.
+  verifactuSerie    String  @default("FAC") @map("verifactu_serie")
+  verifactuTestMode Boolean @default(true) @map("verifactu_test_mode")
+
+  estancies Estancia[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("establiment")
+}
+
+model Usuari {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  nom          String
+  role         Role     @default(CONSULTA)
+  actiu        Boolean  @default(true)
+
+  auditLogs       AuditLog[]
+  documentsPujats DocumentoPujat[]
+  signatures      Signatura[]
+  enviaments      EnviamentMossos[]
+  anotacions      AnotacioHuesped[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("usuari")
+}
+
+model AuditLog {
+  id        String     @id @default(cuid())
+  usuariId  String?    @map("usuari_id")
+  usuari    Usuari?    @relation(fields: [usuariId], references: [id], onDelete: SetNull)
+  accio     AccioAudit
+  entitat   String
+  entitatId String?    @map("entitat_id")
+  detall    Json?
+  ip        String?
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  @@index([entitat, entitatId])
+  @@index([usuariId])
+  @@index([createdAt])
+  @@map("audit_log")
+}
+
+// ----------------------------------------------------------------------------
+// A. NÚCLEO — identidad y estancias (Fase 1–2)
+// ----------------------------------------------------------------------------
+
+model Huesped {
+  id String @id @default(cuid())
+
+  // Personales
+  nom          String
+  cognom1      String
+  cognom2      String?
+  sexe         Sexe?
+  dataNaixement DateTime? @map("data_naixement")
+  nacionalitat String?
+
+  // Identificación
+  tipusDocument TipusDocument? @map("tipus_document")
+  numDocument   String?        @map("num_document")
+  numSuport     String?        @map("num_suport")
+  dataExpedicio DateTime?      @map("data_expedicio")
+  dataCaducitat DateTime?      @map("data_caducitat") // INT (no lo pide Mossos)
+  paisEmissor   String?        @map("pais_emissor") // INT
+
+  // Contacto
+  email   String?
+  telefon String?
+
+  // Dirección
+  adreca     String?
+  pais       String?
+  provincia  String?
+  municipi   String?
+  localitat  String?
+  codiPostal String? @map("codi_postal")
+
+  estancies  EstanciaViatger[]
+  documents  DocumentoPujat[]
+  anotacions AnotacioHuesped[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Dedup CRM (§8 Fase 2). NULLs son distintos en Postgres → varias reservas sin doc OK.
+  @@unique([tipusDocument, numDocument], name: "huesped_document")
+  @@index([cognom1, nom])
+  @@map("huesped")
+}
+
+model DocumentoPujat {
+  id         String             @id @default(cuid())
+  huespedId  String             @map("huesped_id")
+  huesped    Huesped            @relation(fields: [huespedId], references: [id], onDelete: Cascade)
+  tipus      TipusDocumentPujat
+  fitxerNom  String             @map("fitxer_nom")
+  fitxerPath String             @map("fitxer_path") // ruta al fichero CIFRADO (AES-256-GCM)
+  mime       String
+  dataSubida DateTime           @default(now()) @map("data_subida")
+  usuariId   String?            @map("usuari_id")
+  usuari     Usuari?            @relation(fields: [usuariId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([huespedId])
+  @@map("documento_pujat")
+}
+
+model Estancia {
+  id            String        @id @default(cuid())
+  establimentId String        @map("establiment_id")
+  establiment   Establiment   @relation(fields: [establimentId], references: [id])
+
+  tipusRegistre     TipusRegistre @map("tipus_registre")
+  numContracte      String        @map("num_contracte")
+  anyContracte      Int           @map("any_contracte")
+  dataFormalitzacio DateTime      @map("data_formalitzacio")
+  dataEntrada       DateTime      @map("data_entrada")
+  dataSortida       DateTime      @map("data_sortida")
+  numViatgers       Int           @map("num_viatgers")
+  tipusPagament     TipusPagament @map("tipus_pagament")
+  numHabitacions    Int?          @map("num_habitacions")
+  teInternet        Boolean?      @map("te_internet")
+  observacions      String?
+  estat             EstatEstancia @default(RESERVA)
+
+  habitacioId String?    @map("habitacio_id")
+  habitacio   Habitacio? @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
+
+  viatgers      EstanciaViatger[]
+  enviaments    EnviamentMossos[]
+  factures      Factura[]
+  tasesTuristiques TasaTuristica[]
+  anotacions    AnotacioHuesped[]
+  tasquesNeteja TascaNeteja[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@unique([anyContracte, numContracte], name: "estancia_contracte")
+  @@index([dataEntrada])
+  @@index([dataSortida])
+  @@index([estat])
+  @@map("estancia")
+}
+
+model EstanciaViatger {
+  id         String     @id @default(cuid())
+  estanciaId String     @map("estancia_id")
+  estancia   Estancia   @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+  huespedId  String     @map("huesped_id")
+  huesped    Huesped    @relation(fields: [huespedId], references: [id])
+  esTitular  Boolean    @default(false) @map("es_titular")
+  parentesc  Parentesc?
+  esMenor    Boolean    @default(false) @map("es_menor")
+
+  signatura Signatura?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([estanciaId, huespedId], name: "viatger_estancia")
+  @@index([huespedId])
+  @@map("estancia_viatger")
+}
+
+model Signatura {
+  id                String          @id @default(cuid())
+  estanciaViatgerId String          @unique @map("estancia_viatger_id")
+  estanciaViatger   EstanciaViatger @relation(fields: [estanciaViatgerId], references: [id], onDelete: Cascade)
+  imatge            String // base64 o ruta a fichero
+  llocSignatura     String?         @map("lloc_signatura")
+  data              DateTime
+  hora              String
+  usuariId          String?         @map("usuari_id")
+  usuari            Usuari?         @relation(fields: [usuariId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("signatura")
+}
+
+model EnviamentMossos {
+  id              String         @id @default(cuid())
+  estanciaId      String         @map("estancia_id")
+  estancia        Estancia       @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+  estat           EstatEnviament @default(PENDENT)
+  fitxerNom       String         @map("fitxer_nom")
+  seq             Int
+  dataEnviament   DateTime?      @map("data_enviament")
+  justificantPath String?        @map("justificant_path")
+  codiValidacio   String?        @map("codi_validacio")
+  numRegistre     String?        @map("num_registre")
+  respostaRaw     String?        @map("resposta_raw")
+  errorMsg        String?        @map("error_msg")
+  usuariId        String?        @map("usuari_id")
+  usuari          Usuari?        @relation(fields: [usuariId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([estanciaId])
+  @@index([estat])
+  @@map("enviament_mossos")
+}
+
+model AnotacioHuesped {
+  id         String         @id @default(cuid())
+  huespedId  String         @map("huesped_id")
+  huesped    Huesped        @relation(fields: [huespedId], references: [id], onDelete: Cascade)
+  estanciaId String?        @map("estancia_id")
+  estancia   Estancia?      @relation(fields: [estanciaId], references: [id], onDelete: SetNull)
+  sentit     SentitAnotacio
+  tipus      String?
+  descripcio String // OBJETIVA y verificable (§7) — hechos, no etiquetas
+  data       DateTime       @default(now())
+  usuariId   String?        @map("usuari_id")
+  usuari     Usuari?        @relation(fields: [usuariId], references: [id], onDelete: SetNull)
+  privada    Boolean        @default(true)
+  noAcollir  Boolean        @default(false) @map("no_acollir") // lista interna de no-admisión
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([huespedId])
+  @@map("anotacio_huesped")
+}
+
+// ----------------------------------------------------------------------------
+// G. ESPACIOS, LIMPIEZA Y ANIMALES (Fase 1.5 / 5)
+// ----------------------------------------------------------------------------
+
+model Habitacio {
+  id        String  @id @default(cuid())
+  nom       String // num/nom (p.ej. "1", "6")
+  descripcio String?
+  capacitat Int?
+  estat     String?
+
+  estancies     Estancia[]
+  actius        Actiu[]
+  gastos        Gasto[]
+  tasquesNeteja TascaNeteja[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("habitacio")
+}
+
+model TascaNeteja {
+  id          String      @id @default(cuid())
+  data        DateTime
+  habitacioId String      @map("habitacio_id")
+  habitacio   Habitacio   @relation(fields: [habitacioId], references: [id], onDelete: Cascade)
+  tipus       TipusNeteja
+  estat       EstatTasca  @default(PENDENT)
+  assignadaA  String?     @map("assignada_a")
+  treballador Treballador? @relation(fields: [assignadaA], references: [id], onDelete: SetNull)
+  vinculadaSortidaId String? @map("vinculada_sortida_id")
+  vinculadaSortida   Estancia? @relation(fields: [vinculadaSortidaId], references: [id], onDelete: SetNull)
+  notes       String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([data])
+  @@index([habitacioId])
+  @@index([estat])
+  @@map("tasca_neteja")
+}
+
+model Animal {
+  id            String    @id @default(cuid())
+  nom           String
+  especie       String
+  dataNaixement DateTime? @map("data_naixement")
+  notes         String?
+
+  gastos Gasto[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("animal")
+}
+
+// ----------------------------------------------------------------------------
+// B. FACTURACIÓN (Fase 3)
+// ----------------------------------------------------------------------------
+
+model Factura {
+  id         String       @id @default(cuid())
+  estanciaId String       @map("estancia_id")
+  estancia   Estancia     @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+  numero        String              @unique
+  data          DateTime
+  base          Decimal             @db.Decimal(10, 2)
+  iva           Decimal             @db.Decimal(10, 2)
+  total         Decimal             @db.Decimal(10, 2)
+  estat         EstatFactura        @default(PENDENT)
+  tipusDocument TipusDocumentFiscal @default(RECIBO) @map("tipus_document")
+
+  linies     LiniaFactura[]
+  cobraments Cobrament[]
+  verifactu  RegistreVerifactu?
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([estanciaId])
+  @@map("factura")
+}
+
+model LiniaFactura {
+  id        String        @id @default(cuid())
+  facturaId String        @map("factura_id")
+  factura   Factura       @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+  concepte  ConcepteLinia
+  descripcio String
+  import    Decimal       @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([facturaId])
+  @@map("linia_factura")
+}
+
+model TasaTuristica {
+  id              String   @id @default(cuid())
+  estanciaId      String   @map("estancia_id")
+  estancia        Estancia @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+  nits            Int
+  importPersonaNit Decimal @map("import_persona_nit") @db.Decimal(10, 2)
+  total           Decimal  @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([estanciaId])
+  @@map("tasa_turistica")
+}
+
+model Cobrament {
+  id        String          @id @default(cuid())
+  facturaId String          @map("factura_id")
+  factura   Factura         @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+  metode    MetodeCobrament
+  import    Decimal         @db.Decimal(10, 2)
+  data      DateTime
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([facturaId])
+  @@map("cobrament")
+}
+
+// Registre de facturació "alta" Veri*Factu (AEAT). Encadenat per `huella`.
+model RegistreVerifactu {
+  id              String                @id @default(cuid())
+  facturaId       String                @unique @map("factura_id")
+  factura         Factura               @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+  tipusFactura    TipusFacturaVerifactu @map("tipus_factura")
+  serie           String
+  numero          String
+  numSerieFactura String                @map("num_serie_factura") // serie+numero (entra a la huella)
+  dataExpedicio   DateTime              @map("data_expedicio")
+  nifEmisor       String                @map("nif_emisor")
+  nomEmisor       String                @map("nom_emisor")
+  nifDestinatari  String?               @map("nif_destinatari")
+  nomDestinatari  String?               @map("nom_destinatari")
+  descripcio      String
+  baseImposable   Decimal               @map("base_imposable") @db.Decimal(10, 2)
+  tipusIva        Decimal               @map("tipus_iva") @db.Decimal(5, 2)
+  quotaIva        Decimal               @map("quota_iva") @db.Decimal(10, 2)
+  importNoSubjecte Decimal              @default(0) @map("import_no_subjecte") @db.Decimal(10, 2)
+  quotaTotal      Decimal               @map("quota_total") @db.Decimal(10, 2)
+  importTotal     Decimal               @map("import_total") @db.Decimal(10, 2)
+  huella          String // SHA-256 hex MAJÚSCULES d'aquest registre
+  huellaAnterior  String                @map("huella_anterior") // '' si és el primer
+  fechaHoraHuso   String                @map("fecha_hora_huso") // ISO 8601 amb offset (entra a la huella)
+  qrUrl           String                @map("qr_url")
+  registreJson    Json                  @map("registre_json") // RegistroAlta complet
+  softwareJson    Json                  @map("software_json")
+  estat           EstatVerifactu        @default(GENERAT)
+
+  // Resposta de l'AEAT (servei web Veri*Factu)
+  dataEnviament DateTime? @map("data_enviament")
+  csv           String? // codi de verificació segur retornat per l'AEAT
+  aeatEstat     String?   @map("aeat_estat") // Correcto / AceptadoConErrores / Incorrecto
+  aeatErrorCodi String?   @map("aeat_error_codi")
+  aeatErrorDesc String?   @map("aeat_error_desc")
+  respostaRaw   String?   @map("resposta_raw")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([createdAt])
+  @@map("registre_verifactu")
+}
+
+// ----------------------------------------------------------------------------
+// C. GASTOS (Fase 4)
+// ----------------------------------------------------------------------------
+
+model CategoriaGasto {
+  id     String  @id @default(cuid())
+  nom    String  @unique
+  gastos Gasto[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("categoria_gasto")
+}
+
+model Proveidor {
+  id       String  @id @default(cuid())
+  nom      String
+  cif      String?
+  contacte String?
+
+  gastos Gasto[]
+  actius Actiu[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("proveidor")
+}
+
+model Gasto {
+  id             String          @id @default(cuid())
+  data           DateTime
+  import         Decimal         @db.Decimal(10, 2)
+  categoriaId    String          @map("categoria_id")
+  categoria      CategoriaGasto  @relation(fields: [categoriaId], references: [id])
+  proveidorId    String?         @map("proveidor_id")
+  proveidor      Proveidor?      @relation(fields: [proveidorId], references: [id], onDelete: SetNull)
+  habitacioId    String?         @map("habitacio_id")
+  habitacio      Habitacio?      @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
+  animalId       String?         @map("animal_id")
+  animal         Animal?         @relation(fields: [animalId], references: [id], onDelete: SetNull)
+  descripcio     String
+  metodePagament MetodeCobrament @map("metode_pagament")
+  adjuntPath     String?         @map("adjunt_path")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([data])
+  @@index([categoriaId])
+  @@map("gasto")
+}
+
+// ----------------------------------------------------------------------------
+// D. ACTIVOS / INVENTARIO (Fase 5)
+// ----------------------------------------------------------------------------
+
+model Actiu {
+  id          String     @id @default(cuid())
+  nom         String
+  categoria   String
+  dataCompra  DateTime   @map("data_compra")
+  cost        Decimal    @db.Decimal(10, 2)
+  proveidorId String?    @map("proveidor_id")
+  proveidor   Proveidor? @relation(fields: [proveidorId], references: [id], onDelete: SetNull)
+  habitacioId String?    @map("habitacio_id")
+  habitacio   Habitacio? @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
+  garantiaFins DateTime? @map("garantia_fins")
+  ubicacio    String?
+  numSerie    String?    @map("num_serie")
+  facturaPath String?    @map("factura_path")
+  estat       EstatActiu @default(NOU)
+
+  historial ActiuHistorial[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([habitacioId])
+  @@map("actiu")
+}
+
+model ActiuHistorial {
+  id         String              @id @default(cuid())
+  actiuId    String              @map("actiu_id")
+  actiu      Actiu               @relation(fields: [actiuId], references: [id], onDelete: Cascade)
+  tipus      TipusHistorialActiu
+  descripcio String
+  data       DateTime
+  cost       Decimal?            @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([actiuId])
+  @@map("actiu_historial")
+}
+
+// ----------------------------------------------------------------------------
+// E. PERSONAL (Fase 6)
+// ----------------------------------------------------------------------------
+
+model Treballador {
+  id               String    @id @default(cuid())
+  nom              String
+  dni              String
+  telefon          String?
+  email            String?
+  dataContractacio DateTime  @map("data_contractacio")
+  carrec           String
+  salari           Decimal?  @db.Decimal(10, 2)
+  costEmpresa      Decimal?  @map("cost_empresa") @db.Decimal(10, 2)
+
+  absencies     Absencia[]
+  nomines       Nomina[]
+  tasquesNeteja TascaNeteja[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("treballador")
+}
+
+model Absencia {
+  id            String        @id @default(cuid())
+  treballadorId String        @map("treballador_id")
+  treballador   Treballador   @relation(fields: [treballadorId], references: [id], onDelete: Cascade)
+  tipus         TipusAbsencia
+  dataInici     DateTime      @map("data_inici")
+  dataFi        DateTime      @map("data_fi")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([treballadorId])
+  @@map("absencia")
+}
+
+model Nomina {
+  id            String      @id @default(cuid())
+  treballadorId String      @map("treballador_id")
+  treballador   Treballador @relation(fields: [treballadorId], references: [id], onDelete: Cascade)
+  periode       String
+  base          Decimal     @db.Decimal(10, 2)
+  extres        Decimal     @default(0) @db.Decimal(10, 2)
+  bonificacions Decimal     @default(0) @db.Decimal(10, 2)
+  total         Decimal     @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([treballadorId])
+  @@map("nomina")
+}

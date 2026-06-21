@@ -1,0 +1,28 @@
+# PostgreSQL para desarrollo local.
+#   Arrancar:  docker compose up -d
+#   Parar:     docker compose down
+#   Logs:      docker compose logs -f db
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: hostalcoll-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hostalcoll
+      POSTGRES_PASSWORD: hostalcoll
+      POSTGRES_DB: hostalcoll
+      # Acentos catalanes/castellanos correctos en ordenaciones.
+      LANG: es_ES.utf8
+    ports:
+      - '5432:5432'
+    volumes:
+      - hostalcoll_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U hostalcoll -d hostalcoll']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  hostalcoll_pgdata:
+    name: hostalcoll_pgdata

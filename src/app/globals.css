@@ -1,0 +1,48 @@
+@import 'tailwindcss';
+
+/* Identitat visual de l'Hostal Coll: granate + crema, serif elegant + sans net. */
+@theme {
+  /* Escala "brand" = granate de l'hostal (#7A1F2B base). */
+  --color-brand-50: #fbf4f5;
+  --color-brand-100: #f6e6e8;
+  --color-brand-200: #ecc7cc;
+  --color-brand-300: #dd9aa3;
+  --color-brand-400: #c96875;
+  --color-brand-500: #b0414f;
+  --color-brand-600: #9c3540; /* granate-soft */
+  --color-brand-700: #7a1f2b; /* granate */
+  --color-brand-800: #5c1620; /* granate-deep */
+  --color-brand-900: #4a121b;
+  --color-brand-950: #2c0a10;
+
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif: var(--font-cormorant), 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+}
+
+:root {
+  --background: #f8f8f8; /* cream-warm */
+  --foreground: #1a1a1a; /* ink */
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Selecció granate (com a la web). */
+::selection {
+  background: #7a1f2b;
+  color: #ffffff;
+}
+
+* {
+  scrollbar-width: thin;
+}
