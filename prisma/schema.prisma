@@ -380,6 +380,8 @@ model Estancia {
   esBorrany         Boolean       @default(false) @map("es_borrany")
   // Silencia l'avís de "dades pendents (*)" a Justificants per a aquesta estada.
   avisDadesParat    Boolean       @default(false) @map("avis_dades_parat")
+  // Descarta l'avís del termini de Mossos (24 h) al tauler per a aquesta estada.
+  avisMossosParat   Boolean       @default(false) @map("avis_mossos_parat")
 
   habitacioId String?    @map("habitacio_id")
   habitacio   Habitacio? @relation(fields: [habitacioId], references: [id], onDelete: SetNull)

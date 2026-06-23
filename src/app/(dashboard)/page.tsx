@@ -11,6 +11,7 @@ import {
   Clock,
   Wrench,
   CalendarClock,
+  ShieldAlert,
 } from 'lucide-react';
 import { getResum } from '@/lib/services/dashboard';
 import { isFormatConfirmat } from '@/lib/mossos/fitxer';
@@ -20,6 +21,7 @@ import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
 import { FinancesPanel, type FinanceKpi } from '@/components/dashboard/finances-panel';
+import { DescartarAvisMossos } from '@/components/estancia/descartar-avis-mossos';
 import { formatDate, formatEur } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -142,10 +144,7 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <PageHeader
-        title={`Hola, ${user?.nom ?? ''}`}
-        subtitle="Resum del dia"
-      />
+      <PageHeader title="Tauler" subtitle="Visió general de l’hostal" />
 
       {/* Aviso §9: el formato del fitxer es PROVISIONAL hasta confirmarlo con el manual */}
       {!isFormatConfirmat() && (
@@ -192,19 +191,48 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardBody className="space-y-1">
             {termini24.map((t) => (
-              <Link
+              <div
                 key={t.e.id}
-                href={`/estancies/${t.e.id}`}
-                className="flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50"
+                className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50"
               >
-                <span className="font-medium text-slate-800">{titularNom(t.e.viatgers)}</span>
-                <Badge tone={t.vencut ? 'danger' : t.restMs < 6 * 3_600_000 ? 'warning' : 'info'}>
-                  {t.vencut ? `Vençut fa ${fmtDur(t.restMs)}` : `Queden ${fmtDur(t.restMs)}`}
-                </Badge>
-              </Link>
+                <Link href={`/estancies/${t.e.id}`} className="font-medium text-slate-800 hover:underline">
+                  {titularNom(t.e.viatgers)}
+                </Link>
+                <div className="flex items-center gap-2">
+                  <Badge tone={t.vencut ? 'danger' : t.restMs < 6 * 3_600_000 ? 'warning' : 'info'}>
+                    {t.vencut ? `Vençut fa ${fmtDur(t.restMs)}` : `Queden ${fmtDur(t.restMs)}`}
+                  </Badge>
+                  <DescartarAvisMossos estanciaId={t.e.id} />
+                </div>
+              </div>
             ))}
           </CardBody>
         </Card>
+      )}
+
+      {/* Vigències a punt de caducar (assegurances, contractes…) — avís especial */}
+      {resum.vigenciesProximes.length > 0 && (
+        <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="mb-2 flex items-center gap-2 font-semibold">
+            <ShieldAlert className="h-5 w-5 shrink-0" />
+            Vigències a punt de caducar
+          </div>
+          <ul className="space-y-1.5">
+            {resum.vigenciesProximes.map((v) => (
+              <li key={v.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <Link href="/serveis" className="font-medium underline">
+                  {v.activitat}
+                </Link>
+                {v.proveidor && <span className="text-amber-700">· {v.proveidor}</span>}
+                <Badge tone={v.caducada ? 'danger' : 'warning'}>
+                  {v.caducada ? 'Caducada el ' : 'Caduca el '}
+                  {formatDate(v.vigenciaFi)}
+                </Badge>
+                {v.observacions && <span className="text-amber-700">— {v.observacions}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {/* KPIs financers — només per a l'ADMIN */}

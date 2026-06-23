@@ -25,6 +25,7 @@ export async function getResum(opts?: FinanceOpts) {
   const now = new Date();
   const in7 = new Date(now.getTime() + 7 * 86_400_000);
   const in30 = new Date(now.getTime() + 30 * 86_400_000);
+  const in90 = new Date(now.getTime() + 90 * 86_400_000);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
   const yearStart = new Date(now.getFullYear(), 0, 1);
@@ -57,12 +58,14 @@ export async function getResum(opts?: FinanceOpts) {
     dipositsCustodiaAgg,
     dipositsRetingutsMesAgg,
     serveisProxims,
+    vigenciesProximes,
   ] = await Promise.all([
     prisma.estancia.findMany({
       where: {
         deletedAt: null,
         estat: { in: ['EN_CURS', 'RESERVA'] },
         enviaments: { none: { estat: { in: ['ENVIAT', 'ACCEPTAT'] } } },
+        avisMossosParat: false,
       },
       orderBy: { dataEntrada: 'asc' },
       take: 20,
@@ -133,6 +136,13 @@ export async function getResum(opts?: FinanceOpts) {
       take: 20,
       include: { proveidor: { select: { nom: true } } },
     }),
+    // Serveis amb vigència (assegurances, contractes…) a punt de caducar (≤ 90 dies) o ja caducada.
+    prisma.serveiRecurrent.findMany({
+      where: { deletedAt: null, actiu: true, vigenciaFi: { not: null, lte: in90 } },
+      orderBy: { vigenciaFi: 'asc' },
+      take: 20,
+      include: { proveidor: { select: { nom: true } } },
+    }),
   ]);
 
   const num = (d: { _sum: { import: unknown } }) => Number(d._sum.import ?? 0);
@@ -156,6 +166,15 @@ export async function getResum(opts?: FinanceOpts) {
     vencut: s.properaData < now,
   }));
 
+  const vigenciesProximesList = vigenciesProximes.map((s) => ({
+    id: s.id,
+    activitat: s.activitat,
+    proveidor: s.proveidor?.nom ?? null,
+    vigenciaFi: s.vigenciaFi as Date,
+    observacions: s.observacions,
+    caducada: (s.vigenciaFi as Date) < now,
+  }));
+
   return {
     pendentsEnviament,
     pendentsFirmaCount,
@@ -163,6 +182,7 @@ export async function getResum(opts?: FinanceOpts) {
     properesEntrades,
     properesSortides,
     serveisProxims: serveisProximsList,
+    vigenciesProximes: vigenciesProximesList,
     totals: { hostes: totalHostes, estancies: totalEstancies },
     finances: {
       ingressosMes: ingMes,
@@ -179,6 +199,7 @@ export async function getResum(opts?: FinanceOpts) {
       facturesPendentsTotal,
       actiusAlerta,
       serveisProxims: serveisProximsList.length,
+      vigenciesProximes: vigenciesProximesList.length,
     },
   };
 }

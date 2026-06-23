@@ -12,6 +12,7 @@ const UpdateSchema = z.object({
   observacions: z.string().optional(),
   habitacioId: z.string().nullable().optional(),
   avisDadesParat: z.boolean().optional(),
+  avisMossosParat: z.boolean().optional(),
 });
 
 // GET /api/estancies/:id — detalle completo

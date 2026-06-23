@@ -8,11 +8,8 @@ import {
   Coins,
   Wallet,
   TrendingDown,
-  UserCog,
   PiggyBank,
   Percent,
-  BedDouble,
-  Moon,
   Download,
   FileText,
   CheckCircle2,
@@ -108,6 +105,17 @@ function metodeItems(perMetode: Record<string, number>) {
   return Object.entries(perMetode)
     .filter(([, v]) => v > 0)
     .map(([k, v]) => ({ label: METODE_COBRAMENT_LABELS[k as keyof typeof METODE_COBRAMENT_LABELS] ?? k, value: v }));
+}
+
+/** Afegeix el cost de personal com una categoria més de despeses (per al gràfic). */
+function ambPersonal<T extends Breakdowns>(d: T, personal: number): Breakdowns {
+  if (personal <= 0) return d;
+  return {
+    ...d,
+    despesesPerCategoria: [...d.despesesPerCategoria, { categoria: 'Personal', import: personal }].sort(
+      (a, b) => b.import - a.import,
+    ),
+  };
 }
 
 function Kpi({ label, value, icon: Icon, color, big, delta, deltaInvert }: { label: string; value: React.ReactNode; icon: React.ComponentType<{ className?: string }>; color: string; big?: boolean; delta?: string | null; deltaInvert?: boolean }) {
@@ -279,8 +287,7 @@ export default function BalancPage() {
         ['Ingressos (sense retencions)', mes.ingressos.toFixed(2)],
         ['Retencions en custòdia', mes.retencions.toFixed(2)],
         ['Ingressos + retencions', mes.ingressosAmbRetencions.toFixed(2)],
-        ['Despeses', mes.despeses.toFixed(2)],
-        ['Personal', mes.personal.toFixed(2)],
+        ['Despeses (inclou personal)', (mes.despeses + mes.personal).toFixed(2)],
         ['Benefici', mes.benefici.toFixed(2)],
         ['Marge %', marge(mes.benefici, mes.ingressos)],
         [''],
@@ -294,17 +301,16 @@ export default function BalancPage() {
     } else if (mode === 'any' && any) {
       const rows: (string | number)[][] = [
         [`Balanç ${any.any}`, ''],
-        ['Mes', 'Ingressos', 'Retencions', 'Ingressos+ret', 'Despeses', 'Personal', 'Benefici'],
+        ['Mes', 'Ingressos', 'Retencions', 'Ingressos+ret', 'Despeses (inclou personal)', 'Benefici'],
         ...any.mesos.map((m) => [
           MESOS[m.mes - 1]!,
           m.ingressos.toFixed(2),
           m.retencions.toFixed(2),
           m.ingressosAmbRetencions.toFixed(2),
-          m.despeses.toFixed(2),
-          m.personal.toFixed(2),
+          (m.despeses + m.personal).toFixed(2),
           m.benefici.toFixed(2),
         ]),
-        ['TOTAL', any.totals.ingressos.toFixed(2), any.totals.retencions.toFixed(2), any.totals.ingressosAmbRetencions.toFixed(2), any.totals.despeses.toFixed(2), any.totals.personal.toFixed(2), any.totals.benefici.toFixed(2)],
+        ['TOTAL', any.totals.ingressos.toFixed(2), any.totals.retencions.toFixed(2), any.totals.ingressosAmbRetencions.toFixed(2), (any.totals.despeses + any.totals.personal).toFixed(2), any.totals.benefici.toFixed(2)],
         [''],
         ['Ingressos per mètode (any)', ''],
         ...metodeItems(any.ingressosPerMetode).map((m) => [m.label, m.value.toFixed(2)]),
@@ -396,19 +402,15 @@ export default function BalancPage() {
           </div>
           {mes && (
             <>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <Kpi label="Ingressos" value={<Eur value={mes.ingressos} />} icon={TrendingUp} color="text-green-600" big />
-                <Kpi label="Despeses" value={<Eur value={mes.despeses} />} icon={TrendingDown} color="text-red-600" />
-                <Kpi label="Personal" value={<Eur value={mes.personal} />} icon={UserCog} color="text-slate-600" />
+                <Kpi label="Despeses (inclou personal)" value={<Eur value={mes.despeses + mes.personal} />} icon={TrendingDown} color="text-red-600" />
                 <Kpi label="Benefici" value={<Eur value={mes.benefici} />} icon={Wallet} color={mes.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big />
                 <Kpi label="Marge" value={`${marge(mes.benefici, mes.ingressos)}%`} icon={Percent} color="text-brand-700" />
                 <Kpi label="Ingressos + retencions" value={<Eur value={mes.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
                 <Kpi label="Dipòsits en custòdia" value={<Eur value={mes.retencions} />} icon={Coins} color="text-amber-600" />
-                <Kpi label="Ocupació" value={`${mes.ocupacio}%`} icon={BedDouble} color="text-brand-700" />
-                <Kpi label="ADR (preu mitjà/nit)" value={<Eur value={mes.adr} />} icon={Moon} color="text-slate-600" />
-                <Kpi label="RevPAR" value={<Eur value={mes.revpar} />} icon={Percent} color="text-slate-600" />
               </div>
-              <BreakdownsSection data={mes} />
+              <BreakdownsSection data={ambPersonal(mes, mes.personal)} />
             </>
           )}
         </div>
@@ -425,15 +427,11 @@ export default function BalancPage() {
           </div>
           {any && (
             <>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <Kpi label="Ingressos (any)" value={<Eur value={any.totals.ingressos} />} icon={TrendingUp} color="text-green-600" big delta={variacio(any.totals.ingressos, any.anterior.ingressos)} />
-                <Kpi label="Despeses (any)" value={<Eur value={any.totals.despeses} />} icon={TrendingDown} color="text-red-600" delta={variacio(any.totals.despeses, any.anterior.despeses)} deltaInvert />
-                <Kpi label="Personal (any)" value={<Eur value={any.totals.personal} />} icon={UserCog} color="text-slate-600" />
+                <Kpi label="Despeses (inclou personal)" value={<Eur value={any.totals.despeses + any.totals.personal} />} icon={TrendingDown} color="text-red-600" delta={variacio(any.totals.despeses + any.totals.personal, any.anterior.despeses + any.anterior.personal)} deltaInvert />
                 <Kpi label="Benefici (any)" value={<Eur value={any.totals.benefici} />} icon={Wallet} color={any.totals.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big delta={variacio(any.totals.benefici, any.anterior.benefici)} />
                 <Kpi label="Marge" value={`${marge(any.totals.benefici, any.totals.ingressos)}%`} icon={Percent} color="text-brand-700" />
-                <Kpi label="Ocupació (any)" value={`${any.ocupacio}%`} icon={BedDouble} color="text-brand-700" />
-                <Kpi label="ADR (preu mitjà/nit)" value={<Eur value={any.adr} />} icon={Moon} color="text-slate-600" />
-                <Kpi label="RevPAR (any)" value={<Eur value={any.revpar} />} icon={Percent} color="text-slate-600" />
               </div>
 
               <BalancChart mesos={any.mesos} />
@@ -446,7 +444,6 @@ export default function BalancPage() {
                     <Th className="text-right">Retencions</Th>
                     <Th className="text-right">Ing.+ret.</Th>
                     <Th className="text-right">Despeses</Th>
-                    <Th className="text-right">Personal</Th>
                     <Th className="text-right">Benefici</Th>
                   </tr>
                 </Thead>
@@ -457,8 +454,7 @@ export default function BalancPage() {
                       <Td className="text-right"><Eur value={m.ingressos} /></Td>
                       <Td className="text-right text-amber-700"><Eur value={m.retencions} /></Td>
                       <Td className="text-right font-medium"><Eur value={m.ingressosAmbRetencions} /></Td>
-                      <Td className="text-right text-red-700"><Eur value={m.despeses} /></Td>
-                      <Td className="text-right"><Eur value={m.personal} /></Td>
+                      <Td className="text-right text-red-700"><Eur value={m.despeses + m.personal} /></Td>
                       <Td className={cn('text-right font-medium', m.benefici >= 0 ? 'text-green-700' : 'text-red-700')}>
                         <Eur value={m.benefici} />
                       </Td>
@@ -469,14 +465,13 @@ export default function BalancPage() {
                     <Td className="text-right"><Eur value={any.totals.ingressos} /></Td>
                     <Td className="text-right"><Eur value={any.totals.retencions} /></Td>
                     <Td className="text-right"><Eur value={any.totals.ingressosAmbRetencions} /></Td>
-                    <Td className="text-right"><Eur value={any.totals.despeses} /></Td>
-                    <Td className="text-right"><Eur value={any.totals.personal} /></Td>
+                    <Td className="text-right"><Eur value={any.totals.despeses + any.totals.personal} /></Td>
                     <Td className="text-right"><Eur value={any.totals.benefici} /></Td>
                   </Tr>
                 </tbody>
               </Table>
 
-              <BreakdownsSection data={any} />
+              <BreakdownsSection data={ambPersonal(any, any.totals.personal)} />
             </>
           )}
         </div>
@@ -504,8 +499,9 @@ export default function BalancPage() {
 
       {mode !== 'situacio' && (
         <p className="mt-4 text-xs text-slate-400">
-          Ingressos = cobraments + dipòsits retinguts. Les retencions en custòdia no són ingrés. El
-          benefici és ingressos − despeses − personal. Exporta-ho tot a CSV per a la gestoria.
+          Ingressos = cobraments + dipòsits retinguts. Les retencions en custòdia no són ingrés. Les
+          despeses inclouen el cost de personal i el benefici és ingressos − despeses. Exporta-ho tot
+          a CSV per a la gestoria.
         </p>
       )}
     </div>
