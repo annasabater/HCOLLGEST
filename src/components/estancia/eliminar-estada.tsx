@@ -9,13 +9,19 @@ import { delJSON, ApiError } from '@/lib/api';
 export function EliminarEstada({
   id,
   contracte,
-  comunicada,
-  nFactures,
+  comunicada = false,
+  nFactures = 0,
+  redirectTo = '/estancies',
+  iconOnly = false,
 }: {
   id: string;
   contracte: string;
-  comunicada: boolean;
-  nFactures: number;
+  comunicada?: boolean;
+  nFactures?: number;
+  /** On anar després d'eliminar. `null` = quedar-se i refrescar (p. ex. a la fitxa de l'hoste). */
+  redirectTo?: string | null;
+  /** Mostra només la icona (per a files de taula). */
+  iconOnly?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -34,7 +40,7 @@ export function EliminarEstada({
     setBusy(true);
     try {
       await delJSON(`/api/estancies/${id}`);
-      router.push('/estancies');
+      if (redirectTo) router.push(redirectTo);
       router.refresh();
     } catch (e) {
       alert(e instanceof ApiError ? e.message : 'No s’ha pogut eliminar l’estada');
@@ -43,8 +49,16 @@ export function EliminarEstada({
   }
 
   return (
-    <Button type="button" variant="outline" size="sm" onClick={eliminar} disabled={busy} title="Eliminar estada">
-      <Trash2 className="h-4 w-4 text-red-600" /> Eliminar
+    <Button
+      type="button"
+      variant={iconOnly ? 'ghost' : 'outline'}
+      size="sm"
+      onClick={eliminar}
+      disabled={busy}
+      title="Eliminar estada"
+    >
+      <Trash2 className="h-4 w-4 text-red-600" />
+      {!iconOnly && ' Eliminar'}
     </Button>
   );
 }

@@ -13,6 +13,7 @@ import { AnotacioForm } from '@/components/huesped/anotacio-form';
 import { DocumentsHuesped } from '@/components/huesped/documents-huesped';
 import { MascotesPanel } from '@/components/huesped/mascotes-panel';
 import { EliminarHoste } from '@/components/huesped/eliminar-hoste';
+import { EliminarEstada } from '@/components/estancia/eliminar-estada';
 import { formatDate } from '@/lib/utils';
 import { nights } from '@/lib/dates';
 import { TIPUS_DOCUMENT_LABELS, SENTIT_ANOTACIO_LABELS } from '@/lib/validation/enums';
@@ -24,7 +25,17 @@ export default async function HuespedDetailPage({ params }: { params: Promise<{ 
   const huesped = await prisma.huesped.findFirst({
     where: { id, deletedAt: null },
     include: {
-      estancies: { include: { estancia: true }, orderBy: { createdAt: 'desc' } },
+      estancies: {
+        include: {
+          estancia: {
+            include: {
+              enviaments: { select: { estat: true } },
+              factures: { where: { deletedAt: null }, select: { id: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      },
       anotacions: { where: { deletedAt: null }, orderBy: { data: 'desc' } },
       documents: { where: { deletedAt: null } },
       animals: { where: { deletedAt: null }, orderBy: { nom: 'asc' } },
@@ -166,6 +177,7 @@ export default async function HuespedDetailPage({ params }: { params: Promise<{ 
                       <Th>Entrada</Th>
                       <Th>Sortida</Th>
                       <Th>Nits</Th>
+                      {canEdit && <Th>Accions</Th>}
                     </tr>
                   </Thead>
                   <tbody>
@@ -179,6 +191,20 @@ export default async function HuespedDetailPage({ params }: { params: Promise<{ 
                         <Td>{formatDate(e.dataEntrada)}</Td>
                         <Td>{formatDate(e.dataSortida)}</Td>
                         <Td>{nights(e.dataEntrada, e.dataSortida)}</Td>
+                        {canEdit && (
+                          <Td>
+                            <EliminarEstada
+                              id={e.id}
+                              contracte={`${e.numContracte}/${e.anyContracte}`}
+                              comunicada={e.enviaments.some(
+                                (x) => x.estat === 'ENVIAT' || x.estat === 'ACCEPTAT',
+                              )}
+                              nFactures={e.factures.length}
+                              redirectTo={null}
+                              iconOnly
+                            />
+                          </Td>
+                        )}
                       </Tr>
                     ))}
                   </tbody>
