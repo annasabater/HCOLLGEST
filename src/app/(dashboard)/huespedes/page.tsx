@@ -7,6 +7,7 @@ import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { AvisosPanel } from '@/components/huesped/avisos-panel';
 import { TIPUS_DOCUMENT_LABELS } from '@/lib/validation/enums';
 
 export const dynamic = 'force-dynamic';
@@ -56,6 +57,8 @@ export default async function HuespedesPage({
           </Link>
         }
       />
+
+      <AvisosPanel />
 
       <form method="get" className="mb-4 flex flex-wrap items-center gap-2">
         <Input name="q" defaultValue={q ?? ''} placeholder="Cerca per nom, document, email…" className="max-w-xs" />

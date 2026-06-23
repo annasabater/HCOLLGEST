@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { AlertTriangle, Plus } from 'lucide-react';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getJSON } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { getJSON, patchJSON, ApiError } from '@/lib/api';
 import { GRAVETAT_AVIS_LABELS } from '@/lib/validation/avis';
 
 interface Avis {
@@ -18,15 +19,35 @@ interface Avis {
 
 const TONE = { ALTA: 'danger', MITJA: 'warning', BAIXA: 'neutral' } as const;
 
-/** Panell compacte d'avisos interns actius, per incrustar a Hostes i Llibre. */
+/**
+ * Panell d'avisos interns ACTIUS (llista de no-admissió). Només es mostra si
+ * n'hi ha algun; cada avís es pot desactivar des d'aquí.
+ */
 export function AvisosPanel() {
   const [avisos, setAvisos] = useState<Avis[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
     getJSON<{ avisos: Avis[] }>('/api/avisos?actiu=true')
       .then((r) => setAvisos(r.avisos))
       .catch(() => setAvisos([]));
   }, []);
+
+  async function desactivar(id: string) {
+    if (!confirm('Desactivar aquest avís intern?')) return;
+    setBusy(id);
+    try {
+      await patchJSON(`/api/avisos/${id}`, { actiu: false });
+      setAvisos((prev) => prev.filter((a) => a.id !== id));
+    } catch (e) {
+      alert(e instanceof ApiError ? e.message : 'No s’ha pogut desactivar l’avís');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  // Si no hi ha cap avís actiu, no mostrem res (evita el card buit).
+  if (avisos.length === 0) return null;
 
   return (
     <Card className="mb-6 border-amber-200">
@@ -39,33 +60,26 @@ export function AvisosPanel() {
         </Link>
       </CardHeader>
       <CardBody>
-        {avisos.length === 0 ? (
-          <p className="text-sm text-slate-400">
-            Cap avís actiu. Pots vetar una persona (encara que no sigui client) des de{' '}
-            <Link href="/avisos" className="text-brand-700 hover:underline">
-              Gestionar
-            </Link>
-            .
-          </p>
-        ) : (
-          <ul className="space-y-1.5">
-            {avisos.slice(0, 8).map((a) => (
-              <li key={a.id} className="flex flex-wrap items-center gap-2 text-sm">
-                <Badge tone={TONE[a.gravetat]}>{GRAVETAT_AVIS_LABELS[a.gravetat]}</Badge>
-                <span className="font-medium text-slate-800">{a.nom}</span>
-                {a.telefon && <span className="text-xs text-slate-400">{a.telefon}</span>}
-                <span className="text-slate-600">— {a.motiu}</span>
-              </li>
-            ))}
-            {avisos.length > 8 && (
-              <li className="text-xs text-slate-400">
-                <Link href="/avisos" className="hover:underline">
-                  +{avisos.length - 8} més…
-                </Link>
-              </li>
-            )}
-          </ul>
-        )}
+        <ul className="space-y-1.5">
+          {avisos.map((a) => (
+            <li key={a.id} className="flex flex-wrap items-center gap-2 text-sm">
+              <Badge tone={TONE[a.gravetat]}>{GRAVETAT_AVIS_LABELS[a.gravetat]}</Badge>
+              <span className="font-medium text-slate-800">{a.nom}</span>
+              {a.telefon && <span className="text-xs text-slate-400">{a.telefon}</span>}
+              <span className="text-slate-600">— {a.motiu}</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="ml-auto"
+                disabled={busy === a.id}
+                onClick={() => desactivar(a.id)}
+              >
+                Desactivar
+              </Button>
+            </li>
+          ))}
+        </ul>
       </CardBody>
     </Card>
   );
