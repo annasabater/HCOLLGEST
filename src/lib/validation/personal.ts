@@ -13,7 +13,7 @@ const optNum = z.preprocess(
 
 export const TreballadorCreateSchema = z.object({
   nom: z.string().trim().min(1, 'Cal un nom'),
-  dni: z.string().trim().min(1, 'Cal el DNI'),
+  dni: optStr, // opcional
   carrec: z.string().trim().min(1, 'Cal el càrrec'),
   telefon: optStr,
   email: z.preprocess(
@@ -21,11 +21,19 @@ export const TreballadorCreateSchema = z.object({
     z.string().email().optional(),
   ),
   dataContractacio: z.coerce.date().optional(),
+  preuHora: optNum, // €/hora
   salari: optNum,
   costEmpresa: optNum,
 });
 
 export const TreballadorUpdateSchema = TreballadorCreateSchema.partial();
+
+export const JornadaCreateSchema = z.object({
+  data: z.coerce.date(),
+  hores: z.coerce.number().positive('Les hores han de ser > 0').max(24),
+  preuHora: optNum, // si no s'indica, s'agafa el del treballador
+  notes: optStr,
+});
 
 export const AbsenciaCreateSchema = z.object({
   tipus: z.enum(tipusAbsenciaValues),

@@ -10,6 +10,9 @@ import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { AnotacioForm } from '@/components/huesped/anotacio-form';
+import { DocumentsHuesped } from '@/components/huesped/documents-huesped';
+import { MascotesPanel } from '@/components/huesped/mascotes-panel';
+import { PawPrint } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { nights } from '@/lib/dates';
 import { TIPUS_DOCUMENT_LABELS, SENTIT_ANOTACIO_LABELS } from '@/lib/validation/enums';
@@ -24,6 +27,7 @@ export default async function HuespedDetailPage({ params }: { params: Promise<{ 
       estancies: { include: { estancia: true }, orderBy: { createdAt: 'desc' } },
       anotacions: { where: { deletedAt: null }, orderBy: { data: 'desc' } },
       documents: { where: { deletedAt: null } },
+      animals: { where: { deletedAt: null }, orderBy: { nom: 'asc' } },
     },
   });
   if (!huesped) notFound();
@@ -75,7 +79,7 @@ export default async function HuespedDetailPage({ params }: { params: Promise<{ 
       {noAcollir && (
         <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           Aquest hoste està marcat com a <strong>no acollir</strong> a la llista interna. Revisa les
-          notes objectives abans de decidir. La decisió no pot basar-se en característiques protegides (§7).
+          notes objectives abans de decidir. La decisió no pot basar-se en característiques protegides.
         </div>
       )}
 
@@ -170,11 +174,44 @@ export default async function HuespedDetailPage({ params }: { params: Promise<{ 
           </Card>
         </div>
 
-        {/* Anotaciones */}
+        {/* Documentos + Anotaciones */}
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Notes internes (§7)</CardTitle>
+              <CardTitle>Documents d’identitat</CardTitle>
+            </CardHeader>
+            <CardBody>
+              <DocumentsHuesped
+                huespedId={huesped.id}
+                canWrite={canEdit}
+                documents={huesped.documents.map((d) => ({
+                  id: d.id,
+                  tipus: d.tipus,
+                  fitxerNom: d.fitxerNom,
+                  mime: d.mime,
+                  dataSubida: d.dataSubida.toISOString(),
+                }))}
+              />
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex items-center gap-2">
+              <PawPrint className="h-4 w-4 text-brand-600" />
+              <CardTitle>Mascotes</CardTitle>
+            </CardHeader>
+            <CardBody>
+              <MascotesPanel
+                huespedId={huesped.id}
+                canWrite={canEdit}
+                mascotes={huesped.animals.map((a) => ({ id: a.id, nom: a.nom, especie: a.especie, mida: a.mida }))}
+              />
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Notes internes</CardTitle>
             </CardHeader>
             <CardBody className="space-y-4">
               {huesped.anotacions.length === 0 && (

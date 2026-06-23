@@ -5,7 +5,7 @@
 import 'server-only';
 import { prisma } from '../db';
 import { audit } from '../audit';
-import { buildFileName, buildFitxerBuffer, isLayoutReady, type Encoding } from '../mossos/fitxer';
+import { buildFileName, buildFitxerBuffer, isLayoutReady, isFormatConfirmat, type Encoding } from '../mossos/fitxer';
 import { buildParteFromDb } from '../mossos/build-parte';
 
 const ESTABLIMENT_ID = 'hostal-coll';
@@ -36,6 +36,8 @@ export interface GeneratedFitxer {
   fitxerNom: string;
   enviamentId: string;
   encoding: Encoding;
+  /** true mentre el format no s'hagi confirmat amb el manual oficial (§9). */
+  provisional: boolean;
 }
 
 /**
@@ -51,7 +53,7 @@ export async function generateFitxer(
   if (!isLayoutReady()) {
     throw new MossosConfigError(
       'No es pot generar el fitxer encara: falta l’ordre exacte de columnes del ' +
-        '"Manual d’instruccions" de Mossos (§9.1). Omple FIELD_LAYOUT i CODES a ' +
+        '"Manual d’instruccions" de Mossos. Omple FIELD_LAYOUT i CODES a ' +
         'src/lib/mossos/fitxer.ts. Mentrestant, fes el registre i comunica’l manualment.',
     );
   }
@@ -60,7 +62,7 @@ export async function generateFitxer(
 
   if (!establiment.fileIdentifier) {
     throw new MossosConfigError(
-      'Falta el file_identifier de l’establiment (§9.2, 9-10 car. de "Dades de ' +
+      'Falta el file_identifier de l’establiment (9-10 car. de "Dades de ' +
         'l’establiment" del portal). Configura’l a Configuració abans de generar el fitxer.',
     );
   }
@@ -94,5 +96,5 @@ export async function generateFitxer(
     ip,
   });
 
-  return { buffer, fitxerNom, enviamentId: enviament.id, encoding };
+  return { buffer, fitxerNom, enviamentId: enviament.id, encoding, provisional: !isFormatConfirmat() };
 }

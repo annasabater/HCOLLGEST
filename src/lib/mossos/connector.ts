@@ -43,7 +43,7 @@ export async function pujaFitxerAMossos(_input: ConnectorInput): Promise<Connect
   return {
     ok: false,
     errorMsg:
-      'Conector automático no disponible todavía (§9.5: faltan selectores/flujo del portal). ' +
+      'Conector automático no disponible todavía (faltan selectores/flujo del portal). ' +
       'Usa el flujo manual: descarga el .txt, súbelo en el portal de Mossos y registra el justificante.',
   };
 }

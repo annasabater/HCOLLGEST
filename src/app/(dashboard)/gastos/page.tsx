@@ -3,14 +3,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Plus, Trash2, Paperclip, Filter } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
+import { FinancesNav } from '@/components/balanc/finances-nav';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { Card, CardBody } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
+import { Eur, HideAmountsButton } from '@/components/finances/amounts-visibility';
 import { getJSON, postJSON, ApiError } from '@/lib/api';
-import { formatDate, formatEur } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
 import { optionsFrom, metodeCobramentValues, METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 
@@ -128,13 +130,22 @@ export default function GastosPage() {
     <div>
       <PageHeader
         title="Despeses"
-        subtitle={`${formatEur(total)} en el període seleccionat`}
+        subtitle={
+          <>
+            <Eur value={total} /> en el període seleccionat
+          </>
+        }
         actions={
-          <Button onClick={() => setShowForm((s) => !s)}>
-            <Plus className="h-4 w-4" /> Nova despesa
-          </Button>
+          <>
+            <HideAmountsButton />
+            <Button onClick={() => setShowForm((s) => !s)}>
+              <Plus className="h-4 w-4" /> Nova despesa
+            </Button>
+          </>
         }
       />
+
+      <FinancesNav />
 
       {showForm && (
         <Card className="mb-6">
@@ -225,7 +236,7 @@ export default function GastosPage() {
               .slice(0, 6)
               .map(([nom, imp]) => (
                 <Badge key={nom} tone="neutral">
-                  {nom}: {formatEur(imp)}
+                  {nom}: <Eur value={imp} />
                 </Badge>
               ))}
           </div>
@@ -270,7 +281,7 @@ export default function GastosPage() {
                 <Td>{g.categoria.nom}</Td>
                 <Td>{g.proveidor?.nom ?? '—'}</Td>
                 <Td>{METODE_COBRAMENT_LABELS[g.metodePagament]}</Td>
-                <Td className="text-right font-medium">{formatEur(Number(g.import))}</Td>
+                <Td className="text-right font-medium"><Eur value={Number(g.import)} /></Td>
                 <Td>
                   <button className="text-slate-400 hover:text-red-600" onClick={() => esborrar(g.id)}>
                     <Trash2 className="h-4 w-4" />

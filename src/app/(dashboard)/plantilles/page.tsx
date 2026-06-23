@@ -1,0 +1,353 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { MessageCircle, Copy, Sparkles, Users, Phone } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
+import { Input, Select, Textarea } from '@/components/ui/input';
+import { Field } from '@/components/ui/field';
+import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { getJSON, patchJSON } from '@/lib/api';
+import { addDays, toISODate } from '@/lib/dates';
+import { formatDate } from '@/lib/utils';
+import {
+  fillTemplate,
+  waLink,
+  descriuTasques,
+  tipusNetejaLabel,
+  PLANTILLA_HOSTE,
+  PLANTILLA_NETEJA,
+  PASILLO_TXT,
+  LANGS,
+  type Lang,
+} from '@/lib/plantilles';
+
+interface Treballador {
+  id: string;
+  nom: string;
+  telefon: string | null;
+}
+interface Tasca {
+  id: string;
+  habitacio: { nom: string } | null;
+  tipus: 'CANVI_COMPLET' | 'REPAS';
+}
+interface Estancia {
+  id: string;
+  dataEntrada: string;
+  dataSortida: string;
+  habitacio: { nom: string } | null;
+  viatgers: { esTitular: boolean; huesped: { nom: string; cognom1: string; telefon: string | null } }[];
+}
+
+function lsGet(key: string, def: string): string {
+  if (typeof window === 'undefined') return def;
+  return window.localStorage.getItem(key) ?? def;
+}
+function loadTpls(kind: 'hoste' | 'neteja'): Record<Lang, string> {
+  const base = kind === 'hoste' ? PLANTILLA_HOSTE : PLANTILLA_NETEJA;
+  const out = { ...base };
+  (Object.keys(base) as Lang[]).forEach((l) => {
+    out[l] = lsGet(`plantilla_${kind}_${l}`, base[l]);
+  });
+  return out;
+}
+function copia(text: string) {
+  navigator.clipboard?.writeText(text);
+}
+
+function LangSelect({ value, onChange, className }: { value: Lang; onChange: (l: Lang) => void; className?: string }) {
+  return (
+    <Select value={value} onChange={(e) => onChange(e.target.value as Lang)} className={className}>
+      {LANGS.map((l) => (
+        <option key={l.code} value={l.code}>
+          {l.label}
+        </option>
+      ))}
+    </Select>
+  );
+}
+
+export default function PlantillesPage() {
+  return (
+    <div>
+      <PageHeader title="Plantilles" subtitle="Missatges de WhatsApp per a neteja i hostes (multiidioma)" />
+      <div className="space-y-6">
+        <MeuWhatsApp />
+        <NetejaCard />
+        <HostesCard />
+      </div>
+    </div>
+  );
+}
+
+// --- El meu WhatsApp --------------------------------------------------------
+function MeuWhatsApp() {
+  const [num, setNum] = useState('687 558 248');
+  useEffect(() => setNum(lsGet('meu_whatsapp', '687 558 248')), []);
+  return (
+    <Card>
+      <CardBody className="flex flex-wrap items-center gap-3">
+        <Phone className="h-4 w-4 text-brand-600" />
+        <span className="text-sm text-slate-600">El meu WhatsApp (des d’on envio):</span>
+        <Input
+          className="max-w-44"
+          value={num}
+          onChange={(e) => {
+            setNum(e.target.value);
+            window.localStorage.setItem('meu_whatsapp', e.target.value);
+          }}
+        />
+        <span className="text-xs text-slate-400">
+          Els missatges s’obren al WhatsApp d’aquest telèfon i els envies tu manualment.
+        </span>
+      </CardBody>
+    </Card>
+  );
+}
+
+// --- Plantilla per a la dona de neteja --------------------------------------
+function NetejaCard() {
+  const [data, setData] = useState(toISODate(addDays(new Date(), 1)));
+  const [treballadors, setTreballadors] = useState<Treballador[]>([]);
+  const [treballadorId, setTreballadorId] = useState('');
+  const [tasques, setTasques] = useState<Tasca[]>([]);
+  const [pasillo, setPasillo] = useState(true);
+  const [lang, setLang] = useState<Lang>('es');
+  const [tpls, setTpls] = useState<Record<Lang, string>>(PLANTILLA_NETEJA);
+  const [editLang, setEditLang] = useState<Lang>('es');
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => {
+    setTpls(loadTpls('neteja'));
+    getJSON<{ treballadors: Treballador[] }>('/api/treballadors').then((r) => {
+      setTreballadors(r.treballadors);
+      const tania = r.treballadors.find((t) => /neteja|tania/i.test(t.nom)) ?? r.treballadors[0];
+      if (tania) setTreballadorId(tania.id);
+    });
+  }, []);
+
+  useEffect(() => {
+    getJSON<{ tasques: Tasca[] }>(`/api/tasques-neteja?desde=${data}&fins=${data}`).then((r) =>
+      setTasques(r.tasques),
+    );
+  }, [data]);
+
+  const treballador = treballadors.find((t) => t.id === treballadorId);
+  useEffect(() => {
+    setMsg(
+      fillTemplate(tpls[lang], {
+        nom: treballador?.nom ?? '',
+        data: formatDate(data),
+        habitacions: descriuTasques(
+          tasques.map((t) => ({ habitacio: t.habitacio?.nom ?? null, tipus: t.tipus })),
+          lang,
+        ),
+        pasillo: pasillo ? PASILLO_TXT[lang] : '',
+      }),
+    );
+  }, [tpls, lang, treballador, data, tasques, pasillo]);
+
+  // Canvia el tipus d'una habitació (salida/repàs) i ho desa a la tasca.
+  async function setTipus(id: string, tipus: 'CANVI_COMPLET' | 'REPAS') {
+    setTasques((prev) => prev.map((t) => (t.id === id ? { ...t, tipus } : t)));
+    try {
+      await patchJSON(`/api/tasques-neteja/${id}`, { tipus });
+    } catch {
+      /* canvi visual igualment al missatge */
+    }
+  }
+
+  function saveTpl(v: string) {
+    setTpls((prev) => ({ ...prev, [editLang]: v }));
+    window.localStorage.setItem(`plantilla_neteja_${editLang}`, v);
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-brand-600" />
+        <CardTitle>Avís a la dona de neteja</CardTitle>
+      </CardHeader>
+      <CardBody className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="Dia a netejar">
+            <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+          </Field>
+          <Field label="Enviar a">
+            <Select value={treballadorId} onChange={(e) => setTreballadorId(e.target.value)}>
+              {treballadors.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nom} {t.telefon ? `(${t.telefon})` : '(sense telèfon)'}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Idioma">
+            <LangSelect value={lang} onChange={setLang} />
+          </Field>
+          <Field label="Passadís">
+            <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" checked={pasillo} onChange={(e) => setPasillo(e.target.checked)} />
+              Incloure el passadís
+            </label>
+          </Field>
+        </div>
+
+        {/* Habitacions del dia: salida (a fons) o repàs */}
+        {tasques.length === 0 ? (
+          <p className="text-xs text-slate-500">Cap tasca de neteja assignada aquest dia.</p>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-slate-500">
+              Tipus de neteja per habitació (determina la tarifa):
+            </p>
+            {tasques.map((t) => (
+              <div key={t.id} className="flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2">
+                <span className="w-28 text-sm text-slate-700">Habitació {t.habitacio?.nom ?? '?'}</span>
+                <Select
+                  className="max-w-52"
+                  value={t.tipus}
+                  onChange={(e) => setTipus(t.id, e.target.value as 'CANVI_COMPLET' | 'REPAS')}
+                >
+                  <option value="CANVI_COMPLET">{tipusNetejaLabel('CANVI_COMPLET', lang)}</option>
+                  <option value="REPAS">{tipusNetejaLabel('REPAS', lang)}</option>
+                </Select>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <Field label="Missatge" hint="Es genera amb les tasques del dia; edita’l si cal.">
+          <Textarea rows={3} value={msg} onChange={(e) => setMsg(e.target.value)} />
+        </Field>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <a href={waLink(treballador?.telefon, msg)} target="_blank" rel="noreferrer">
+            <Button type="button" disabled={!msg}>
+              <MessageCircle className="h-4 w-4" /> Enviar per WhatsApp
+            </Button>
+          </a>
+          <Button type="button" variant="outline" onClick={() => copia(msg)}>
+            <Copy className="h-4 w-4" /> Copiar
+          </Button>
+        </div>
+
+        <details className="text-sm">
+          <summary className="cursor-pointer text-slate-500">Editar plantilla per defecte (per idioma)</summary>
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-xs text-slate-500">Idioma:</span>
+            <LangSelect value={editLang} onChange={setEditLang} className="max-w-40" />
+          </div>
+          <Textarea className="mt-2" rows={2} value={tpls[editLang]} onChange={(e) => saveTpl(e.target.value)} />
+          <p className="mt-1 text-xs text-slate-400">
+            Variables: {'{nom}'} {'{data}'} {'{habitacions}'} {'{pasillo}'}. Es desa al navegador.
+          </p>
+        </details>
+      </CardBody>
+    </Card>
+  );
+}
+
+// --- Plantilla per a hostes --------------------------------------------------
+function HostesCard() {
+  const [estancies, setEstancies] = useState<Estancia[]>([]);
+  const [hora, setHora] = useState('11:00');
+  const [tpls, setTpls] = useState<Record<Lang, string>>(PLANTILLA_HOSTE);
+  const [editLang, setEditLang] = useState<Lang>('ca');
+  const [noms, setNoms] = useState<Record<string, string>>({});
+  const [langs, setLangs] = useState<Record<string, Lang>>({});
+
+  useEffect(() => {
+    setTpls(loadTpls('hoste'));
+    getJSON<{ estancies: Estancia[] }>('/api/estancies').then((r) => {
+      const today = toISODate(new Date());
+      const actives = r.estancies.filter((e) => toISODate(new Date(e.dataSortida)) >= today);
+      setEstancies(actives);
+      const inicial: Record<string, string> = {};
+      for (const e of actives) {
+        const t = e.viatgers.find((v) => v.esTitular)?.huesped ?? e.viatgers[0]?.huesped;
+        if (t) inicial[e.id] = t.nom;
+      }
+      setNoms(inicial);
+    });
+  }, []);
+
+  function saveTpl(v: string) {
+    setTpls((prev) => ({ ...prev, [editLang]: v }));
+    window.localStorage.setItem(`plantilla_hoste_${editLang}`, v);
+  }
+
+  function msgFor(e: Estancia): string {
+    const l = langs[e.id] ?? 'ca';
+    return fillTemplate(tpls[l], {
+      nom: noms[e.id] ?? '',
+      hora,
+      habitacio: e.habitacio?.nom ?? '',
+    });
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex items-center gap-2">
+        <Users className="h-4 w-4 text-brand-600" />
+        <CardTitle>Avís als hostes (neteja)</CardTitle>
+      </CardHeader>
+      <CardBody className="space-y-4">
+        <Field label="Hora aproximada" className="max-w-40">
+          <Input value={hora} onChange={(e) => setHora(e.target.value)} />
+        </Field>
+
+        {estancies.length === 0 ? (
+          <p className="text-sm text-slate-400">Cap estada activa.</p>
+        ) : (
+          <div className="space-y-2">
+            {estancies.map((e) => {
+              const t = e.viatgers.find((v) => v.esTitular)?.huesped ?? e.viatgers[0]?.huesped;
+              const phone = t?.telefon ?? null;
+              return (
+                <div key={e.id} className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 p-2">
+                  <Field label="Nom" className="w-36">
+                    <Input
+                      value={noms[e.id] ?? ''}
+                      onChange={(ev) => setNoms({ ...noms, [e.id]: ev.target.value })}
+                    />
+                  </Field>
+                  <Field label="Idioma" className="w-32">
+                    <LangSelect value={langs[e.id] ?? 'ca'} onChange={(l) => setLangs({ ...langs, [e.id]: l })} />
+                  </Field>
+                  <span className="pb-2 text-xs text-slate-400">
+                    {e.habitacio ? `Hab. ${e.habitacio.nom} · ` : ''}
+                    {phone ?? 'sense telèfon'}
+                  </span>
+                  <div className="ml-auto flex gap-2 pb-0.5">
+                    <a href={waLink(phone, msgFor(e))} target="_blank" rel="noreferrer">
+                      <Button type="button" size="sm">
+                        <MessageCircle className="h-4 w-4" /> WhatsApp
+                      </Button>
+                    </a>
+                    <Button type="button" size="sm" variant="outline" onClick={() => copia(msgFor(e))}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <details className="text-sm">
+          <summary className="cursor-pointer text-slate-500">Editar plantilla per defecte (per idioma)</summary>
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-xs text-slate-500">Idioma:</span>
+            <LangSelect value={editLang} onChange={setEditLang} className="max-w-40" />
+          </div>
+          <Textarea className="mt-2" rows={2} value={tpls[editLang]} onChange={(e) => saveTpl(e.target.value)} />
+          <p className="mt-1 text-xs text-slate-400">
+            Variables: {'{nom}'} {'{hora}'} {'{habitacio}'}. Es desa al navegador.
+          </p>
+        </details>
+      </CardBody>
+    </Card>
+  );
+}

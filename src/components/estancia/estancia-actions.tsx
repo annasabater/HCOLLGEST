@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Download, FileText, AlertTriangle } from 'lucide-react';
+import { Download, AlertTriangle, FileCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { GenerarFitxerButton, type FitxerNotice } from './generar-fitxer-button';
 import { patchJSON, ApiError } from '@/lib/api';
 import { ESTAT_ENVIAMENT_LABELS, estatEnviamentValues } from '@/lib/validation/enums';
 import { formatDate } from '@/lib/utils';
@@ -30,47 +31,18 @@ export function EstanciaActions({
   enviaments: Enviament[];
 }) {
   const router = useRouter();
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<{ tone: 'info' | 'error'; msg: string } | null>(null);
-
-  async function generarFitxer() {
-    setBusy(true);
-    setNotice(null);
-    try {
-      const res = await fetch(`/api/estancies/${estanciaId}/fitxer`, { method: 'POST' });
-      const ct = res.headers.get('Content-Type') ?? '';
-      if (!res.ok || ct.includes('application/json')) {
-        const data = await res.json().catch(() => ({}));
-        setNotice({ tone: 'error', msg: data.error ?? 'No s’ha pogut generar el fitxer' });
-        return;
-      }
-      // Descarga del .txt
-      const blob = await res.blob();
-      const disp = res.headers.get('Content-Disposition') ?? '';
-      const name = /filename="([^"]+)"/.exec(disp)?.[1] ?? 'fitxer.txt';
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = name;
-      a.click();
-      URL.revokeObjectURL(url);
-      setNotice({ tone: 'info', msg: `Fitxer ${name} generat. Puja’l al portal de Mossos.` });
-      router.refresh();
-    } catch {
-      setNotice({ tone: 'error', msg: 'Error generant el fitxer' });
-    } finally {
-      setBusy(false);
-    }
-  }
+  const [notice, setNotice] = useState<FitxerNotice | null>(null);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={generarFitxer} disabled={busy}>
-          <FileText className="h-4 w-4" /> Generar fitxer massiu
-        </Button>
+        <GenerarFitxerButton
+          estanciaId={estanciaId}
+          onResult={(n) => setNotice(n)}
+          onDone={() => router.refresh()}
+        />
         <p className="text-xs text-slate-500">
-          Genera el .txt i puja’l manualment al portal de Mossos (el conector automàtic és §9.5).
+          Genera el .txt i puja’l manualment al portal de Mossos.
         </p>
       </div>
 
@@ -149,6 +121,13 @@ function EnviamentRow({ enviament, onChanged }: { enviament: Enviament; onChange
         <Button size="md" onClick={save} disabled={saving}>
           {saving ? 'Desant…' : 'Actualitzar'}
         </Button>
+      </div>
+      <div className="mt-2">
+        <a href={`/api/enviaments/${enviament.id}/justificant`} target="_blank" rel="noreferrer">
+          <Button type="button" variant="outline" size="sm">
+            <FileCheck className="h-4 w-4" /> Justificant PDF
+          </Button>
+        </a>
       </div>
       {(estat === 'ERROR' || estat === 'REBUTJAT') && (
         <Input

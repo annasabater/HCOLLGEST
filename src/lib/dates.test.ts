@@ -1,5 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { ageAt, isMenor, nights, toISODate, startOfWeekMonday, weekDays, addDays } from './dates';
+import {
+  ageAt,
+  isMenor,
+  nights,
+  toISODate,
+  startOfWeekMonday,
+  weekDays,
+  addDays,
+  monthGridDays,
+  addMonths,
+  sameMonth,
+} from './dates';
 
 describe('ageAt', () => {
   it('calcula años cumplidos', () => {
@@ -43,5 +54,22 @@ describe('helpers de calendario', () => {
     expect(days).toHaveLength(7);
     expect(days[0]).toBe('2026-06-15');
     expect(days[6]).toBe('2026-06-21');
+  });
+});
+
+describe('helpers de mes', () => {
+  it('monthGridDays comença en dilluns, cobreix el mes i té longitud múltiple de 7', () => {
+    const days = monthGridDays(new Date(2026, 5, 15)); // juny 2026
+    expect(days.length % 7).toBe(0);
+    expect(days[0]!.getDay()).toBe(1); // dilluns
+    const isos = days.map(toISODate);
+    expect(isos).toContain('2026-06-01');
+    expect(isos).toContain('2026-06-30');
+    expect(days[0]!.getTime()).toBeLessThanOrEqual(new Date(2026, 5, 1).getTime());
+  });
+  it('addMonths i sameMonth', () => {
+    expect(toISODate(addMonths(new Date(2026, 5, 21), 1))).toBe('2026-07-01');
+    expect(sameMonth(new Date(2026, 5, 1), new Date(2026, 5, 30))).toBe(true);
+    expect(sameMonth(new Date(2026, 5, 1), new Date(2026, 6, 1))).toBe(false);
   });
 });

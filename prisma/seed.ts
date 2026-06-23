@@ -30,10 +30,14 @@ const CATEGORIES_GASTO = [
   'Altres',
 ];
 
-const USUARIS: { email: string; nom: string; role: Role }[] = [
-  { email: 'admin@hostalcoll.cat', nom: 'Administrador', role: Role.ADMIN },
-  { email: 'recepcio@hostalcoll.cat', nom: 'Recepció', role: Role.RECEPCIO },
-  { email: 'consulta@hostalcoll.cat', nom: 'Consulta', role: Role.CONSULTA },
+const USUARIS: { email: string; nom: string; role: Role; password?: string }[] = [
+  { email: 'hostalcoll@gmail.com', nom: 'Administrador', role: Role.ADMIN },
+  // Compte de propietat amb vista restringida (veu tot com l'ADMIN, però als
+  // ingressos s'exclou el mètode ALTRES i el llibre amaga les estades amb "ZP11").
+  // La restricció es defineix a src/lib/auth/restriccions.ts. Contrasenya pròpia.
+  { email: 'hcoll@gmail.com', nom: 'Propietat', role: Role.ADMIN, password: 'Hostal.2026' },
+  { email: 'recepcio@hostalcoll.com', nom: 'Recepció', role: Role.RECEPCIO },
+  { email: 'consulta@hostalcoll.com', nom: 'Consulta', role: Role.CONSULTA },
 ];
 
 async function main() {
@@ -60,14 +64,16 @@ async function main() {
   // --- Usuarios (uno por rol) ----------------------------------------------
   const passwordHash = await bcrypt.hash(SEED_PASSWORD, 12);
   for (const u of USUARIS) {
+    // Cada usuari pot tenir contrasenya pròpia; si no, fa servir SEED_PASSWORD.
+    const hash = u.password ? await bcrypt.hash(u.password, 12) : passwordHash;
     await prisma.usuari.upsert({
       where: { email: u.email },
       update: { nom: u.nom, role: u.role, actiu: true },
-      create: { email: u.email, nom: u.nom, role: u.role, passwordHash, actiu: true },
+      create: { email: u.email, nom: u.nom, role: u.role, passwordHash: hash, actiu: true },
     });
     console.log(`  ✓ Usuari ${u.email} (${u.role})`);
   }
-  console.log(`  ⚠ Contraseña inicial de los 3 usuarios: "${SEED_PASSWORD}" — cámbiala.`);
+  console.log(`  ⚠ Contrasenya inicial (usuaris sense contrasenya pròpia): "${SEED_PASSWORD}" — canvia-la.`);
 
   // --- Categorías de gasto (§5C) -------------------------------------------
   for (const nom of CATEGORIES_GASTO) {

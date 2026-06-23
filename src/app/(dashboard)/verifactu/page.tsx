@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Plus, Trash2, ShieldCheck, ShieldAlert, QrCode } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
+import { FinancesNav } from '@/components/balanc/finances-nav';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -158,6 +159,8 @@ export default function VerifactuPage() {
         title="Veri*Factu"
         subtitle="Emissió de documents de cobrament amb el format de l’AEAT (obligatori 2027)"
       />
+
+      <FinancesNav />
 
       <div className="mb-6 flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800">
         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />

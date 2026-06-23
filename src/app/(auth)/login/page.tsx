@@ -16,9 +16,6 @@ export default function LoginPage() {
             <LoginForm />
           </Suspense>
         </div>
-        <p className="mt-6 text-center text-xs text-brand-300">
-          Accés restringit · totes les accions queden auditades
-        </p>
       </div>
     </main>
   );

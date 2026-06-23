@@ -83,87 +83,119 @@ export const EstanciaInputSchema = z.object({
   observacions: optStr,
 });
 
-export const RegistreSchema = z
-  .object({
-    estancia: EstanciaInputSchema,
-    viatgers: z.array(ViatgerInputSchema).min(1, 'Cal almenys un viatger'),
-  })
-  .superRefine((data, ctx) => {
-    const { estancia, viatgers } = data;
-    const today = endOfToday();
+/**
+ * Construye el esquema del registro. Con `borrany = true` (esborrany) se omite la
+ * obligatoriedad condicional §2.3 de cada viajero: el registro se puede guardar
+ * incompleto y se completa más tarde. La validación §2.3 completa se aplica igual
+ * al GENERAR el fitxer de Mossos (`validaParte`), que es la verdadera puerta legal.
+ *
+ * Nota: província i municipi NO son obligatorios ni en el modo estricto (se piden
+ * solo al subir a Mossos); el resto de §2.3 sí, salvo en esborrany.
+ */
+function buildRegistreSchema(borrany: boolean) {
+  return z
+    .object({
+      estancia: EstanciaInputSchema,
+      viatgers: z.array(ViatgerInputSchema).min(1, 'Cal almenys un viatger'),
+    })
+    .superRefine((data, ctx) => {
+      const { estancia, viatgers } = data;
+      const today = endOfToday();
 
-    // --- Fechas de la estancia (§2.3) ---
-    if (estancia.dataFormalitzacio > today) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['estancia', 'dataFormalitzacio'],
-        message: 'La data de formalització no pot ser futura',
-      });
-    }
-    if (estancia.dataSortida <= estancia.dataEntrada) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['estancia', 'dataSortida'],
-        message: 'La data de sortida ha de ser posterior a l’entrada',
-      });
-    }
+      // --- Fechas de la estancia (sanity, siempre) ---
+      if (estancia.dataFormalitzacio > today) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['estancia', 'dataFormalitzacio'],
+          message: 'La data de formalització no pot ser futura',
+        });
+      }
+      if (estancia.dataSortida <= estancia.dataEntrada) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['estancia', 'dataSortida'],
+          message: 'La data de sortida ha de ser posterior a l’entrada',
+        });
+      }
 
-    // --- Al menos un titular ---
-    if (!viatgers.some((v) => v.esTitular)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['viatgers'],
-        message: 'Cal marcar un viatger com a titular',
-      });
-    }
+      // --- Al menos un titular (siempre) ---
+      if (!viatgers.some((v) => v.esTitular)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['viatgers'],
+          message: 'Cal marcar un viatger com a titular',
+        });
+      }
 
-    const esReserva = estancia.tipusRegistre === 'RESERVA';
+      // Esborrany: se guarda con datos incompletos. La obligatoriedad §2.3 se
+      // comprueba al subir a Mossos, no al guardar.
+      if (borrany) return;
 
-    viatgers.forEach((v, i) => {
-      const at = (field: string, message: string) =>
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['viatgers', i, field], message });
+      const esReserva = estancia.tipusRegistre === 'RESERVA';
 
-      if (esReserva) {
-        // RESERVA: solo nom, cognom1 y (email o telèfon)
-        if (!v.email && !v.telefon) {
-          at('email', 'En reserva cal email o telèfon');
+      viatgers.forEach((v, i) => {
+        const at = (field: string, message: string) =>
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['viatgers', i, field], message });
+
+        if (esReserva) {
+          // RESERVA: solo nom, cognom1 y (email o telèfon)
+          if (!v.email && !v.telefon) {
+            at('email', 'En reserva cal email o telèfon');
+          }
+          return;
         }
-        return;
-      }
 
-      // CONTRACTE EN CURS
-      const menor = v.esMenor || isMenor(v.dataNaixement, estancia.dataEntrada);
+        // CONTRACTE EN CURS
+        const menor = v.esMenor || isMenor(v.dataNaixement, estancia.dataEntrada);
 
-      if (!menor) {
-        if (!v.tipusDocument) at('tipusDocument', 'Tipus de document obligatori');
-        if (!v.numDocument) at('numDocument', 'Número de document obligatori');
-      }
-      if (v.tipusDocument === 'DNI_NIF' || v.tipusDocument === 'NIE') {
-        if (!v.numSuport) at('numSuport', 'Número de suport obligatori (DNI/NIE)');
-      }
-      if (v.tipusDocument === 'DNI_NIF' && !v.cognom2) {
-        at('cognom2', 'El segon cognom és obligatori amb DNI/NIF');
-      }
-      if (menor && !v.parentesc) {
-        at('parentesc', 'Parentesc obligatori per a menors');
-      }
-      if (v.dataNaixement && v.dataNaixement > today) {
-        at('dataNaixement', 'La data de naixement no pot ser futura');
-      }
-      if (v.dataExpedicio && v.dataExpedicio > today) {
-        at('dataExpedicio', 'La data d’expedició no pot ser futura');
-      }
-      if (!v.adreca) at('adreca', 'Adreça obligatòria (contracte en curs)');
-      if (!v.codiPostal) at('codiPostal', 'Codi postal obligatori');
-      if (v.pais === 'Espanya') {
-        if (!v.provincia) at('provincia', 'Província obligatòria (país = Espanya)');
-        if (!v.municipi) at('municipi', 'Municipi obligatori (país = Espanya)');
-      } else if (v.pais && !v.localitat) {
-        at('localitat', 'Localitat obligatòria (país estranger)');
-      }
+        if (!menor) {
+          if (!v.tipusDocument) at('tipusDocument', 'Tipus de document obligatori');
+          if (!v.numDocument) at('numDocument', 'Número de document obligatori');
+        }
+        if (v.tipusDocument === 'DNI_NIF' || v.tipusDocument === 'NIE') {
+          if (!v.numSuport) at('numSuport', 'Número de suport obligatori (DNI/NIE)');
+        }
+        if (v.tipusDocument === 'DNI_NIF' && !v.cognom2) {
+          at('cognom2', 'El segon cognom és obligatori amb DNI/NIF');
+        }
+        if (menor && !v.parentesc) {
+          at('parentesc', 'Parentesc obligatori per a menors');
+        }
+        if (v.dataNaixement && v.dataNaixement > today) {
+          at('dataNaixement', 'La data de naixement no pot ser futura');
+        }
+        if (v.dataExpedicio && v.dataExpedicio > today) {
+          at('dataExpedicio', 'La data d’expedició no pot ser futura');
+        }
+        if (!v.adreca) at('adreca', 'Adreça obligatòria (contracte en curs)');
+        if (!v.codiPostal) at('codiPostal', 'Codi postal obligatori');
+        // Província i municipi: opcionals en desar (es validen en pujar a Mossos).
+        if (v.pais && v.pais !== 'Espanya' && !v.localitat) {
+          at('localitat', 'Localitat obligatòria (país estranger)');
+        }
+      });
     });
-  });
+}
+
+/** Validación estricta para "Desar estada" (todo §2.3 salvo província/municipi). */
+export const RegistreSchema = buildRegistreSchema(false);
+/** Validación laxa para "Desar com a esborrany": permite guardar incompleto. */
+export const RegistreEsborranySchema = buildRegistreSchema(true);
 
 export type RegistreInput = z.input<typeof RegistreSchema>;
 export type RegistreParsed = z.output<typeof RegistreSchema>;
 export type ViatgerInput = z.input<typeof ViatgerInputSchema>;
+
+// Ampliació d'una estada (1.1, 1.2…): noves dates per al període ampliat.
+export const AmpliacioSchema = z
+  .object({ dataEntrada: reqDate, dataSortida: reqDate })
+  .superRefine((d, ctx) => {
+    if (d.dataSortida <= d.dataEntrada) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dataSortida'],
+        message: 'La data de sortida ha de ser posterior a l’entrada',
+      });
+    }
+  });
+export type AmpliacioInput = z.input<typeof AmpliacioSchema>;

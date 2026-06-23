@@ -54,3 +54,34 @@ export function weekDays(d: Date): Date[] {
   const start = startOfWeekMonday(d);
   return Array.from({ length: 7 }, (_, i) => addDays(start, i));
 }
+
+export function startOfMonth(d: Date): Date {
+  const r = new Date(d.getFullYear(), d.getMonth(), 1);
+  r.setHours(0, 0, 0, 0);
+  return r;
+}
+
+export function endOfMonth(d: Date): Date {
+  const r = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  r.setHours(23, 59, 59, 999);
+  return r;
+}
+
+export function addMonths(d: Date, n: number): Date {
+  return new Date(d.getFullYear(), d.getMonth() + n, 1);
+}
+
+export function sameMonth(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+}
+
+/**
+ * Cuadrícula del mes para el calendario: desde el lunes anterior (o igual) al
+ * día 1, hasta el domingo posterior (o igual) al último día. Longitud múltiplo de 7.
+ */
+export function monthGridDays(d: Date): Date[] {
+  const start = startOfWeekMonday(startOfMonth(d));
+  const lastSunday = addDays(startOfWeekMonday(endOfMonth(d)), 6);
+  const total = Math.round((lastSunday.getTime() - start.getTime()) / 86_400_000) + 1;
+  return Array.from({ length: total }, (_, i) => addDays(start, i));
+}

@@ -36,9 +36,9 @@ pnpm dev                 # http://localhost:3000
 
 | Rol      | Email                   | Contrasenya  |
 | -------- | ----------------------- | ------------ |
-| ADMIN    | admin@hostalcoll.cat    | `Hostal2026!` |
-| RECEPCIO | recepcio@hostalcoll.cat | `Hostal2026!` |
-| CONSULTA | consulta@hostalcoll.cat | `Hostal2026!` |
+| ADMIN    | hostalcoll@gmail.com    | `Hostal2026!` |
+| RECEPCIO | recepcio@hostalcoll.com | `Hostal2026!` |
+| CONSULTA | consulta@hostalcoll.com | `Hostal2026!` |
 
 > Canvia les contrasenyes després del primer accés.
 

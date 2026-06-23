@@ -8,16 +8,15 @@ import {
   LogOut,
   Receipt,
   Boxes,
-  TrendingUp,
-  TrendingDown,
-  Wallet,
-  BedDouble,
 } from 'lucide-react';
 import { getResum } from '@/lib/services/dashboard';
+import { isFormatConfirmat } from '@/lib/mossos/fitxer';
 import { getSessionUser } from '@/lib/auth/session';
+import { teVistaRestringida } from '@/lib/auth/restriccions';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
+import { FinancesPanel, type FinanceKpi } from '@/components/dashboard/finances-panel';
 import { formatDate, formatEur } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +27,9 @@ function titularNom(viatgers: { huesped: { nom: string; cognom1: string } }[]): 
 }
 
 export default async function DashboardPage() {
-  const [resum, user] = await Promise.all([getResum(), getSessionUser()]);
+  const user = await getSessionUser();
+  const resum = await getResum({ excloureMetodeAltres: teVistaRestringida(user) });
+  const isAdmin = user?.role === 'ADMIN';
 
   const alertes = [
     {
@@ -52,13 +53,17 @@ export default async function DashboardPage() {
       tone: resum.enviamentsError.length > 0 ? ('danger' as const) : ('success' as const),
       href: '/estancies',
     },
-    {
-      label: 'Factures pendents de cobrament',
-      value: resum.alertes.facturesPendents,
-      icon: Receipt,
-      tone: resum.alertes.facturesPendents > 0 ? ('warning' as const) : ('success' as const),
-      href: '/factures',
-    },
+    ...(isAdmin
+      ? [
+          {
+            label: 'Factures pendents de cobrament',
+            value: resum.alertes.facturesPendents,
+            icon: Receipt,
+            tone: resum.alertes.facturesPendents > 0 ? ('warning' as const) : ('success' as const),
+            href: '/factures',
+          },
+        ]
+      : []),
     {
       label: 'Actius amb alerta',
       value: resum.alertes.actiusAlerta,
@@ -68,30 +73,42 @@ export default async function DashboardPage() {
     },
   ];
 
-  const finances = [
+  const finances: FinanceKpi[] = [
     {
       label: 'Ingressos (mes)',
       value: formatEur(resum.finances.ingressosMes),
-      icon: TrendingUp,
+      icon: 'TrendingUp',
       color: 'text-green-600',
     },
     {
       label: 'Despeses (mes)',
       value: formatEur(resum.finances.despesesMes),
-      icon: TrendingDown,
+      icon: 'TrendingDown',
       color: 'text-red-600',
     },
     {
       label: 'Benefici (mes)',
       value: formatEur(resum.finances.beneficiMes),
-      icon: Wallet,
+      icon: 'Wallet',
       color: resum.finances.beneficiMes >= 0 ? 'text-green-600' : 'text-red-600',
     },
     {
       label: 'Ocupació actual',
       value: `${resum.finances.ocupacio}%`,
-      icon: BedDouble,
+      icon: 'BedDouble',
       color: 'text-brand-600',
+    },
+    {
+      label: 'Personal a pagar (mes)',
+      value: formatEur(resum.finances.personalMes),
+      icon: 'UserCog',
+      color: 'text-slate-600',
+    },
+    {
+      label: 'Dipòsits en custòdia',
+      value: formatEur(resum.finances.dipositsCustodia),
+      icon: 'Coins',
+      color: 'text-amber-600',
     },
   ];
 
@@ -99,41 +116,27 @@ export default async function DashboardPage() {
     <div>
       <PageHeader
         title={`Hola, ${user?.nom ?? ''}`}
-        subtitle="Resum del dia · prioritat al que té termini legal (24 h, §2.4)"
+        subtitle="Resum del dia"
       />
 
-      {/* Aviso §9: configuración pendiente de Mossos */}
-      <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
-        <div>
-          <p className="font-medium">Configuració de Mossos pendent (§9)</p>
-          <p className="mt-0.5 text-amber-700">
-            Per generar el <em>fitxer massiu</em> calen l’ordre exacte de columnes del manual
-            (FIELD_LAYOUT) i el <code>file_identifier</code> de l’establiment. Mentrestant pots
-            registrar estades i portar el llibre; la comunicació a Mossos es fa manualment.
-          </p>
+      {/* Aviso §9: el formato del fitxer es PROVISIONAL hasta confirmarlo con el manual */}
+      {!isFormatConfirmat() && (
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+          <div>
+            <p className="font-medium">Fitxer de Mossos en format provisional</p>
+            <p className="mt-0.5 text-amber-700">
+              El generador del <em>fitxer massiu</em> ja funciona, però l’ordre de columnes i els
+              codis són una versió <strong>provisional</strong>. Verifica’ls amb el{' '}
+              <em>Manual d’instruccions</em> del portal i configura el <code>file_identifier</code> de
+              l’establiment abans d’usar-lo en real. Mentrestant, pots comunicar-ho manualment.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* KPIs financieros (Fase 7) */}
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {finances.map((f) => {
-          const Icon = f.icon;
-          return (
-            <Card key={f.label}>
-              <CardBody className="flex items-center gap-4">
-                <div className="rounded-lg bg-slate-100 p-3">
-                  <Icon className={`h-6 w-6 ${f.color}`} />
-                </div>
-                <div>
-                  <p className="text-xl font-bold text-slate-900">{f.value}</p>
-                  <p className="text-xs text-slate-500">{f.label}</p>
-                </div>
-              </CardBody>
-            </Card>
-          );
-        })}
-      </div>
+      {/* KPIs financers — només per a l'ADMIN */}
+      {isAdmin && <FinancesPanel items={finances} />}
 
       {/* Tarjetas de alerta */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

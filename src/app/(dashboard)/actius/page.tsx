@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus, AlertTriangle, PawPrint } from 'lucide-react';
+import { Plus, AlertTriangle, PawPrint, Boxes } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
@@ -18,6 +18,8 @@ import {
   optionsFrom,
   estatActiuValues,
   ESTAT_ACTIU_LABELS,
+  midaAnimalValues,
+  MIDA_ANIMAL_LABELS,
 } from '@/lib/validation/enums';
 import type { EstatActiu } from '@prisma/client';
 
@@ -43,10 +45,12 @@ interface Animal {
   id: string;
   nom: string;
   especie: string;
+  mida: 'PETIT' | 'MITJA' | 'GRAN' | null;
   gastoTotal: number;
+  huesped: { id: string; nom: string; cognom1: string } | null;
 }
 
-export default function ActiusPage() {
+export default function MascotesPage() {
   const now = new Date();
   const [actius, setActius] = useState<Actiu[]>([]);
   const [animals, setAnimals] = useState<Animal[]>([]);
@@ -54,6 +58,7 @@ export default function ActiusPage() {
   const [proveidors, setProveidors] = useState<Prov[]>([]);
   const [fHab, setFHab] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [nou, setNou] = useState({
     nom: '',
@@ -65,7 +70,7 @@ export default function ActiusPage() {
     garantiaFins: '',
     estat: 'NOU',
   });
-  const [animalNou, setAnimalNou] = useState({ nom: '', especie: '' });
+  const [animalNou, setAnimalNou] = useState({ nom: '', especie: 'Gos', mida: '' });
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -74,11 +79,18 @@ export default function ActiusPage() {
     setActius(res.actius);
   }, [fHab]);
 
+  const loadAnimals = useCallback(() => {
+    getJSON<{ animals: Animal[] }>('/api/animals').then((r) => setAnimals(r.animals));
+  }, []);
+
   useEffect(() => {
     getJSON<{ habitacions: Habitacio[] }>('/api/habitacions').then((r) => setHabitacions(r.habitacions));
     getJSON<{ proveidors: Prov[] }>('/api/proveidors').then((r) => setProveidors(r.proveidors));
-    getJSON<{ animals: Animal[] }>('/api/animals').then((r) => setAnimals(r.animals));
-  }, []);
+    loadAnimals();
+    getJSON<{ user: { role: string } }>('/api/auth/me')
+      .then((r) => setIsAdmin(r.user.role === 'ADMIN'))
+      .catch(() => setIsAdmin(false));
+  }, [loadAnimals]);
   useEffect(() => {
     load();
   }, [load]);
@@ -98,16 +110,7 @@ export default function ActiusPage() {
         garantiaFins: nou.garantiaFins || undefined,
         estat: nou.estat,
       });
-      setNou({
-        nom: '',
-        categoria: '',
-        dataCompra: toISODate(new Date()),
-        cost: '',
-        proveidorId: '',
-        habitacioId: '',
-        garantiaFins: '',
-        estat: 'NOU',
-      });
+      setNou({ nom: '', categoria: '', dataCompra: toISODate(new Date()), cost: '', proveidorId: '', habitacioId: '', garantiaFins: '', estat: 'NOU' });
       setShowForm(false);
       load();
     } catch (err) {
@@ -118,9 +121,9 @@ export default function ActiusPage() {
   async function crearAnimal(e: React.FormEvent) {
     e.preventDefault();
     if (!animalNou.nom || !animalNou.especie) return;
-    await postJSON('/api/animals', animalNou);
-    setAnimalNou({ nom: '', especie: '' });
-    getJSON<{ animals: Animal[] }>('/api/animals').then((r) => setAnimals(r.animals));
+    await postJSON('/api/animals', { ...animalNou, mida: animalNou.mida || undefined });
+    setAnimalNou({ nom: '', especie: 'Gos', mida: '' });
+    loadAnimals();
   }
 
   const alertes = actius.filter(
@@ -129,29 +132,81 @@ export default function ActiusPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Actius"
-        subtitle={`${actius.length} actius · ${alertes} amb alerta`}
-        actions={
-          <Button onClick={() => setShowForm((s) => !s)}>
+      <PageHeader title="Mascotes" subtitle={`${animals.length} mascotes · ${actius.length} actius`} />
+
+      {/* Mascotes */}
+      <Card className="mb-8">
+        <CardHeader className="flex items-center gap-2">
+          <PawPrint className="h-4 w-4 text-brand-600" />
+          <CardTitle>Mascotes</CardTitle>
+        </CardHeader>
+        <CardBody className="space-y-3">
+          {animals.length === 0 && <p className="text-sm text-slate-400">Cap mascota registrada.</p>}
+          {animals.map((a) => (
+            <div key={a.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+              <PawPrint className="h-4 w-4 text-brand-600" />
+              <span className="font-medium text-slate-800">{a.nom}</span>
+              <span className="text-slate-400">· {a.especie}</span>
+              {a.mida && <Badge tone="neutral">{MIDA_ANIMAL_LABELS[a.mida]}</Badge>}
+              {a.huesped && (
+                <Link href={`/huespedes/${a.huesped.id}`} className="text-xs text-brand-700 hover:underline">
+                  {a.huesped.nom} {a.huesped.cognom1}
+                </Link>
+              )}
+              {isAdmin && <span className="ml-auto text-slate-500">Despeses: {formatEur(a.gastoTotal)}</span>}
+            </div>
+          ))}
+          <form onSubmit={crearAnimal} className="flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3">
+            <Field label="Nom">
+              <Input value={animalNou.nom} onChange={(e) => setAnimalNou({ ...animalNou, nom: e.target.value })} />
+            </Field>
+            <Field label="Espècie">
+              <Input value={animalNou.especie} onChange={(e) => setAnimalNou({ ...animalNou, especie: e.target.value })} />
+            </Field>
+            <Field label="Mida">
+              <Select value={animalNou.mida} onChange={(e) => setAnimalNou({ ...animalNou, mida: e.target.value })}>
+                <option value="">—</option>
+                {midaAnimalValues.map((v) => (
+                  <option key={v} value={v}>
+                    {MIDA_ANIMAL_LABELS[v]}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Button type="submit" size="sm" variant="outline">
+              <Plus className="h-4 w-4" /> Afegir mascota
+            </Button>
+          </form>
+          <p className="text-xs text-slate-400">
+            Les mascotes dels hostes es vinculen des de la fitxa de l’hoste o l’estada; aquí surten totes.
+          </p>
+        </CardBody>
+      </Card>
+
+      {/* Actius */}
+      <Card>
+        <CardHeader className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Boxes className="h-4 w-4 text-brand-600" /> Actius {alertes > 0 && `· ${alertes} amb alerta`}
+          </CardTitle>
+          <Button size="sm" variant="outline" onClick={() => setShowForm((s) => !s)}>
             <Plus className="h-4 w-4" /> Nou actiu
           </Button>
-        }
-      />
-
-      {showForm && (
-        <Card className="mb-6">
-          <CardBody>
-            <form onSubmit={crear} className="grid gap-3 sm:grid-cols-3">
+        </CardHeader>
+        <CardBody>
+          {showForm && (
+            <form onSubmit={crear} className="mb-6 grid gap-3 sm:grid-cols-3">
               <Field label="Nom" required>
                 <Input value={nou.nom} onChange={(e) => setNou({ ...nou, nom: e.target.value })} />
               </Field>
               <Field label="Categoria" required>
                 <Input value={nou.categoria} onChange={(e) => setNou({ ...nou, categoria: e.target.value })} />
               </Field>
-              <Field label="Cost €">
-                <Input type="number" step="0.01" value={nou.cost} onChange={(e) => setNou({ ...nou, cost: e.target.value })} />
-              </Field>
+              {isAdmin && (
+                <Field label="Cost €">
+                  <Input type="number" step="0.01" value={nou.cost} onChange={(e) => setNou({ ...nou, cost: e.target.value })} />
+                </Field>
+              )}
               <Field label="Data de compra" required>
                 <Input type="date" value={nou.dataCompra} onChange={(e) => setNou({ ...nou, dataCompra: e.target.value })} />
               </Field>
@@ -192,101 +247,65 @@ export default function ActiusPage() {
                 {error && <span className="text-sm text-red-600">{error}</span>}
               </div>
             </form>
-          </CardBody>
-        </Card>
-      )}
+          )}
 
-      <div className="mb-4 max-w-xs">
-        <Select value={fHab} onChange={(e) => setFHab(e.target.value)}>
-          <option value="">Totes les habitacions</option>
-          {habitacions.map((h) => (
-            <option key={h.id} value={h.id}>
-              Habitació {h.nom}
-            </option>
-          ))}
-        </Select>
-      </div>
+          <div className="mb-4 max-w-xs">
+            <Select value={fHab} onChange={(e) => setFHab(e.target.value)}>
+              <option value="">Totes les habitacions</option>
+              {habitacions.map((h) => (
+                <option key={h.id} value={h.id}>
+                  Habitació {h.nom}
+                </option>
+              ))}
+            </Select>
+          </div>
 
-      {actius.length === 0 ? (
-        <EmptyState>Cap actiu.</EmptyState>
-      ) : (
-        <Table>
-          <Thead>
-            <tr>
-              <Th>Nom</Th>
-              <Th>Categoria</Th>
-              <Th>Hab.</Th>
-              <Th>Antiguitat</Th>
-              <Th>Estat</Th>
-              <Th>Cost</Th>
-            </tr>
-          </Thead>
-          <tbody>
-            {actius.map((a) => {
-              const info = computeActiuInfo(
-                {
-                  dataCompra: new Date(a.dataCompra),
-                  garantiaFins: a.garantiaFins ? new Date(a.garantiaFins) : null,
-                  estat: a.estat,
-                },
-                now,
-              );
-              return (
-                <Tr key={a.id}>
-                  <Td>
-                    <Link href={`/actius/${a.id}`} className="font-medium text-slate-900">
-                      {a.nom}
-                    </Link>
-                    {info.alerta && (
-                      <Badge tone="warning" className="ml-2">
-                        <AlertTriangle className="mr-1 h-3 w-3" />
-                        {info.motiu}
-                      </Badge>
-                    )}
-                  </Td>
-                  <Td>{a.categoria}</Td>
-                  <Td>{a.habitacio?.nom ?? '—'}</Td>
-                  <Td>{info.anysAntiguitat} anys</Td>
-                  <Td>
-                    <Badge tone={a.estat === 'OBSOLET' ? 'danger' : 'neutral'}>
-                      {ESTAT_ACTIU_LABELS[a.estat]}
-                    </Badge>
-                  </Td>
-                  <Td>{formatEur(Number(a.cost))}</Td>
-                </Tr>
-              );
-            })}
-          </tbody>
-        </Table>
-      )}
-
-      {/* Animals */}
-      <Card className="mt-8">
-        <CardHeader className="flex items-center gap-2">
-          <PawPrint className="h-4 w-4 text-brand-600" />
-          <CardTitle>Animals</CardTitle>
-        </CardHeader>
-        <CardBody className="space-y-3">
-          {animals.length === 0 && <p className="text-sm text-slate-400">Cap animal.</p>}
-          {animals.map((a) => (
-            <div key={a.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
-              <span className="font-medium text-slate-800">
-                {a.nom} <span className="text-slate-400">· {a.especie}</span>
-              </span>
-              <span className="text-slate-500">Despeses: {formatEur(a.gastoTotal)}</span>
-            </div>
-          ))}
-          <form onSubmit={crearAnimal} className="flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3">
-            <Field label="Nom">
-              <Input value={animalNou.nom} onChange={(e) => setAnimalNou({ ...animalNou, nom: e.target.value })} />
-            </Field>
-            <Field label="Espècie">
-              <Input value={animalNou.especie} onChange={(e) => setAnimalNou({ ...animalNou, especie: e.target.value })} />
-            </Field>
-            <Button type="submit" size="sm" variant="outline">
-              <Plus className="h-4 w-4" /> Afegir animal
-            </Button>
-          </form>
+          {actius.length === 0 ? (
+            <EmptyState>Cap actiu.</EmptyState>
+          ) : (
+            <Table>
+              <Thead>
+                <tr>
+                  <Th>Nom</Th>
+                  <Th>Categoria</Th>
+                  <Th>Hab.</Th>
+                  <Th>Antiguitat</Th>
+                  <Th>Estat</Th>
+                  {isAdmin && <Th>Cost</Th>}
+                </tr>
+              </Thead>
+              <tbody>
+                {actius.map((a) => {
+                  const info = computeActiuInfo(
+                    { dataCompra: new Date(a.dataCompra), garantiaFins: a.garantiaFins ? new Date(a.garantiaFins) : null, estat: a.estat },
+                    now,
+                  );
+                  return (
+                    <Tr key={a.id}>
+                      <Td>
+                        <Link href={`/actius/${a.id}`} className="font-medium text-slate-900">
+                          {a.nom}
+                        </Link>
+                        {info.alerta && (
+                          <Badge tone="warning" className="ml-2">
+                            <AlertTriangle className="mr-1 h-3 w-3" />
+                            {info.motiu}
+                          </Badge>
+                        )}
+                      </Td>
+                      <Td>{a.categoria}</Td>
+                      <Td>{a.habitacio?.nom ?? '—'}</Td>
+                      <Td>{info.anysAntiguitat} anys</Td>
+                      <Td>
+                        <Badge tone={a.estat === 'OBSOLET' ? 'danger' : 'neutral'}>{ESTAT_ACTIU_LABELS[a.estat]}</Badge>
+                      </Td>
+                      {isAdmin && <Td>{formatEur(Number(a.cost))}</Td>}
+                    </Tr>
+                  );
+                })}
+              </tbody>
+            </Table>
+          )}
         </CardBody>
       </Card>
     </div>

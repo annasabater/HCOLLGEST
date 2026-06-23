@@ -4,7 +4,8 @@ import { authorize, clientIp } from '@/lib/auth/guard';
 import { audit } from '@/lib/audit';
 import { ok } from '@/lib/http';
 import { formatDate } from '@/lib/utils';
-import { PARENTESC_LABELS, TIPUS_DOCUMENT_LABELS, TIPUS_REGISTRE_LABELS } from '@/lib/validation/enums';
+import { PARENTESC_LABELS, TIPUS_DOCUMENT_LABELS, TIPUS_REGISTRE_LABELS, MIDA_ANIMAL_LABELS } from '@/lib/validation/enums';
+import { teVistaRestringida, ocultaDelLlibre } from '@/lib/auth/restriccions';
 
 // GET /api/llibre?desde=&fins=&format=csv — libro de registro (conservar 3 años §2.4)
 export async function GET(req: Request) {
@@ -26,13 +27,31 @@ export async function GET(req: Request) {
   const estancies = await prisma.estancia.findMany({
     where,
     orderBy: { dataEntrada: 'asc' },
-    include: { viatgers: { include: { huesped: true }, orderBy: { esTitular: 'desc' } } },
+    include: {
+      viatgers: {
+        include: { huesped: { include: { animals: { where: { deletedAt: null } } } } },
+        orderBy: { esTitular: 'desc' },
+      },
+      enviaments: { orderBy: { createdAt: 'desc' }, take: 1, select: { estat: true } },
+    },
   });
 
-  const rows = estancies.flatMap((e) =>
+  // Vista restringida (propietat): oculta del llibre les estades marcades amb
+  // "ZP11" al camp d'observacions (el camp "altres" de l'estada).
+  const visibles = teVistaRestringida(auth)
+    ? estancies.filter((e) => !ocultaDelLlibre(e.observacions))
+    : estancies;
+
+  const rows = visibles.flatMap((e) =>
     e.viatgers.map((ev) => {
       const h = ev.huesped;
+      const mascotes = h.animals
+        .map((a) => `${a.nom}${a.mida ? ` (${MIDA_ANIMAL_LABELS[a.mida]})` : ''}`)
+        .join(', ');
       return {
+        // Metadades per a les accions del llibre (no formen part del registre legal → fora del CSV).
+        estanciaId: e.id,
+        enviamentEstat: e.enviaments[0]?.estat ?? '',
         tipusRegistre: TIPUS_REGISTRE_LABELS[e.tipusRegistre],
         numContracte: `${e.numContracte}/${e.anyContracte}`,
         dataEntrada: formatDate(e.dataEntrada),
@@ -50,6 +69,7 @@ export async function GET(req: Request) {
         codiPostal: h.codiPostal ?? '',
         esTitular: ev.esTitular ? 'Sí' : '',
         parentesc: ev.parentesc ? PARENTESC_LABELS[ev.parentesc] : '',
+        mascotes,
       };
     }),
   );
@@ -63,6 +83,8 @@ export async function GET(req: Request) {
   });
 
   if (format === 'csv') {
+    // El CSV és el registre legal: només els camps del registre, sense metadades d'UI.
+    const csvExclude = new Set(['estanciaId', 'enviamentEstat']);
     const headers = Object.keys(
       rows[0] ?? {
         tipusRegistre: '',
@@ -82,8 +104,9 @@ export async function GET(req: Request) {
         codiPostal: '',
         esTitular: '',
         parentesc: '',
+        mascotes: '',
       },
-    );
+    ).filter((k) => !csvExclude.has(k));
     const escape = (s: string) => `"${String(s).replace(/"/g, '""')}"`;
     const csv = [
       headers.join(';'),

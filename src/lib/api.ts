@@ -41,3 +41,7 @@ export async function patchJSON<T = unknown>(url: string, body: unknown): Promis
     }),
   );
 }
+
+export async function delJSON<T = unknown>(url: string): Promise<T> {
+  return parse(await fetch(url, { method: 'DELETE' }));
+}

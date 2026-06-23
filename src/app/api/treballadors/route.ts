@@ -12,7 +12,7 @@ export async function GET() {
   const treballadors = await prisma.treballador.findMany({
     where: { deletedAt: null },
     orderBy: { nom: 'asc' },
-    select: { id: true, nom: true, carrec: true },
+    select: { id: true, nom: true, carrec: true, telefon: true },
   });
   return ok({ treballadors });
 }
@@ -26,11 +26,12 @@ export async function POST(req: Request) {
     const treballador = await prisma.treballador.create({
       data: {
         nom: data.nom,
-        dni: data.dni,
+        dni: data.dni ?? null,
         carrec: data.carrec,
         telefon: data.telefon ?? null,
         email: data.email ?? null,
         dataContractacio: data.dataContractacio ?? new Date(),
+        preuHora: data.preuHora ?? null,
         salari: data.salari ?? null,
         costEmpresa: data.costEmpresa ?? null,
       },

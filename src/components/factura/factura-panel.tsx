@@ -22,14 +22,22 @@ type Linia = { concepte: string; descripcio: string; import: string };
 export function FacturaPanel({
   estanciaId,
   factures,
+  preuSuggerit,
+  nitsSuggerides,
 }: {
   estanciaId: string;
   factures: FacturaLite[];
+  preuSuggerit?: number;
+  nitsSuggerides?: number;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [linies, setLinies] = useState<Linia[]>([
-    { concepte: 'ALLOTJAMENT', descripcio: 'Allotjament', import: '' },
+    {
+      concepte: 'ALLOTJAMENT',
+      descripcio: nitsSuggerides ? `Allotjament (${nitsSuggerides} nits)` : 'Allotjament',
+      import: preuSuggerit ? String(preuSuggerit) : '',
+    },
   ]);
   const [ivaPercent, setIvaPercent] = useState('10');
   const [aplicarTasa, setAplicarTasa] = useState(true);

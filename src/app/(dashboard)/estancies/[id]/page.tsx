@@ -1,14 +1,22 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Send, Receipt } from 'lucide-react';
+import { ArrowLeft, Send, Receipt, FileSignature, Coins, PawPrint } from 'lucide-react';
 import { prisma } from '@/lib/db';
+import { getSessionUser } from '@/lib/auth/session';
+import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
+import { MascotesPanel } from '@/components/huesped/mascotes-panel';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EstanciaActions } from '@/components/estancia/estancia-actions';
 import { ViatgerFirma } from '@/components/estancia/viatger-firma';
+import { AmpliarEstada } from '@/components/estancia/ampliar-estada';
 import { FacturaPanel } from '@/components/factura/factura-panel';
+import { DipositsPanel } from '@/components/factura/diposits-panel';
+import { preuSuggeritAllotjament } from '@/lib/services/tarifes';
 import { formatDate } from '@/lib/utils';
+import { toISODate } from '@/lib/dates';
 import {
   TIPUS_REGISTRE_LABELS,
   TIPUS_PAGAMENT_LABELS,
@@ -32,15 +40,34 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
   const estancia = await prisma.estancia.findFirst({
     where: { id, deletedAt: null },
     include: {
-      viatgers: { include: { huesped: true, signatura: true }, orderBy: { esTitular: 'desc' } },
+      viatgers: {
+        include: {
+          huesped: { include: { animals: { where: { deletedAt: null }, orderBy: { nom: 'asc' } } } },
+          signatura: true,
+        },
+        orderBy: { esTitular: 'desc' },
+      },
       enviaments: { orderBy: { createdAt: 'desc' } },
       habitacio: true,
       factures: { orderBy: { data: 'desc' } },
+      diposits: { orderBy: { createdAt: 'desc' } },
+      origen: { select: { id: true, numContracte: true, anyContracte: true } },
+      ampliacions: {
+        where: { deletedAt: null },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, numContracte: true, dataEntrada: true, dataSortida: true },
+      },
     },
   });
   if (!estancia) notFound();
 
+  const user = await getSessionUser();
+  const isAdmin = user?.role === 'ADMIN';
+  const canWrite = user ? hasRole(user.role, ROLES_WRITE) : false;
   const titular = estancia.viatgers[0]?.huesped;
+  const suggerit = isAdmin
+    ? await preuSuggeritAllotjament(estancia.habitacioId, estancia.dataEntrada, estancia.dataSortida)
+    : null;
 
   return (
     <div>
@@ -50,8 +77,43 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
       <PageHeader
         title={titular ? `${titular.nom} ${titular.cognom1}` : 'Estada'}
         subtitle={`Contracte ${estancia.numContracte}/${estancia.anyContracte}`}
-        actions={<Badge tone="info">{TIPUS_REGISTRE_LABELS[estancia.tipusRegistre]}</Badge>}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <AmpliarEstada estanciaId={estancia.id} defaultEntrada={toISODate(estancia.dataSortida)} />
+            <a href={`/api/estancies/${estancia.id}/fitxa-pdf`} target="_blank" rel="noreferrer">
+              <Button variant="outline" size="sm">
+                <FileSignature className="h-4 w-4" /> Fitxa PDF
+              </Button>
+            </a>
+            <Badge tone="info">{TIPUS_REGISTRE_LABELS[estancia.tipusRegistre]}</Badge>
+          </div>
+        }
       />
+
+      {(estancia.origen || estancia.ampliacions.length > 0) && (
+        <div className="mb-6 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm">
+          {estancia.origen && (
+            <span>
+              Ampliació de{' '}
+              <Link href={`/estancies/${estancia.origen.id}`} className="font-medium text-brand-700">
+                {estancia.origen.numContracte}/{estancia.origen.anyContracte}
+              </Link>
+            </span>
+          )}
+          {estancia.ampliacions.length > 0 && (
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="text-slate-500">Ampliacions:</span>
+              {estancia.ampliacions.map((a) => (
+                <Link key={a.id} href={`/estancies/${a.id}`}>
+                  <Badge tone="info">
+                    {a.numContracte} · {formatDate(a.dataEntrada)}–{formatDate(a.dataSortida)}
+                  </Badge>
+                </Link>
+              ))}
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
@@ -147,23 +209,65 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             </CardBody>
           </Card>
 
-          <Card>
-            <CardHeader className="flex items-center gap-2">
-              <Receipt className="h-4 w-4 text-brand-600" />
-              <CardTitle>Facturació</CardTitle>
-            </CardHeader>
-            <CardBody>
-              <FacturaPanel
-                estanciaId={estancia.id}
-                factures={estancia.factures.map((f) => ({
-                  id: f.id,
-                  numero: f.numero,
-                  total: Number(f.total),
-                  estat: f.estat,
-                }))}
-              />
-            </CardBody>
-          </Card>
+          {titular && (
+            <Card>
+              <CardHeader className="flex items-center gap-2">
+                <PawPrint className="h-4 w-4 text-brand-600" />
+                <CardTitle>Mascotes de l’hoste</CardTitle>
+              </CardHeader>
+              <CardBody>
+                <MascotesPanel
+                  huespedId={titular.id}
+                  canWrite={canWrite}
+                  mascotes={titular.animals.map((a) => ({ id: a.id, nom: a.nom, especie: a.especie, mida: a.mida }))}
+                />
+              </CardBody>
+            </Card>
+          )}
+
+          {isAdmin && (
+            <Card>
+              <CardHeader className="flex items-center gap-2">
+                <Receipt className="h-4 w-4 text-brand-600" />
+                <CardTitle>Facturació</CardTitle>
+              </CardHeader>
+              <CardBody>
+                <FacturaPanel
+                  estanciaId={estancia.id}
+                  preuSuggerit={suggerit?.preu}
+                  nitsSuggerides={suggerit?.nits}
+                  factures={estancia.factures.map((f) => ({
+                    id: f.id,
+                    numero: f.numero,
+                    total: Number(f.total),
+                    estat: f.estat,
+                  }))}
+                />
+              </CardBody>
+            </Card>
+          )}
+
+          {isAdmin && (
+            <Card>
+              <CardHeader className="flex items-center gap-2">
+                <Coins className="h-4 w-4 text-brand-600" />
+                <CardTitle>Dipòsits / fiances</CardTitle>
+              </CardHeader>
+              <CardBody>
+                <DipositsPanel
+                  estanciaId={estancia.id}
+                  diposits={estancia.diposits.map((d) => ({
+                    id: d.id,
+                    import: Number(d.import),
+                    data: d.data.toISOString(),
+                    metode: d.metode,
+                    estat: d.estat,
+                    motiu: d.motiu,
+                  }))}
+                />
+              </CardBody>
+            </Card>
+          )}
         </div>
       </div>
     </div>

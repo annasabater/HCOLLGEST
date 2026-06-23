@@ -77,11 +77,11 @@ export function ConfigForm() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Fitxer massiu de Mossos (§9)</CardTitle>
+          <CardTitle>Fitxer massiu de Mossos</CardTitle>
         </CardHeader>
         <CardBody className="grid gap-4 sm:grid-cols-2">
           <Field
-            label="File identifier (§9.2)"
+            label="File identifier"
             hint="9-10 car. alfanumèrics de «Dades de l’establiment» del portal. NO és l’Id policial."
           >
             <Input
@@ -90,13 +90,13 @@ export function ConfigForm() {
               placeholder="p.ex. 08043AAR02"
             />
           </Field>
-          <Field label="Codificació (§9.3)">
+          <Field label="Codificació">
             <Select value={e.encoding} onChange={(ev) => setE({ ...e, encoding: ev.target.value })}>
               <option value="latin1">ISO-8859-1 (latin1)</option>
               <option value="utf-8">UTF-8</option>
             </Select>
           </Field>
-          <Field label="Usuari Mossos (conector §9.5)">
+          <Field label="Usuari Mossos">
             <Input
               value={e.mossosUser ?? ''}
               onChange={(ev) => setE({ ...e, mossosUser: ev.target.value })}
@@ -121,7 +121,7 @@ export function ConfigForm() {
           <CardTitle>Facturació i RGPD</CardTitle>
         </CardHeader>
         <CardBody className="grid gap-4 sm:grid-cols-3">
-          <Field label="IEET (€/persona·nit) (§9.7)">
+          <Field label="IEET (€/persona·nit)">
             <Input
               type="number"
               step="0.01"

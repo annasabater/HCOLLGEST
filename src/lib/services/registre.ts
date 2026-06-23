@@ -176,3 +176,86 @@ export async function createRegistre(
     return { estanciaId: est.id, reusedHuespedIds: reused, createdHuespedIds: created };
   });
 }
+
+/**
+ * Amplia una estada: crea un registre nou enllaçat a l'original, numerat
+ * 1.1, 1.2… reutilitzant hostes i habitació, amb les noves dates.
+ */
+export async function ampliarEstancia(
+  estanciaId: string,
+  dates: { dataEntrada: Date; dataSortida: Date },
+  actor: { id: string } | null,
+  ip: string | null,
+): Promise<{ estanciaId: string; numContracte: string }> {
+  return prisma.$transaction(
+    async (tx) => {
+      const base = await tx.estancia.findUniqueOrThrow({ where: { id: estanciaId } });
+      const rootId = base.estanciaOrigenId ?? base.id;
+      const root = await tx.estancia.findUniqueOrThrow({
+        where: { id: rootId },
+        include: { viatgers: true },
+      });
+
+      const count = await tx.estancia.count({ where: { estanciaOrigenId: rootId } });
+      const numContracte = `${root.numContracte}.${count + 1}`;
+
+      const nova = await tx.estancia.create({
+        data: {
+          establiment: { connect: { id: ESTABLIMENT_ID } },
+          origen: { connect: { id: rootId } },
+          tipusRegistre: 'CONTRACTE_EN_CURS',
+          numContracte,
+          anyContracte: root.anyContracte,
+          dataFormalitzacio: new Date(),
+          dataEntrada: dates.dataEntrada,
+          dataSortida: dates.dataSortida,
+          numViatgers: root.viatgers.length,
+          tipusPagament: root.tipusPagament,
+          numHabitacions: root.numHabitacions,
+          teInternet: root.teInternet,
+          estat: 'EN_CURS',
+          ...(root.habitacioId ? { habitacio: { connect: { id: root.habitacioId } } } : {}),
+        },
+      });
+
+      for (const v of root.viatgers) {
+        await tx.estanciaViatger.create({
+          data: {
+            estanciaId: nova.id,
+            huespedId: v.huespedId,
+            esTitular: v.esTitular,
+            parentesc: v.parentesc,
+            esMenor: v.esMenor,
+          },
+        });
+      }
+
+      if (root.habitacioId) {
+        await tx.tascaNeteja.create({
+          data: {
+            data: dates.dataSortida,
+            habitacioId: root.habitacioId,
+            tipus: 'CANVI_COMPLET',
+            estat: 'PENDENT',
+            vinculadaSortidaId: nova.id,
+          },
+        });
+      }
+
+      await audit(
+        {
+          usuariId: actor?.id ?? null,
+          accio: 'CREACIO',
+          entitat: 'estancia',
+          entitatId: nova.id,
+          detall: { ampliacioDe: rootId, numContracte },
+          ip,
+        },
+        tx,
+      );
+
+      return { estanciaId: nova.id, numContracte };
+    },
+    { isolationLevel: 'Serializable' },
+  );
+}

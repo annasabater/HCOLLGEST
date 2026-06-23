@@ -22,7 +22,7 @@ export default async function PersonalPage() {
   const treballadors = await prisma.treballador.findMany({
     where: { deletedAt: null },
     orderBy: { nom: 'asc' },
-    include: { _count: { select: { absencies: true, nomines: true } } },
+    include: { _count: { select: { absencies: true, jornades: true } } },
   });
 
   return (
@@ -41,10 +41,9 @@ export default async function PersonalPage() {
             <tr>
               <Th>Nom</Th>
               <Th>Càrrec</Th>
-              <Th>Salari</Th>
-              <Th>Cost empresa</Th>
+              <Th>Preu/hora</Th>
+              <Th>Jornades</Th>
               <Th>Absències</Th>
-              <Th>Nòmines</Th>
             </tr>
           </Thead>
           <tbody>
@@ -54,13 +53,12 @@ export default async function PersonalPage() {
                   <Link href={`/personal/${t.id}`} className="font-medium text-slate-900">
                     {t.nom}
                   </Link>
-                  <div className="text-xs text-slate-400">{t.dni}</div>
+                  {t.dni && <div className="text-xs text-slate-400">{t.dni}</div>}
                 </Td>
                 <Td>{t.carrec}</Td>
-                <Td>{t.salari ? formatEur(Number(t.salari)) : '—'}</Td>
-                <Td>{t.costEmpresa ? formatEur(Number(t.costEmpresa)) : '—'}</Td>
+                <Td>{t.preuHora ? `${formatEur(Number(t.preuHora))}/h` : '—'}</Td>
+                <Td>{t._count.jornades}</Td>
                 <Td>{t._count.absencies}</Td>
-                <Td>{t._count.nomines}</Td>
               </Tr>
             ))}
           </tbody>

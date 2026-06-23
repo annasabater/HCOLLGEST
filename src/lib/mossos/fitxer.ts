@@ -6,11 +6,12 @@
  *   ✅ Motor de formato y validación: COMPLETO y correcto según las reglas
  *      documentadas (separador "|", campos vacíos que conservan su "|",
  *      nombre de fichero con secuencia, alfabeto occidental, etc.).
- *   ⛔ FALTA (§9.1/§9.4): el ORDEN y la ESTRUCTURA exactos de los campos
- *      (FIELD_LAYOUT) y los CÓDIGOS literales de los enums. Eso SOLO está en el
- *      "Manual d'instruccions de l'usuari" del portal (apartado "Documentació i
- *      enllaços", sección de fitxers massius). NO inventarlo.
- *      En cuanto se rellene FIELD_LAYOUT/CODES con el manual, queda 100% listo.
+ *   ⚠ PROVISIONAL (§9.1/§9.4): FIELD_LAYOUT y CODES están rellenos con una
+ *      versión best-effort (INT/1922/2003 + RD 933/2021), pero el ORDEN, la
+ *      ESTRUCTURA y los CÓDIGOS exactos están en el "Manual d'instruccions de
+ *      l'usuari" del portal (apartado "Documentació i enllaços"). Verifícalos
+ *      ahí antes de usar el fichero en real y pon FORMAT_CONFIRMAT = true.
+ *      Mientras sea false, el fichero se marca como provisional.
  */
 
 // ----------------------------------------------------------------------------
@@ -98,21 +99,22 @@ export const CONFIG = {
 };
 
 /** Códigos LITERALES que espera el fichero por cada enum.
- *  ⚠ §9.4 Los valores de la derecha son PROVISIONALES: el manual indica el código
- *  exacto (p.ej. puede ser "D"/"N"/"P", "1"/"2", etc.). Ajustar al confirmarlos. */
+ *  ⚠ §9.4 PROVISIONALES (best-effort según INT/1922/2003 + RD 933/2021). El
+ *  "Manual d'instruccions" del portal indica el código exacto; revísalos antes de
+ *  usar el fichero en real (un código erróneo → el portal lo rechaza). */
 export const CODES = {
-  tipusRegistre: { CONTRACTE_EN_CURS: 'C', RESERVA: 'R' }, // TODO §9.4
-  tipusDocument: { DNI_NIF: 'D', NIE: 'N', PASSAPORT: 'P', ALTRES: 'A' }, // TODO §9.4
-  sexe: { HOME: 'H', DONA: 'D' }, // TODO §9.4
+  tipusRegistre: { CONTRACTE_EN_CURS: 'C', RESERVA: 'R' }, // ⚠ verificar manual
+  tipusDocument: { DNI_NIF: 'D', NIE: 'N', PASSAPORT: 'P', ALTRES: 'O' }, // ⚠ verificar manual
+  sexe: { HOME: 'H', DONA: 'D' }, // ⚠ verificar manual (pot ser M/F)
   tipusPagament: {
-    // TODO §9.4
-    DESTINACIO: '',
-    EFECTIU: '',
-    MOBIL: '',
-    PLATAFORMA: '',
-    TARGETA_CREDIT: '',
-    TRANSFERENCIA: '',
-    TARGETA_REGAL: '',
+    // ⚠ verificar manual (pot ser numèric o un altre literal)
+    DESTINACIO: 'DESTI',
+    EFECTIU: 'EFECT',
+    MOBIL: 'MOBIL',
+    PLATAFORMA: 'PLATF',
+    TARGETA_CREDIT: 'TARGE',
+    TRANSFERENCIA: 'TRANS',
+    TARGETA_REGAL: 'REGAL',
   },
   boolSiNo: (b?: boolean) => (b ? 'SI' : 'NO'),
 };
@@ -132,19 +134,67 @@ export const CODES = {
  */
 export type FieldDef = { name: string; value: (p: ParteViatgers, v: Viatger) => string };
 
+/**
+ * ORDRE alineat amb el FORMULARI OFICIAL del portal (registreviatgers.mossos.gencat.cat,
+ * "Fitxa individual de viatgers"): Dades del contracte → Dades identificatives →
+ * Dades personals → Adreça postal. Una línia per viatger amb les dades del
+ * contracte repetides.
+ * ⚠ PROVISIONAL encara: els CODIS literals dels desplegables (tipus document, sexe,
+ * pagament…) i si el "fitxer massiu" usa exactament aquest ordre/estructura (vs
+ * capçalera+detall) estan al "Manual de fitxers massius". Confirmar i posar
+ * FORMAT_CONFIRMAT = true.
+ */
 export const FIELD_LAYOUT: FieldDef[] = [
-  // { name: 'tipus_registre', value: (p) => CODES.tipusRegistre[p.contracte.tipusRegistre] },
-  // { name: 'id_policial',    value: (p) => p.establiment.idPolicial },
-  // { name: 'num_contracte',  value: (p) => p.contracte.numContracte },
-  // { name: 'data_entrada',   value: (p) => CONFIG.formatData(p.contracte.dataEntrada) },
-  // { name: 'nom',            value: (_, v) => v.nom },
-  // { name: 'cognom1',        value: (_, v) => v.cognom1 },
-  // ... (completar con TODAS las columnas del manual, en su orden)
+  // --- Dades del contracte (es repeteix a cada línia) ---
+  { name: 'establiment', value: (p) => p.establiment.idPolicial },
+  { name: 'tipus_registre', value: (p) => CODES.tipusRegistre[p.contracte.tipusRegistre] },
+  { name: 'num_contracte', value: (p) => p.contracte.numContracte },
+  { name: 'any_contracte', value: (p) => String(p.contracte.anyContracte) },
+  { name: 'data_formalitzacio', value: (p) => CONFIG.formatData(p.contracte.dataFormalitzacio) },
+  { name: 'data_entrada', value: (p) => CONFIG.formatData(p.contracte.dataEntrada) },
+  { name: 'data_sortida', value: (p) => CONFIG.formatData(p.contracte.dataSortida) },
+  { name: 'num_viatgers', value: (p) => String(p.contracte.numViatgers) },
+  { name: 'tipus_pagament', value: (p) => CODES.tipusPagament[p.contracte.tipusPagament] },
+  { name: 'num_habitacions', value: (p) => (p.contracte.numHabitacions != null ? String(p.contracte.numHabitacions) : '') },
+  { name: 'internet', value: (p) => CODES.boolSiNo(p.contracte.teInternet) },
+  // --- Dades identificatives ---
+  { name: 'tipus_document', value: (_, v) => (v.tipusDocument ? CODES.tipusDocument[v.tipusDocument] : '') },
+  { name: 'num_document', value: (_, v) => v.numDocument ?? '' },
+  { name: 'num_suport', value: (_, v) => v.numSuport ?? '' },
+  { name: 'data_expedicio', value: (_, v) => (v.dataExpedicio ? CONFIG.formatData(v.dataExpedicio) : '') },
+  // --- Dades personals ---
+  { name: 'nom', value: (_, v) => v.nom },
+  { name: 'cognom1', value: (_, v) => normalizaCognom(v.cognom1) },
+  { name: 'cognom2', value: (_, v) => (v.cognom2 ? normalizaCognom(v.cognom2) : '') },
+  { name: 'sexe', value: (_, v) => (v.sexe ? CODES.sexe[v.sexe] : '') },
+  { name: 'data_naixement', value: (_, v) => (v.dataNaixement ? CONFIG.formatData(v.dataNaixement) : '') },
+  { name: 'pais_nacionalitat', value: (_, v) => v.nacionalitat ?? '' },
+  { name: 'correu_electronic', value: (_, v) => v.email ?? '' },
+  { name: 'parentesc', value: (_, v) => v.parentesc ?? '' },
+  { name: 'telefon', value: (_, v) => v.telefon ?? '' },
+  // --- Adreça postal ---
+  { name: 'adreca', value: (_, v) => v.adreca ?? '' },
+  { name: 'pais', value: (_, v) => v.pais ?? '' },
+  { name: 'provincia', value: (_, v) => v.provincia ?? '' },
+  { name: 'municipi', value: (_, v) => v.municipi ?? '' },
+  { name: 'localitat', value: (_, v) => v.localitat ?? '' },
+  { name: 'codi_postal', value: (_, v) => v.codiPostal ?? '' },
 ];
 
-/** ¿Está ya configurado el layout del manual (§9.1)? */
+/** ¿Hay un layout cargado (§9.1)? Ahora sí (provisional). */
 export function isLayoutReady(): boolean {
   return FIELD_LAYOUT.length > 0;
+}
+
+/**
+ * ¿El formato (orden de columnas + códigos) está CONFIRMADO contra el "Manual
+ * d'instruccions" oficial? Mientras sea `false`, el fitxer es PROVISIONAL: sirve
+ * para probar, pero verifícalo en el portal antes de usarlo en real. Cuando lo
+ * confirmes, pon `true` (y ajusta FIELD_LAYOUT/CODES si el manual difiere).
+ */
+export const FORMAT_CONFIRMAT = false;
+export function isFormatConfirmat(): boolean {
+  return FORMAT_CONFIRMAT;
 }
 
 // ----------------------------------------------------------------------------
@@ -216,7 +266,11 @@ export function buildFitxerBuffer(
 // 5. VALIDACIÓN DE OBLIGATORIEDAD CONDICIONAL (reglas oficiales §2.3)
 // ----------------------------------------------------------------------------
 
-export function validaParte(parte: ParteViatgers): void {
+/**
+ * Devuelve la lista de errores de obligatoriedad §2.3 (vacía si el parte está
+ * completo). Útil para avisar al usuario ANTES de subir a Mossos sin lanzar.
+ */
+export function validaParteErrors(parte: ParteViatgers): string[] {
   const errs: string[] = [];
   const c = parte.contracte;
   const esReserva = c.tipusRegistre === 'RESERVA';

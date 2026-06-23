@@ -29,8 +29,12 @@ async function search(q: string, isAdmin: boolean): Promise<{ titol: string; hit
       take: 10,
       include: { viatgers: { where: { esTitular: true }, include: { huesped: true } } },
     }),
-    prisma.factura.findMany({ where: { deletedAt: null, numero: ci }, take: 10 }),
-    prisma.gasto.findMany({ where: { deletedAt: null, descripcio: ci }, take: 10, include: { categoria: true } }),
+    isAdmin
+      ? prisma.factura.findMany({ where: { deletedAt: null, numero: ci }, take: 10 })
+      : Promise.resolve([]),
+    isAdmin
+      ? prisma.gasto.findMany({ where: { deletedAt: null, descripcio: ci }, take: 10, include: { categoria: true } })
+      : Promise.resolve([]),
     prisma.actiu.findMany({ where: { deletedAt: null, OR: [{ nom: ci }, { numSerie: ci }] }, take: 10 }),
     isAdmin
       ? prisma.treballador.findMany({ where: { deletedAt: null, OR: [{ nom: ci }, { dni: ci }] }, take: 10 })

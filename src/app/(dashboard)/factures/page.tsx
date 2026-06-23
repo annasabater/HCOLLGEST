@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/db';
 import { PageHeader } from '@/components/ui/page-header';
+import { FinancesNav } from '@/components/balanc/finances-nav';
 import { Badge } from '@/components/ui/badge';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
-import { formatDate, formatEur } from '@/lib/utils';
+import { Eur, HideAmountsButton } from '@/components/finances/amounts-visibility';
+import { formatDate } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,8 +26,15 @@ export default async function FacturesPage() {
     <div>
       <PageHeader
         title="Facturació"
-        subtitle={`${factures.length} factures · ${formatEur(totalPendent)} pendent de cobrament`}
+        subtitle={
+          <>
+            {factures.length} factures · <Eur value={totalPendent} /> pendent de cobrament
+          </>
+        }
+        actions={<HideAmountsButton />}
       />
+
+      <FinancesNav />
 
       {factures.length === 0 ? (
         <EmptyState>Encara no hi ha factures. Crea’n una des d’una estada.</EmptyState>
@@ -60,8 +69,8 @@ export default async function FacturesPage() {
                   </Td>
                   <Td>{t ? `${t.nom} ${t.cognom1}` : '—'}</Td>
                   <Td>{formatDate(f.data)}</Td>
-                  <Td>{formatEur(Number(f.base))}</Td>
-                  <Td className="font-medium">{formatEur(Number(f.total))}</Td>
+                  <Td><Eur value={Number(f.base)} /></Td>
+                  <Td className="font-medium"><Eur value={Number(f.total)} /></Td>
                   <Td>
                     <Badge tone={f.estat === 'COBRADA' ? 'success' : 'warning'}>
                       {f.estat === 'COBRADA' ? 'Cobrada' : 'Pendent'}

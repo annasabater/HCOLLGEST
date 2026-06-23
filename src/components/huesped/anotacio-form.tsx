@@ -51,7 +51,7 @@ export function AnotacioForm({ huespedId }: { huespedId: string }) {
       </Field>
       <Field
         label="Descripció (objectiva i verificable)"
-        hint="Registra FETS, no etiquetes. P.ex. «factura nº 12 impagada» o «trencament del llum, foto del 03/06». L’hoste pot demanar veure-ho (§7)."
+        hint="Registra FETS, no etiquetes. P.ex. «factura nº 12 impagada» o «trencament del llum, foto del 03/06». L’hoste pot demanar veure-ho."
         error={error ?? undefined}
       >
         <Textarea value={descripcio} onChange={(e) => setDescripcio(e.target.value)} rows={3} />

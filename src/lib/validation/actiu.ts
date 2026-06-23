@@ -1,6 +1,6 @@
 /** Validación de activos, su historial y animales (Fase 5). */
 import { z } from 'zod';
-import { estatActiuValues, tipusHistorialActiuValues } from './enums';
+import { estatActiuValues, tipusHistorialActiuValues, midaAnimalValues } from './enums';
 
 const optStr = z.preprocess(
   (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
@@ -40,8 +40,10 @@ export const ActiuHistorialCreateSchema = z.object({
 export const AnimalCreateSchema = z.object({
   nom: z.string().trim().min(1, 'Cal un nom'),
   especie: z.string().trim().min(1, 'Cal l’espècie'),
+  mida: z.preprocess((v) => (v === '' || v === null ? undefined : v), z.enum(midaAnimalValues).optional()),
   dataNaixement: optDate,
   notes: optStr,
+  huespedId: optStr,
 });
 
 export type ActiuCreateInput = z.input<typeof ActiuCreateSchema>;

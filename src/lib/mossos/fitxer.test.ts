@@ -6,6 +6,7 @@ import {
   validaParte,
   helpers,
   isLayoutReady,
+  isFormatConfirmat,
   FIELD_LAYOUT,
   type FieldDef,
   type ParteViatgers,
@@ -122,10 +123,21 @@ describe('motor de formato (§2.2)', () => {
     expect(buf.includes(0xf3)).toBe(true);
   });
 
-  it('el layout de PRODUCCIÓN está vacío (stub §9) → isLayoutReady false', () => {
-    expect(FIELD_LAYOUT.length).toBe(0);
-    expect(isLayoutReady()).toBe(false);
-    expect(() => buildFitxer(parteContracte())).toThrow(/FIELD_LAYOUT/);
+  it('el layout de PRODUCCIÓN (provisional) está cargado → isLayoutReady true', () => {
+    expect(FIELD_LAYOUT.length).toBeGreaterThan(0);
+    expect(isLayoutReady()).toBe(true);
+    // El formato es provisional hasta confirmarlo con el manual oficial (§9).
+    expect(isFormatConfirmat()).toBe(false);
+  });
+
+  it('genera el fitxer con el layout de PRODUCCIÓN sin lanzar', () => {
+    const out = buildFitxer(parteContracte());
+    expect(out.endsWith('\r\n')).toBe(true);
+    // Conté dades clau del viatger i de l'operació.
+    expect(out).toContain('Garcia');
+    expect(out).toContain('2026'); // any_contracte
+    expect(out).toContain('000000550'); // establiment (id policial)
+    expect(out.split('|').length).toBe(FIELD_LAYOUT.length); // una línia, N columnes
   });
 });
 

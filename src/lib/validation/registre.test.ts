@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RegistreSchema, type RegistreInput } from './registre';
+import { RegistreSchema, RegistreEsborranySchema, type RegistreInput } from './registre';
 
 function hasIssueAt(error: { issues: { path: (string | number)[] }[] }, path: (string | number)[]) {
   return error.issues.some((i) => i.path.join('.') === path.join('.'));
@@ -70,16 +70,13 @@ describe('RegistreSchema — contracte en curs (§2.3)', () => {
     if (!res.success) expect(hasIssueAt(res.error, ['viatgers', 0, 'cognom2'])).toBe(true);
   });
 
-  it('exige província i municipi si país = Espanya', () => {
+  it('NO exigeix província ni municipi en desar (es validen en pujar a Mossos)', () => {
     const data = validContracte();
     data.viatgers[0]!.provincia = '';
     data.viatgers[0]!.municipi = '';
-    const res = RegistreSchema.safeParse(data);
-    expect(res.success).toBe(false);
-    if (!res.success) {
-      expect(hasIssueAt(res.error, ['viatgers', 0, 'provincia'])).toBe(true);
-      expect(hasIssueAt(res.error, ['viatgers', 0, 'municipi'])).toBe(true);
-    }
+    // Es pot desar sense província/municipi; el fitxer de Mossos (validaParte) sí
+    // que els exigeix —cobert a src/lib/mossos/fitxer.test.ts.
+    expect(RegistreSchema.safeParse(data).success).toBe(true);
   });
 
   it('exige localitat si país estranger', () => {
@@ -177,5 +174,44 @@ describe('RegistreSchema — reserva (§2.3)', () => {
     const data = validReserva();
     // sin documento, sin dirección → debe pasar igualmente
     expect(RegistreSchema.safeParse(data).success).toBe(true);
+  });
+});
+
+describe('RegistreEsborranySchema — desar incomplet', () => {
+  function contracteIncomplet(): RegistreInput {
+    return {
+      estancia: {
+        tipusRegistre: 'CONTRACTE_EN_CURS',
+        numContracte: '99',
+        anyContracte: 2026,
+        dataFormalitzacio: '2026-01-10',
+        dataEntrada: '2026-07-01',
+        dataSortida: '2026-07-05',
+        numViatgers: 1,
+        tipusPagament: 'EFECTIU',
+      },
+      // Sense document, suport ni adreça: incomplet per a §2.3.
+      viatgers: [{ nom: 'Pau', cognom1: 'Roca', esTitular: true }],
+    };
+  }
+
+  it('l’esquema estricte rebutja un contracte incomplet', () => {
+    expect(RegistreSchema.safeParse(contracteIncomplet()).success).toBe(false);
+  });
+
+  it('l’esborrany permet desar un contracte incomplet', () => {
+    expect(RegistreEsborranySchema.safeParse(contracteIncomplet()).success).toBe(true);
+  });
+
+  it('l’esborrany manté la sanity de dates i el titular', () => {
+    const data = contracteIncomplet();
+    data.estancia.dataSortida = '2026-07-01'; // <= entrada
+    data.viatgers[0]!.esTitular = false;
+    const res = RegistreEsborranySchema.safeParse(data);
+    expect(res.success).toBe(false);
+    if (!res.success) {
+      expect(hasIssueAt(res.error, ['estancia', 'dataSortida'])).toBe(true);
+      expect(hasIssueAt(res.error, ['viatgers'])).toBe(true);
+    }
   });
 });

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, UserCheck, Search } from 'lucide-react';
+import { Plus, Trash2, UserCheck, Search, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -24,6 +24,10 @@ import {
 } from '@/lib/validation/enums';
 import { isMenor } from '@/lib/dates';
 import { postJSON, ApiError, getJSON } from '@/lib/api';
+import { formatWarnings } from '@/lib/validation/documents';
+import { PROVINCIES, PAISOS } from '@/lib/data/geo';
+import { DocumentScanner } from '@/components/ocr/document-scanner';
+import type { ViatgerOcr } from '@/lib/ocr/mrz';
 
 type ViatgerState = {
   huespedId?: string;
@@ -51,6 +55,7 @@ type ViatgerState = {
   _recurrent?: string; // aviso de huésped recurrente (Fase 2)
   _noAcollir?: boolean;
   _anotacions?: { sentit: string; descripcio: string; noAcollir: boolean }[];
+  _avisAlerta?: string; // coincidència amb la llista d'avisos interns
 };
 
 function emptyViatger(titular = false): ViatgerState {
@@ -101,11 +106,26 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
 
   const esReserva = tipusRegistre === 'RESERVA';
 
   const setV = (i: number, patch: Partial<ViatgerState>) =>
     setViatgers((prev) => prev.map((v, idx) => (idx === i ? { ...v, ...patch } : v)));
+
+  // Autoreplenat des de l'OCR del document (només camps llegits).
+  const applyOcr = (i: number, v: ViatgerOcr) => {
+    const patch: Partial<ViatgerState> = {};
+    if (v.nom) patch.nom = v.nom;
+    if (v.cognom1) patch.cognom1 = v.cognom1;
+    if (v.cognom2) patch.cognom2 = v.cognom2;
+    if (v.tipusDocument) patch.tipusDocument = v.tipusDocument;
+    if (v.numDocument) patch.numDocument = v.numDocument;
+    if (v.sexe) patch.sexe = v.sexe;
+    if (v.dataNaixement) patch.dataNaixement = v.dataNaixement;
+    if (v.nacionalitat) patch.nacionalitat = v.nacionalitat;
+    setV(i, patch);
+  };
 
   const setTitular = (i: number) =>
     setViatgers((prev) => prev.map((v, idx) => ({ ...v, esTitular: idx === i })));
@@ -201,10 +221,28 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
     }
   }
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  // Comprova si el viatger coincideix amb un avís intern (per telèfon o nom).
+  async function checkAvis(i: number) {
+    const v = viatgers[i]!;
+    const nom = [v.nom, v.cognom1].filter(Boolean).join(' ').trim();
+    if (!v.telefon && nom.length < 3) return;
+    try {
+      const res = await getJSON<{ avisos: { motiu: string; gravetat: string }[] }>(
+        `/api/avisos/check?telefon=${encodeURIComponent(v.telefon)}&nom=${encodeURIComponent(nom)}`,
+      );
+      setV(i, {
+        _avisAlerta: res.avisos.length > 0 ? res.avisos.map((a) => a.motiu).join(' · ') : undefined,
+      });
+    } catch {
+      /* comprovació silenciosa */
+    }
+  }
+
+  async function doSubmit(force: boolean) {
     setServerError(null);
     const input = buildInput();
+
+    // 1) Validació dura (obligatorietat §2.3): bloqueja sempre.
     const parsed = RegistreSchema.safeParse(input);
     if (!parsed.success) {
       const map: Record<string, string> = {};
@@ -212,10 +250,29 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
         map[issue.path.join('.')] = issue.message;
       }
       setErrors(map);
+      setWarnings([]);
       setServerError('Revisa els camps marcats.');
       return;
     }
     setErrors({});
+
+    // 2) Validació de FORMAT (DNI/NIE, codi postal): avisa però es pot forçar.
+    const fw = formatWarnings(
+      viatgers.map((v) => ({
+        tipusDocument: v.tipusDocument || undefined,
+        numDocument: v.numDocument || undefined,
+        codiPostal: v.codiPostal || undefined,
+        pais: v.pais || undefined,
+        dataNaixement: v.dataNaixement || undefined,
+        dataExpedicio: v.dataExpedicio || undefined,
+      })),
+    );
+    if (fw.length > 0 && !force) {
+      setWarnings(fw);
+      return; // espera confirmació "Desar igualment"
+    }
+    setWarnings([]);
+
     setSubmitting(true);
     try {
       const res = await postJSON<{ estanciaId: string }>('/api/estancies', input);
@@ -231,7 +288,18 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
   const err = (path: string) => errors[path];
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        doSubmit(false);
+      }}
+      className="space-y-6"
+    >
+      <datalist id="paisos">
+        {PAISOS.map((pais) => (
+          <option key={pais} value={pais} />
+        ))}
+      </datalist>
       {/* --- Tipus de registre --- */}
       <Card>
         <CardHeader>
@@ -348,10 +416,12 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
 
       {/* --- Viatgers --- */}
       {viatgers.map((v, i) => {
-        const menor = v.esMenor || isMenor(v.dataNaixement ? new Date(v.dataNaixement) : null, estancia.dataEntrada ? new Date(estancia.dataEntrada) : new Date());
+        const refEntrada = estancia.dataEntrada ? new Date(estancia.dataEntrada) : new Date();
+        const menor = v.esMenor; // controlat per l'usuari (es pot desmarcar)
+        const suggMenor = isMenor(v.dataNaixement ? new Date(v.dataNaixement) : null, refEntrada);
         const isDni = v.tipusDocument === 'DNI_NIF';
         const isDniNie = v.tipusDocument === 'DNI_NIF' || v.tipusDocument === 'NIE';
-        const ext = v.pais && v.pais !== 'Espanya';
+        const ext = !!v.pais && v.pais.toLowerCase() !== 'espanya';
         const P = (f: string) => `viatgers.${i}.${f}`;
         return (
           <Card key={i}>
@@ -382,8 +452,13 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
               </div>
             </CardHeader>
             <CardBody className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {(v._noAcollir || (v._anotacions && v._anotacions.length > 0)) && (
+              {(v._noAcollir || v._avisAlerta || (v._anotacions && v._anotacions.length > 0)) && (
                 <div className="space-y-2 sm:col-span-2 lg:col-span-3">
+                  {v._avisAlerta && (
+                    <div className="rounded-lg border border-red-300 bg-red-100 px-3 py-2 text-sm font-medium text-red-800">
+                      🚫 Avís intern: {v._avisAlerta}. Valora <strong>no acollir</strong> aquesta persona.
+                    </div>
+                  )}
                   {v._noAcollir && (
                     <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                       ⚠ Aquest hoste està marcat com a <strong>no acollir</strong> a la llista interna.
@@ -407,10 +482,10 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
                 </div>
               )}
               <Field label="Nom" required error={err(P('nom'))}>
-                <Input value={v.nom} onChange={(e) => setV(i, { nom: e.target.value })} />
+                <Input value={v.nom} onChange={(e) => setV(i, { nom: e.target.value })} onBlur={() => checkAvis(i)} />
               </Field>
               <Field label="Primer cognom" required error={err(P('cognom1'))}>
-                <Input value={v.cognom1} onChange={(e) => setV(i, { cognom1: e.target.value })} />
+                <Input value={v.cognom1} onChange={(e) => setV(i, { cognom1: e.target.value })} onBlur={() => checkAvis(i)} />
               </Field>
               <Field
                 label="Segon cognom"
@@ -423,6 +498,9 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
 
               {!esReserva && (
                 <>
+                  <div className="sm:col-span-2 lg:col-span-3">
+                    <DocumentScanner onExtract={(ocr) => applyOcr(i, ocr)} />
+                  </div>
                   <Field label="Tipus de document" required={!menor} error={err(P('tipusDocument'))}>
                     <Select
                       value={v.tipusDocument}
@@ -475,6 +553,7 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
                   </Field>
                   <Field label="Nacionalitat" error={err(P('nacionalitat'))}>
                     <Input
+                      list="paisos"
                       value={v.nacionalitat}
                       onChange={(e) => setV(i, { nacionalitat: e.target.value })}
                     />
@@ -486,7 +565,12 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
                 <Input
                   type="date"
                   value={v.dataNaixement}
-                  onChange={(e) => setV(i, { dataNaixement: e.target.value })}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    // Suggereix "menor" si la data indica <14, però es pot desmarcar després.
+                    const auto = !!val && isMenor(new Date(val), refEntrada);
+                    setV(i, auto ? { dataNaixement: val, esMenor: true } : { dataNaixement: val });
+                  }}
                 />
               </Field>
               <Field label="Email" required={esReserva} error={err(P('email'))}>
@@ -497,7 +581,7 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
                 />
               </Field>
               <Field label="Telèfon" error={err(P('telefon'))}>
-                <Input value={v.telefon} onChange={(e) => setV(i, { telefon: e.target.value })} />
+                <Input value={v.telefon} onChange={(e) => setV(i, { telefon: e.target.value })} onBlur={() => checkAvis(i)} />
               </Field>
 
               {!esReserva && (
@@ -509,12 +593,19 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
                     <Input value={v.codiPostal} onChange={(e) => setV(i, { codiPostal: e.target.value })} />
                   </Field>
                   <Field label="País" error={err(P('pais'))}>
-                    <Input value={v.pais} onChange={(e) => setV(i, { pais: e.target.value })} />
+                    <Input list="paisos" value={v.pais} onChange={(e) => setV(i, { pais: e.target.value })} />
                   </Field>
                   {!ext ? (
                     <>
                       <Field label="Província" required error={err(P('provincia'))}>
-                        <Input value={v.provincia} onChange={(e) => setV(i, { provincia: e.target.value })} />
+                        <Select value={v.provincia} onChange={(e) => setV(i, { provincia: e.target.value })}>
+                          <option value="">—</option>
+                          {PROVINCIES.map((pr) => (
+                            <option key={pr} value={pr}>
+                              {pr}
+                            </option>
+                          ))}
+                        </Select>
                       </Field>
                       <Field label="Municipi" required error={err(P('municipi'))}>
                         <Input value={v.municipi} onChange={(e) => setV(i, { municipi: e.target.value })} />
@@ -525,7 +616,10 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
                       <Input value={v.localitat} onChange={(e) => setV(i, { localitat: e.target.value })} />
                     </Field>
                   )}
-                  <Field label="Menor de 14">
+                  <Field
+                    label="Menor de 14"
+                    hint={suggMenor && !menor ? 'Segons la data de naixement sembla menor de 14.' : undefined}
+                  >
                     <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
                       <input
                         type="checkbox"
@@ -554,12 +648,38 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
         );
       })}
 
+      {warnings.length > 0 && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
+          <p className="mb-1 flex items-center gap-2 text-sm font-medium text-amber-800">
+            <AlertTriangle className="h-4 w-4" /> Hi ha dades que potser no són correctes:
+          </p>
+          <ul className="ml-6 list-disc text-sm text-amber-800">
+            {warnings.map((w, i) => (
+              <li key={i}>{w}</li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-amber-700">
+            Corregeix-les i torna a desar, o desa igualment si saps que són correctes.
+          </p>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <Button type="button" variant="outline" onClick={addViatger}>
           <Plus className="h-4 w-4" /> Afegir viatger
         </Button>
         <div className="flex items-center gap-3">
           {serverError && <span className="text-sm text-red-600">{serverError}</span>}
+          {warnings.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={submitting}
+              onClick={() => doSubmit(true)}
+            >
+              Desar igualment
+            </Button>
+          )}
           <Button type="submit" disabled={submitting}>
             {submitting ? 'Desant…' : 'Desar estada'}
           </Button>

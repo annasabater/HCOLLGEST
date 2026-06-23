@@ -44,3 +44,5 @@ yarn-error.log*
 !.vscode/extensions.json
 !.vscode/settings.json
 *.tsbuildinfo
+
+.vercel

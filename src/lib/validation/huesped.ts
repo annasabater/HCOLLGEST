@@ -47,7 +47,7 @@ export const AnotacioCreateSchema = z.object({
   descripcio: z
     .string()
     .trim()
-    .min(5, 'Descriu el fet de manera objectiva i verificable (§7)'),
+    .min(5, 'Descriu el fet de manera objectiva i verificable'),
   estanciaId: optStr,
   privada: z.boolean().default(true),
   noAcollir: z.boolean().default(false),

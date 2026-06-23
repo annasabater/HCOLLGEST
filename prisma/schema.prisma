@@ -131,6 +131,13 @@ enum EstatFactura {
   COBRADA
 }
 
+// Dipòsit/fiança de garantia: diners retinguts que es tornen o es retenen.
+enum EstatDiposit {
+  EN_CUSTODIA // retingut temporalment (no és ingrés)
+  TORNAT // retornat a l'hoste (mai ha estat ingrés)
+  RETINGUT // retingut per desperfecte → passa a ingrés
+}
+
 // Veri*Factu — tipo de documento de cobro emitido.
 enum TipusDocumentFiscal {
   RECIBO // no és factura fiscal (no Veri*Factu)
@@ -237,6 +244,8 @@ model Usuari {
   nom          String
   role         Role     @default(CONSULTA)
   actiu        Boolean  @default(true)
+  failedLogins Int       @default(0) @map("failed_logins")
+  lockedUntil  DateTime? @map("locked_until")
 
   auditLogs       AuditLog[]
   documentsPujats DocumentoPujat[]
@@ -306,6 +315,7 @@ model Huesped {
   estancies  EstanciaViatger[]
   documents  DocumentoPujat[]
   anotacions AnotacioHuesped[]
+  animals    Animal[]
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -354,9 +364,17 @@ model Estancia {
   teInternet        Boolean?      @map("te_internet")
   observacions      String?
   estat             EstatEstancia @default(RESERVA)
+  // Registre desat amb dades incompletes (§2.3): editable, però no es pot pujar a
+  // Mossos fins completar-lo. Es neteja automàticament quan el fitxer es genera bé.
+  esBorrany         Boolean       @default(false) @map("es_borrany")
 
   habitacioId String?    @map("habitacio_id")
   habitacio   Habitacio? @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
+
+  // Ampliació d'estada: les ampliacions (1.1, 1.2…) enllacen amb l'estada original.
+  estanciaOrigenId String?    @map("estancia_origen_id")
+  origen           Estancia?  @relation("Ampliacions", fields: [estanciaOrigenId], references: [id], onDelete: SetNull)
+  ampliacions      Estancia[] @relation("Ampliacions")
 
   viatgers      EstanciaViatger[]
   enviaments    EnviamentMossos[]
@@ -364,6 +382,7 @@ model Estancia {
   tasesTuristiques TasaTuristica[]
   anotacions    AnotacioHuesped[]
   tasquesNeteja TascaNeteja[]
+  diposits      Diposit[]
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -467,6 +486,7 @@ model AnotacioHuesped {
 model Habitacio {
   id        String  @id @default(cuid())
   nom       String // num/nom (p.ej. "1", "6")
+  tipus     String? // tipus d'habitació (Individual, Doble…) per a tarifes per tipus
   descripcio String?
   capacitat Int?
   estat     String?
@@ -475,6 +495,8 @@ model Habitacio {
   actius        Actiu[]
   gastos        Gasto[]
   tasquesNeteja TascaNeteja[]
+  tarifes       Tarifa[]
+  incidencies   Incidencia[]
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -505,12 +527,21 @@ model TascaNeteja {
   @@map("tasca_neteja")
 }
 
+enum MidaAnimal {
+  PETIT
+  MITJA
+  GRAN
+}
+
 model Animal {
-  id            String    @id @default(cuid())
+  id            String      @id @default(cuid())
   nom           String
   especie       String
-  dataNaixement DateTime? @map("data_naixement")
+  mida          MidaAnimal?
+  dataNaixement DateTime?   @map("data_naixement")
   notes         String?
+  huespedId     String?     @map("huesped_id")
+  huesped       Huesped?    @relation(fields: [huespedId], references: [id], onDelete: SetNull)
 
   gastos Gasto[]
 
@@ -518,6 +549,7 @@ model Animal {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
+  @@index([huespedId])
   @@map("animal")
 }
 
@@ -592,6 +624,27 @@ model Cobrament {
 
   @@index([facturaId])
   @@map("cobrament")
+}
+
+// Dipòsit/fiança de garantia d'una estada. NO és ingrés mentre està en custòdia.
+model Diposit {
+  id            String       @id @default(cuid())
+  estanciaId    String       @map("estancia_id")
+  estancia      Estancia     @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+  import        Decimal      @db.Decimal(10, 2)
+  data          DateTime
+  metode        MetodeCobrament
+  estat         EstatDiposit @default(EN_CUSTODIA)
+  motiu         String? // motiu de la retenció (desperfecte…)
+  notes         String?
+  dataResolucio DateTime?    @map("data_resolucio") // quan es torna o es retén
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([estanciaId])
+  @@index([estat])
+  @@map("diposit")
 }
 
 // Registre de facturació "alta" Veri*Factu (AEAT). Encadenat per `huella`.
@@ -747,16 +800,18 @@ model ActiuHistorial {
 model Treballador {
   id               String    @id @default(cuid())
   nom              String
-  dni              String
+  dni              String?   // opcional
   telefon          String?
   email            String?
   dataContractacio DateTime  @map("data_contractacio")
   carrec           String
+  preuHora         Decimal?  @map("preu_hora") @db.Decimal(10, 2) // €/hora (pagament per hores)
   salari           Decimal?  @db.Decimal(10, 2)
   costEmpresa      Decimal?  @map("cost_empresa") @db.Decimal(10, 2)
 
   absencies     Absencia[]
   nomines       Nomina[]
+  jornades      Jornada[]
   tasquesNeteja TascaNeteja[]
 
   createdAt DateTime  @default(now()) @map("created_at")
@@ -764,6 +819,25 @@ model Treballador {
   deletedAt DateTime? @map("deleted_at")
 
   @@map("treballador")
+}
+
+// Jornada treballada: un dia, X hores, a un preu/hora → import a pagar.
+model Jornada {
+  id            String      @id @default(cuid())
+  treballadorId String      @map("treballador_id")
+  treballador   Treballador @relation(fields: [treballadorId], references: [id], onDelete: Cascade)
+  data          DateTime
+  hores         Decimal     @db.Decimal(5, 2)
+  preuHora      Decimal     @map("preu_hora") @db.Decimal(10, 2)
+  import        Decimal     @db.Decimal(10, 2)
+  notes         String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([treballadorId])
+  @@index([data])
+  @@map("jornada")
 }
 
 model Absencia {
@@ -796,4 +870,92 @@ model Nomina {
 
   @@index([treballadorId])
   @@map("nomina")
+}
+
+// ----------------------------------------------------------------------------
+// I. AVISOS INTERNS (llista de no-admissió per nom/telèfon, encara que no sigui client)
+// ----------------------------------------------------------------------------
+
+enum GravetatAvis {
+  BAIXA
+  MITJA
+  ALTA
+}
+
+model Avis {
+  id        String       @id @default(cuid())
+  nom       String
+  telefon   String?
+  email     String?
+  motiu     String
+  gravetat  GravetatAvis @default(MITJA)
+  notes     String?
+  actiu     Boolean      @default(true)
+  usuariId  String?      @map("usuari_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([telefon])
+  @@index([actiu])
+  @@map("avis")
+}
+
+// ----------------------------------------------------------------------------
+// J. TARIFES (preu per nit, opcionalment per habitació i/o temporada)
+// ----------------------------------------------------------------------------
+
+model Tarifa {
+  id          String     @id @default(cuid())
+  nom         String
+  preuNit     Decimal    @db.Decimal(10, 2) @map("preu_nit")
+  tipusHabitacio String? @map("tipus_habitacio") // aplica a totes les habitacions d'aquest tipus
+  habitacioId String?    @map("habitacio_id")
+  habitacio   Habitacio? @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
+  dataInici   DateTime?  @map("data_inici")
+  dataFi      DateTime?  @map("data_fi")
+  actiu       Boolean    @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([habitacioId])
+  @@map("tarifa")
+}
+
+// ----------------------------------------------------------------------------
+// K. MANTENIMENT (incidències / avaries per habitació)
+// ----------------------------------------------------------------------------
+
+enum EstatIncidencia {
+  OBERTA
+  EN_CURS
+  RESOLTA
+}
+
+enum PrioritatIncidencia {
+  BAIXA
+  MITJA
+  ALTA
+}
+
+model Incidencia {
+  id            String              @id @default(cuid())
+  titol         String
+  descripcio    String?
+  habitacioId   String?             @map("habitacio_id")
+  habitacio     Habitacio?          @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
+  estat         EstatIncidencia     @default(OBERTA)
+  prioritat     PrioritatIncidencia @default(MITJA)
+  cost          Decimal?            @db.Decimal(10, 2)
+  data          DateTime            @default(now())
+  dataResolucio DateTime?           @map("data_resolucio")
+  notes         String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([habitacioId])
+  @@index([estat])
+  @@map("incidencia")
 }

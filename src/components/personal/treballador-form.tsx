@@ -12,7 +12,7 @@ import { postJSON, ApiError } from '@/lib/api';
 export function TreballadorForm() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [v, setV] = useState({ nom: '', dni: '', carrec: '', telefon: '', email: '', salari: '', costEmpresa: '' });
+  const [v, setV] = useState({ nom: '', carrec: '', preuHora: '', telefon: '', email: '', dni: '' });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -23,14 +23,13 @@ export function TreballadorForm() {
     try {
       await postJSON('/api/treballadors', {
         nom: v.nom,
-        dni: v.dni,
         carrec: v.carrec,
+        preuHora: v.preuHora || undefined,
         telefon: v.telefon || undefined,
         email: v.email || undefined,
-        salari: v.salari || undefined,
-        costEmpresa: v.costEmpresa || undefined,
+        dni: v.dni || undefined,
       });
-      setV({ nom: '', dni: '', carrec: '', telefon: '', email: '', salari: '', costEmpresa: '' });
+      setV({ nom: '', carrec: '', preuHora: '', telefon: '', email: '', dni: '' });
       setOpen(false);
       router.refresh();
     } catch (err) {
@@ -55,11 +54,16 @@ export function TreballadorForm() {
           <Field label="Nom" required>
             <Input value={v.nom} onChange={(e) => setV({ ...v, nom: e.target.value })} />
           </Field>
-          <Field label="DNI" required>
-            <Input value={v.dni} onChange={(e) => setV({ ...v, dni: e.target.value })} />
-          </Field>
           <Field label="Càrrec" required>
             <Input value={v.carrec} onChange={(e) => setV({ ...v, carrec: e.target.value })} />
+          </Field>
+          <Field label="Preu/hora (€)" hint="Es paga per hores treballades">
+            <Input
+              type="number"
+              step="0.01"
+              value={v.preuHora}
+              onChange={(e) => setV({ ...v, preuHora: e.target.value })}
+            />
           </Field>
           <Field label="Telèfon">
             <Input value={v.telefon} onChange={(e) => setV({ ...v, telefon: e.target.value })} />
@@ -67,11 +71,8 @@ export function TreballadorForm() {
           <Field label="Email">
             <Input type="email" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} />
           </Field>
-          <Field label="Salari (brut)">
-            <Input type="number" step="0.01" value={v.salari} onChange={(e) => setV({ ...v, salari: e.target.value })} />
-          </Field>
-          <Field label="Cost empresa">
-            <Input type="number" step="0.01" value={v.costEmpresa} onChange={(e) => setV({ ...v, costEmpresa: e.target.value })} />
+          <Field label="DNI (opcional)">
+            <Input value={v.dni} onChange={(e) => setV({ ...v, dni: e.target.value })} />
           </Field>
           <div className="sm:col-span-3 flex items-center gap-3">
             <Button type="submit" disabled={saving}>

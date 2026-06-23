@@ -41,6 +41,14 @@ export const estatEnviamentValues = [
   'ERROR',
 ] as const;
 export const sentitAnotacioValues = ['POSITIVA', 'NEGATIVA', 'NEUTRA'] as const;
+export const tipusDocumentPujatValues = [
+  'DNI_ANVERS',
+  'DNI_REVERS',
+  'PASSAPORT',
+  'NIE',
+  'RESIDENCIA',
+  'ALTRES',
+] as const;
 export const tipusNetejaValues = ['CANVI_COMPLET', 'REPAS'] as const;
 export const estatTascaValues = ['PENDENT', 'FETA'] as const;
 export const estatFacturaValues = ['PENDENT', 'COBRADA'] as const;
@@ -133,6 +141,18 @@ export const SENTIT_ANOTACIO_LABELS: Record<(typeof sentitAnotacioValues)[number
   NEUTRA: 'Neutra',
 };
 
+export const TIPUS_DOCUMENT_PUJAT_LABELS: Record<
+  (typeof tipusDocumentPujatValues)[number],
+  string
+> = {
+  DNI_ANVERS: 'DNI (anvers)',
+  DNI_REVERS: 'DNI (revers)',
+  PASSAPORT: 'Passaport',
+  NIE: 'NIE',
+  RESIDENCIA: 'Permís de residència',
+  ALTRES: 'Altres',
+};
+
 export const TIPUS_NETEJA_LABELS: Record<(typeof tipusNetejaValues)[number], string> = {
   CANVI_COMPLET: 'Canvi complet (esbancar)',
   REPAS: 'Repàs (polir)',
@@ -185,6 +205,13 @@ export const TIPUS_ABSENCIA_LABELS: Record<(typeof tipusAbsenciaValues)[number],
   VACANCES: 'Vacances',
   BAIXA: 'Baixa',
   ALTRES: 'Altres',
+};
+
+export const midaAnimalValues = ['PETIT', 'MITJA', 'GRAN'] as const;
+export const MIDA_ANIMAL_LABELS: Record<(typeof midaAnimalValues)[number], string> = {
+  PETIT: 'Petit',
+  MITJA: 'Mitjà',
+  GRAN: 'Gran',
 };
 
 /** Helper genérico para construir <option> en selects. */

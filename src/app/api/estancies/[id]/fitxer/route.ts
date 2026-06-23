@@ -14,7 +14,11 @@ export async function POST(req: Request, ctx: Ctx) {
     if (auth instanceof Response) return auth;
     const { id } = await ctx.params;
 
-    const { buffer, fitxerNom, encoding } = await generateFitxer(id, { id: auth.id }, clientIp(req));
+    const { buffer, fitxerNom, encoding, provisional } = await generateFitxer(
+      id,
+      { id: auth.id },
+      clientIp(req),
+    );
 
     const charset = encoding === 'utf-8' ? 'utf-8' : 'ISO-8859-1';
     return new NextResponse(new Uint8Array(buffer), {
@@ -23,6 +27,7 @@ export async function POST(req: Request, ctx: Ctx) {
         'Content-Type': `text/plain; charset=${charset}`,
         'Content-Disposition': `attachment; filename="${fitxerNom}"`,
         'Cache-Control': 'no-store',
+        'X-Mossos-Provisional': provisional ? 'true' : 'false',
       },
     });
   } catch (err) {

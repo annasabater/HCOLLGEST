@@ -17,6 +17,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { getStorageDir, getSupabaseStorageConfig } from './env';
+import { encryptBuffer, decryptBuffer } from './crypto';
 
 const MIME: Record<string, string> = {
   pdf: 'application/pdf',
@@ -131,4 +132,22 @@ export async function readUpload(rel: string): Promise<Buffer> {
     throw new Error('Ruta de fitxer no permesa');
   }
   return readFile(abs);
+}
+
+// --- Documentos de identidad: CIFRADOS en reposo (§7, AES-256-GCM) ----------
+
+/**
+ * Guarda un documento de identidad CIFRADO (DNI/passaport). El fichero en disco
+ * /Supabase contiene ciphertext; el mime real se guarda aparte (DocumentoPujat.mime).
+ * Devuelve la ruta relativa (subdir "documents/…​.enc").
+ */
+export async function saveEncryptedUpload(plain: Buffer, originalName: string): Promise<string> {
+  const enc = encryptBuffer(plain);
+  return saveUpload(enc, `${safeName(originalName)}.enc`, 'documents');
+}
+
+/** Lee y DESCIFRA un documento de identidad guardado con saveEncryptedUpload. */
+export async function readEncryptedUpload(rel: string): Promise<Buffer> {
+  const enc = await readUpload(rel);
+  return decryptBuffer(enc);
 }

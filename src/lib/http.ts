@@ -68,6 +68,30 @@ export function handleApiError(err: unknown): NextResponse {
     if (err.code === 'P2025') {
       return notFound();
     }
+    // Base de dades no preparada (taula/columna inexistent) → cal migrar.
+    if (err.code === 'P2021' || err.code === 'P2022') {
+      console.error('[API] Base de dades no migrada:', err.code);
+      return NextResponse.json(
+        { error: 'Base de dades no preparada (falten taules). Cal executar les migracions.', code: err.code },
+        { status: 503 },
+      );
+    }
+  }
+  // No es pot connectar a la base de dades (URL/credencials/Supabase).
+  if (
+    err instanceof Prisma.PrismaClientInitializationError ||
+    (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P1001')
+  ) {
+    console.error('[API] Error de connexió a la BD:', err);
+    return NextResponse.json(
+      { error: 'No es pot connectar amb la base de dades. Revisa la configuració.', code: 'DB_CONN' },
+      { status: 503 },
+    );
+  }
+  // Variables d'entorn obligatòries que falten (JWT_SECRET, clau de xifrat…).
+  if (err instanceof Error && err.message.includes('variable de entorno')) {
+    console.error('[API] Config incompleta:', err.message);
+    return NextResponse.json({ error: 'Configuració del servidor incompleta.', code: 'ENV' }, { status: 503 });
   }
   // Errores de validación de negocio lanzados como Error con mensaje legible.
   if (err instanceof Error && err.message.startsWith('Validación fallida')) {

@@ -13,8 +13,11 @@ import { SESSION_COOKIE } from '@/lib/auth/types';
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Los endpoints de autenticación son siempre accesibles.
-  if (pathname.startsWith('/api/auth')) return NextResponse.next();
+  // Endpoints sempre accessibles: autenticació, diagnòstic (/api/health) i
+  // cron (/api/cron/*, que es protegeix ell mateix amb CRON_SECRET).
+  if (pathname.startsWith('/api/auth') || pathname === '/api/health' || pathname.startsWith('/api/cron')) {
+    return NextResponse.next();
+  }
 
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const user = token ? await verifySessionToken(token) : null;
@@ -34,6 +37,13 @@ export async function middleware(req: NextRequest) {
     const url = new URL('/login', req.url);
     url.searchParams.set('from', pathname);
     return NextResponse.redirect(url);
+  }
+
+  // Mòduls només per a ADMIN (diners i gestió): si no ho és, fora.
+  const ADMIN_ONLY = ['/factures', '/balanc', '/tarifes', '/verifactu', '/gastos', '/personal', '/config'];
+  const isAdminOnly = ADMIN_ONLY.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  if (isAdminOnly && user.role !== 'ADMIN') {
+    return NextResponse.redirect(new URL('/', req.url));
   }
 
   return NextResponse.next();

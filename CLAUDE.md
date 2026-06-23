@@ -50,16 +50,20 @@ Prioridad: primero el **núcleo legal** (plazos de 24 h y sanciones), luego el v
 ## PENDIENTES que NO se deben inventar — preguntar (§9)
 
 1. **Orden/estructura exactos del fitxer massiu** → `FIELD_LAYOUT` en `src/lib/mossos/fitxer.ts`
-   está **vacío** a propósito. Está en el *Manual d'instruccions* del portal.
+   ahora tiene una versión **PROVISIONAL** (best-effort INT/1922/2003 + RD 933/2021). El orden,
+   la estructura y los códigos exactos están en el *Manual d'instruccions* del portal: verificar
+   y poner `FORMAT_CONFIRMAT = true`. Mientras sea `false`, el fichero se marca como provisional
+   (cabecera `X-Mossos-Provisional` + aviso en el tauler).
 2. **`file_identifier`** real (9-10 car., en "Dades de l'establiment"; **no** es el Id policial). Se configura en `/config`.
 3. **Codificación** del `.txt` (ISO-8859-1 vs UTF-8).
-4. **Códigos literales** de los enums dentro del fichero (`CODES` son provisionales).
+4. **Códigos literales** de los enums dentro del fichero (`CODES` son **provisionales**, verificar manual).
 5. **Selectores/flujo del portal** para el conector Playwright.
 6. **Credenciales Mossos**: secret manager / cifradas; nunca en repo ni logs.
 7. **Tarifa IEET** (Fase 3).
 
-El generador funciona en cuanto se rellenen `FIELD_LAYOUT` + `CODES`. Hasta entonces,
-`POST /api/estancies/:id/fitxer` devuelve **422** con un mensaje accionable (no inventa el orden).
+El generador **ya produce el fichero** (layout provisional). `POST /api/estancies/:id/fitxer`
+lo descarga con `X-Mossos-Provisional: true` hasta que confirmes el formato con el manual
+(`FORMAT_CONFIRMAT = true`). Verifica el primer fichero en el portal antes de usarlo en real.
 
 ## Estructura
 
@@ -122,6 +126,26 @@ Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
   **5** Activos (alertas garantía/antigüedad, historial) + animales ·
   **6** Personal (trabajadores, ausencias, nóminas) ·
   **7** Inteligencia (dashboard financiero, alertas automáticas, buscador global).
-- **Pendientes** (anotados): ficha **PDF firmable** del modelo "Registre de persones allotjades"
-  (la firma se captura; falta generar el PDF); export **Excel/PDF** (hay CSV de llibre); y **Mossos §9**
-  (FIELD_LAYOUT/CODES/file_identifier del manual + conector Playwright §9.5).
+- **Documentos de identidad**: subida CIFRADA (AES-256-GCM) de DNI/passaport en la ficha del
+  huésped (`DocumentoPujat`), visualización autorizada+auditada y borrado lógico —
+  `POST /api/huespedes/:id/documents`, `GET/DELETE /api/documents/:id`, `storage.saveEncryptedUpload`.
+- **OCR de documento (autorrelleno)**: escáner cliente (tesseract.js, sin credenciales) que lee la
+  **zona MRZ** del DNI/NIE (TD1) y pasaporte (TD3) con validación de dígitos de control, y autorrellena
+  el formulario maestro (nom, cognoms, document, naixement, sexe, nacionalitat). Núcleo en
+  `src/lib/ocr/mrz.ts` (puro, testeado con vectores ICAO); UI en `src/components/ocr/document-scanner.tsx`.
+- **Ficha PDF firmable**: `GET /api/estancies/:id/fitxa-pdf` genera el model "Registre de persones
+  allotjades" (pdf-lib) amb les dades dels viatgers i la **signatura capturada incrustada** (o una
+  línia per signar a mà). Botó "Fitxa PDF" al detall de l'estada. Generador a `src/lib/pdf/fitxa.ts`.
+- **Desplegament**: veure `DEPLOY.md` (Vercel + Supabase). `vercel-build` aplica `prisma migrate deploy`
+  automàticament. Diagnòstic a `GET /api/health` (BD, taules, seed, env). `handleApiError` distingeix
+  BD no migrada (503) i config incompleta (503) de l'error 500 genèric.
+- **Pendientes** (anotados): export **Excel/PDF** (hay CSV de llibre); y **Mossos §9**
+  (FIELD_LAYOUT/CODES/file_identifier del manual + conector §9.5); Veri*Factu producció (cert .pfx).
+
+## Build (Windows)
+
+`pnpm build` usa `scripts/build.mjs`, que **reintenta** automáticamente solo ante el bloqueo
+transitorio de ficheros de `.next` por antivirus/OneDrive (no ante errores reales de código).
+Solución de raíz recomendada (una vez, PowerShell admin):
+`Add-MpPreference -ExclusionPath 'C:\Users\LENOVO\hostalcoll_gestion'`. En Vercel (Linux) no aplica.
+`pnpm build:next` ejecuta `next build` directo (sin reintento).

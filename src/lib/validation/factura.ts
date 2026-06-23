@@ -45,3 +45,16 @@ export const CobramentCreateSchema = z.object({
 
 export type FacturaCreateInput = z.input<typeof FacturaCreateSchema>;
 export type LiniaInput = z.input<typeof LiniaInputSchema>;
+
+// Dipòsit/fiança de garantia (els "altres"): no és ingrés fins que es retén.
+export const DipositCreateSchema = z.object({
+  import: z.coerce.number().positive('L’import ha de ser positiu'),
+  data: z.coerce.date().optional(),
+  metode: z.enum(metodeCobramentValues),
+  notes: optStr,
+});
+
+export const DipositResolSchema = z.object({
+  estat: z.enum(['TORNAT', 'RETINGUT']),
+  motiu: optStr,
+});

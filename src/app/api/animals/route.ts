@@ -5,14 +5,16 @@ import { audit } from '@/lib/audit';
 import { created, handleApiError, ok } from '@/lib/http';
 import { AnimalCreateSchema } from '@/lib/validation/actiu';
 
-// GET /api/animals — animales + total de gastos asociados
-export async function GET() {
+// GET /api/animals?huespedId= — animales + total de gastos asociados
+export async function GET(req: Request) {
   const auth = await authorize();
   if (auth instanceof Response) return auth;
 
+  const huespedId = new URL(req.url).searchParams.get('huespedId');
   const animals = await prisma.animal.findMany({
-    where: { deletedAt: null },
+    where: { deletedAt: null, ...(huespedId ? { huespedId } : {}) },
     orderBy: { nom: 'asc' },
+    include: { huesped: { select: { id: true, nom: true, cognom1: true } } },
   });
   const sums = await prisma.gasto.groupBy({
     by: ['animalId'],
@@ -37,8 +39,10 @@ export async function POST(req: Request) {
       data: {
         nom: data.nom,
         especie: data.especie,
+        mida: data.mida ?? null,
         dataNaixement: data.dataNaixement ?? null,
         notes: data.notes ?? null,
+        huespedId: data.huespedId ?? null,
       },
     });
     await audit({
