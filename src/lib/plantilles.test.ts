@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { fillTemplate, waLink, descriuTasques } from './plantilles';
+import {
+  fillTemplate,
+  waLink,
+  descriuTasques,
+  PLANTILLA_NETEJA,
+  PASILLO_TXT,
+  PATI_TXT,
+  HORA_NETEJA_TXT,
+} from './plantilles';
 
 describe('fillTemplate', () => {
   it('substitueix les claus', () => {
@@ -45,5 +53,35 @@ describe('descriuTasques', () => {
   });
   it('sense tasques', () => {
     expect(descriuTasques([], 'es')).toBe('no hay habitaciones asignadas');
+  });
+});
+
+describe('plantilla de neteja (passadís, pati i hora)', () => {
+  const habitacions = descriuTasques([{ habitacio: '1', tipus: 'CANVI_COMPLET' }], 'es');
+
+  it('passadís + pati + hora tots actius', () => {
+    const msg = fillTemplate(PLANTILLA_NETEJA.es, {
+      nom: 'Tania',
+      data: '24/06/2026',
+      habitacions,
+      pasillo: PASILLO_TXT.es,
+      pati: PATI_TXT.es,
+      hora: fillTemplate(HORA_NETEJA_TXT.es, { hora: '11:00' }),
+    });
+    expect(msg).toBe(
+      'Buenas Tania, mañana (24/06/2026) tienes: la habitación 1: salida (a fondo). También el pasillo. También el patio. Puedes venir sobre las 11:00. ¡Gracias!',
+    );
+  });
+
+  it('opcions desactivades no deixen rastre', () => {
+    const msg = fillTemplate(PLANTILLA_NETEJA.es, {
+      nom: 'Tania',
+      data: '24/06/2026',
+      habitacions,
+      pasillo: '',
+      pati: '',
+      hora: '',
+    });
+    expect(msg).toBe('Buenas Tania, mañana (24/06/2026) tienes: la habitación 1: salida (a fondo). ¡Gracias!');
   });
 });

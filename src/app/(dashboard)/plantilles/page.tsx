@@ -18,6 +18,8 @@ import {
   PLANTILLA_HOSTE,
   PLANTILLA_NETEJA,
   PASILLO_TXT,
+  PATI_TXT,
+  HORA_NETEJA_TXT,
   LANGS,
   type Lang,
 } from '@/lib/plantilles';
@@ -113,6 +115,9 @@ function NetejaCard() {
   const [treballadorId, setTreballadorId] = useState('');
   const [tasques, setTasques] = useState<Tasca[]>([]);
   const [pasillo, setPasillo] = useState(true);
+  const [pati, setPati] = useState(false);
+  const [mostrarHora, setMostrarHora] = useState(false);
+  const [hora, setHora] = useState('11:00');
   const [lang, setLang] = useState<Lang>('es');
   const [tpls, setTpls] = useState<Record<Lang, string>>(PLANTILLA_NETEJA);
   const [editLang, setEditLang] = useState<Lang>('es');
@@ -144,9 +149,11 @@ function NetejaCard() {
           lang,
         ),
         pasillo: pasillo ? PASILLO_TXT[lang] : '',
+        pati: pati ? PATI_TXT[lang] : '',
+        hora: mostrarHora ? fillTemplate(HORA_NETEJA_TXT[lang], { hora }) : '',
       }),
     );
-  }, [tpls, lang, treballador, data, tasques, pasillo]);
+  }, [tpls, lang, treballador, data, tasques, pasillo, pati, mostrarHora, hora]);
 
   // Canvia el tipus d'una habitació (salida/repàs) i ho desa a la tasca.
   async function setTipus(id: string, tipus: 'CANVI_COMPLET' | 'REPAS') {
@@ -191,6 +198,28 @@ function NetejaCard() {
               <input type="checkbox" checked={pasillo} onChange={(e) => setPasillo(e.target.checked)} />
               Incloure el passadís
             </label>
+          </Field>
+          <Field label="Pati">
+            <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" checked={pati} onChange={(e) => setPati(e.target.checked)} />
+              Incloure el pati
+            </label>
+          </Field>
+          <Field label="Hora aproximada">
+            <div className="flex h-10 items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={mostrarHora}
+                onChange={(e) => setMostrarHora(e.target.checked)}
+              />
+              <Input
+                type="time"
+                value={hora}
+                onChange={(e) => setHora(e.target.value)}
+                disabled={!mostrarHora}
+                className="max-w-32"
+              />
+            </div>
           </Field>
         </div>
 
@@ -241,7 +270,8 @@ function NetejaCard() {
           </div>
           <Textarea className="mt-2" rows={2} value={tpls[editLang]} onChange={(e) => saveTpl(e.target.value)} />
           <p className="mt-1 text-xs text-slate-400">
-            Variables: {'{nom}'} {'{data}'} {'{habitacions}'} {'{pasillo}'}. Es desa al navegador.
+            Variables: {'{nom}'} {'{data}'} {'{habitacions}'} {'{pasillo}'} {'{pati}'} {'{hora}'}. Es desa
+            al navegador.
           </p>
         </details>
       </CardBody>

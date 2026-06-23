@@ -22,12 +22,12 @@ export const PLANTILLA_HOSTE: Record<Lang, string> = {
   en: 'Hello {nom}, tomorrow around {hora} we will come to clean room {habitacio}. Thank you!',
 };
 
-/** Plantilla per a la neteja (variables {nom} {data} {habitacions} {pasillo}). */
+/** Plantilla per a la neteja (variables {nom} {data} {habitacions} {pasillo} {pati} {hora}). */
 export const PLANTILLA_NETEJA: Record<Lang, string> = {
-  ca: 'Bones {nom}, demà ({data}) tens: {habitacions}.{pasillo} Gràcies!',
-  es: 'Buenas {nom}, mañana ({data}) tienes: {habitacions}.{pasillo} ¡Gracias!',
-  fr: 'Bonjour {nom}, demain ({data}) tu as : {habitacions}.{pasillo} Merci !',
-  en: 'Hi {nom}, tomorrow ({data}) you have: {habitacions}.{pasillo} Thanks!',
+  ca: 'Bones {nom}, demà ({data}) tens: {habitacions}.{pasillo}{pati}{hora} Gràcies!',
+  es: 'Buenas {nom}, mañana ({data}) tienes: {habitacions}.{pasillo}{pati}{hora} ¡Gracias!',
+  fr: 'Bonjour {nom}, demain ({data}) tu as : {habitacions}.{pasillo}{pati}{hora} Merci !',
+  en: 'Hi {nom}, tomorrow ({data}) you have: {habitacions}.{pasillo}{pati}{hora} Thanks!',
 };
 
 /** Text del passadís segons idioma (valor de la variable {pasillo}). */
@@ -36,6 +36,25 @@ export const PASILLO_TXT: Record<Lang, string> = {
   es: ' También el pasillo.',
   fr: ' Aussi le couloir.',
   en: ' Also the hallway.',
+};
+
+/** Text del pati segons idioma (valor de la variable {pati}). */
+export const PATI_TXT: Record<Lang, string> = {
+  ca: ' També el pati.',
+  es: ' También el patio.',
+  fr: ' Aussi la cour.',
+  en: ' Also the patio.',
+};
+
+/**
+ * Frase de l'hora aproximada a la qual ha d'anar (valor de la variable {hora}).
+ * Conté el seu propi {hora} que es resol amb l'hora triada abans d'inserir-la.
+ */
+export const HORA_NETEJA_TXT: Record<Lang, string> = {
+  ca: ' Pots venir cap a les {hora}.',
+  es: ' Puedes venir sobre las {hora}.',
+  fr: ' Tu peux venir vers {hora}.',
+  en: ' You can come around {hora}.',
 };
 
 /** Substitueix {clau} pel valor corresponent (les claus absents queden buides). */
