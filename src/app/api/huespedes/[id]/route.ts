@@ -79,4 +79,33 @@ export async function PATCH(req: Request, ctx: Ctx) {
   }
 }
 
+// DELETE /api/huespedes/:id — esborrat lògic. Es CONSERVEN les estades i el
+// registre de viatgers (requisit legal de 3 anys); l'hoste només deixa
+// d'aparèixer a la llista d'Hostes.
+export async function DELETE(req: Request, ctx: Ctx) {
+  try {
+    const auth = await authorize(ROLES_WRITE);
+    if (auth instanceof Response) return auth;
+    const { id } = await ctx.params;
+
+    const existing = await prisma.huesped.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true },
+    });
+    if (!existing) return notFound();
+
+    await prisma.huesped.update({ where: { id }, data: { deletedAt: new Date() } });
+    await audit({
+      usuariId: auth.id,
+      accio: 'ELIMINACIO',
+      entitat: 'huesped',
+      entitatId: id,
+      ip: clientIp(req),
+    });
+    return ok({ ok: true });
+  } catch (err) {
+    return handleApiError(err);
+  }
+}
+
 export const dynamic = 'force-dynamic';

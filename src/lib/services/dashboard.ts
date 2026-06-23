@@ -43,7 +43,7 @@ export async function getResum(opts?: FinanceOpts) {
     facturesPendents,
     actius,
     habitacionsCount,
-    enCursCount,
+    habitacionsOcupadesAra,
     personalMesAgg,
     dipositsCustodiaAgg,
     dipositsRetingutsMesAgg,
@@ -97,7 +97,19 @@ export async function getResum(opts?: FinanceOpts) {
       select: { dataCompra: true, garantiaFins: true, estat: true },
     }),
     prisma.habitacio.count({ where: { deletedAt: null } }),
-    prisma.estancia.count({ where: { deletedAt: null, estat: 'EN_CURS' } }),
+    // Ocupació ACTUAL = habitacions amb una estada EN CURS que cobreix avui
+    // (entrada ≤ ara < sortida) i amb habitació assignada. No n'hi ha prou amb
+    // l'estat EN_CURS: cal que les dates incloguin avui (una estada EN_CURS amb
+    // dates passades/futures, sense habitació, o cancel·lada/reserva, no compta).
+    prisma.estancia.count({
+      where: {
+        deletedAt: null,
+        estat: 'EN_CURS',
+        habitacioId: { not: null },
+        dataEntrada: { lte: now },
+        dataSortida: { gt: now },
+      },
+    }),
     prisma.jornada.aggregate({ _sum: { import: true }, where: { data: { gte: monthStart, lte: monthEnd } } }),
     prisma.diposit.aggregate({ _sum: { import: true }, where: { estat: 'EN_CUSTODIA' } }),
     prisma.diposit.aggregate({
@@ -115,7 +127,8 @@ export async function getResum(opts?: FinanceOpts) {
 
   const facturesPendentsTotal = facturesPendents.reduce((a, f) => a + Number(f.total), 0);
   const actiusAlerta = actius.filter((a) => computeActiuInfo(a, now).alerta).length;
-  const ocupacio = habitacionsCount > 0 ? Math.round((enCursCount / habitacionsCount) * 100) : 0;
+  const ocupacio =
+    habitacionsCount > 0 ? Math.round((Math.min(habitacionsOcupadesAra, habitacionsCount) / habitacionsCount) * 100) : 0;
 
   return {
     pendentsEnviament,

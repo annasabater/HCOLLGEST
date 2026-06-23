@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, LogIn, LogOut, Sparkles, Check } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/input';
+import { CalendariHabitacio } from '@/components/habitacio/calendari-habitacio';
 import { getJSON, patchJSON } from '@/lib/api';
 import { addDays, addMonths, monthGridDays, sameMonth, toISODate, weekDays } from '@/lib/dates';
 import { cn } from '@/lib/utils';
@@ -36,19 +36,15 @@ export default function CalendariPage() {
   const [anchor, setAnchor] = useState(() => new Date());
   const [data, setData] = useState<CalData | null>(null);
   const [habitacions, setHabitacions] = useState<{ id: string; nom: string }[]>([]);
-  const [habFiltre, setHabFiltre] = useState(''); // '' = totes; o el nom de l'habitació
 
   const days = mode === 'mes' ? monthGridDays(anchor) : weekDays(anchor);
 
-  // Llista d'habitacions per al selector (general / habitació per habitació).
+  // Llista d'habitacions per a l'"Ocupació per habitació".
   useEffect(() => {
     getJSON<{ habitacions: { id: string; nom: string }[] }>('/api/habitacions')
       .then((r) => setHabitacions(r.habitacions))
       .catch(() => {});
   }, []);
-
-  // Filtra els esdeveniments per l'habitació seleccionada (o tots si '').
-  const matchHab = (h: string | null) => !habFiltre || h === habFiltre;
 
   const load = useCallback(async () => {
     const desde = toISODate(days[0]!);
@@ -78,17 +74,9 @@ export default function CalendariPage() {
     <div>
       <PageHeader
         title="Calendari"
-        subtitle={habFiltre ? `Habitació ${habFiltre}` : 'Entrades, sortides i neteja · totes les habitacions'}
+        subtitle="Entrades, sortides i neteja"
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Select value={habFiltre} onChange={(e) => setHabFiltre(e.target.value)} className="h-9 w-44">
-              <option value="">Totes les habitacions</option>
-              {habitacions.map((h) => (
-                <option key={h.id} value={h.nom}>
-                  Habitació {h.nom}
-                </option>
-              ))}
-            </Select>
             <div className="flex overflow-hidden rounded-lg border border-slate-300">
               <button
                 onClick={() => setMode('mes')}
@@ -131,9 +119,9 @@ export default function CalendariPage() {
           const iso = toISODate(day);
           const isToday = iso === todayIso;
           const dim = mode === 'mes' && !sameMonth(day, anchor);
-          const entrades = data?.entrades.filter((e) => sameDay(e.data, day) && matchHab(e.habitacio)) ?? [];
-          const sortides = data?.sortides.filter((e) => sameDay(e.data, day) && matchHab(e.habitacio)) ?? [];
-          const tasques = data?.tasques.filter((t) => sameDay(t.data, day) && matchHab(t.habitacio)) ?? [];
+          const entrades = data?.entrades.filter((e) => sameDay(e.data, day)) ?? [];
+          const sortides = data?.sortides.filter((e) => sameDay(e.data, day)) ?? [];
+          const tasques = data?.tasques.filter((t) => sameDay(t.data, day)) ?? [];
           return (
             <div
               key={i}
@@ -211,6 +199,13 @@ export default function CalendariPage() {
         <Sparkles className="mr-1 inline h-3 w-3" /> Les tasques de neteja es generen automàticament en
         registrar una estada amb habitació. Clica una tasca pendent per marcar-la com a feta.
       </p>
+
+      {/* Ocupació per habitació (vista habitació per habitació) */}
+      {habitacions.length > 0 && (
+        <div className="mt-8">
+          <CalendariHabitacio habitacions={habitacions} />
+        </div>
+      )}
     </div>
   );
 }

@@ -42,11 +42,7 @@ const GROUPS: NavGroup[] = [
       { href: '/calendari', label: 'Calendari', icon: CalendarDays },
       { href: '/neteja', label: 'Neteja', icon: Sparkles },
       { href: '/llibre', label: 'Llibre registre', icon: BookText },
-      { href: '/justificants', label: 'Justificants', icon: FileCheck },
     ],
-  },
-  {
-    items: [{ href: '/balanc', label: 'Comptabilitat', icon: PiggyBank, roles: ['ADMIN'] }],
   },
   {
     title: 'Gestió',
@@ -54,6 +50,8 @@ const GROUPS: NavGroup[] = [
       { href: '/plantilles', label: 'Plantilles', icon: MessageCircle },
       { href: '/manteniment', label: 'Manteniment', icon: Wrench },
       { href: '/personal', label: 'Personal', icon: UserCog, roles: ['ADMIN'] },
+      { href: '/balanc', label: 'Comptabilitat', icon: PiggyBank, roles: ['ADMIN'] },
+      { href: '/justificants', label: 'Justificants', icon: FileCheck },
     ],
   },
 ];
