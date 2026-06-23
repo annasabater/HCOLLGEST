@@ -20,6 +20,7 @@ export const tipusPagamentValues = [
 // Opcions que s'ofereixen a l'alta d'estada (la resta es conserven per a
 // registres antics, però no es proposen de nou).
 export const tipusPagamentFormValues = [
+  'DESTINACIO',
   'BIZUM',
   'EFECTIU',
   'TRANSFERENCIA',

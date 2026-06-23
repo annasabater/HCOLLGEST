@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { EstanciaActions } from '@/components/estancia/estancia-actions';
 import { ViatgerFirma } from '@/components/estancia/viatger-firma';
 import { AmpliarEstada } from '@/components/estancia/ampliar-estada';
+import { EliminarEstada } from '@/components/estancia/eliminar-estada';
 import { FacturaPanel } from '@/components/factura/factura-panel';
 import { DipositsPanel } from '@/components/factura/diposits-panel';
 import { preuSuggeritAllotjament } from '@/lib/services/tarifes';
@@ -85,6 +86,14 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 <FileSignature className="h-4 w-4" /> Fitxa PDF
               </Button>
             </a>
+            {canWrite && (
+              <EliminarEstada
+                id={estancia.id}
+                contracte={`${estancia.numContracte}/${estancia.anyContracte}`}
+                comunicada={estancia.enviaments.some((e) => e.estat === 'ENVIAT' || e.estat === 'ACCEPTAT')}
+                nFactures={estancia.factures.length}
+              />
+            )}
             {estancia.esBorrany && (
               <Badge tone="warning" title="Registre incomplet: completa les dades per poder pujar-lo a Mossos.">
                 Esborrany

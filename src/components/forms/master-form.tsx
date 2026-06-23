@@ -139,7 +139,7 @@ export function MasterForm({
     dataFormalitzacio: new Date().toISOString().slice(0, 10),
     dataEntrada: '',
     dataSortida: '',
-    tipusPagament: 'EFECTIU',
+    tipusPagament: 'DESTINACIO',
     habitacioId: '',
     teInternet: true,
     observacions: '',
@@ -458,6 +458,7 @@ export function MasterForm({
         <CardBody className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Número de contracte" required error={err('estancia.numContracte')}>
             <Input
+              uppercase
               value={estancia.numContracte}
               onChange={(e) => setEstancia({ ...estancia, numContracte: e.target.value })}
             />
@@ -517,6 +518,7 @@ export function MasterForm({
           </Field>
           <Field label="Observacions" className="sm:col-span-2 lg:col-span-3">
             <Input
+              uppercase
               value={estancia.observacions}
               onChange={(e) => setEstancia({ ...estancia, observacions: e.target.value })}
             />
@@ -651,10 +653,10 @@ export function MasterForm({
                 </div>
               )}
               <Field label="Nom" required error={err(P('nom'))}>
-                <Input value={v.nom} onChange={(e) => setV(i, { nom: e.target.value })} onBlur={() => checkAvis(i)} />
+                <Input uppercase value={v.nom} onChange={(e) => setV(i, { nom: e.target.value })} onBlur={() => checkAvis(i)} />
               </Field>
               <Field label="Primer cognom" required error={err(P('cognom1'))}>
-                <Input value={v.cognom1} onChange={(e) => setV(i, { cognom1: e.target.value })} onBlur={() => checkAvis(i)} />
+                <Input uppercase value={v.cognom1} onChange={(e) => setV(i, { cognom1: e.target.value })} onBlur={() => checkAvis(i)} />
               </Field>
               <Field
                 label="Segon cognom"
@@ -662,7 +664,7 @@ export function MasterForm({
                 error={err(P('cognom2'))}
                 hint={isDni ? 'Obligatori amb DNI/NIF' : undefined}
               >
-                <Input value={v.cognom2} onChange={(e) => setV(i, { cognom2: e.target.value })} />
+                <Input uppercase value={v.cognom2} onChange={(e) => setV(i, { cognom2: e.target.value })} />
               </Field>
 
               {!esReserva && (
@@ -686,6 +688,7 @@ export function MasterForm({
                   <Field label="Número de document" required={!menor} error={err(P('numDocument'))}>
                     <div className="flex gap-2">
                       <Input
+                        uppercase
                         value={v.numDocument}
                         onChange={(e) => setV(i, { numDocument: e.target.value })}
                         onBlur={() => lookupHuesped(i)}
@@ -701,7 +704,7 @@ export function MasterForm({
                     error={err(P('numSuport'))}
                     hint={isDniNie ? 'Obligatori amb DNI/NIE' : undefined}
                   >
-                    <Input value={v.numSuport} onChange={(e) => setV(i, { numSuport: e.target.value })} />
+                    <Input uppercase value={v.numSuport} onChange={(e) => setV(i, { numSuport: e.target.value })} />
                   </Field>
                   <Field label="Data d’expedició" error={err(P('dataExpedicio'))}>
                     <Input
@@ -722,6 +725,7 @@ export function MasterForm({
                   </Field>
                   <Field label="Nacionalitat" error={err(P('nacionalitat'))}>
                     <Input
+                      uppercase
                       list="paisos"
                       value={v.nacionalitat}
                       onChange={(e) => setV(i, { nacionalitat: e.target.value })}
@@ -756,13 +760,13 @@ export function MasterForm({
               {!esReserva && (
                 <>
                   <Field label="Adreça" required error={err(P('adreca'))} className="lg:col-span-2">
-                    <Input value={v.adreca} onChange={(e) => setV(i, { adreca: e.target.value })} />
+                    <Input uppercase value={v.adreca} onChange={(e) => setV(i, { adreca: e.target.value })} />
                   </Field>
                   <Field label="Codi postal" required error={err(P('codiPostal'))}>
                     <Input value={v.codiPostal} onChange={(e) => setV(i, { codiPostal: e.target.value })} />
                   </Field>
                   <Field label="País" error={err(P('pais'))}>
-                    <Input list="paisos" value={v.pais} onChange={(e) => setV(i, { pais: e.target.value })} />
+                    <Input uppercase list="paisos" value={v.pais} onChange={(e) => setV(i, { pais: e.target.value })} />
                   </Field>
                   {!ext ? (
                     <>
@@ -789,6 +793,7 @@ export function MasterForm({
                         hint={v.provincia ? 'Tria’l de la llista (codi INE oficial).' : 'Tria primer la província.'}
                       >
                         <Input
+                          uppercase
                           list={v.provincia ? provId(v.provincia) : undefined}
                           value={v.municipi}
                           disabled={!v.provincia}
@@ -800,7 +805,7 @@ export function MasterForm({
                     </>
                   ) : (
                     <Field label="Localitat" required error={err(P('localitat'))}>
-                      <Input value={v.localitat} onChange={(e) => setV(i, { localitat: e.target.value })} />
+                      <Input uppercase value={v.localitat} onChange={(e) => setV(i, { localitat: e.target.value })} />
                     </Field>
                   )}
                   <Field
@@ -855,10 +860,10 @@ export function MasterForm({
             {mascotes.map((m, i) => (
               <div key={i} className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
                 <Field label="Nom">
-                  <Input value={m.nom} onChange={(e) => setM(i, { nom: e.target.value })} placeholder="Nom de la mascota" />
+                  <Input uppercase value={m.nom} onChange={(e) => setM(i, { nom: e.target.value })} placeholder="Nom de la mascota" />
                 </Field>
                 <Field label="Espècie">
-                  <Input value={m.especie} onChange={(e) => setM(i, { especie: e.target.value })} placeholder="Gos, gat…" />
+                  <Input uppercase value={m.especie} onChange={(e) => setM(i, { especie: e.target.value })} placeholder="Gos, gat…" />
                 </Field>
                 <Field label="Mida">
                   <Select value={m.mida} onChange={(e) => setM(i, { mida: e.target.value })}>

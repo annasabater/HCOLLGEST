@@ -46,7 +46,7 @@ export default async function HuespedesPage({
     <div>
       <PageHeader
         title="Hostes"
-        subtitle="Fitxa única de cada persona (CRM)"
+        subtitle="Fitxa única de cada persona"
         actions={
           <Link href="/avisos">
             <Button variant="outline" size="sm">

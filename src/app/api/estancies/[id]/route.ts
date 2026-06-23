@@ -63,4 +63,35 @@ export async function PATCH(req: Request, ctx: Ctx) {
   }
 }
 
+// DELETE /api/estancies/:id — esborrat lògic de l'estada i de les seves factures
+// (la treu del llibre, de les llistes i de la comptabilitat). Les dades queden a
+// la BD i a l'audit_log (recuperable per un administrador si cal).
+export async function DELETE(req: Request, ctx: Ctx) {
+  try {
+    const auth = await authorize(ROLES_WRITE);
+    if (auth instanceof Response) return auth;
+    const { id } = await ctx.params;
+
+    const exists = await prisma.estancia.findFirst({ where: { id, deletedAt: null }, select: { id: true } });
+    if (!exists) return notFound();
+
+    const now = new Date();
+    await prisma.$transaction([
+      prisma.factura.updateMany({ where: { estanciaId: id, deletedAt: null }, data: { deletedAt: now } }),
+      prisma.estancia.update({ where: { id }, data: { deletedAt: now } }),
+    ]);
+
+    await audit({
+      usuariId: auth.id,
+      accio: 'ELIMINACIO',
+      entitat: 'estancia',
+      entitatId: id,
+      ip: clientIp(req),
+    });
+    return ok({ ok: true });
+  } catch (err) {
+    return handleApiError(err);
+  }
+}
+
 export const dynamic = 'force-dynamic';

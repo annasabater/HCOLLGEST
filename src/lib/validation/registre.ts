@@ -194,7 +194,7 @@ function buildRegistreSchema(borrany: boolean) {
         if (!v.adreca) at('adreca', 'Adreça obligatòria (contracte en curs)');
         if (!v.codiPostal) at('codiPostal', 'Codi postal obligatori');
         // Província i municipi: opcionals en desar (es validen en pujar a Mossos).
-        if (v.pais && v.pais !== 'Espanya' && !v.localitat) {
+        if (v.pais && v.pais.toLowerCase() !== 'espanya' && !v.localitat) {
           at('localitat', 'Localitat obligatòria (país estranger)');
         }
       });

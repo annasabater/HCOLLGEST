@@ -43,7 +43,7 @@ const GUIA: Section[] = [
   {
     h: 'Hostes',
     p: [
-      'Fitxa única de cada persona (CRM). Cerca per nom, document, email o telèfon.',
+      'Fitxa única de cada persona. Cerca per nom, document, email o telèfon.',
       'A la llista, els hostes marcats com a "no acollir" surten amb una etiqueta vermella, i els que tenen mascota amb una petjada.',
       'Dins la fitxa: dades de contacte, historial d\'estades, documents d\'identitat (xifrats), mascotes i notes internes. Hi ha accés directe als Avisos interns.',
     ],

@@ -294,12 +294,25 @@ export const PAIS_ISO3: Record<string, string> = {
   Vietnam: 'VNM',
 };
 
+// Índex de noms de país normalitzats (minúscules) → ISO3, perquè la cerca
+// funcioni encara que el nom s'introdueixi en MAJÚSCULES (el formulari posa el
+// text en majúscules). Es construeix un sol cop.
+let PAIS_ISO3_NORM: Record<string, string> | undefined;
+function paisIso3Norm(): Record<string, string> {
+  if (!PAIS_ISO3_NORM) {
+    PAIS_ISO3_NORM = {};
+    for (const [nom, iso] of Object.entries(PAIS_ISO3)) PAIS_ISO3_NORM[nom.toLowerCase()] = iso;
+  }
+  return PAIS_ISO3_NORM;
+}
+
 export function paisToISO3(nom: string | undefined | null): string | undefined {
   if (!nom) return undefined;
   const val = nom.trim();
   // Si ja ens donen un codi alfa-3, l'acceptem tal qual.
   if (/^[A-Za-z]{3}$/.test(val)) return val.toUpperCase();
-  return PAIS_ISO3[val];
+  // Coincidència exacta i, si no, sense distingir majúscules/minúscules.
+  return PAIS_ISO3[val] ?? paisIso3Norm()[val.toLowerCase()];
 }
 
 /** Determina si un país és Espanya (per nom o per codi ESP). */

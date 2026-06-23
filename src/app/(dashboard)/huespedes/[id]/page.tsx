@@ -12,6 +12,7 @@ import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { AnotacioForm } from '@/components/huesped/anotacio-form';
 import { DocumentsHuesped } from '@/components/huesped/documents-huesped';
 import { MascotesPanel } from '@/components/huesped/mascotes-panel';
+import { EliminarHoste } from '@/components/huesped/eliminar-hoste';
 import { formatDate } from '@/lib/utils';
 import { nights } from '@/lib/dates';
 import { TIPUS_DOCUMENT_LABELS, SENTIT_ANOTACIO_LABELS } from '@/lib/validation/enums';
@@ -77,6 +78,13 @@ export default async function HuespedDetailPage({ params }: { params: Promise<{ 
                   <Pencil className="h-4 w-4" /> Editar
                 </Button>
               </Link>
+            )}
+            {canEdit && (
+              <EliminarHoste
+                id={huesped.id}
+                nom={`${huesped.nom} ${huesped.cognom1}`}
+                visites={estancies.length}
+              />
             )}
           </div>
         }
