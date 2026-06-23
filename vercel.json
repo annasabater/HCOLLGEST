@@ -5,6 +5,10 @@
     {
       "path": "/api/cron/backup",
       "schedule": "0 6 1 * *"
+    },
+    {
+      "path": "/api/cron/uptime",
+      "schedule": "0 7 * * *"
     }
   ]
 }

@@ -314,6 +314,12 @@ export function validaParteErrors(parte: ParteViatgers): string[] {
     }
   });
 
+  return errs;
+}
+
+/** Valida el parte §2.3 y lanza si falta algún dato obligatorio. */
+export function validaParte(parte: ParteViatgers): void {
+  const errs = validaParteErrors(parte);
   if (errs.length) throw new Error('Validación fallida:\n - ' + errs.join('\n - '));
 }
 

@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, UserCheck, Search, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, UserCheck, Search, AlertTriangle, PawPrint } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { RegistreSchema, type RegistreInput } from '@/lib/validation/registre';
+import { RegistreSchema, RegistreEsborranySchema, type RegistreInput } from '@/lib/validation/registre';
 import {
   optionsFrom,
   tipusRegistreValues,
@@ -21,6 +21,8 @@ import {
   TIPUS_PAGAMENT_LABELS,
   parentescValues,
   PARENTESC_LABELS,
+  midaAnimalValues,
+  MIDA_ANIMAL_LABELS,
 } from '@/lib/validation/enums';
 import { isMenor } from '@/lib/dates';
 import { postJSON, ApiError, getJSON } from '@/lib/api';
@@ -103,6 +105,8 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
     observacions: '',
   });
   const [viatgers, setViatgers] = useState<ViatgerState[]>([emptyViatger(true)]);
+  const [portaMascota, setPortaMascota] = useState(false);
+  const [mascotes, setMascotes] = useState<{ nom: string; especie: string; mida: string }[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -129,6 +133,17 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
 
   const setTitular = (i: number) =>
     setViatgers((prev) => prev.map((v, idx) => ({ ...v, esTitular: idx === i })));
+
+  // --- Mascotes (opcional) ---
+  const emptyMascota = () => ({ nom: '', especie: 'Gos', mida: '' });
+  const togglePortaMascota = (on: boolean) => {
+    setPortaMascota(on);
+    setMascotes(on ? (prev => (prev.length ? prev : [emptyMascota()]))(mascotes) : []);
+  };
+  const addMascota = () => setMascotes((prev) => [...prev, emptyMascota()]);
+  const setM = (i: number, patch: Partial<{ nom: string; especie: string; mida: string }>) =>
+    setMascotes((prev) => prev.map((m, idx) => (idx === i ? { ...m, ...patch } : m)));
+  const removeMascota = (i: number) => setMascotes((prev) => prev.filter((_, idx) => idx !== i));
 
   const addViatger = () => setViatgers((prev) => [...prev, emptyViatger(prev.length === 0)]);
   const removeViatger = (i: number) =>
@@ -177,6 +192,16 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
         parentesc: (v.parentesc || undefined) as RegistreInput['viatgers'][number]['parentesc'],
         esMenor: v.esMenor,
       })),
+      // Només mascotes amb nom; l'espècie té un valor per defecte.
+      mascotes: portaMascota
+        ? mascotes
+            .filter((m) => m.nom.trim())
+            .map((m) => ({
+              nom: m.nom.trim(),
+              especie: m.especie.trim() || 'Animal',
+              mida: m.mida || undefined,
+            }))
+        : undefined,
     };
   }
 
@@ -238,12 +263,12 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
     }
   }
 
-  async function doSubmit(force: boolean) {
+  async function doSubmit(force: boolean, borrany = false) {
     setServerError(null);
     const input = buildInput();
 
-    // 1) Validació dura (obligatorietat §2.3): bloqueja sempre.
-    const parsed = RegistreSchema.safeParse(input);
+    // 1) Validació. En esborrany és laxa (es pot desar incomplet); si no, dura (§2.3).
+    const parsed = (borrany ? RegistreEsborranySchema : RegistreSchema).safeParse(input);
     if (!parsed.success) {
       const map: Record<string, string> = {};
       for (const issue of parsed.error.issues) {
@@ -251,31 +276,41 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
       }
       setErrors(map);
       setWarnings([]);
-      setServerError('Revisa els camps marcats.');
+      setServerError(
+        borrany
+          ? 'Per desar com a esborrany calen, com a mínim, nom i cognom del titular i les dates.'
+          : 'Falten dades obligatòries. Completa-les, o desa com a esborrany i acaba-ho més tard.',
+      );
       return;
     }
     setErrors({});
 
     // 2) Validació de FORMAT (DNI/NIE, codi postal): avisa però es pot forçar.
-    const fw = formatWarnings(
-      viatgers.map((v) => ({
-        tipusDocument: v.tipusDocument || undefined,
-        numDocument: v.numDocument || undefined,
-        codiPostal: v.codiPostal || undefined,
-        pais: v.pais || undefined,
-        dataNaixement: v.dataNaixement || undefined,
-        dataExpedicio: v.dataExpedicio || undefined,
-      })),
-    );
-    if (fw.length > 0 && !force) {
-      setWarnings(fw);
-      return; // espera confirmació "Desar igualment"
+    //    En esborrany no molestem amb avisos de format (el registre ja és parcial).
+    if (!borrany) {
+      const fw = formatWarnings(
+        viatgers.map((v) => ({
+          tipusDocument: v.tipusDocument || undefined,
+          numDocument: v.numDocument || undefined,
+          codiPostal: v.codiPostal || undefined,
+          pais: v.pais || undefined,
+          dataNaixement: v.dataNaixement || undefined,
+          dataExpedicio: v.dataExpedicio || undefined,
+        })),
+      );
+      if (fw.length > 0 && !force) {
+        setWarnings(fw);
+        return; // espera confirmació "Desar igualment"
+      }
     }
     setWarnings([]);
 
     setSubmitting(true);
     try {
-      const res = await postJSON<{ estanciaId: string }>('/api/estancies', input);
+      const res = await postJSON<{ estanciaId: string }>(
+        `/api/estancies${borrany ? '?borrany=1' : ''}`,
+        input,
+      );
       router.push(`/estancies/${res.estanciaId}`);
     } catch (err) {
       if (err instanceof ApiError) setServerError(err.message);
@@ -394,16 +429,6 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
                 </option>
               ))}
             </Select>
-          </Field>
-          <Field label="Internet">
-            <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={estancia.teInternet}
-                onChange={(e) => setEstancia({ ...estancia, teInternet: e.target.checked })}
-              />
-              L’establiment disposa d’internet
-            </label>
           </Field>
           <Field label="Observacions" className="sm:col-span-2 lg:col-span-3">
             <Input
@@ -648,6 +673,60 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
         );
       })}
 
+      {/* --- Mascotes (opcional) --- */}
+      <Card>
+        <CardHeader className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <PawPrint className="h-5 w-5 text-brand-600" /> Mascotes
+          </CardTitle>
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              checked={portaMascota}
+              onChange={(e) => togglePortaMascota(e.target.checked)}
+            />
+            Porten mascota
+          </label>
+        </CardHeader>
+        {portaMascota && (
+          <CardBody className="space-y-3">
+            {mascotes.map((m, i) => (
+              <div key={i} className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
+                <Field label="Nom">
+                  <Input value={m.nom} onChange={(e) => setM(i, { nom: e.target.value })} placeholder="Nom de la mascota" />
+                </Field>
+                <Field label="Espècie">
+                  <Input value={m.especie} onChange={(e) => setM(i, { especie: e.target.value })} placeholder="Gos, gat…" />
+                </Field>
+                <Field label="Mida">
+                  <Select value={m.mida} onChange={(e) => setM(i, { mida: e.target.value })}>
+                    <option value="">—</option>
+                    {midaAnimalValues.map((v) => (
+                      <option key={v} value={v}>
+                        {MIDA_ANIMAL_LABELS[v]}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                {mascotes.length > 1 && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => removeMascota(i)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            <div className="flex items-center justify-between">
+              <Button type="button" variant="outline" size="sm" onClick={addMascota}>
+                <Plus className="h-4 w-4" /> Afegir mascota
+              </Button>
+              <p className="text-xs text-slate-400">
+                Només cal el nom; la mida és opcional. S’associen al titular de l’estada.
+              </p>
+            </div>
+          </CardBody>
+        )}
+      </Card>
+
       {warnings.length > 0 && (
         <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
           <p className="mb-1 flex items-center gap-2 text-sm font-medium text-amber-800">
@@ -680,6 +759,15 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
               Desar igualment
             </Button>
           )}
+          <Button
+            type="button"
+            variant="outline"
+            disabled={submitting}
+            title="Desa amb dades incompletes per acabar-ho més tard. No es podrà pujar a Mossos fins completar-lo."
+            onClick={() => doSubmit(false, true)}
+          >
+            Desar com a esborrany
+          </Button>
           <Button type="submit" disabled={submitting}>
             {submitting ? 'Desant…' : 'Desar estada'}
           </Button>

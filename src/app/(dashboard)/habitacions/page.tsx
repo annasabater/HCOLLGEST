@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/table';
+import { CalendariHabitacio } from '@/components/habitacio/calendari-habitacio';
 import { formatDate, cn } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -53,6 +54,8 @@ export default async function HabitacionsPage() {
       {habitacions.length === 0 ? (
         <EmptyState>No hi ha habitacions configurades.</EmptyState>
       ) : (
+        <>
+        <CalendariHabitacio habitacions={habitacions.map((h) => ({ id: h.id, nom: h.nom }))} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {habitacions.map((h) => {
             const occ = ocupMap.get(h.id);
@@ -106,6 +109,7 @@ export default async function HabitacionsPage() {
             );
           })}
         </div>
+        </>
       )}
     </div>
   );

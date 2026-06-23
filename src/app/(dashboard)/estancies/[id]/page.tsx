@@ -85,6 +85,11 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 <FileSignature className="h-4 w-4" /> Fitxa PDF
               </Button>
             </a>
+            {estancia.esBorrany && (
+              <Badge tone="warning" title="Registre incomplet: completa les dades per poder pujar-lo a Mossos.">
+                Esborrany
+              </Badge>
+            )}
             <Badge tone="info">{TIPUS_REGISTRE_LABELS[estancia.tipusRegistre]}</Badge>
           </div>
         }

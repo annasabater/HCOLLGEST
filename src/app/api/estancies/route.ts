@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db';
 import { authorize, clientIp } from '@/lib/auth/guard';
 import { ROLES_WRITE } from '@/lib/auth/rbac';
 import { created, handleApiError, ok } from '@/lib/http';
-import { RegistreSchema } from '@/lib/validation/registre';
+import { RegistreSchema, RegistreEsborranySchema } from '@/lib/validation/registre';
 import { createRegistre } from '@/lib/services/registre';
 import type { Prisma } from '@prisma/client';
 
@@ -44,10 +44,14 @@ export async function POST(req: Request) {
     const auth = await authorize(ROLES_WRITE);
     if (auth instanceof Response) return auth;
 
+    const borrany = new URL(req.url).searchParams.get('borrany') === '1';
     const body = await req.json().catch(() => null);
-    const input = RegistreSchema.parse(body);
+    // En esborrany s'admeten dades incompletes (§2.3 es valida en pujar a Mossos).
+    const input = (borrany ? RegistreEsborranySchema : RegistreSchema).parse(body);
 
-    const result = await createRegistre(input, { id: auth.id }, clientIp(req));
+    const result = await createRegistre(input, { id: auth.id }, clientIp(req), {
+      esBorrany: borrany,
+    });
     return created(result);
   } catch (err) {
     return handleApiError(err);

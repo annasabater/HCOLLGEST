@@ -12,6 +12,7 @@ import {
   SexeEnum,
   TipusPagamentEnum,
   ParentescEnum,
+  midaAnimalValues,
 } from './enums';
 import { endOfToday, isMenor } from '../dates';
 
@@ -65,6 +66,16 @@ export const ViatgerInputSchema = z.object({
   esMenor: z.boolean().default(false),
 });
 
+/** Mascota opcional vinculada a l'estada (s'associa al titular). */
+export const MascotaInputSchema = z.object({
+  nom: z.string().trim().min(1, 'Cal un nom'),
+  especie: z.string().trim().min(1, 'Cal l’espècie'),
+  mida: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.enum(midaAnimalValues).optional(),
+  ),
+});
+
 export const EstanciaInputSchema = z.object({
   tipusRegistre: TipusRegistreEnum,
   numContracte: z.string().trim().min(1, 'El número de contracte és obligatori'),
@@ -97,6 +108,7 @@ function buildRegistreSchema(borrany: boolean) {
     .object({
       estancia: EstanciaInputSchema,
       viatgers: z.array(ViatgerInputSchema).min(1, 'Cal almenys un viatger'),
+      mascotes: z.array(MascotaInputSchema).optional(),
     })
     .superRefine((data, ctx) => {
       const { estancia, viatgers } = data;
@@ -185,6 +197,7 @@ export const RegistreEsborranySchema = buildRegistreSchema(true);
 export type RegistreInput = z.input<typeof RegistreSchema>;
 export type RegistreParsed = z.output<typeof RegistreSchema>;
 export type ViatgerInput = z.input<typeof ViatgerInputSchema>;
+export type MascotaInput = z.input<typeof MascotaInputSchema>;
 
 // Ampliació d'una estada (1.1, 1.2…): noves dates per al període ampliat.
 export const AmpliacioSchema = z

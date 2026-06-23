@@ -5,7 +5,14 @@
 import 'server-only';
 import { prisma } from '../db';
 import { audit } from '../audit';
-import { buildFileName, buildFitxerBuffer, isLayoutReady, isFormatConfirmat, type Encoding } from '../mossos/fitxer';
+import {
+  buildFileName,
+  buildFitxerBuffer,
+  isLayoutReady,
+  isFormatConfirmat,
+  validaParteErrors,
+  type Encoding,
+} from '../mossos/fitxer';
 import { buildParteFromDb } from '../mossos/build-parte';
 
 const ESTABLIMENT_ID = 'hostal-coll';
@@ -15,6 +22,14 @@ export class MossosConfigError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'MossosConfigError';
+  }
+}
+
+/** El registre està incomplet (§2.3): no es pot pujar a Mossos fins completar-lo. */
+export class MossosIncompletError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'MossosIncompletError';
   }
 }
 
@@ -68,6 +83,18 @@ export async function generateFitxer(
   }
 
   const parte = buildParteFromDb(establiment, estancia, viatgers);
+
+  // §2.3: si falten dades obligatòries, NO es puja a Mossos. L'usuari ha de
+  // completar el registre i tornar-ho a provar (avís clar, no error genèric).
+  const faltes = validaParteErrors(parte);
+  if (faltes.length) {
+    throw new MossosIncompletError(
+      'No s’ha pogut pujar a la web dels Mossos perquè el registre està incomplet. ' +
+        'Edita’l, completa aquestes dades i torna-ho a provar:\n- ' +
+        faltes.join('\n- '),
+    );
+  }
+
   const encoding = (establiment.encoding as Encoding) || 'latin1';
 
   // Secuencia 001..999 basada en el nº de enviaments previos del establecimiento.
@@ -86,6 +113,11 @@ export async function generateFitxer(
       usuariId: actor?.id ?? null,
     },
   });
+
+  // El registre era prou complet per generar el fitxer: ja no és un esborrany.
+  if (estancia.esBorrany) {
+    await prisma.estancia.update({ where: { id: estanciaId }, data: { esBorrany: false } });
+  }
 
   await audit({
     usuariId: actor?.id ?? null,

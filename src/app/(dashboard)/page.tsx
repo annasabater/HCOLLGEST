@@ -8,6 +8,7 @@ import {
   LogOut,
   Receipt,
   Boxes,
+  Clock,
 } from 'lucide-react';
 import { getResum } from '@/lib/services/dashboard';
 import { isFormatConfirmat } from '@/lib/mossos/fitxer';
@@ -30,6 +31,24 @@ export default async function DashboardPage() {
   const user = await getSessionUser();
   const resum = await getResum({ excloureMetodeAltres: teVistaRestringida(user) });
   const isAdmin = user?.role === 'ADMIN';
+
+  // Termini legal: comunicar a Mossos en ≤ 24 h des de l'entrada (estades en curs).
+  const araMs = Date.now();
+  const DIA_MS = 86_400_000;
+  const fmtDur = (ms: number) => {
+    const abs = Math.abs(ms);
+    const h = Math.floor(abs / 3_600_000);
+    const m = Math.floor((abs % 3_600_000) / 60_000);
+    return `${h}h ${m}m`;
+  };
+  const termini24 = resum.pendentsEnviament
+    .filter((e) => e.estat === 'EN_CURS')
+    .map((e) => {
+      const restMs = new Date(e.dataEntrada).getTime() + DIA_MS - araMs;
+      return { e, restMs, vencut: restMs < 0 };
+    })
+    .sort((a, b) => a.restMs - b.restMs);
+  const vencuts24 = termini24.filter((t) => t.vencut);
 
   const alertes = [
     {
@@ -133,6 +152,50 @@ export default async function DashboardPage() {
             </p>
           </div>
         </div>
+      )}
+
+      {/* Termini legal Mossos: alerta vermella si alguna estada ha passat de 24 h */}
+      {vencuts24.length > 0 && (
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+          <div>
+            <p className="font-semibold">
+              {vencuts24.length} {vencuts24.length === 1 ? 'estada' : 'estades'} amb el termini de 24 h
+              VENÇUT — comunica-les a Mossos com abans millor.
+            </p>
+            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-red-700">
+              {vencuts24.slice(0, 6).map((t) => (
+                <Link key={t.e.id} href={`/estancies/${t.e.id}`} className="underline">
+                  {titularNom(t.e.viatgers)} (vençut fa {fmtDur(t.restMs)})
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Compte enrere del termini de 24 h (estades en curs no comunicades) */}
+      {termini24.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-brand-600" />
+            <CardTitle>Termini Mossos (24 h)</CardTitle>
+          </CardHeader>
+          <CardBody className="space-y-1">
+            {termini24.map((t) => (
+              <Link
+                key={t.e.id}
+                href={`/estancies/${t.e.id}`}
+                className="flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50"
+              >
+                <span className="font-medium text-slate-800">{titularNom(t.e.viatgers)}</span>
+                <Badge tone={t.vencut ? 'danger' : t.restMs < 6 * 3_600_000 ? 'warning' : 'info'}>
+                  {t.vencut ? `Vençut fa ${fmtDur(t.restMs)}` : `Queden ${fmtDur(t.restMs)}`}
+                </Badge>
+              </Link>
+            ))}
+          </CardBody>
+        </Card>
       )}
 
       {/* KPIs financers — només per a l'ADMIN */}

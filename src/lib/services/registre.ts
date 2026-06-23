@@ -75,8 +75,9 @@ export async function createRegistre(
   input: RegistreParsed,
   actor: { id: string } | null,
   ip: string | null,
+  opts: { esBorrany?: boolean } = {},
 ): Promise<CreateRegistreResult> {
-  const { estancia, viatgers } = input;
+  const { estancia, viatgers, mascotes } = input;
 
   return prisma.$transaction(async (tx) => {
     const reused: string[] = [];
@@ -125,6 +126,7 @@ export async function createRegistre(
         teInternet: estancia.teInternet ?? null,
         observacions: estancia.observacions ?? null,
         estat: estatFromTipus(estancia.tipusRegistre),
+        esBorrany: opts.esBorrany ?? false,
         ...(estancia.habitacioId ? { habitacio: { connect: { id: estancia.habitacioId } } } : {}),
       },
     });
@@ -140,6 +142,23 @@ export async function createRegistre(
           esMenor: v.esMenor || isMenor(v.dataNaixement, estancia.dataEntrada),
         },
       });
+    }
+
+    // 3.5) Mascotes (opcional): s'associen al titular de l'estada (CRM §5).
+    if (mascotes && mascotes.length > 0) {
+      const titular = resolved.find((r) => r.v.esTitular) ?? resolved[0];
+      if (titular) {
+        for (const m of mascotes) {
+          await tx.animal.create({
+            data: {
+              nom: m.nom,
+              especie: m.especie,
+              mida: m.mida ?? null,
+              huespedId: titular.huespedId,
+            },
+          });
+        }
+      }
     }
 
     // 4) Generar automáticamente la tarea de limpieza de la salida (Fase 1.5):

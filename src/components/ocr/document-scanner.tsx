@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { ScanLine, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { ScanLine, Upload, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { findMrzLines, parseMrz, mrzToViatger, type ViatgerOcr } from '@/lib/ocr/mrz';
 
@@ -9,19 +9,18 @@ const MRZ_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<';
 
 /**
  * Escàner de DNI/passaport: OCR al NAVEGADOR (tesseract.js, sense credencials),
- * llegeix la zona MRZ i autoreplena el formulari (corregible). Si no troba MRZ,
- * avisa que cal que es vegin les línies "<<<" del document.
+ * llegeix la zona MRZ i autoreplena el formulari (corregible). Es pot fer una
+ * foto amb la càmera o pujar una imatge existent (galeria/fitxers). Si no troba
+ * MRZ, avisa que cal que es vegin les línies "<<<" del document.
  */
 export function DocumentScanner({ onExtract }: { onExtract: (v: ViatgerOcr) => void }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const uploadRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [msg, setMsg] = useState<{ tone: 'ok' | 'warn'; text: string } | null>(null);
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = ''; // permet re-escanejar el mateix fitxer
-    if (!file) return;
+  async function processFile(file: File) {
     setBusy(true);
     setProgress(0);
     setMsg(null);
@@ -40,7 +39,7 @@ export function DocumentScanner({ onExtract }: { onExtract: (v: ViatgerOcr) => v
       if (!mrz) {
         setMsg({
           tone: 'warn',
-          text: 'No s’ha trobat la zona MRZ. Fes una foto nítida on es vegin les línies «<<<» del document.',
+          text: 'No s’ha trobat la zona MRZ. Fes (o puja) una imatge nítida on es vegin les línies «<<<» del document.',
         });
         return;
       }
@@ -59,23 +58,42 @@ export function DocumentScanner({ onExtract }: { onExtract: (v: ViatgerOcr) => v
     }
   }
 
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permet re-escanejar el mateix fitxer
+    if (file) processFile(file);
+  }
+
   return (
     <div className="rounded-lg border border-dashed border-brand-300 bg-brand-50/40 p-3">
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Càmera: força el dispositiu de captura al mòbil */}
         <input
-          ref={inputRef}
+          ref={cameraRef}
           type="file"
           accept="image/*"
           capture="environment"
           className="hidden"
           onChange={onFile}
         />
-        <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => inputRef.current?.click()}>
+        {/* Pujada: galeria / fitxers (sense capture) */}
+        <input
+          ref={uploadRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={onFile}
+        />
+        <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => cameraRef.current?.click()}>
           <ScanLine className="h-4 w-4" />
-          {busy ? `Llegint… ${progress}%` : 'Escanejar DNI / passaport'}
+          {busy ? `Llegint… ${progress}%` : 'Fer foto'}
+        </Button>
+        <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => uploadRef.current?.click()}>
+          <Upload className="h-4 w-4" />
+          Pujar foto
         </Button>
         <span className="text-xs text-slate-500">
-          Autoreplena nom, cognoms, document, naixement, sexe i nacionalitat.
+          DNI / passaport · autoreplena nom, cognoms, document, naixement, sexe i nacionalitat.
         </span>
       </div>
       {msg && (

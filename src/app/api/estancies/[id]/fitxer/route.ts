@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { authorize, clientIp } from '@/lib/auth/guard';
 import { ROLES_WRITE } from '@/lib/auth/rbac';
 import { handleApiError } from '@/lib/http';
-import { generateFitxer, MossosConfigError } from '@/lib/services/mossos';
+import { generateFitxer, MossosConfigError, MossosIncompletError } from '@/lib/services/mossos';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -33,6 +33,9 @@ export async function POST(req: Request, ctx: Ctx) {
   } catch (err) {
     if (err instanceof MossosConfigError) {
       return NextResponse.json({ error: err.message, code: 'MOSSOS_CONFIG' }, { status: 422 });
+    }
+    if (err instanceof MossosIncompletError) {
+      return NextResponse.json({ error: err.message, code: 'MOSSOS_INCOMPLET' }, { status: 422 });
     }
     return handleApiError(err);
   }
