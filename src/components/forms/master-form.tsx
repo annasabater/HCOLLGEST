@@ -165,6 +165,11 @@ export function MasterForm({
   // Reaprofita una fitxa d'hoste existent (des del cercador) en el viatger i.
   const applyHuesped = (i: number, h: HosteLite) => setV(i, hostePatch(h));
 
+  // Desfà el reaprofitament: torna el viatger i als camps en blanc (conservant
+  // si és el titular). Útil si s'ha seleccionat un hoste per error.
+  const clearHuesped = (i: number) =>
+    setViatgers((prev) => prev.map((v, idx) => (idx === i ? emptyViatger(v.esTitular) : v)));
+
   // Carrega (un sol cop) els municipis INE d'una província per al selector.
   const provId = (prov: string) => 'mun-' + prov.replace(/[^a-zA-Z0-9]/g, '');
   async function loadMunicipis(prov: string) {
@@ -622,6 +627,15 @@ export function MasterForm({
             <CardBody className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div className="sm:col-span-2 lg:col-span-3">
                 <HosteSearch onSelect={(h) => applyHuesped(i, h)} />
+                {(v.huespedId || v._recurrent) && (
+                  <button
+                    type="button"
+                    onClick={() => clearHuesped(i)}
+                    className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-red-600"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Treure l’hoste seleccionat i buidar els camps
+                  </button>
+                )}
               </div>
               {(v._noAcollir || v._avisAlerta || (v._anotacions && v._anotacions.length > 0)) && (
                 <div className="space-y-2 sm:col-span-2 lg:col-span-3">

@@ -20,6 +20,9 @@ export async function POST(req: Request, ctx: Ctx) {
     const body = await req.json().catch(() => null);
     const data = DipositCreateSchema.parse(body);
 
+    // INGRES (p. ex. finança mascota): es crea RETINGUT → ja compta com a ingrés
+    // (amb data de resolució), però es pot tornar després. CUSTODIA: fiança normal.
+    const esIngres = data.destinacio === 'INGRES';
     const diposit = await prisma.diposit.create({
       data: {
         estanciaId: id,
@@ -27,7 +30,8 @@ export async function POST(req: Request, ctx: Ctx) {
         data: data.data ?? new Date(),
         metode: data.metode,
         notes: data.notes ?? null,
-        estat: 'EN_CUSTODIA',
+        estat: esIngres ? 'RETINGUT' : 'EN_CUSTODIA',
+        dataResolucio: esIngres ? (data.data ?? new Date()) : null,
       },
     });
     await audit({

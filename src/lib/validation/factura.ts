@@ -50,11 +50,14 @@ export type FacturaCreateInput = z.input<typeof FacturaCreateSchema>;
 export type LiniaInput = z.input<typeof LiniaInputSchema>;
 
 // Dipòsit/fiança de garantia (els "altres"): no és ingrés fins que es retén.
+// destinacio: CUSTODIA = fiança retornable (no és ingrés); INGRES = càrrec que
+// compta com a ingrés ja (p. ex. "finança mascota"), però retornable després.
 export const DipositCreateSchema = z.object({
   import: z.coerce.number().positive('L’import ha de ser positiu'),
   data: z.coerce.date().optional(),
   metode: z.enum(metodeCobramentValues),
   notes: optStr,
+  destinacio: z.enum(['CUSTODIA', 'INGRES']).default('CUSTODIA'),
 });
 
 export const DipositResolSchema = z.object({

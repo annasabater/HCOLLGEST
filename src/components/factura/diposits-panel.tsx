@@ -25,11 +25,22 @@ const ESTAT_LABEL: Record<Diposit['estat'], string> = {
   RETINGUT: 'Retingut (ingrés)',
 };
 
+// Opcions del desplegable en crear: fiances (van a custòdia) + finança mascota
+// (va a ingressos, retornable). El valor 'FINANCA_MASCOTA' és el que enruta a ingrés.
+const DIPOSIT_OPCIONS = [
+  { value: 'EFECTIU', label: 'Fiança · Efectiu (custòdia)' },
+  { value: 'TARGETA', label: 'Fiança · Targeta (custòdia)' },
+  { value: 'TRANSFERENCIA', label: 'Fiança · Transferència (custòdia)' },
+  { value: 'BIZUM', label: 'Fiança · Bizum (custòdia)' },
+  { value: 'ALTRES', label: 'Fiança (altres) (custòdia)' },
+  { value: 'FINANCA_MASCOTA', label: 'Finança mascota (ingrés retornable)' },
+] as const;
+
 export function DipositsPanel({ estanciaId, diposits }: { estanciaId: string; diposits: Diposit[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [importVal, setImport] = useState('');
-  const [metode, setMetode] = useState('EFECTIU');
+  const [seleccio, setSeleccio] = useState('EFECTIU');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -85,10 +96,12 @@ export function DipositsPanel({ estanciaId, diposits }: { estanciaId: string; di
     setBusy(true);
     setError(null);
     try {
+      const esIngres = seleccio === 'FINANCA_MASCOTA';
       await postJSON(`/api/estancies/${estanciaId}/diposits`, {
         import: Number(importVal),
-        metode,
-        notes: notes || undefined,
+        metode: esIngres ? 'ALTRES' : seleccio,
+        destinacio: esIngres ? 'INGRES' : 'CUSTODIA',
+        notes: notes || (esIngres ? 'Finança mascota' : undefined),
       });
       setImport('');
       setNotes('');
@@ -110,9 +123,9 @@ export function DipositsPanel({ estanciaId, diposits }: { estanciaId: string; di
   return (
     <div className="space-y-3">
       <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-        Només per a <strong>fiances de garantia retornables</strong> (no són ingrés fins que es
-        retenen). Si són diners que <strong>cobres</strong> (p. ex. un pagament per avançat d’una
-        reserva), registra’ls com a <strong>cobrament</strong>, no aquí.
+        <strong>Fiança</strong> = garantia retornable: queda <strong>en custòdia</strong> i no és
+        ingrés fins que la retens. <strong>Finança mascota</strong> = un càrrec que compta com a{' '}
+        <strong>ingrés</strong> ja, però que pots tornar (reemborsar) després.
       </p>
       <div className="flex flex-wrap gap-3 rounded-lg bg-slate-50 px-3 py-2 text-sm">
         <span>
@@ -171,9 +184,24 @@ export function DipositsPanel({ estanciaId, diposits }: { estanciaId: string; di
               <Button type="button" size="sm" variant="outline" onClick={() => startEdit(d)}>
                 <Pencil className="h-4 w-4" /> Editar
               </Button>
-              {d.estat !== 'EN_CUSTODIA' && (
+              {d.estat === 'EN_CUSTODIA' && (
+                <>
+                  <Button type="button" size="sm" variant="outline" onClick={() => resoldre(d.id, 'TORNAT')}>
+                    <Undo2 className="h-4 w-4" /> Tornar a l’hoste
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => resoldre(d.id, 'RETINGUT')}>
+                    Retenir (ingrés)
+                  </Button>
+                </>
+              )}
+              {d.estat === 'RETINGUT' && (
+                <Button type="button" size="sm" variant="outline" onClick={() => resoldre(d.id, 'TORNAT')}>
+                  <Undo2 className="h-4 w-4" /> Tornar (reemborsar)
+                </Button>
+              )}
+              {d.estat === 'TORNAT' && (
                 <Button type="button" size="sm" variant="outline" onClick={() => resoldre(d.id, 'EN_CUSTODIA')}>
-                  <Undo2 className="h-4 w-4" /> Tornar a custòdia
+                  <Undo2 className="h-4 w-4" /> Reactivar (custòdia)
                 </Button>
               )}
               <Button type="button" size="sm" variant="ghost" onClick={() => eliminar(d.id)} title="Eliminar">
@@ -188,8 +216,8 @@ export function DipositsPanel({ estanciaId, diposits }: { estanciaId: string; di
         <form onSubmit={crear} className="space-y-2 rounded-lg border border-slate-200 p-3">
           <div className="grid grid-cols-2 gap-2">
             <Input type="number" step="0.01" placeholder="Import €" value={importVal} onChange={(e) => setImport(e.target.value)} />
-            <Select value={metode} onChange={(e) => setMetode(e.target.value)}>
-              {optionsFrom(metodeCobramentValues, METODE_COBRAMENT_LABELS).map((o) => (
+            <Select value={seleccio} onChange={(e) => setSeleccio(e.target.value)}>
+              {DIPOSIT_OPCIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
