@@ -41,7 +41,7 @@ const GROUPS: NavGroup[] = [
       { href: '/estancies', label: 'Estades', icon: BedDouble },
       { href: '/calendari', label: 'Calendari', icon: CalendarDays },
       { href: '/neteja', label: 'Neteja', icon: Sparkles },
-      { href: '/llibre', label: 'Llibre registre', icon: BookText },
+      { href: '/llibre', label: 'Llibre registre de viatgers', icon: BookText },
     ],
   },
   {

@@ -26,6 +26,9 @@ export default async function HuespedDetailPage({ params }: { params: Promise<{ 
     where: { id, deletedAt: null },
     include: {
       estancies: {
+        // Només estades NO eliminades: una estada esborrada (soft-delete) no ha
+        // de continuar sortint a l'historial ni comptar a les estadístiques.
+        where: { estancia: { deletedAt: null } },
         include: {
           estancia: {
             include: {
