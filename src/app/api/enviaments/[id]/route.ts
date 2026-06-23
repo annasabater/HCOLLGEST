@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 import { authorize, clientIp } from '@/lib/auth/guard';
 import { ROLES_WRITE } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
-import { handleApiError, ok } from '@/lib/http';
+import { handleApiError, notFound, ok } from '@/lib/http';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -47,6 +47,36 @@ export async function PATCH(req: Request, ctx: Ctx) {
     });
 
     return ok({ enviament });
+  } catch (err) {
+    return handleApiError(err);
+  }
+}
+
+// DELETE /api/enviaments/:id — elimina un comprovant/justificant de Mossos creat
+// per error. NO toca l'estada: aquesta torna a quedar com a pendent de comunicar.
+export async function DELETE(req: Request, ctx: Ctx) {
+  try {
+    const auth = await authorize(ROLES_WRITE);
+    if (auth instanceof Response) return auth;
+    const { id } = await ctx.params;
+
+    const exists = await prisma.enviamentMossos.findUnique({
+      where: { id },
+      select: { id: true, estanciaId: true, estat: true },
+    });
+    if (!exists) return notFound();
+
+    await prisma.enviamentMossos.delete({ where: { id } });
+
+    await audit({
+      usuariId: auth.id,
+      accio: 'ELIMINACIO',
+      entitat: 'enviament_mossos',
+      entitatId: id,
+      detall: { estanciaId: exists.estanciaId, estat: exists.estat },
+      ip: clientIp(req),
+    });
+    return ok({ ok: true });
   } catch (err) {
     return handleApiError(err);
   }

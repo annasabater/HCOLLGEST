@@ -49,7 +49,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: '/plantilles', label: 'Plantilles', icon: MessageCircle },
       { href: '/serveis', label: 'Proveïdors i serveis', icon: Truck },
-      { href: '/personal', label: 'Personal', icon: UserCog, roles: ['ADMIN'] },
+      { href: '/personal', label: 'Treballadors', icon: UserCog, roles: ['ADMIN'] },
       { href: '/balanc', label: 'Comptabilitat', icon: PiggyBank, roles: ['ADMIN'] },
       { href: '/justificants', label: 'Justificants', icon: FileCheck },
     ],

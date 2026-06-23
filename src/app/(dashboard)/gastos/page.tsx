@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { Plus, Trash2, Paperclip, Filter } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Plus, Trash2, Paperclip, Filter, Camera, Upload, X } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { FinancesNav } from '@/components/balanc/finances-nav';
 import { Button } from '@/components/ui/button';
@@ -63,6 +63,8 @@ export default function GastosPage() {
     descripcio: '',
   });
   const [file, setFile] = useState<File | null>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -215,8 +217,48 @@ export default function GastosPage() {
                   ))}
                 </Select>
               </Field>
-              <Field label="Adjunt (factura/ticket)">
-                <Input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+              <Field label="Adjunt (factura/ticket)" hint="Fes una foto amb el mòbil o puja un fitxer (PDF o imatge).">
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    ref={cameraRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  />
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="hidden"
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={() => cameraRef.current?.click()}>
+                    <Camera className="h-4 w-4" /> Fer foto
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+                    <Upload className="h-4 w-4" /> Pujar fitxer
+                  </Button>
+                  {file && (
+                    <span className="flex items-center gap-1 text-xs text-slate-600">
+                      <Paperclip className="h-3.5 w-3.5 text-slate-400" />
+                      <span className="max-w-40 truncate">{file.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFile(null);
+                          if (cameraRef.current) cameraRef.current.value = '';
+                          if (fileRef.current) fileRef.current.value = '';
+                        }}
+                        className="text-slate-400 hover:text-red-600"
+                        aria-label="Treure l’adjunt"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  )}
+                </div>
               </Field>
               <Field label="Descripció" required className="sm:col-span-3">
                 <Input value={nova.descripcio} onChange={(e) => setNova({ ...nova, descripcio: e.target.value })} />

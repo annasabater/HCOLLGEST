@@ -62,7 +62,20 @@ export default async function PersonalPage() {
                 <Td>{t._count.jornades}</Td>
                 <Td>{t._count.absencies}</Td>
                 <Td className="text-right">
-                  <EliminarTreballador id={t.id} nom={t.nom} />
+                  <div className="flex items-center justify-end gap-3">
+                    <TreballadorForm
+                      treballador={{
+                        id: t.id,
+                        nom: t.nom,
+                        carrec: t.carrec,
+                        preuHora: t.preuHora != null ? String(Number(t.preuHora)) : '',
+                        telefon: t.telefon ?? '',
+                        email: t.email ?? '',
+                        dni: t.dni ?? '',
+                      }}
+                    />
+                    <EliminarTreballador id={t.id} nom={t.nom} />
+                  </div>
                 </Td>
               </Tr>
             ))}

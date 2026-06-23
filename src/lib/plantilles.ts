@@ -22,12 +22,12 @@ export const PLANTILLA_HOSTE: Record<Lang, string> = {
   en: 'Hello {nom}, tomorrow around {hora} we will come to clean room {habitacio}. Thank you!',
 };
 
-/** Plantilla per a la neteja (variables {nom} {data} {habitacions} {pasillo} {pati} {hora}). */
+/** Plantilla per a la neteja (variables {nom} {data} {habitacions} {pasillo} {pati} {vorera} {hora}). */
 export const PLANTILLA_NETEJA: Record<Lang, string> = {
-  ca: 'Bones {nom}, demà ({data}) tens: {habitacions}.{pasillo}{pati}{hora} Gràcies!',
-  es: 'Buenas {nom}, mañana ({data}) tienes: {habitacions}.{pasillo}{pati}{hora} ¡Gracias!',
-  fr: 'Bonjour {nom}, demain ({data}) tu as : {habitacions}.{pasillo}{pati}{hora} Merci !',
-  en: 'Hi {nom}, tomorrow ({data}) you have: {habitacions}.{pasillo}{pati}{hora} Thanks!',
+  ca: 'Bones {nom}, demà ({data}) tens: {habitacions}.{pasillo}{pati}{vorera}{hora} Gràcies!',
+  es: 'Buenas {nom}, mañana ({data}) tienes: {habitacions}.{pasillo}{pati}{vorera}{hora} ¡Gracias!',
+  fr: 'Bonjour {nom}, demain ({data}) tu as : {habitacions}.{pasillo}{pati}{vorera}{hora} Merci !',
+  en: 'Hi {nom}, tomorrow ({data}) you have: {habitacions}.{pasillo}{pati}{vorera}{hora} Thanks!',
 };
 
 /** Text del passadís segons idioma (valor de la variable {pasillo}). */
@@ -44,6 +44,14 @@ export const PATI_TXT: Record<Lang, string> = {
   es: ' También el patio.',
   fr: ' Aussi la cour.',
   en: ' Also the patio.',
+};
+
+/** Text de la vorera (acera) segons idioma (valor de la variable {vorera}). */
+export const VORERA_TXT: Record<Lang, string> = {
+  ca: ' També la vorera.',
+  es: ' También la acera.',
+  fr: ' Aussi le trottoir.',
+  en: ' Also the sidewalk.',
 };
 
 /**

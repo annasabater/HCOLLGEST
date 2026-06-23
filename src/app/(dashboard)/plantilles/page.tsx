@@ -19,6 +19,7 @@ import {
   PLANTILLA_NETEJA,
   PASILLO_TXT,
   PATI_TXT,
+  VORERA_TXT,
   HORA_NETEJA_TXT,
   LANGS,
   type Lang,
@@ -116,6 +117,7 @@ function NetejaCard() {
   const [tasques, setTasques] = useState<Tasca[]>([]);
   const [pasillo, setPasillo] = useState(true);
   const [pati, setPati] = useState(false);
+  const [vorera, setVorera] = useState(false);
   const [mostrarHora, setMostrarHora] = useState(false);
   const [hora, setHora] = useState('11:00');
   const [lang, setLang] = useState<Lang>('es');
@@ -150,10 +152,11 @@ function NetejaCard() {
         ),
         pasillo: pasillo ? PASILLO_TXT[lang] : '',
         pati: pati ? PATI_TXT[lang] : '',
+        vorera: vorera ? VORERA_TXT[lang] : '',
         hora: mostrarHora ? fillTemplate(HORA_NETEJA_TXT[lang], { hora }) : '',
       }),
     );
-  }, [tpls, lang, treballador, data, tasques, pasillo, pati, mostrarHora, hora]);
+  }, [tpls, lang, treballador, data, tasques, pasillo, pati, vorera, mostrarHora, hora]);
 
   // Canvia el tipus d'una habitació (salida/repàs) i ho desa a la tasca.
   async function setTipus(id: string, tipus: 'CANVI_COMPLET' | 'REPAS') {
@@ -203,6 +206,12 @@ function NetejaCard() {
             <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
               <input type="checkbox" checked={pati} onChange={(e) => setPati(e.target.checked)} />
               Incloure el pati
+            </label>
+          </Field>
+          <Field label="Vorera">
+            <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" checked={vorera} onChange={(e) => setVorera(e.target.checked)} />
+              Incloure la vorera
             </label>
           </Field>
           <Field label="Hora aproximada">
@@ -270,8 +279,8 @@ function NetejaCard() {
           </div>
           <Textarea className="mt-2" rows={2} value={tpls[editLang]} onChange={(e) => saveTpl(e.target.value)} />
           <p className="mt-1 text-xs text-slate-400">
-            Variables: {'{nom}'} {'{data}'} {'{habitacions}'} {'{pasillo}'} {'{pati}'} {'{hora}'}. Es desa
-            al navegador.
+            Variables: {'{nom}'} {'{data}'} {'{habitacions}'} {'{pasillo}'} {'{pati}'} {'{vorera}'}{' '}
+            {'{hora}'}. Es desa al navegador.
           </p>
         </details>
       </CardBody>
@@ -281,27 +290,41 @@ function NetejaCard() {
 
 // --- Plantilla per a hostes --------------------------------------------------
 function HostesCard() {
+  const [data, setData] = useState(toISODate(addDays(new Date(), 1)));
   const [estancies, setEstancies] = useState<Estancia[]>([]);
   const [hora, setHora] = useState('11:00');
   const [tpls, setTpls] = useState<Record<Lang, string>>(PLANTILLA_HOSTE);
   const [editLang, setEditLang] = useState<Lang>('ca');
   const [noms, setNoms] = useState<Record<string, string>>({});
   const [langs, setLangs] = useState<Record<string, Lang>>({});
+  // Viatger triat per estada (índex). Per defecte, el primer amb telèfon.
+  const [selIdx, setSelIdx] = useState<Record<string, number>>({});
 
   useEffect(() => {
     setTpls(loadTpls('hoste'));
-    getJSON<{ estancies: Estancia[] }>('/api/estancies').then((r) => {
-      const today = toISODate(new Date());
-      const actives = r.estancies.filter((e) => toISODate(new Date(e.dataSortida)) >= today);
-      setEstancies(actives);
-      const inicial: Record<string, string> = {};
-      for (const e of actives) {
-        const t = e.viatgers.find((v) => v.esTitular)?.huesped ?? e.viatgers[0]?.huesped;
-        if (t) inicial[e.id] = t.nom;
-      }
-      setNoms(inicial);
-    });
+    getJSON<{ estancies: Estancia[] }>('/api/estancies').then((r) => setEstancies(r.estancies));
   }, []);
+
+  // Estades que cobreixen el dia de neteja triat (l'hoste hi és aquell dia).
+  const delDia = estancies.filter(
+    (e) =>
+      toISODate(new Date(e.dataEntrada)) <= data && data <= toISODate(new Date(e.dataSortida)),
+  );
+
+  function travelerIdx(e: Estancia): number {
+    const s = selIdx[e.id];
+    if (s != null) return s;
+    const ambTel = e.viatgers.findIndex((v) => v.huesped.telefon);
+    if (ambTel >= 0) return ambTel;
+    const tit = e.viatgers.findIndex((v) => v.esTitular);
+    return tit >= 0 ? tit : 0;
+  }
+  function selectedHuesped(e: Estancia) {
+    return e.viatgers[travelerIdx(e)]?.huesped ?? e.viatgers[0]?.huesped ?? null;
+  }
+  function nomFor(e: Estancia): string {
+    return noms[e.id] ?? selectedHuesped(e)?.nom ?? '';
+  }
 
   function saveTpl(v: string) {
     setTpls((prev) => ({ ...prev, [editLang]: v }));
@@ -311,7 +334,7 @@ function HostesCard() {
   function msgFor(e: Estancia): string {
     const l = langs[e.id] ?? 'ca';
     return fillTemplate(tpls[l], {
-      nom: noms[e.id] ?? '',
+      nom: nomFor(e),
       hora,
       habitacio: e.habitacio?.nom ?? '',
     });
@@ -324,22 +347,47 @@ function HostesCard() {
         <CardTitle>Avís als hostes (neteja)</CardTitle>
       </CardHeader>
       <CardBody className="space-y-4">
-        <Field label="Hora aproximada" className="max-w-40">
-          <Input value={hora} onChange={(e) => setHora(e.target.value)} />
-        </Field>
+        <div className="grid max-w-md gap-3 sm:grid-cols-2">
+          <Field label="Dia a netejar">
+            <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+          </Field>
+          <Field label="Hora aproximada">
+            <Input value={hora} onChange={(e) => setHora(e.target.value)} />
+          </Field>
+        </div>
 
-        {estancies.length === 0 ? (
-          <p className="text-sm text-slate-400">Cap estada activa.</p>
+        {delDia.length === 0 ? (
+          <p className="text-sm text-slate-400">Cap hoste allotjat el {formatDate(data)}.</p>
         ) : (
           <div className="space-y-2">
-            {estancies.map((e) => {
-              const t = e.viatgers.find((v) => v.esTitular)?.huesped ?? e.viatgers[0]?.huesped;
-              const phone = t?.telefon ?? null;
+            {delDia.map((e) => {
+              const h = selectedHuesped(e);
+              const phone = h?.telefon ?? null;
+              const multiple = e.viatgers.length > 1;
               return (
                 <div key={e.id} className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 p-2">
+                  {multiple && (
+                    <Field label="Hoste" className="w-48">
+                      <Select
+                        value={String(travelerIdx(e))}
+                        onChange={(ev) => {
+                          const i = Number(ev.target.value);
+                          setSelIdx({ ...selIdx, [e.id]: i });
+                          setNoms({ ...noms, [e.id]: e.viatgers[i]?.huesped.nom ?? '' });
+                        }}
+                      >
+                        {e.viatgers.map((v, i) => (
+                          <option key={i} value={i}>
+                            {v.huesped.nom} {v.huesped.cognom1}
+                            {v.huesped.telefon ? '' : ' (sense tel.)'}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  )}
                   <Field label="Nom" className="w-36">
                     <Input
-                      value={noms[e.id] ?? ''}
+                      value={nomFor(e)}
                       onChange={(ev) => setNoms({ ...noms, [e.id]: ev.target.value })}
                     />
                   </Field>
@@ -351,11 +399,17 @@ function HostesCard() {
                     {phone ?? 'sense telèfon'}
                   </span>
                   <div className="ml-auto flex gap-2 pb-0.5">
-                    <a href={waLink(phone, msgFor(e))} target="_blank" rel="noreferrer">
-                      <Button type="button" size="sm">
+                    {phone ? (
+                      <a href={waLink(phone, msgFor(e))} target="_blank" rel="noreferrer">
+                        <Button type="button" size="sm">
+                          <MessageCircle className="h-4 w-4" /> WhatsApp
+                        </Button>
+                      </a>
+                    ) : (
+                      <Button type="button" size="sm" disabled title="Aquest hoste no té telèfon">
                         <MessageCircle className="h-4 w-4" /> WhatsApp
                       </Button>
-                    </a>
+                    )}
                     <Button type="button" size="sm" variant="outline" onClick={() => copia(msgFor(e))}>
                       <Copy className="h-4 w-4" />
                     </Button>

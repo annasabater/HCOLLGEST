@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { SilenciarAvis } from '@/components/estancia/silenciar-avis';
+import { EliminarComprovant } from '@/components/estancia/eliminar-comprovant';
 import { buildParteFromDb } from '@/lib/mossos/build-parte';
 import { validaParteErrors } from '@/lib/mossos/fitxer';
 import { ESTAT_ENVIAMENT_LABELS } from '@/lib/validation/enums';
@@ -164,11 +165,14 @@ export default async function JustificantsPage() {
                     <Td>{env.codiValidacio ?? '—'}</Td>
                     <Td>{env.dataEnviament ? formatDate(env.dataEnviament) : '—'}</Td>
                     <Td>
-                      <a href={`/api/enviaments/${env.id}/justificant`} target="_blank" rel="noreferrer">
-                        <Button variant="outline" size="sm">
-                          <FileCheck className="h-4 w-4" /> PDF
-                        </Button>
-                      </a>
+                      <div className="flex items-center gap-2">
+                        <a href={`/api/enviaments/${env.id}/justificant`} target="_blank" rel="noreferrer">
+                          <Button variant="outline" size="sm">
+                            <FileCheck className="h-4 w-4" /> PDF
+                          </Button>
+                        </a>
+                        <EliminarComprovant id={env.id} fitxerNom={env.fitxerNom} />
+                      </div>
                     </Td>
                   </Tr>
                 ))}
