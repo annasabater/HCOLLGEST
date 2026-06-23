@@ -45,7 +45,7 @@ export default async function HuespedesPage({
   return (
     <div>
       <PageHeader
-        title="Hostes"
+        title="Clients"
         subtitle="Fitxa única de cada persona"
         actions={
           <Link href="/avisos">
@@ -56,19 +56,19 @@ export default async function HuespedesPage({
         }
       />
 
-      <form method="get" className="mb-4 flex max-w-lg flex-wrap items-center gap-2">
+      <form method="get" className="mb-4 flex flex-wrap items-center gap-2">
         <Input name="q" defaultValue={q ?? ''} placeholder="Cerca per nom, document, email…" className="max-w-xs" />
-        <label className="flex items-center gap-1.5 text-sm text-slate-600">
-          <input type="checkbox" name="mascota" value="1" defaultChecked={nomesMascota} />
-          <PawPrint className="h-4 w-4 text-slate-400" /> Només amb mascota
-        </label>
         <Button type="submit" variant="outline">
           <Search className="h-4 w-4" />
         </Button>
+        <label className="ml-2 flex items-center gap-1.5 text-sm text-slate-600">
+          <input type="checkbox" name="mascota" value="1" defaultChecked={nomesMascota} />
+          <PawPrint className="h-4 w-4 text-slate-400" /> Només amb mascota
+        </label>
       </form>
 
       {huespedes.length === 0 ? (
-        <EmptyState>No s’ha trobat cap hoste.</EmptyState>
+        <EmptyState>No s’ha trobat cap client.</EmptyState>
       ) : (
         <Table>
           <Thead>

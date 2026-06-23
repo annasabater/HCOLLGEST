@@ -37,4 +37,26 @@ export async function PATCH(req: Request, ctx: Ctx) {
   }
 }
 
+// DELETE /api/tasques-neteja/:id — elimina una tasca de neteja.
+export async function DELETE(req: Request, ctx: Ctx) {
+  try {
+    const auth = await authorize(ROLES_WRITE);
+    if (auth instanceof Response) return auth;
+    const { id } = await ctx.params;
+
+    await prisma.tascaNeteja.delete({ where: { id } });
+
+    await audit({
+      usuariId: auth.id,
+      accio: 'ELIMINACIO',
+      entitat: 'tasca_neteja',
+      entitatId: id,
+      ip: clientIp(req),
+    });
+    return ok({ ok: true });
+  } catch (err) {
+    return handleApiError(err);
+  }
+}
+
 export const dynamic = 'force-dynamic';

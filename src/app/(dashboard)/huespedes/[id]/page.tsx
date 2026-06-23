@@ -219,24 +219,17 @@ export default async function HuespedDetailPage({ params }: { params: Promise<{ 
 
         {/* Documentos + Anotaciones */}
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Documents d’identitat</CardTitle>
-            </CardHeader>
-            <CardBody>
-              <DocumentsHuesped
-                huespedId={huesped.id}
-                canWrite={canEdit}
-                documents={huesped.documents.map((d) => ({
-                  id: d.id,
-                  tipus: d.tipus,
-                  fitxerNom: d.fitxerNom,
-                  mime: d.mime,
-                  dataSubida: d.dataSubida.toISOString(),
-                }))}
-              />
-            </CardBody>
-          </Card>
+          <DocumentsHuesped
+            huespedId={huesped.id}
+            canWrite={canEdit}
+            documents={huesped.documents.map((d) => ({
+              id: d.id,
+              tipus: d.tipus,
+              fitxerNom: d.fitxerNom,
+              mime: d.mime,
+              dataSubida: d.dataSubida.toISOString(),
+            }))}
+          />
 
           <MascotesPanel
             title="Mascotes"

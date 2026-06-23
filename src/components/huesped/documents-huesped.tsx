@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, Trash2, Upload, Lock } from 'lucide-react';
+import { FileText, Trash2, Upload, Lock, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardBody, CardTitle } from '@/components/ui/card';
 import { Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
-import { formatDate } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import { optionsFrom, tipusDocumentPujatValues, TIPUS_DOCUMENT_PUJAT_LABELS } from '@/lib/validation/enums';
 
 interface Doc {
@@ -22,12 +23,16 @@ export function DocumentsHuesped({
   huespedId,
   documents,
   canWrite,
+  title = 'Documents d’identitat',
 }: {
   huespedId: string;
   documents: Doc[];
   canWrite: boolean;
+  title?: string;
 }) {
   const router = useRouter();
+  // Plegat per defecte si no hi ha documents; desplegat si en té.
+  const [open, setOpen] = useState(documents.length > 0);
   const [tipus, setTipus] = useState('DNI_ANVERS');
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -66,13 +71,29 @@ export function DocumentsHuesped({
   }
 
   return (
-    <div className="space-y-3">
-      <p className="flex items-center gap-1.5 text-xs text-slate-500">
-        <Lock className="h-3.5 w-3.5" /> Els documents es desen xifrats (AES-256-GCM) i cada accés
-        queda auditat.
-      </p>
+    <Card>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 px-5 py-4 text-left"
+        aria-expanded={open}
+      >
+        <FileText className="h-4 w-4 text-brand-600" />
+        <CardTitle>{title}</CardTitle>
+        <span className="text-sm font-medium text-slate-400">({documents.length})</span>
+        <ChevronDown
+          className={cn('ml-auto h-5 w-5 text-slate-400 transition-transform', open && 'rotate-180')}
+        />
+      </button>
 
-      {documents.length === 0 && <p className="text-sm text-slate-400">Sense documents.</p>}
+      {open && (
+        <CardBody className="space-y-3 border-t border-slate-100">
+          <p className="flex items-center gap-1.5 text-xs text-slate-500">
+            <Lock className="h-3.5 w-3.5" /> Els documents es desen xifrats (AES-256-GCM) i cada accés
+            queda auditat.
+          </p>
+
+          {documents.length === 0 && <p className="text-sm text-slate-400">Sense documents.</p>}
       {documents.map((d) => (
         <div
           key={d.id}
@@ -125,7 +146,9 @@ export function DocumentsHuesped({
             <Upload className="h-4 w-4" /> {busy ? 'Pujant…' : 'Pujar document'}
           </Button>
         </form>
+          )}
+        </CardBody>
       )}
-    </div>
+    </Card>
   );
 }

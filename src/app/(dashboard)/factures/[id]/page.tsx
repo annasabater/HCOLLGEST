@@ -8,6 +8,7 @@ import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, Thead, Th, Td, Tr } from '@/components/ui/table';
 import { CobramentActions } from '@/components/factura/cobrament-actions';
+import { EliminarFactura } from '@/components/factura/eliminar-factura';
 import { formatDate, formatEur } from '@/lib/utils';
 import { CONCEPTE_LINIA_LABELS, METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 import { VERIFACTU_LLEGENDA } from '@/lib/verifactu/software';
@@ -59,6 +60,12 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
             <Badge tone={factura.estat === 'COBRADA' ? 'success' : 'warning'}>
               {factura.estat === 'COBRADA' ? 'Cobrada' : 'Pendent'}
             </Badge>
+            <EliminarFactura
+              id={factura.id}
+              numero={factura.numero}
+              redirectTo={`/estancies/${factura.estanciaId}`}
+              teVerifactu={!!factura.verifactu}
+            />
           </div>
         }
       />

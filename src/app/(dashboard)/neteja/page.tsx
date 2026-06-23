@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Check } from 'lucide-react';
+import { Plus, Check, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Field } from '@/components/ui/field';
 import { Card, CardBody } from '@/components/ui/card';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { getJSON, postJSON, patchJSON } from '@/lib/api';
+import { getJSON, postJSON, patchJSON, delJSON } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
 import { optionsFrom, tipusNetejaValues, TIPUS_NETEJA_LABELS } from '@/lib/validation/enums';
@@ -78,6 +78,12 @@ export default function NetejaPage() {
 
   async function update(id: string, patch: Record<string, unknown>) {
     await patchJSON(`/api/tasques-neteja/${id}`, patch);
+    loadTasques();
+  }
+
+  async function esborrar(id: string) {
+    if (!window.confirm('Segur que vols eliminar aquesta tasca de neteja?')) return;
+    await delJSON(`/api/tasques-neteja/${id}`);
     loadTasques();
   }
 
@@ -185,15 +191,26 @@ export default function NetejaPage() {
                   </Badge>
                 </Td>
                 <Td>
-                  {t.estat === 'PENDENT' ? (
-                    <Button size="sm" variant="outline" onClick={() => update(t.id, { estat: 'FETA' })}>
-                      <Check className="h-4 w-4" /> Feta
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="ghost" onClick={() => update(t.id, { estat: 'PENDENT' })}>
-                      Desfer
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {t.estat === 'PENDENT' ? (
+                      <Button size="sm" variant="outline" onClick={() => update(t.id, { estat: 'FETA' })}>
+                        <Check className="h-4 w-4" /> Feta
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="ghost" onClick={() => update(t.id, { estat: 'PENDENT' })}>
+                        Desfer
+                      </Button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => esborrar(t.id)}
+                      className="text-slate-400 hover:text-red-600"
+                      title="Eliminar tasca"
+                      aria-label="Eliminar tasca"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </Td>
               </Tr>
             ))}
