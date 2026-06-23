@@ -72,6 +72,7 @@ export function JornadesSection({
   }
 
   async function esborrar(id: string) {
+    if (!confirm('Segur que vols eliminar aquesta jornada?')) return;
     await fetch(`/api/jornades/${id}`, { method: 'DELETE' });
     router.refresh();
   }

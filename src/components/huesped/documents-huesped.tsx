@@ -66,6 +66,7 @@ export function DocumentsHuesped({
   }
 
   async function esborrar(id: string) {
+    if (!confirm('Segur que vols eliminar aquest document?')) return;
     await fetch(`/api/documents/${id}`, { method: 'DELETE' });
     router.refresh();
   }

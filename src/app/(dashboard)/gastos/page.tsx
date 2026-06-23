@@ -132,6 +132,7 @@ export default function GastosPage() {
   }
 
   async function esborrar(id: string) {
+    if (!confirm('Segur que vols eliminar aquesta despesa?')) return;
     await fetch(`/api/gastos/${id}`, { method: 'DELETE' });
     load();
   }
