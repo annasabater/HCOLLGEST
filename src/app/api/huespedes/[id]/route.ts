@@ -18,6 +18,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     where: { id, deletedAt: null },
     include: {
       estancies: {
+        where: { estancia: { deletedAt: null } },
         include: { estancia: { include: { factures: true } } },
         orderBy: { createdAt: 'desc' },
       },

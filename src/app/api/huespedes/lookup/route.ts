@@ -19,7 +19,8 @@ export async function GET(req: Request) {
   const huesped = await prisma.huesped.findUnique({
     where: { huesped_document: { tipusDocument: tipus.data, numDocument: doc } },
     include: {
-      estancies: { include: { estancia: true } },
+      // Només estades vives (no eliminades) per al recompte de visites.
+      estancies: { where: { estancia: { deletedAt: null } }, include: { estancia: true } },
       anotacions: { where: { deletedAt: null }, orderBy: { data: 'desc' } },
     },
   });

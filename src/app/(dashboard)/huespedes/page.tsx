@@ -36,7 +36,8 @@ export default async function HuespedesPage({
     orderBy: [{ cognom1: 'asc' }, { nom: 'asc' }],
     take: 100,
     include: {
-      _count: { select: { estancies: true } },
+      // Només estades NO eliminades (el join estancia_viatger es manté en soft-delete).
+      _count: { select: { estancies: { where: { estancia: { deletedAt: null } } } } },
       anotacions: { where: { noAcollir: true, deletedAt: null }, select: { id: true }, take: 1 },
       animals: { where: { deletedAt: null }, select: { id: true }, take: 1 },
     },
