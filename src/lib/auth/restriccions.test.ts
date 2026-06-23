@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { teVistaRestringida, ocultaDelLlibre, MARCA_OCULTA_LLIBRE } from './restriccions';
+import { teVistaRestringida, esNomesLectura, ocultaDelLlibre, MARCA_OCULTA_LLIBRE } from './restriccions';
 
 describe('teVistaRestringida', () => {
   it('és cert per al compte de propietat (insensible a majúscules)', () => {
@@ -17,6 +17,14 @@ describe('teVistaRestringida', () => {
     expect(teVistaRestringida(undefined)).toBe(false);
     expect(teVistaRestringida({ email: null })).toBe(false);
     expect(teVistaRestringida({})).toBe(false);
+  });
+});
+
+describe('esNomesLectura', () => {
+  it('és cert per al compte de propietat i fals per a la resta', () => {
+    expect(esNomesLectura({ email: 'hcoll@gmail.com' })).toBe(true);
+    expect(esNomesLectura({ email: 'hostalcoll@gmail.com' })).toBe(false);
+    expect(esNomesLectura(null)).toBe(false);
   });
 });
 

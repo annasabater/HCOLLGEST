@@ -18,9 +18,11 @@ const ROLE_LABEL: Record<string, string> = {
 
 export function AppShell({
   user,
+  readOnly = false,
   children,
 }: {
   user: { nom: string; role: Role };
+  readOnly?: boolean;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -69,7 +71,9 @@ export function AppShell({
         <div className="border-t border-brand-800 p-3">
           <div className="mb-2 px-3">
             <p className="truncate text-sm font-medium">{user.nom}</p>
-            <p className="text-xs text-brand-300">{ROLE_LABEL[user.role] ?? user.role}</p>
+            <p className="text-xs text-brand-300">
+              {readOnly ? 'Només lectura' : (ROLE_LABEL[user.role] ?? user.role)}
+            </p>
           </div>
           <LogoutButton />
         </div>

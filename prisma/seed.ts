@@ -32,9 +32,9 @@ const CATEGORIES_GASTO = [
 
 const USUARIS: { email: string; nom: string; role: Role; password?: string }[] = [
   { email: 'hostalcoll@gmail.com', nom: 'Administrador', role: Role.ADMIN },
-  // Compte de propietat amb vista restringida (veu tot com l'ADMIN, però als
-  // ingressos s'exclou el mètode ALTRES i el llibre amaga les estades amb "ZP11").
-  // La restricció es defineix a src/lib/auth/restriccions.ts. Contrasenya pròpia.
+  // Compte de propietat: entra com ADMIN (ho veu tot) però és NOMÉS LECTURA i,
+  // a més, als ingressos s'exclou el mètode ALTRES i el llibre amaga les estades
+  // amb "ZP11". Tot es defineix a src/lib/auth/restriccions.ts. Contrasenya pròpia.
   { email: 'hcoll@gmail.com', nom: 'Propietat', role: Role.ADMIN, password: 'Hostal.2026' },
   { email: 'recepcio@hostalcoll.com', nom: 'Recepció', role: Role.RECEPCIO },
   { email: 'consulta@hostalcoll.com', nom: 'Consulta', role: Role.CONSULTA },

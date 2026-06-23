@@ -30,6 +30,16 @@ export function teVistaRestringida(user: { email?: string | null } | null | unde
   return !!email && COMPTES_VISTA_RESTRINGIDA.has(email);
 }
 
+/**
+ * Cert si l'usuari és un compte de NOMÉS LECTURA: ho veu tot (entra com a ADMIN)
+ * però no pot crear, editar ni esborrar res. L'enforcement dur és al middleware,
+ * que bloqueja qualsevol mètode HTTP mutador (POST/PUT/PATCH/DELETE). Avui
+ * coincideix amb els comptes de vista restringida de propietat.
+ */
+export function esNomesLectura(user: { email?: string | null } | null | undefined): boolean {
+  return teVistaRestringida(user);
+}
+
 /** Cert si una estada s'ha d'ocultar del llibre per contenir la marca a observacions. */
 export function ocultaDelLlibre(observacions: string | null | undefined): boolean {
   return !!observacions && observacions.toUpperCase().includes(MARCA_OCULTA_LLIBRE);

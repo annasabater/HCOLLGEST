@@ -2,8 +2,9 @@
  * Crea (o restableix) el compte de propietat amb vista restringida:
  *   hcoll@gmail.com · rol ADMIN · contrasenya "Hostal.2026".
  *
- * Veu tot com l'ADMIN, però amb dues limitacions de DADES definides a
+ * Entra com l'ADMIN (ho veu tot) però amb tres limitacions definides a
  * src/lib/auth/restriccions.ts:
+ *   0. NOMÉS LECTURA: no pot crear, editar ni esborrar res (bloquejat al middleware);
  *   1. ingressos sense el mètode de cobrament ALTRES;
  *   2. llibre de registre sense les estades marcades amb "ZP11" a observacions.
  *

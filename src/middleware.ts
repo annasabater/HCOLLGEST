@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifySessionToken } from '@/lib/auth/jwt';
 import { SESSION_COOKIE } from '@/lib/auth/types';
+import { esNomesLectura } from '@/lib/auth/restriccions';
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -43,6 +44,17 @@ export async function middleware(req: NextRequest) {
   const ADMIN_ONLY = ['/factures', '/balanc', '/tarifes', '/verifactu', '/gastos', '/personal', '/config'];
   const isAdminOnly = ADMIN_ONLY.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   if (isAdminOnly && user.role !== 'ADMIN') {
+    return NextResponse.redirect(new URL('/', req.url));
+  }
+
+  // Compte de NOMÉS LECTURA: ho veu tot (entra com ADMIN) però no pot escriure
+  // res. Bloqueja qualsevol mètode mutador (les lectures GET/HEAD passen). El
+  // login/logout (/api/auth) ja s'ha deixat passar abans, així que pot sortir.
+  const esSegur = req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS';
+  if (!esSegur && esNomesLectura(user)) {
+    if (isApi) {
+      return NextResponse.json({ error: 'Aquest compte és de només lectura.' }, { status: 403 });
+    }
     return NextResponse.redirect(new URL('/', req.url));
   }
 
