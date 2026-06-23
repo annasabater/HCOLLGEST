@@ -13,6 +13,7 @@ export function EliminarEstada({
   nFactures = 0,
   redirectTo = '/estancies',
   iconOnly = false,
+  onDeleted,
 }: {
   id: string;
   contracte: string;
@@ -22,6 +23,8 @@ export function EliminarEstada({
   redirectTo?: string | null;
   /** Mostra només la icona (per a files de taula). */
   iconOnly?: boolean;
+  /** Callback després d'eliminar (p. ex. recarregar una llista de client). */
+  onDeleted?: () => void;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -40,7 +43,8 @@ export function EliminarEstada({
     setBusy(true);
     try {
       await delJSON(`/api/estancies/${id}`);
-      if (redirectTo) router.push(redirectTo);
+      if (onDeleted) onDeleted();
+      else if (redirectTo) router.push(redirectTo);
       router.refresh();
     } catch (e) {
       alert(e instanceof ApiError ? e.message : 'No s’ha pogut eliminar l’estada');

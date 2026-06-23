@@ -11,6 +11,7 @@ import { Card, CardBody } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { GenerarFitxerButton, type FitxerNotice } from '@/components/estancia/generar-fitxer-button';
+import { EliminarEstada } from '@/components/estancia/eliminar-estada';
 import { ESTAT_ENVIAMENT_LABELS } from '@/lib/validation/enums';
 import { getJSON } from '@/lib/api';
 import type { EstatEnviament } from '@prisma/client';
@@ -191,6 +192,13 @@ export default function LlibrePage() {
                           contracteLabel={r.numContracte}
                           onResult={(n) => setNotice(n)}
                           onDone={() => veure()}
+                        />
+                        <EliminarEstada
+                          id={r.estanciaId}
+                          contracte={r.numContracte}
+                          comunicada={r.enviamentEstat === 'ENVIAT' || r.enviamentEstat === 'ACCEPTAT'}
+                          redirectTo={null}
+                          onDeleted={() => veure()}
                         />
                       </div>
                     )}
