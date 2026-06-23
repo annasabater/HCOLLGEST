@@ -10,9 +10,17 @@ import { nights } from '../dates';
 import { computeFacturaTotals } from '../factura-calc';
 import { buildRegistreAlta, type TipoFactura } from '../verifactu/record';
 import type { FacturaCreateInput } from '../validation/factura';
-import { FacturaCreateSchema, CobramentCreateSchema } from '../validation/factura';
+import {
+  FacturaCreateSchema,
+  CobramentCreateSchema,
+  PagamentEstadaSchema,
+  FacturaSeleccioSchema,
+} from '../validation/factura';
+import { CONCEPTE_LINIA_LABELS } from '../validation/enums';
 
 const ESTABLIMENT_ID = 'hostal-coll';
+
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 export async function createFactura(
   raw: FacturaCreateInput,
@@ -163,6 +171,7 @@ export async function addCobrament(
 
     const cobrament = await tx.cobrament.create({
       data: {
+        estanciaId: factura.estanciaId,
         facturaId,
         metode: input.metode,
         import: signedImport,
@@ -191,5 +200,106 @@ export async function addCobrament(
     );
 
     return { cobrament, estat: cobrada ? 'COBRADA' : 'PENDENT' };
+  });
+}
+
+/** Registra un pagament a compte de l'estada (sense factura encara). És ingrés ja. */
+export async function addPagamentEstada(
+  estanciaId: string,
+  raw: unknown,
+  actor: { id: string } | null,
+  ip: string | null,
+) {
+  const input = PagamentEstadaSchema.parse(raw);
+  const est = await prisma.estancia.findFirst({
+    where: { id: estanciaId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!est) throw new Error('Estada no trobada');
+
+  const cobrament = await prisma.cobrament.create({
+    data: {
+      estanciaId,
+      facturaId: null,
+      concepte: input.concepte,
+      descripcio: input.descripcio ?? null,
+      metode: input.metode,
+      import: input.import,
+      data: input.data ?? new Date(),
+    },
+  });
+  await audit({
+    usuariId: actor?.id ?? null,
+    accio: 'CREACIO',
+    entitat: 'cobrament',
+    entitatId: cobrament.id,
+    detall: { estanciaId, import: input.import, metode: input.metode, aCompte: true },
+    ip,
+  });
+  return cobrament;
+}
+
+/**
+ * Crea un rebut a partir de pagaments ja registrats de l'estada (els seleccionats):
+ * les línies són aquests pagaments i s'hi assignen (facturaId). Com que ja estan
+ * cobrats, queda COBRADA. Els no seleccionats es queden a compte (retornables).
+ */
+export async function createFacturaSeleccio(
+  estanciaId: string,
+  raw: unknown,
+  actor: { id: string } | null,
+  ip: string | null,
+) {
+  const input = FacturaSeleccioSchema.parse(raw);
+
+  return prisma.$transaction(async (tx) => {
+    const pagaments = await tx.cobrament.findMany({
+      where: { id: { in: input.pagamentIds }, estanciaId, facturaId: null },
+    });
+    if (pagaments.length === 0) throw new Error('Cap pagament a compte seleccionat');
+
+    const total = round2(pagaments.reduce((a, p) => a + Number(p.import), 0));
+    const year = new Date().getFullYear();
+    const count = await tx.factura.count({ where: { numero: { startsWith: `${year}-` } } });
+    const numero = `${year}-${String(count + 1).padStart(4, '0')}`;
+
+    const factura = await tx.factura.create({
+      data: {
+        estanciaId,
+        numero,
+        data: new Date(),
+        base: total,
+        iva: 0,
+        total,
+        estat: 'COBRADA',
+        tipusDocument: 'RECIBO',
+        linies: {
+          create: pagaments.map((p) => ({
+            concepte: p.concepte,
+            descripcio: p.descripcio ?? CONCEPTE_LINIA_LABELS[p.concepte],
+            import: p.import,
+          })),
+        },
+      },
+    });
+
+    await tx.cobrament.updateMany({
+      where: { id: { in: pagaments.map((p) => p.id) } },
+      data: { facturaId: factura.id },
+    });
+
+    await audit(
+      {
+        usuariId: actor?.id ?? null,
+        accio: 'CREACIO',
+        entitat: 'factura',
+        entitatId: factura.id,
+        detall: { numero, total, pagaments: pagaments.length, perSeleccio: true },
+        ip,
+      },
+      tx,
+    );
+
+    return factura;
   });
 }

@@ -25,6 +25,14 @@ export const ProveidorCreateSchema = z.object({
   nom: z.string().trim().min(1, 'Cal un nom'),
   cif: optStr,
   contacte: optStr,
+  telefon: optStr,
+  email: optStr,
+  adreca: optStr,
+  web: optStr,
+  activitat: optStr,
+  notes: optStr,
 });
+
+export const ProveidorUpdateSchema = ProveidorCreateSchema.partial();
 
 export type GastoCreateInput = z.input<typeof GastoCreateSchema>;

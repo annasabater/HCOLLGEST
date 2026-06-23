@@ -14,6 +14,7 @@ import { ViatgerFirma } from '@/components/estancia/viatger-firma';
 import { AmpliarEstada } from '@/components/estancia/ampliar-estada';
 import { EliminarEstada } from '@/components/estancia/eliminar-estada';
 import { FacturaPanel } from '@/components/factura/factura-panel';
+import { PagamentsPanel } from '@/components/factura/pagaments-panel';
 import { DipositsPanel } from '@/components/factura/diposits-panel';
 import { preuSuggeritAllotjament } from '@/lib/services/tarifes';
 import { formatDate } from '@/lib/utils';
@@ -51,6 +52,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
       enviaments: { orderBy: { createdAt: 'desc' } },
       habitacio: true,
       factures: { orderBy: { data: 'desc' } },
+      cobraments: { include: { factura: { select: { numero: true } } }, orderBy: { data: 'asc' } },
       diposits: { orderBy: { createdAt: 'desc' } },
       origen: { select: { id: true, numContracte: true, anyContracte: true } },
       ampliacions: {
@@ -255,6 +257,30 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
               />
             </CardBody>
           </Card>
+
+          {isAdmin && (
+            <Card>
+              <CardHeader className="flex items-center gap-2">
+                <Receipt className="h-4 w-4 text-brand-600" />
+                <CardTitle>Pagaments / ingressos</CardTitle>
+              </CardHeader>
+              <CardBody>
+                <PagamentsPanel
+                  estanciaId={estancia.id}
+                  pagaments={estancia.cobraments.map((c) => ({
+                    id: c.id,
+                    import: Number(c.import),
+                    metode: c.metode,
+                    concepte: c.concepte,
+                    descripcio: c.descripcio,
+                    data: c.data.toISOString(),
+                    facturaId: c.facturaId,
+                    facturaNumero: c.factura?.numero ?? null,
+                  }))}
+                />
+              </CardBody>
+            </Card>
+          )}
 
           {isAdmin && (
             <Card>

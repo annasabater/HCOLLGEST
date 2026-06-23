@@ -46,6 +46,21 @@ export const CobramentCreateSchema = z.object({
   tipus: z.enum(['COBRAMENT', 'DEVOLUCIO']).default('COBRAMENT'),
 });
 
+// Pagament a compte de l'estada (sense factura encara): import + mètode + concepte.
+export const PagamentEstadaSchema = z.object({
+  import: z.coerce.number().positive('L’import ha de ser positiu'),
+  metode: z.enum(metodeCobramentValues),
+  concepte: z.enum(concepteLiniaValues).default('ALLOTJAMENT'),
+  descripcio: optStr,
+  data: z.coerce.date().optional(),
+});
+
+// Crear una factura/rebut a partir de pagaments ja registrats de l'estada.
+export const FacturaSeleccioSchema = z.object({
+  pagamentIds: z.array(z.string().min(1)).min(1, 'Selecciona almenys un pagament'),
+  tipusDocument: z.enum(['RECIBO', 'FACTURA', 'FACTURA_SIMPLIFICADA']).default('RECIBO'),
+});
+
 export type FacturaCreateInput = z.input<typeof FacturaCreateSchema>;
 export type LiniaInput = z.input<typeof LiniaInputSchema>;
 

@@ -9,6 +9,10 @@
     {
       "path": "/api/cron/uptime",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/serveis-recurrents",
+      "schedule": "30 6 * * *"
     }
   ]
 }

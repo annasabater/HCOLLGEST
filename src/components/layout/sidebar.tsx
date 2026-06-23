@@ -12,8 +12,8 @@ import {
   Sparkles,
   MessageCircle,
   PiggyBank,
-  Wrench,
   UserCog,
+  Truck,
 } from 'lucide-react';
 import type { Role } from '@prisma/client';
 import { cn } from '@/lib/utils';
@@ -48,7 +48,7 @@ const GROUPS: NavGroup[] = [
     title: 'Gestió',
     items: [
       { href: '/plantilles', label: 'Plantilles', icon: MessageCircle },
-      { href: '/manteniment', label: 'Manteniment', icon: Wrench },
+      { href: '/serveis', label: 'Proveïdors i serveis', icon: Truck },
       { href: '/personal', label: 'Personal', icon: UserCog, roles: ['ADMIN'] },
       { href: '/balanc', label: 'Comptabilitat', icon: PiggyBank, roles: ['ADMIN'] },
       { href: '/justificants', label: 'Justificants', icon: FileCheck },

@@ -9,6 +9,8 @@ import {
   Receipt,
   Boxes,
   Clock,
+  Wrench,
+  CalendarClock,
 } from 'lucide-react';
 import { getResum } from '@/lib/services/dashboard';
 import { isFormatConfirmat } from '@/lib/mossos/fitxer';
@@ -89,6 +91,13 @@ export default async function DashboardPage() {
       icon: Boxes,
       tone: resum.alertes.actiusAlerta > 0 ? ('warning' as const) : ('success' as const),
       href: '/actius',
+    },
+    {
+      label: 'Serveis/renovacions pròximes',
+      value: resum.alertes.serveisProxims,
+      icon: Wrench,
+      tone: resum.alertes.serveisProxims > 0 ? ('warning' as const) : ('success' as const),
+      href: '/serveis',
     },
   ];
 
@@ -277,6 +286,34 @@ export default async function DashboardPage() {
           </CardBody>
         </Card>
       </div>
+
+      {/* Serveis i manteniments amb propera visita/renovació (30 dies) */}
+      {resum.serveisProxims.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader className="flex items-center gap-2">
+            <CalendarClock className="h-4 w-4 text-amber-600" />
+            <CardTitle>Serveis i renovacions pròximes (30 dies)</CardTitle>
+          </CardHeader>
+          <CardBody className="space-y-2">
+            {resum.serveisProxims.map((s) => (
+              <Link
+                key={s.id}
+                href="/serveis"
+                className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50"
+              >
+                <span className="font-medium text-slate-800">
+                  {s.activitat}
+                  {s.proveidor ? <span className="text-slate-400"> · {s.proveidor}</span> : null}
+                </span>
+                <span className="flex items-center gap-2 text-slate-500">
+                  {s.import != null && <span>{formatEur(s.import)}</span>}
+                  <Badge tone={s.vencut ? 'danger' : 'warning'}>{formatDate(s.properaData)}</Badge>
+                </span>
+              </Link>
+            ))}
+          </CardBody>
+        </Card>
+      )}
     </div>
   );
 }

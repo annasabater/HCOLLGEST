@@ -165,8 +165,8 @@ export const TIPUS_DOCUMENT_PUJAT_LABELS: Record<
 };
 
 export const TIPUS_NETEJA_LABELS: Record<(typeof tipusNetejaValues)[number], string> = {
-  CANVI_COMPLET: 'Canvi complet (esbancar)',
-  REPAS: 'Repàs (polir)',
+  CANVI_COMPLET: 'Sortida habitació',
+  REPAS: 'Manteniment',
 };
 
 export const ESTAT_TASCA_LABELS: Record<(typeof estatTascaValues)[number], string> = {

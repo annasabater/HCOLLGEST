@@ -43,7 +43,12 @@ export async function DELETE(req: Request, ctx: Ctx) {
     });
     if (!existing) return notFound();
 
-    await prisma.factura.update({ where: { id }, data: { deletedAt: new Date() } });
+    // Els pagaments tornen a "a compte" (segueixen sent ingrés de l'estada);
+    // esborrar el document no fa desaparèixer els diners cobrats.
+    await prisma.$transaction([
+      prisma.cobrament.updateMany({ where: { facturaId: id }, data: { facturaId: null } }),
+      prisma.factura.update({ where: { id }, data: { deletedAt: new Date() } }),
+    ]);
     await audit({
       usuariId: auth.id,
       accio: 'ELIMINACIO',

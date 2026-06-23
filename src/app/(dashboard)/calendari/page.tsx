@@ -1,13 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, LogIn, LogOut, Sparkles, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LogIn, LogOut, Sparkles, Check, Wrench } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { CalendariHabitacio } from '@/components/habitacio/calendari-habitacio';
 import { getJSON, patchJSON } from '@/lib/api';
 import { addDays, addMonths, monthGridDays, sameMonth, toISODate, weekDays } from '@/lib/dates';
 import { cn } from '@/lib/utils';
+import { TIPUS_NETEJA_LABELS } from '@/lib/validation/enums';
 
 interface Mov {
   id: string;
@@ -22,10 +23,18 @@ interface Tasca {
   estat: 'PENDENT' | 'FETA';
   habitacio: string | null;
 }
+interface ServeiEv {
+  id: string;
+  data: string;
+  activitat: string;
+  proveidor: string | null;
+  import: number | null;
+}
 interface CalData {
   entrades: Mov[];
   sortides: Mov[];
   tasques: Tasca[];
+  serveis: ServeiEv[];
 }
 
 const DOW = ['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'];
@@ -122,6 +131,7 @@ export default function CalendariPage() {
           const entrades = data?.entrades.filter((e) => sameDay(e.data, day)) ?? [];
           const sortides = data?.sortides.filter((e) => sameDay(e.data, day)) ?? [];
           const tasques = data?.tasques.filter((t) => sameDay(t.data, day)) ?? [];
+          const serveisDia = data?.serveis.filter((s) => sameDay(s.data, day)) ?? [];
           return (
             <div
               key={i}
@@ -186,8 +196,21 @@ export default function CalendariPage() {
                   >
                     {t.estat === 'FETA' ? <Check className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}
                     {t.habitacio ? `H${t.habitacio} ` : ''}
-                    {t.tipus === 'CANVI_COMPLET' ? 'Esbancar' : 'Polir'}
+                    {TIPUS_NETEJA_LABELS[t.tipus]}
                   </button>
+                ))}
+                {serveisDia.map((s) => (
+                  <div
+                    key={s.id}
+                    className={cn(
+                      'flex items-center gap-0.5 truncate rounded bg-sky-50 px-1.5 py-0.5 text-sky-800',
+                      compact ? 'text-[10px]' : 'text-xs',
+                    )}
+                    title={`Servei: ${s.activitat}${s.proveidor ? ` · ${s.proveidor}` : ''}`}
+                  >
+                    <Wrench className="h-3 w-3 shrink-0" />
+                    {s.activitat}
+                  </div>
                 ))}
               </div>
             </div>

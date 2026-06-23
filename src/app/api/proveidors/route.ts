@@ -22,7 +22,17 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null);
     const data = ProveidorCreateSchema.parse(body);
     const proveidor = await prisma.proveidor.create({
-      data: { nom: data.nom, cif: data.cif ?? null, contacte: data.contacte ?? null },
+      data: {
+        nom: data.nom,
+        cif: data.cif ?? null,
+        contacte: data.contacte ?? null,
+        telefon: data.telefon ?? null,
+        email: data.email ?? null,
+        adreca: data.adreca ?? null,
+        web: data.web ?? null,
+        activitat: data.activitat ?? null,
+        notes: data.notes ?? null,
+      },
     });
     await audit({
       usuariId: auth.id,

@@ -203,6 +203,16 @@ enum TipusAbsencia {
   ALTRES
 }
 
+// Periodicitat d'un servei/manteniment recurrent (assegurances, extintors, LOPD…).
+enum FrequenciaServei {
+  MENSUAL
+  TRIMESTRAL
+  SEMESTRAL
+  ANUAL
+  BIENNAL
+  PUNTUAL // una sola vegada (sense recurrència)
+}
+
 // ----------------------------------------------------------------------------
 // F. SISTEMA (Fase 0, transversal)
 // ----------------------------------------------------------------------------
@@ -382,6 +392,7 @@ model Estancia {
   viatgers      EstanciaViatger[]
   enviaments    EnviamentMossos[]
   factures      Factura[]
+  cobraments    Cobrament[]
   tasesTuristiques TasaTuristica[]
   anotacions    AnotacioHuesped[]
   tasquesNeteja TascaNeteja[]
@@ -614,18 +625,25 @@ model TasaTuristica {
   @@map("tasa_turistica")
 }
 
+// Cobrament (pagament) d'una estada. Pot estar "a compte" (sense factura,
+// facturaId null) i, en fer la factura, s'hi assigna. Compta com a ingrés sempre.
 model Cobrament {
-  id        String          @id @default(cuid())
-  facturaId String          @map("factura_id")
-  factura   Factura         @relation(fields: [facturaId], references: [id], onDelete: Cascade)
-  metode    MetodeCobrament
-  import    Decimal         @db.Decimal(10, 2)
-  data      DateTime
+  id         String          @id @default(cuid())
+  estanciaId String          @map("estancia_id")
+  estancia   Estancia        @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+  facturaId  String?         @map("factura_id")
+  factura    Factura?        @relation(fields: [facturaId], references: [id], onDelete: SetNull)
+  concepte   ConcepteLinia   @default(ALLOTJAMENT)
+  descripcio String?
+  metode     MetodeCobrament
+  import     Decimal         @db.Decimal(10, 2)
+  data       DateTime
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([facturaId])
+  @@index([estanciaId])
   @@map("cobrament")
 }
 
@@ -699,9 +717,10 @@ model RegistreVerifactu {
 // ----------------------------------------------------------------------------
 
 model CategoriaGasto {
-  id     String  @id @default(cuid())
-  nom    String  @unique
-  gastos Gasto[]
+  id      String            @id @default(cuid())
+  nom     String            @unique
+  gastos  Gasto[]
+  serveis ServeiRecurrent[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -710,19 +729,58 @@ model CategoriaGasto {
 }
 
 model Proveidor {
-  id       String  @id @default(cuid())
-  nom      String
-  cif      String?
-  contacte String?
+  id        String  @id @default(cuid())
+  nom       String
+  cif       String?
+  contacte  String?
+  // Fitxa de contacte (control de proveïdors de serveis: SENCAP, SEGURVIP, LOPD…)
+  telefon   String?
+  email     String?
+  adreca    String?
+  web       String?
+  activitat String? // tipus de servei que presta (assegurança, extintors, LOPD…)
+  notes     String?
 
-  gastos Gasto[]
-  actius Actiu[]
+  gastos  Gasto[]
+  actius  Actiu[]
+  serveis ServeiRecurrent[]
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
   @@map("proveidor")
+}
+
+// Servei/manteniment recurrent contractat (assegurança, extintors, sistema contra
+// incendis, LOPD…). En vèncer la `properaData` genera automàticament una despesa i
+// avança la data segons la freqüència. Es projecta al calendari i avisa al Tauler.
+model ServeiRecurrent {
+  id             String           @id @default(cuid())
+  activitat      String // "Sistema de protecció contra incendi", "Assegurança", "Risc i LOPD"…
+  proveidorId    String?          @map("proveidor_id")
+  proveidor      Proveidor?       @relation(fields: [proveidorId], references: [id], onDelete: SetNull)
+  categoriaId    String?          @map("categoria_id")
+  categoria      CategoriaGasto?  @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  frequencia     FrequenciaServei @default(ANUAL)
+  importPrevist  Decimal?         @map("import_previst") @db.Decimal(10, 2)
+  metodePagament MetodeCobrament  @default(TRANSFERENCIA) @map("metode_pagament")
+  properaData    DateTime         @map("propera_data") // propera visita/renovació/pagament
+  vigenciaInici  DateTime?        @map("vigencia_inici")
+  vigenciaFi     DateTime?        @map("vigencia_fi")
+  generaDespesa  Boolean          @default(true) @map("genera_despesa") // crear Gasto automàtic en vèncer
+  observacions   String?
+  actiu          Boolean          @default(true)
+
+  gastos Gasto[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([properaData])
+  @@index([actiu])
+  @@map("servei_recurrent")
 }
 
 model Gasto {
@@ -737,6 +795,8 @@ model Gasto {
   habitacio      Habitacio?      @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
   animalId       String?         @map("animal_id")
   animal         Animal?         @relation(fields: [animalId], references: [id], onDelete: SetNull)
+  serveiRecurrentId String?      @map("servei_recurrent_id")
+  serveiRecurrent   ServeiRecurrent? @relation(fields: [serveiRecurrentId], references: [id], onDelete: SetNull)
   descripcio     String
   metodePagament MetodeCobrament @map("metode_pagament")
   adjuntPath     String?         @map("adjunt_path")

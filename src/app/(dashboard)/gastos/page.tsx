@@ -24,6 +24,10 @@ interface Prov {
   id: string;
   nom: string;
 }
+interface Hab {
+  id: string;
+  nom: string;
+}
 interface Gasto {
   id: string;
   data: string;
@@ -33,11 +37,13 @@ interface Gasto {
   adjuntPath: string | null;
   categoria: { nom: string };
   proveidor: { nom: string } | null;
+  habitacio: { nom: string } | null;
 }
 
 export default function GastosPage() {
   const [categories, setCategories] = useState<Cat[]>([]);
   const [proveidors, setProveidors] = useState<Prov[]>([]);
+  const [habitacions, setHabitacions] = useState<Hab[]>([]);
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [total, setTotal] = useState(0);
   const [perCat, setPerCat] = useState<Record<string, number>>({});
@@ -52,6 +58,7 @@ export default function GastosPage() {
     import: '',
     categoriaId: '',
     proveidorId: '',
+    habitacioId: '',
     metodePagament: 'TARGETA',
     descripcio: '',
   });
@@ -75,6 +82,7 @@ export default function GastosPage() {
   useEffect(() => {
     getJSON<{ categories: Cat[] }>('/api/categories-gasto').then((r) => setCategories(r.categories));
     getJSON<{ proveidors: Prov[] }>('/api/proveidors').then((r) => setProveidors(r.proveidors));
+    getJSON<{ habitacions: Hab[] }>('/api/habitacions').then((r) => setHabitacions(r.habitacions));
   }, []);
   useEffect(() => {
     load();
@@ -99,6 +107,7 @@ export default function GastosPage() {
         import: Number(nova.import),
         categoriaId: nova.categoriaId,
         proveidorId: nova.proveidorId || undefined,
+        habitacioId: nova.habitacioId || undefined,
         metodePagament: nova.metodePagament,
         descripcio: nova.descripcio,
         adjuntPath,
@@ -108,6 +117,7 @@ export default function GastosPage() {
         import: '',
         categoriaId: '',
         proveidorId: '',
+        habitacioId: '',
         metodePagament: 'TARGETA',
         descripcio: '',
       });
@@ -178,6 +188,16 @@ export default function GastosPage() {
                   {proveidors.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.nom}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Habitació" hint="Deixa-ho en «General» si no és d’una habitació concreta.">
+                <Select value={nova.habitacioId} onChange={(e) => setNova({ ...nova, habitacioId: e.target.value })}>
+                  <option value="">General</option>
+                  {habitacions.map((h) => (
+                    <option key={h.id} value={h.id}>
+                      {h.nom}
                     </option>
                   ))}
                 </Select>
@@ -254,6 +274,7 @@ export default function GastosPage() {
               <Th>Data</Th>
               <Th>Descripció</Th>
               <Th>Categoria</Th>
+              <Th>Habitació</Th>
               <Th>Proveïdor</Th>
               <Th>Mètode</Th>
               <Th className="text-right">Import</Th>
@@ -279,6 +300,7 @@ export default function GastosPage() {
                   )}
                 </Td>
                 <Td>{g.categoria.nom}</Td>
+                <Td>{g.habitacio?.nom ? `Hab. ${g.habitacio.nom}` : 'General'}</Td>
                 <Td>{g.proveidor?.nom ?? '—'}</Td>
                 <Td>{METODE_COBRAMENT_LABELS[g.metodePagament]}</Td>
                 <Td className="text-right font-medium"><Eur value={Number(g.import)} /></Td>

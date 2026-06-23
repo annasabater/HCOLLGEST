@@ -9,6 +9,7 @@ const TABS = [
   { href: '/factures', label: 'Facturació' },
   { href: '/tarifes', label: 'Tarifes' },
   { href: '/gastos', label: 'Despeses' },
+  { href: '/serveis', label: 'Proveïdors i serveis' },
   { href: '/verifactu', label: 'Veri*Factu' },
 ];
 

@@ -53,5 +53,14 @@ export const AnotacioCreateSchema = z.object({
   noAcollir: z.boolean().default(false),
 });
 
+// Edició d'una nota: tots els camps opcionals i SENSE defaults (un camp absent
+// vol dir "no el toquis", no "posa'l al valor per defecte").
+export const AnotacioUpdateSchema = z.object({
+  sentit: SentitAnotacioEnum.optional(),
+  tipus: optStr,
+  descripcio: z.string().trim().min(5, 'Descriu el fet de manera objectiva i verificable').optional(),
+  noAcollir: z.boolean().optional(),
+});
+
 export type HuespedCreateInput = z.input<typeof HuespedCreateSchema>;
 export type HuespedUpdateInput = z.input<typeof HuespedUpdateSchema>;

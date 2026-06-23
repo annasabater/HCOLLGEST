@@ -6,6 +6,7 @@
 import 'server-only';
 import { prisma } from '../db';
 import { computeActiuInfo } from '../actiu-alerts';
+import { generarDespesesVencudes } from './serveis-recurrents';
 
 export interface FinanceOpts {
   /**
@@ -23,10 +24,18 @@ function metodeFiltre(opts?: FinanceOpts): { metode?: { not: 'ALTRES' } } {
 export async function getResum(opts?: FinanceOpts) {
   const now = new Date();
   const in7 = new Date(now.getTime() + 7 * 86_400_000);
+  const in30 = new Date(now.getTime() + 30 * 86_400_000);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
   const yearStart = new Date(now.getFullYear(), 0, 1);
   const yearEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+
+  // Posa al dia les despeses de serveis vençuts (no bloqueja el tauler si falla).
+  try {
+    await generarDespesesVencudes(now);
+  } catch (err) {
+    console.error('[tauler] generació de serveis:', err);
+  }
 
   const [
     pendentsEnviament,
@@ -47,6 +56,7 @@ export async function getResum(opts?: FinanceOpts) {
     personalMesAgg,
     dipositsCustodiaAgg,
     dipositsRetingutsMesAgg,
+    serveisProxims,
   ] = await Promise.all([
     prisma.estancia.findMany({
       where: {
@@ -83,11 +93,11 @@ export async function getResum(opts?: FinanceOpts) {
     prisma.estancia.count({ where: { deletedAt: null } }),
     prisma.cobrament.aggregate({
       _sum: { import: true },
-      where: { data: { gte: monthStart, lte: monthEnd }, factura: { deletedAt: null }, ...metodeFiltre(opts) },
+      where: { data: { gte: monthStart, lte: monthEnd }, estancia: { deletedAt: null }, OR: [{ facturaId: null }, { factura: { deletedAt: null } }], ...metodeFiltre(opts) },
     }),
     prisma.cobrament.aggregate({
       _sum: { import: true },
-      where: { data: { gte: yearStart, lte: yearEnd }, factura: { deletedAt: null }, ...metodeFiltre(opts) },
+      where: { data: { gte: yearStart, lte: yearEnd }, estancia: { deletedAt: null }, OR: [{ facturaId: null }, { factura: { deletedAt: null } }], ...metodeFiltre(opts) },
     }),
     prisma.gasto.aggregate({ _sum: { import: true }, where: { deletedAt: null, data: { gte: monthStart, lte: monthEnd } } }),
     prisma.gasto.aggregate({ _sum: { import: true }, where: { deletedAt: null, data: { gte: yearStart, lte: yearEnd } } }),
@@ -116,6 +126,13 @@ export async function getResum(opts?: FinanceOpts) {
       _sum: { import: true },
       where: { estat: 'RETINGUT', dataResolucio: { gte: monthStart, lte: monthEnd }, ...metodeFiltre(opts) },
     }),
+    // Serveis/manteniments amb propera visita o renovació dins els pròxims 30 dies.
+    prisma.serveiRecurrent.findMany({
+      where: { deletedAt: null, actiu: true, properaData: { lte: in30 } },
+      orderBy: { properaData: 'asc' },
+      take: 20,
+      include: { proveidor: { select: { nom: true } } },
+    }),
   ]);
 
   const num = (d: { _sum: { import: unknown } }) => Number(d._sum.import ?? 0);
@@ -130,12 +147,22 @@ export async function getResum(opts?: FinanceOpts) {
   const ocupacio =
     habitacionsCount > 0 ? Math.round((Math.min(habitacionsOcupadesAra, habitacionsCount) / habitacionsCount) * 100) : 0;
 
+  const serveisProximsList = serveisProxims.map((s) => ({
+    id: s.id,
+    activitat: s.activitat,
+    proveidor: s.proveidor?.nom ?? null,
+    properaData: s.properaData,
+    import: s.importPrevist != null ? Number(s.importPrevist) : null,
+    vencut: s.properaData < now,
+  }));
+
   return {
     pendentsEnviament,
     pendentsFirmaCount,
     enviamentsError,
     properesEntrades,
     properesSortides,
+    serveisProxims: serveisProximsList,
     totals: { hostes: totalHostes, estancies: totalEstancies },
     finances: {
       ingressosMes: ingMes,
@@ -151,6 +178,7 @@ export async function getResum(opts?: FinanceOpts) {
       facturesPendents: facturesPendents.length,
       facturesPendentsTotal,
       actiusAlerta,
+      serveisProxims: serveisProximsList.length,
     },
   };
 }
@@ -165,7 +193,7 @@ export async function getBalanc(monthStart: Date, monthEnd: Date, opts?: Finance
   const [cobramentsAgg, retingutsAgg, custodiaAgg, despesesAgg, personalAgg] = await Promise.all([
     prisma.cobrament.aggregate({
       _sum: { import: true },
-      where: { data: { gte: monthStart, lte: monthEnd }, factura: { deletedAt: null }, ...metodeFiltre(opts) },
+      where: { data: { gte: monthStart, lte: monthEnd }, estancia: { deletedAt: null }, OR: [{ facturaId: null }, { factura: { deletedAt: null } }], ...metodeFiltre(opts) },
     }),
     prisma.diposit.aggregate({
       _sum: { import: true },
@@ -219,7 +247,7 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
       prisma.cobrament.groupBy({
         by: ['metode'],
         _sum: { import: true },
-        where: { data: { gte: start, lte: end }, factura: { deletedAt: null }, ...metodeFiltre(opts) },
+        where: { data: { gte: start, lte: end }, estancia: { deletedAt: null }, OR: [{ facturaId: null }, { factura: { deletedAt: null } }], ...metodeFiltre(opts) },
       }),
       prisma.diposit.groupBy({
         by: ['metode'],

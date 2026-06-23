@@ -9,14 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
-import { AnotacioForm } from '@/components/huesped/anotacio-form';
+import { NotesPanel } from '@/components/huesped/notes-panel';
 import { DocumentsHuesped } from '@/components/huesped/documents-huesped';
 import { MascotesPanel } from '@/components/huesped/mascotes-panel';
 import { EliminarHoste } from '@/components/huesped/eliminar-hoste';
 import { EliminarEstada } from '@/components/estancia/eliminar-estada';
 import { formatDate } from '@/lib/utils';
 import { nights } from '@/lib/dates';
-import { TIPUS_DOCUMENT_LABELS, SENTIT_ANOTACIO_LABELS } from '@/lib/validation/enums';
+import { TIPUS_DOCUMENT_LABELS } from '@/lib/validation/enums';
 
 export const dynamic = 'force-dynamic';
 
@@ -238,33 +238,17 @@ export default async function HuespedDetailPage({ params }: { params: Promise<{ 
             mascotes={huesped.animals.map((a) => ({ id: a.id, nom: a.nom, especie: a.especie, mida: a.mida }))}
           />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Notes internes</CardTitle>
-            </CardHeader>
-            <CardBody className="space-y-4">
-              {huesped.anotacions.length === 0 && (
-                <p className="text-sm text-slate-400">Sense notes.</p>
-              )}
-              {huesped.anotacions.map((a) => (
-                <div key={a.id} className="rounded-lg border border-slate-200 p-3">
-                  <div className="mb-1 flex items-center gap-2">
-                    <Badge
-                      tone={a.sentit === 'POSITIVA' ? 'success' : a.sentit === 'NEGATIVA' ? 'danger' : 'neutral'}
-                    >
-                      {SENTIT_ANOTACIO_LABELS[a.sentit]}
-                    </Badge>
-                    {a.noAcollir && <Badge tone="danger">No acollir</Badge>}
-                    <span className="ml-auto text-xs text-slate-400">{formatDate(a.data)}</span>
-                  </div>
-                  <p className="text-sm text-slate-700">{a.descripcio}</p>
-                </div>
-              ))}
-              <div className="border-t border-slate-100 pt-4">
-                <AnotacioForm huespedId={huesped.id} />
-              </div>
-            </CardBody>
-          </Card>
+          <NotesPanel
+            huespedId={huesped.id}
+            canWrite={canEdit}
+            notes={huesped.anotacions.map((a) => ({
+              id: a.id,
+              sentit: a.sentit,
+              descripcio: a.descripcio,
+              noAcollir: a.noAcollir,
+              data: a.data.toISOString(),
+            }))}
+          />
         </div>
       </div>
     </div>
