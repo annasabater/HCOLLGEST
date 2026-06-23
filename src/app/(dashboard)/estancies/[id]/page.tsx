@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Send, Receipt, FileSignature, Coins, PawPrint } from 'lucide-react';
+import { ArrowLeft, Send, Receipt, FileSignature, Coins } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
@@ -189,21 +189,14 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             </CardBody>
           </Card>
 
-          {/* Mascotes — només si l'hoste en té */}
-          {titular && titular.animals.length > 0 && (
-            <Card>
-              <CardHeader className="flex items-center gap-2">
-                <PawPrint className="h-4 w-4 text-brand-600" />
-                <CardTitle>Mascotes de l’hoste</CardTitle>
-              </CardHeader>
-              <CardBody>
-                <MascotesPanel
-                  huespedId={titular.id}
-                  canWrite={canWrite}
-                  mascotes={titular.animals.map((a) => ({ id: a.id, nom: a.nom, especie: a.especie, mida: a.mida }))}
-                />
-              </CardBody>
-            </Card>
+          {/* Mascotes de l'hoste — col·lapsable (plegat si no en té; desplega per afegir) */}
+          {titular && (
+            <MascotesPanel
+              title="Mascotes de l’hoste"
+              huespedId={titular.id}
+              canWrite={canWrite}
+              mascotes={titular.animals.map((a) => ({ id: a.id, nom: a.nom, especie: a.especie, mida: a.mida }))}
+            />
           )}
 
           {/* Dipòsits / fiances — ADMIN */}

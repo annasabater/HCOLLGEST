@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { PawPrint, Plus } from 'lucide-react';
+import { PawPrint, Plus, ChevronDown } from 'lucide-react';
+import { Card, CardBody, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { postJSON } from '@/lib/api';
+import { cn } from '@/lib/utils';
 import { midaAnimalValues, MIDA_ANIMAL_LABELS } from '@/lib/validation/enums';
 
 export interface Mascota {
@@ -20,12 +22,16 @@ export function MascotesPanel({
   huespedId,
   mascotes,
   canWrite,
+  title = 'Mascotes',
 }: {
   huespedId: string;
   mascotes: Mascota[];
   canWrite: boolean;
+  title?: string;
 }) {
   const router = useRouter();
+  // Plegat per defecte si no hi ha mascotes; desplegat si en té.
+  const [open, setOpen] = useState(mascotes.length > 0);
   const [nom, setNom] = useState('');
   const [especie, setEspecie] = useState('Gos');
   const [mida, setMida] = useState('');
@@ -46,48 +52,79 @@ export function MascotesPanel({
   }
 
   return (
-    <div className="space-y-3">
-      {mascotes.length === 0 ? (
-        <p className="text-sm text-slate-400">Sense mascotes.</p>
-      ) : (
-        <ul className="space-y-2">
-          {mascotes.map((m) => (
-            <li key={m.id} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
-              <PawPrint className="h-4 w-4 text-brand-600" />
-              <span className="font-medium text-slate-800">{m.nom}</span>
-              <span className="text-slate-400">· {m.especie}</span>
-              {m.mida && <Badge tone="neutral" className="ml-auto">{MIDA_ANIMAL_LABELS[m.mida]}</Badge>}
-            </li>
-          ))}
-        </ul>
-      )}
+    <Card>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 px-5 py-4 text-left"
+        aria-expanded={open}
+      >
+        <PawPrint className="h-4 w-4 text-brand-600" />
+        <CardTitle>{title}</CardTitle>
+        <span className="text-sm font-medium text-slate-400">({mascotes.length})</span>
+        <ChevronDown
+          className={cn('ml-auto h-5 w-5 text-slate-400 transition-transform', open && 'rotate-180')}
+        />
+      </button>
 
-      {canWrite && (
-        <form onSubmit={afegir} className="flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3">
-          <div className="w-28">
-            <label className="mb-1 block text-xs text-slate-500">Nom</label>
-            <Input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom" />
-          </div>
-          <div className="w-28">
-            <label className="mb-1 block text-xs text-slate-500">Espècie</label>
-            <Input value={especie} onChange={(e) => setEspecie(e.target.value)} placeholder="Gos, gat…" />
-          </div>
-          <div className="w-28">
-            <label className="mb-1 block text-xs text-slate-500">Mida</label>
-            <Select value={mida} onChange={(e) => setMida(e.target.value)}>
-              <option value="">—</option>
-              {midaAnimalValues.map((v) => (
-                <option key={v} value={v}>
-                  {MIDA_ANIMAL_LABELS[v]}
-                </option>
+      {open && (
+        <CardBody className="space-y-3 border-t border-slate-100">
+          {mascotes.length > 0 && (
+            <ul className="space-y-2">
+              {mascotes.map((m) => (
+                <li
+                  key={m.id}
+                  className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                >
+                  <PawPrint className="h-4 w-4 text-brand-600" />
+                  <span className="font-medium text-slate-800">{m.nom}</span>
+                  <span className="text-slate-400">· {m.especie}</span>
+                  {m.mida && (
+                    <Badge tone="neutral" className="ml-auto">
+                      {MIDA_ANIMAL_LABELS[m.mida]}
+                    </Badge>
+                  )}
+                </li>
               ))}
-            </Select>
-          </div>
-          <Button type="submit" size="sm" variant="outline" disabled={saving}>
-            <Plus className="h-4 w-4" /> Afegir
-          </Button>
-        </form>
+            </ul>
+          )}
+
+          {canWrite ? (
+            <form
+              onSubmit={afegir}
+              className={cn(
+                'flex flex-wrap items-end gap-2',
+                mascotes.length > 0 && 'border-t border-slate-100 pt-3',
+              )}
+            >
+              <div className="w-28">
+                <label className="mb-1 block text-xs text-slate-500">Nom</label>
+                <Input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom" />
+              </div>
+              <div className="w-28">
+                <label className="mb-1 block text-xs text-slate-500">Espècie</label>
+                <Input value={especie} onChange={(e) => setEspecie(e.target.value)} placeholder="Gos, gat…" />
+              </div>
+              <div className="w-28">
+                <label className="mb-1 block text-xs text-slate-500">Mida</label>
+                <Select value={mida} onChange={(e) => setMida(e.target.value)}>
+                  <option value="">—</option>
+                  {midaAnimalValues.map((v) => (
+                    <option key={v} value={v}>
+                      {MIDA_ANIMAL_LABELS[v]}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <Button type="submit" size="sm" variant="outline" disabled={saving}>
+                <Plus className="h-4 w-4" /> Afegir
+              </Button>
+            </form>
+          ) : (
+            mascotes.length === 0 && <p className="text-sm text-slate-400">Sense mascotes.</p>
+          )}
+        </CardBody>
       )}
-    </div>
+    </Card>
   );
 }

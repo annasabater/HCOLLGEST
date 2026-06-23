@@ -12,7 +12,6 @@ import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { AnotacioForm } from '@/components/huesped/anotacio-form';
 import { DocumentsHuesped } from '@/components/huesped/documents-huesped';
 import { MascotesPanel } from '@/components/huesped/mascotes-panel';
-import { PawPrint } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { nights } from '@/lib/dates';
 import { TIPUS_DOCUMENT_LABELS, SENTIT_ANOTACIO_LABELS } from '@/lib/validation/enums';
@@ -202,19 +201,12 @@ export default async function HuespedDetailPage({ params }: { params: Promise<{ 
             </CardBody>
           </Card>
 
-          <Card>
-            <CardHeader className="flex items-center gap-2">
-              <PawPrint className="h-4 w-4 text-brand-600" />
-              <CardTitle>Mascotes</CardTitle>
-            </CardHeader>
-            <CardBody>
-              <MascotesPanel
-                huespedId={huesped.id}
-                canWrite={canEdit}
-                mascotes={huesped.animals.map((a) => ({ id: a.id, nom: a.nom, especie: a.especie, mida: a.mida }))}
-              />
-            </CardBody>
-          </Card>
+          <MascotesPanel
+            title="Mascotes"
+            huespedId={huesped.id}
+            canWrite={canEdit}
+            mascotes={huesped.animals.map((a) => ({ id: a.id, nom: a.nom, especie: a.especie, mida: a.mida }))}
+          />
 
           <Card>
             <CardHeader>
