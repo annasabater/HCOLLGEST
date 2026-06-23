@@ -41,6 +41,9 @@ export const CobramentCreateSchema = z.object({
   metode: z.enum(metodeCobramentValues),
   import: z.coerce.number().positive('L’import ha de ser positiu'),
   data: z.coerce.date().optional(),
+  // DEVOLUCIO = reemborsament (p. ex. reserva cancel·lada): es desa com a import
+  // negatiu i resta de l'ingrés.
+  tipus: z.enum(['COBRAMENT', 'DEVOLUCIO']).default('COBRAMENT'),
 });
 
 export type FacturaCreateInput = z.input<typeof FacturaCreateSchema>;
@@ -55,6 +58,14 @@ export const DipositCreateSchema = z.object({
 });
 
 export const DipositResolSchema = z.object({
-  estat: z.enum(['TORNAT', 'RETINGUT']),
+  estat: z.enum(['TORNAT', 'RETINGUT', 'EN_CUSTODIA']),
   motiu: optStr,
+});
+
+// Edició d'un dipòsit en custòdia (corregir import/mètode/notes, sense resoldre'l).
+export const DipositEditSchema = z.object({
+  import: z.coerce.number().positive('L’import ha de ser positiu').optional(),
+  metode: z.enum(metodeCobramentValues).optional(),
+  notes: optStr,
+  data: z.coerce.date().optional(),
 });

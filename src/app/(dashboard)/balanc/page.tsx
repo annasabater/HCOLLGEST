@@ -15,6 +15,9 @@ import {
   Moon,
   Download,
   FileText,
+  CheckCircle2,
+  AlertTriangle,
+  Scale,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -61,8 +64,30 @@ interface BalancAny extends Breakdowns {
   anterior: { ingressos: number; despeses: number; personal: number; benefici: number };
 }
 
-type Mode = 'mes' | 'any';
+interface BalancSituacio {
+  data: string;
+  actiu: {
+    noCorrent: { immobilitzatBrut: number };
+    corrent: { deutors: number; tresoreriaFiances: number };
+    total: number;
+  };
+  patrimoniIPassiu: {
+    patrimoniNet: number;
+    passiuNoCorrent: number;
+    passiuCorrent: { fiances: number };
+    total: number;
+  };
+  detall: { nActius: number; nFacturesPendents: number; nDiposits: number };
+  quadra: boolean;
+  mancances: string[];
+}
+
+type Mode = 'mes' | 'any' | 'situacio';
 const MESOS = ['Gen', 'Feb', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Des'];
+const todayISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 const marge = (benefici: number, ingressos: number) =>
   ingressos > 0 ? Math.round((benefici / ingressos) * 100) : 0;
 const variacio = (cur: number, prev: number) =>
@@ -108,6 +133,85 @@ function Kpi({ label, value, icon: Icon, color, big, delta, deltaInvert }: { lab
   );
 }
 
+function BsRow({ label, value, level = 0, strong, total }: { label: string; value: number; level?: number; strong?: boolean; total?: boolean }) {
+  return (
+    <div
+      className={cn(
+        'flex items-center justify-between gap-4 py-1.5',
+        total
+          ? 'mt-1 border-t-2 border-slate-300 pt-2 text-base font-bold text-slate-900'
+          : strong
+            ? 'font-semibold text-slate-800'
+            : 'text-sm text-slate-600',
+        level === 1 && !strong && !total && 'pl-4',
+      )}
+    >
+      <span>{label}</span>
+      <span className={total ? 'text-brand-800' : ''}>
+        <Eur value={value} />
+      </span>
+    </div>
+  );
+}
+
+function SituacioView({ data }: { data: BalancSituacio }) {
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Actiu</CardTitle>
+          </CardHeader>
+          <CardBody>
+            <BsRow label="Actiu no corrent" value={data.actiu.noCorrent.immobilitzatBrut} strong />
+            <BsRow label={`Immobilitzat material (valor brut) · ${data.detall.nActius} actius`} value={data.actiu.noCorrent.immobilitzatBrut} level={1} />
+            <BsRow label="Actiu corrent" value={data.actiu.corrent.deutors + data.actiu.corrent.tresoreriaFiances} strong />
+            <BsRow label={`Deutors comercials · ${data.detall.nFacturesPendents} factures pendents`} value={data.actiu.corrent.deutors} level={1} />
+            <BsRow label="Tresoreria — efectiu de fiances en dipòsit" value={data.actiu.corrent.tresoreriaFiances} level={1} />
+            <BsRow label="TOTAL ACTIU" value={data.actiu.total} total />
+          </CardBody>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Patrimoni net i passiu</CardTitle>
+          </CardHeader>
+          <CardBody>
+            <BsRow label="Patrimoni net" value={data.patrimoniIPassiu.patrimoniNet} strong />
+            <BsRow label="Patrimoni net (figura de quadre)" value={data.patrimoniIPassiu.patrimoniNet} level={1} />
+            <BsRow label="Passiu no corrent" value={data.patrimoniIPassiu.passiuNoCorrent} strong />
+            <BsRow label="Passiu corrent" value={data.patrimoniIPassiu.passiuCorrent.fiances} strong />
+            <BsRow label={`Fiances rebudes a retornar · ${data.detall.nDiposits} dipòsits`} value={data.patrimoniIPassiu.passiuCorrent.fiances} level={1} />
+            <BsRow label="TOTAL PATRIMONI NET I PASSIU" value={data.patrimoniIPassiu.total} total />
+          </CardBody>
+        </Card>
+      </div>
+
+      <Card>
+        <CardBody className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-green-700">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            El balanç quadra: Actiu = Patrimoni net + Passiu (<Eur value={data.actiu.total} />)
+          </div>
+          <div className="rounded-lg bg-amber-50 p-3">
+            <p className="flex items-center gap-1.5 text-sm font-semibold text-amber-800">
+              <AlertTriangle className="h-4 w-4 shrink-0" /> Balanç aproximat — no és un balanç fiscal
+            </p>
+            <p className="mt-1 text-xs text-amber-700">
+              El patrimoni net es calcula com a diferència (Actiu − Passiu), de manera que sempre quadra.
+              Per a un balanç de situació oficial falten dades que el PMS no registra:
+            </p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-amber-700">
+              {data.mancances.map((m) => (
+                <li key={m}>{m}</li>
+              ))}
+            </ul>
+          </div>
+        </CardBody>
+      </Card>
+    </div>
+  );
+}
+
 function BreakdownsSection({ data }: { data: Breakdowns }) {
   const metodes = metodeItems(data.ingressosPerMetode);
   return (
@@ -149,14 +253,21 @@ export default function BalancPage() {
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [mes, setMes] = useState<Balanc | null>(null);
   const [any, setAny] = useState<BalancAny | null>(null);
+  const [dataTall, setDataTall] = useState(todayISO);
+  const [situacio, setSituacio] = useState<BalancSituacio | null>(null);
 
   const mesParam = `${anchor.getFullYear()}-${String(anchor.getMonth() + 1).padStart(2, '0')}`;
   const loadMes = useCallback(async () => setMes(await getJSON<Balanc>(`/api/balanc?mes=${mesParam}`)), [mesParam]);
   const loadAny = useCallback(async () => setAny(await getJSON<BalancAny>(`/api/balanc/any?any=${year}`)), [year]);
+  const loadSituacio = useCallback(
+    async () => setSituacio(await getJSON<BalancSituacio>(`/api/balanc/situacio?data=${dataTall}`)),
+    [dataTall],
+  );
   useEffect(() => {
     if (mode === 'mes') loadMes();
-    else loadAny();
-  }, [mode, loadMes, loadAny]);
+    else if (mode === 'any') loadAny();
+    else loadSituacio();
+  }, [mode, loadMes, loadAny, loadSituacio]);
 
   const mesLabel = new Intl.DateTimeFormat('ca-ES', { month: 'long', year: 'numeric' }).format(anchor);
 
@@ -202,6 +313,28 @@ export default function BalancPage() {
         ...any.despesesPerCategoria.map((d) => [d.categoria, d.import.toFixed(2)]),
       ];
       downloadCSV(`balanc-${any.any}.csv`, rows);
+    } else if (mode === 'situacio' && situacio) {
+      const s = situacio;
+      const rows: (string | number)[][] = [
+        [`Balanç de situació ${s.data}`, ''],
+        ['ACTIU', ''],
+        ['Actiu no corrent', ''],
+        ['  Immobilitzat material (valor brut)', s.actiu.noCorrent.immobilitzatBrut.toFixed(2)],
+        ['Actiu corrent', ''],
+        ['  Deutors comercials', s.actiu.corrent.deutors.toFixed(2)],
+        ['  Tresoreria - efectiu de fiances en dipòsit', s.actiu.corrent.tresoreriaFiances.toFixed(2)],
+        ['TOTAL ACTIU', s.actiu.total.toFixed(2)],
+        [''],
+        ['PATRIMONI NET I PASSIU', ''],
+        ['Patrimoni net (figura de quadre)', s.patrimoniIPassiu.patrimoniNet.toFixed(2)],
+        ['Passiu no corrent', s.patrimoniIPassiu.passiuNoCorrent.toFixed(2)],
+        ['Passiu corrent - Fiances a retornar', s.patrimoniIPassiu.passiuCorrent.fiances.toFixed(2)],
+        ['TOTAL PATRIMONI NET I PASSIU', s.patrimoniIPassiu.total.toFixed(2)],
+        [''],
+        ['Dades no incloses (balanç aproximat)', ''],
+        ...s.mancances.map((m) => [m, '']),
+      ];
+      downloadCSV(`balanc-situacio-${s.data}.csv`, rows);
     }
   }
 
@@ -220,12 +353,21 @@ export default function BalancPage() {
               <button onClick={() => setMode('any')} className={cn('px-3 py-1.5 text-sm', mode === 'any' ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>
                 Any
               </button>
+              <button onClick={() => setMode('situacio')} className={cn('px-3 py-1.5 text-sm', mode === 'situacio' ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>
+                Situació
+              </button>
             </div>
             <Button variant="outline" size="sm" onClick={exporta}>
               <Download className="h-4 w-4" /> CSV
             </Button>
             <a
-              href={mode === 'mes' ? `/api/balanc/pdf?mes=${mesParam}` : `/api/balanc/pdf?any=${year}`}
+              href={
+                mode === 'mes'
+                  ? `/api/balanc/pdf?mes=${mesParam}`
+                  : mode === 'any'
+                    ? `/api/balanc/pdf?any=${year}`
+                    : `/api/balanc/pdf?situacio=${dataTall}`
+              }
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
@@ -270,7 +412,7 @@ export default function BalancPage() {
             </>
           )}
         </div>
-      ) : (
+      ) : mode === 'any' ? (
         <div className="space-y-6">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setYear(year - 1)}>
@@ -338,12 +480,34 @@ export default function BalancPage() {
             </>
           )}
         </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="flex items-center gap-2">
+            <Scale className="h-4 w-4 text-slate-400" />
+            <label className="text-sm text-slate-600" htmlFor="data-tall">
+              A data de
+            </label>
+            <input
+              id="data-tall"
+              type="date"
+              value={dataTall}
+              onChange={(e) => setDataTall(e.target.value || todayISO())}
+              className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-slate-700"
+            />
+            <Button variant="outline" size="sm" onClick={() => setDataTall(todayISO())}>
+              Avui
+            </Button>
+          </div>
+          {situacio && <SituacioView data={situacio} />}
+        </div>
       )}
 
-      <p className="mt-4 text-xs text-slate-400">
-        Ingressos = cobraments + dipòsits retinguts. Les retencions en custòdia no són ingrés. El
-        benefici és ingressos − despeses − personal. Exporta-ho tot a CSV per a la gestoria.
-      </p>
+      {mode !== 'situacio' && (
+        <p className="mt-4 text-xs text-slate-400">
+          Ingressos = cobraments + dipòsits retinguts. Les retencions en custòdia no són ingrés. El
+          benefici és ingressos − despeses − personal. Exporta-ho tot a CSV per a la gestoria.
+        </p>
+      )}
     </div>
   );
 }

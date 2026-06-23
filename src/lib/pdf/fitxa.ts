@@ -1,18 +1,64 @@
 /**
- * Genera la fitxa PDF "Registre de persones allotjades" d'una estada, amb les
- * dades dels viatgers i la SIGNATURA capturada (a la tablet) incrustada.
+ * Genera la fitxa oficial "Registro de personas alojadas" (Mossos d'Esquadra)
+ * d'una estada SUPERPOSANT les dades sobre el formulari oficial real
+ * (docs/mossos/fitxaViatger.pdf, incrustat a `fitxa-template.ts`). No es recrea
+ * el document: s'agafa el PDF oficial i s'hi "calquen" els valors a sobre.
+ *
+ * Genera UNA pàgina (fitxa) per CADA persona allotjada amb la seva SIGNATURA
+ * incrustada, i afegeix al final la pàgina d'informació de protecció de dades.
  */
 import 'server-only';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb, type PDFPage } from 'pdf-lib';
 import type { Establiment, Estancia, EstanciaViatger, Huesped, Signatura } from '@prisma/client';
 import { formatDate } from '../utils';
-import { TIPUS_DOCUMENT_LABELS, TIPUS_PAGAMENT_LABELS, TIPUS_REGISTRE_LABELS } from '../validation/enums';
+import { FITXA_TEMPLATE_B64 } from './fitxa-template';
 
 type ViatgerRow = EstanciaViatger & { huesped: Huesped; signatura: Signatura | null };
 
-const A4 = { w: 595.28, h: 841.89 };
-const M = 50; // marge
-const GRANATE = rgb(0.478, 0.122, 0.169); // #7A1F2B
+const templateBytes = Buffer.from(FITXA_TEMPLATE_B64, 'base64');
+
+const VAL_SIZE = 9;
+const VAL_DY = 12; // distància del valor sota la línia base de l'etiqueta
+const INK = rgb(0.05, 0.07, 0.12);
+
+// Etiquetes en castellà dels valors d'enum, per coincidir amb el formulari oficial.
+const TIPUS_CONTRACTE: Record<string, string> = {
+  CONTRACTE_EN_CURS: 'Contrato en curso',
+  RESERVA: 'Reserva',
+};
+const TIPUS_DOC: Record<string, string> = {
+  DNI_NIF: 'DNI/NIF',
+  NIE: 'NIE',
+  PASSAPORT: 'Pasaporte',
+  ALTRES: 'Otros',
+};
+const TIPUS_PAG: Record<string, string> = {
+  DESTINACIO: 'Pago en destino',
+  EFECTIU: 'Efectivo',
+  MOBIL: 'Pago por móvil',
+  PLATAFORMA: 'Plataforma de pago',
+  TARGETA_CREDIT: 'Tarjeta de crédito',
+  TRANSFERENCIA: 'Transferencia',
+  TARGETA_REGAL: 'Tarjeta regalo',
+};
+const SEXE: Record<string, string> = { HOME: 'Hombre', DONA: 'Mujer' };
+const PARENTESC: Record<string, string> = {
+  AVI_AVIA: 'Abuelo/abuela',
+  BESAVI_BESAVIA: 'Bisabuelo/bisabuela',
+  BESNET_BESNETA: 'Bisnieto/bisnieta',
+  CUNYAT_CUNYADA: 'Cuñado/cuñada',
+  CONJUGE: 'Cónyuge',
+  FILL_FILLA: 'Hijo/hija',
+  GERMA_GERMANA: 'Hermano/hermana',
+  NET_NETA: 'Nieto/nieta',
+  PARE_MARE: 'Padre o madre',
+  NEBOT_NEBODA: 'Sobrino/sobrina',
+  SOGRE_SOGRA: 'Suegro/suegra',
+  ONCLE_TIA: 'Tío/tía',
+  TUTOR_TUTORA: 'Tutor/tutora',
+  GENDRE_NORA: 'Yerno o nuera',
+  ALTRES: 'Otros',
+};
 
 // pdf-lib (Helvetica WinAnsi) no codifica algunes cometes/guions "tipogràfics".
 function sanitize(s: string): string {
@@ -28,130 +74,103 @@ export async function buildFitxaPdf(
   estancia: Estancia,
   viatgers: ViatgerRow[],
 ): Promise<Uint8Array> {
-  const doc = await PDFDocument.create();
-  const font = await doc.embedFont(StandardFonts.Helvetica);
-  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const out = await PDFDocument.create();
+  const font = await out.embedFont(StandardFonts.Helvetica);
+  const template = await PDFDocument.load(templateBytes);
 
-  let page = doc.addPage([A4.w, A4.h]);
-  let y = A4.h - M;
-
-  const ensure = (need: number) => {
-    if (y - need < M) {
-      page = doc.addPage([A4.w, A4.h]);
-      y = A4.h - M;
-    }
-  };
-  const text = (
-    s: string,
-    opts: { size?: number; bold?: boolean; color?: ReturnType<typeof rgb>; x?: number } = {},
-  ) => {
-    const size = opts.size ?? 10;
-    ensure(size + 6);
-    page.drawText(sanitize(s), {
-      x: opts.x ?? M,
-      y: y - size,
-      size,
-      font: opts.bold ? bold : font,
-      color: opts.color ?? rgb(0.1, 0.1, 0.12),
-    });
-    y -= size + 6;
-  };
-  const rule = () => {
-    ensure(10);
-    page.drawLine({
-      start: { x: M, y: y - 2 },
-      end: { x: A4.w - M, y: y - 2 },
-      thickness: 0.6,
-      color: rgb(0.85, 0.85, 0.85),
-    });
-    y -= 10;
-  };
-  const gap = (h = 8) => {
-    y -= h;
+  /** Trunca un text perquè càpiga a maxW. */
+  const fit = (s: string, maxW: number): string => {
+    if (font.widthOfTextAtSize(s, VAL_SIZE) <= maxW) return s;
+    let t = s;
+    while (t.length > 1 && font.widthOfTextAtSize(`${t}...`, VAL_SIZE) > maxW) t = t.slice(0, -1);
+    return `${t}...`;
   };
 
-  // Capçalera
-  text('Registre de persones allotjades', { size: 18, bold: true, color: GRANATE });
-  gap(2);
-  text(
-    `${establiment.nom} · CIF ${establiment.cif} · Id policial ${establiment.idPolicial} · ${establiment.provincia}`,
-    { size: 9, color: rgb(0.4, 0.4, 0.4) },
-  );
-  gap(4);
-  rule();
+  /** Escriu un valor sota l'etiqueta de coordenada (x, labelY) del formulari. */
+  const put = (page: PDFPage, x: number, labelY: number, value: string | null | undefined, w: number) => {
+    const v = value != null ? String(value).trim() : '';
+    if (!v) return; // camp buit → es deixa en blanc, com a la fitxa oficial
+    page.drawText(sanitize(fit(v, w)), { x: x + 1, y: labelY - VAL_DY, size: VAL_SIZE, font, color: INK });
+  };
 
-  // Dades de l'estada
-  text('Dades de l’estada', { size: 12, bold: true });
-  text(
-    `Tipus: ${TIPUS_REGISTRE_LABELS[estancia.tipusRegistre]}   ·   Contracte: ${estancia.numContracte}/${estancia.anyContracte}`,
-  );
-  text(
-    `Entrada: ${formatDate(estancia.dataEntrada)}   ·   Sortida: ${formatDate(estancia.dataSortida)}   ·   Viatgers: ${estancia.numViatgers}`,
-  );
-  text(`Pagament: ${TIPUS_PAGAMENT_LABELS[estancia.tipusPagament]}`);
-  gap(4);
-  rule();
+  const fmtInternet = (b: boolean | null) => (b == null ? '' : b ? 'SÍ' : 'NO');
 
-  // Viatgers
-  for (let i = 0; i < viatgers.length; i++) {
-    const v = viatgers[i]!;
-    const h = v.huesped;
-    ensure(120);
-    text(
-      `Viatger ${i + 1} — ${h.nom} ${h.cognom1} ${h.cognom2 ?? ''}${v.esTitular ? '  (titular)' : ''}`,
-      { size: 12, bold: true },
-    );
-    const doctxt = h.tipusDocument
-      ? `${TIPUS_DOCUMENT_LABELS[h.tipusDocument]} ${h.numDocument ?? ''}`
-      : '—';
-    text(
-      `Document: ${doctxt}   ·   Naixement: ${formatDate(h.dataNaixement)}   ·   Nacionalitat: ${h.nacionalitat ?? '—'}`,
-    );
-    const adreca = [h.adreca, h.codiPostal, h.municipi ?? h.localitat, h.provincia, h.pais]
+  async function renderFitxa(v: ViatgerRow | null) {
+    // Copia la pàgina del formulari oficial (índex 0) i hi superposa les dades.
+    const page = (await out.copyPages(template, [0]))[0];
+    if (!page) return;
+    out.addPage(page);
+    const h = v?.huesped ?? null;
+
+    // --- Datos del contrato ---
+    put(page, 52, 719, establiment.idPolicial, 158);
+    put(page, 215.35, 719, establiment.nom, 158);
+    put(page, 378.7, 719, TIPUS_CONTRACTE[estancia.tipusRegistre] ?? estancia.tipusRegistre, 160);
+    put(page, 52, 692, `${estancia.numContracte}/${estancia.anyContracte}`, 158);
+    put(page, 215.35, 692, formatNoDash(formatDate(estancia.dataFormalitzacio)), 158);
+    put(page, 378.7, 692, formatNoDash(formatDate(estancia.dataEntrada)), 160);
+    put(page, 52, 665, formatNoDash(formatDate(estancia.dataSortida)), 158);
+    put(page, 215.35, 665, String(estancia.numViatgers), 158);
+    put(page, 378.7, 665, TIPUS_PAG[estancia.tipusPagament] ?? estancia.tipusPagament, 160);
+    put(page, 52, 638, estancia.numHabitacions != null ? String(estancia.numHabitacions) : '', 158);
+    put(page, 215.35, 638, fmtInternet(estancia.teInternet), 320);
+
+    // --- Datos identificativos ---
+    put(page, 52, 591, h?.tipusDocument ? TIPUS_DOC[h.tipusDocument] ?? h.tipusDocument : '', 242);
+    put(page, 299.5, 591, h?.numDocument, 240);
+    put(page, 52, 564, h?.numSuport, 242);
+    put(page, 299.5, 564, formatNoDash(formatDate(h?.dataExpedicio)), 240);
+
+    // --- Datos personales ---
+    put(page, 52, 517, h?.nom, 158);
+    put(page, 215.35, 517, h?.cognom1, 158);
+    put(page, 378.7, 517, h?.cognom2, 160);
+    put(page, 52, 490, h?.sexe ? SEXE[h.sexe] ?? h.sexe : '', 158);
+    put(page, 215.35, 490, formatNoDash(formatDate(h?.dataNaixement)), 158);
+    put(page, 378.7, 490, h?.nacionalitat, 160);
+    put(page, 52, 463, h?.email, 158);
+    put(page, 215.35, 463, v?.parentesc ? PARENTESC[v.parentesc] ?? v.parentesc : '', 158);
+    put(page, 378.7, 463, h?.telefon, 160);
+
+    // --- Dirección postal ---
+    put(page, 52, 416, h?.adreca, 158);
+    put(page, 215.35, 416, h?.pais, 158);
+    put(page, 378.7, 416, h?.provincia, 160);
+    put(page, 52, 389, h?.municipi, 158);
+    put(page, 215.35, 389, h?.localitat, 158);
+    put(page, 378.7, 389, h?.codiPostal, 160);
+
+    // --- Firma + Localidad y fecha ---
+    await drawSignatura(page, v);
+    const llocData = [v?.signatura?.llocSignatura, v?.signatura ? formatDate(v.signatura.data) : null]
       .filter(Boolean)
       .join(', ');
-    text(`Adreça: ${adreca || '—'}`);
-    gap(2);
-
-    // Signatura
-    text('Signatura de la persona allotjada:', { size: 9, color: rgb(0.4, 0.4, 0.4) });
-    if (v.signatura?.imatge?.startsWith('data:image')) {
-      try {
-        const b64 = v.signatura.imatge.split(',')[1] ?? '';
-        const bytes = Buffer.from(b64, 'base64');
-        const png = await doc.embedPng(bytes);
-        const w = 150;
-        const hgt = (png.height / png.width) * w;
-        ensure(hgt + 14);
-        page.drawImage(png, { x: M, y: y - hgt, width: w, height: hgt });
-        y -= hgt + 4;
-        text(
-          `Signat ${formatDate(v.signatura.data)} ${v.signatura.hora}${v.signatura.llocSignatura ? ` · ${v.signatura.llocSignatura}` : ''}`,
-          { size: 8, color: rgb(0.5, 0.5, 0.5) },
-        );
-      } catch {
-        text('(signatura no disponible)', { size: 8, color: rgb(0.6, 0.6, 0.6) });
-      }
-    } else {
-      // Espai per a signatura manuscrita si encara no s'ha capturat.
-      ensure(44);
-      page.drawLine({
-        start: { x: M, y: y - 36 },
-        end: { x: M + 200, y: y - 36 },
-        thickness: 0.6,
-        color: rgb(0.7, 0.7, 0.7),
-      });
-      y -= 44;
-    }
-    gap(6);
-    rule();
+    put(page, 299.5, 362, llocData, 240);
   }
 
-  gap(6);
-  text(
-    'Document generat per HostalColl Gestió. Conservació 3 anys a disposició dels Mossos d’Esquadra (RD 933/2021).',
-    { size: 8, color: rgb(0.55, 0.55, 0.55) },
-  );
+  async function drawSignatura(page: PDFPage, v: ViatgerRow | null) {
+    if (!v?.signatura?.imatge?.startsWith('data:image')) return; // queda l'espai per signar a mà
+    try {
+      const b64 = v.signatura.imatge.split(',')[1] ?? '';
+      const png = await out.embedPng(Buffer.from(b64, 'base64'));
+      const scale = Math.min(230 / png.width, 30 / png.height);
+      page.drawImage(png, { x: 54, y: 328, width: png.width * scale, height: png.height * scale });
+    } catch {
+      /* signatura no incrustable (p. ex. JPEG): es deixa l'espai en blanc */
+    }
+  }
 
-  return doc.save();
+  const rows: (ViatgerRow | null)[] = viatgers.length > 0 ? viatgers : [null];
+  for (const v of rows) await renderFitxa(v);
+
+  // Pàgina d'informació de protecció de dades del formulari oficial (un cop, al final).
+  const infoPage = (await out.copyPages(template, [1]))[0];
+  if (infoPage) out.addPage(infoPage);
+
+  return out.save();
+}
+
+// La data buida la retorna formatDate com '—'; al formulari oficial volem blanc.
+function formatNoDash(s: string): string {
+  return s === '—' ? '' : s;
 }

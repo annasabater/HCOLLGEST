@@ -188,6 +188,46 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
               })}
             </CardBody>
           </Card>
+
+          {/* Mascotes — només si l'hoste en té */}
+          {titular && titular.animals.length > 0 && (
+            <Card>
+              <CardHeader className="flex items-center gap-2">
+                <PawPrint className="h-4 w-4 text-brand-600" />
+                <CardTitle>Mascotes de l’hoste</CardTitle>
+              </CardHeader>
+              <CardBody>
+                <MascotesPanel
+                  huespedId={titular.id}
+                  canWrite={canWrite}
+                  mascotes={titular.animals.map((a) => ({ id: a.id, nom: a.nom, especie: a.especie, mida: a.mida }))}
+                />
+              </CardBody>
+            </Card>
+          )}
+
+          {/* Dipòsits / fiances — ADMIN */}
+          {isAdmin && (
+            <Card>
+              <CardHeader className="flex items-center gap-2">
+                <Coins className="h-4 w-4 text-brand-600" />
+                <CardTitle>Dipòsits / fiances</CardTitle>
+              </CardHeader>
+              <CardBody>
+                <DipositsPanel
+                  estanciaId={estancia.id}
+                  diposits={estancia.diposits.map((d) => ({
+                    id: d.id,
+                    import: Number(d.import),
+                    data: d.data.toISOString(),
+                    metode: d.metode,
+                    estat: d.estat,
+                    motiu: d.motiu,
+                  }))}
+                />
+              </CardBody>
+            </Card>
+          )}
         </div>
 
         {/* Mossos + Facturació */}
@@ -214,22 +254,6 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             </CardBody>
           </Card>
 
-          {titular && (
-            <Card>
-              <CardHeader className="flex items-center gap-2">
-                <PawPrint className="h-4 w-4 text-brand-600" />
-                <CardTitle>Mascotes de l’hoste</CardTitle>
-              </CardHeader>
-              <CardBody>
-                <MascotesPanel
-                  huespedId={titular.id}
-                  canWrite={canWrite}
-                  mascotes={titular.animals.map((a) => ({ id: a.id, nom: a.nom, especie: a.especie, mida: a.mida }))}
-                />
-              </CardBody>
-            </Card>
-          )}
-
           {isAdmin && (
             <Card>
               <CardHeader className="flex items-center gap-2">
@@ -246,28 +270,6 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                     numero: f.numero,
                     total: Number(f.total),
                     estat: f.estat,
-                  }))}
-                />
-              </CardBody>
-            </Card>
-          )}
-
-          {isAdmin && (
-            <Card>
-              <CardHeader className="flex items-center gap-2">
-                <Coins className="h-4 w-4 text-brand-600" />
-                <CardTitle>Dipòsits / fiances</CardTitle>
-              </CardHeader>
-              <CardBody>
-                <DipositsPanel
-                  estanciaId={estancia.id}
-                  diposits={estancia.diposits.map((d) => ({
-                    id: d.id,
-                    import: Number(d.import),
-                    data: d.data.toISOString(),
-                    metode: d.metode,
-                    estat: d.estat,
-                    motiu: d.motiu,
                   }))}
                 />
               </CardBody>

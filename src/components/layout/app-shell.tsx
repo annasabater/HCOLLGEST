@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Settings } from 'lucide-react';
 import type { Role } from '@prisma/client';
 import { Sidebar } from '@/components/layout/sidebar';
 import { LogoutButton } from '@/components/layout/logout-button';
@@ -47,7 +48,7 @@ export function AppShell({
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col bg-brand-900 text-white transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col bg-brand-900 text-white transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:z-auto lg:translate-x-0',
           open ? 'translate-x-0' : '-translate-x-full',
         )}
       >
@@ -69,12 +70,22 @@ export function AppShell({
         </div>
         <Sidebar role={user.role} />
         <div className="border-t border-brand-800 p-3">
-          <div className="mb-2 px-3">
-            <p className="truncate text-sm font-medium">{user.nom}</p>
-            <p className="text-xs text-brand-300">
-              {readOnly ? 'Només lectura' : (ROLE_LABEL[user.role] ?? user.role)}
-            </p>
-          </div>
+          {user.role === 'ADMIN' ? (
+            <Link
+              href="/config"
+              className="mb-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-100 transition-colors hover:bg-brand-800"
+            >
+              <Settings className="h-4 w-4 shrink-0" />
+              Configuració
+            </Link>
+          ) : (
+            <div className="mb-2 px-3">
+              <p className="truncate text-sm font-medium">{user.nom}</p>
+              <p className="text-xs text-brand-300">
+                {readOnly ? 'Només lectura' : (ROLE_LABEL[user.role] ?? user.role)}
+              </p>
+            </div>
+          )}
           <LogoutButton />
         </div>
       </aside>

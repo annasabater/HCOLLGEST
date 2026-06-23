@@ -47,23 +47,31 @@ Prioridad: primero el **núcleo legal** (plazos de 24 h y sanciones), luego el v
 - **Plazos (§2.4):** comunicar a Mossos en **≤ 24 h**; conservar el registro **3 años**.
 - **Datos del establecimiento (seed):** `HOSTAL COLL` · Id policial `000000550` · CIF `40331905W` · Barcelona.
 
-## PENDIENTES que NO se deben inventar — preguntar (§9)
+## Formato del fitxer massiu — CONFIRMADO (Manual v8, maig 2025)
 
-1. **Orden/estructura exactos del fitxer massiu** → `FIELD_LAYOUT` en `src/lib/mossos/fitxer.ts`
-   ahora tiene una versión **PROVISIONAL** (best-effort INT/1922/2003 + RD 933/2021). El orden,
-   la estructura y los códigos exactos están en el *Manual d'instruccions* del portal: verificar
-   y poner `FORMAT_CONFIRMAT = true`. Mientras sea `false`, el fichero se marca como provisional
-   (cabecera `X-Mossos-Provisional` + aviso en el tauler).
-2. **`file_identifier`** real (9-10 car., en "Dades de l'establiment"; **no** es el Id policial). Se configura en `/config`.
-3. **Codificación** del `.txt` (ISO-8859-1 vs UTF-8).
-4. **Códigos literales** de los enums dentro del fichero (`CODES` son **provisionales**, verificar manual).
-5. **Selectores/flujo del portal** para el conector Playwright.
-6. **Credenciales Mossos**: secret manager / cifradas; nunca en repo ni logs.
-7. **Tarifa IEET** (Fase 3).
+El orden, estructura y códigos están **confirmados** con el *Manual d'instruccions de l'usuari*
+v8 (mayo 2025, en `docs/mossos/`) y su anexo "Exemple fitxer .txt":
+- Estructura multi-registro: **línea tipus 1** (establiment, 7 campos) + **líneas tipus 2**
+  (viatger, 32 campos, con `|` final). Tipo 0 (agrupación) no se usa.
+- Fechas `yyyyMMdd`, horas `HHmm`. Códigos oficiales en `src/lib/mossos/codis.ts`
+  (documento D/N/P/O, sexo M/F, pago DESTI/EFECT/MOVIL/PLATF/TARJT/TRANS/TREG, contrato C/R,
+  parentesco AB/BA/…). `FORMAT_CONFIRMAT = true` en `fitxer.ts`. Tests con la línea exacta del ejemplo.
+- **Codificación INE/ISO**: provincia → INE 2 díg., **municipio → INE 6 díg.** (padrón INE
+  completo en `src/lib/data/municipis-ine.ts`, selector provincia→municipio en el formulario vía
+  `GET /api/municipis`), país → ISO 3166-1 Alfa-3. La validación bloquea la subida si algún código
+  no resuelve (mensaje claro), así nunca se sube un fichero inválido.
 
-El generador **ya produce el fichero** (layout provisional). `POST /api/estancies/:id/fitxer`
-lo descarga con `X-Mossos-Provisional: true` hasta que confirmes el formato con el manual
-(`FORMAT_CONFIRMAT = true`). Verifica el primer fichero en el portal antes de usarlo en real.
+### PENDIENTES que NO se deben inventar — preguntar (§9)
+
+1. **`file_identifier`** real (9-10 car., en "Dades de l'establiment"; **no** es el Id policial). Se configura en `/config`.
+2. **Codificación** del `.txt`: se usa **ISO-8859-1 (latin1)** (app legacy); el manual no lo explicita, verificar con el primer fichero real.
+3. **Selectores/flujo del portal** para el conector Playwright (§9.5).
+4. **Credenciales Mossos**: secret manager / cifradas; nunca en repo ni logs.
+5. **Tarifa IEET** (Fase 3).
+6. **Bizum** no tiene código propio en el manual: se mapea a `MOVIL` (pagament per mòbil).
+
+El generador **ya produce el fichero con el formato oficial confirmado**. Aun así, **verifica el
+primer fichero en el portal** antes de confiar en el envío masivo en real.
 
 ## Estructura
 
@@ -139,8 +147,10 @@ Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
 - **Desplegament**: veure `DEPLOY.md` (Vercel + Supabase). `vercel-build` aplica `prisma migrate deploy`
   automàticament. Diagnòstic a `GET /api/health` (BD, taules, seed, env). `handleApiError` distingeix
   BD no migrada (503) i config incompleta (503) de l'error 500 genèric.
-- **Pendientes** (anotados): export **Excel/PDF** (hay CSV de llibre); y **Mossos §9**
-  (FIELD_LAYOUT/CODES/file_identifier del manual + conector §9.5); Veri*Factu producció (cert .pfx).
+- **Mossos**: formato del fitxer massiu **CONFIRMADO** con el manual v8 (estructura tipus 1+2,
+  códigos, fechas, INE municipios/provincias + ISO países). Pendiente solo: `file_identifier` real,
+  conector de subida §9.5 (selectores) y verificar el primer fichero en el portal.
+- **Pendientes** (anotados): export **Excel/PDF** (hay CSV de llibre); Veri*Factu producció (cert .pfx).
 
 ## Build (Windows)
 

@@ -6,16 +6,14 @@ import {
   LayoutDashboard,
   Users,
   BedDouble,
-  DoorOpen,
   CalendarDays,
   BookText,
+  FileCheck,
   Sparkles,
   MessageCircle,
   PiggyBank,
-  PawPrint,
   Wrench,
   UserCog,
-  Settings,
 } from 'lucide-react';
 import type { Role } from '@prisma/client';
 import { cn } from '@/lib/utils';
@@ -41,24 +39,21 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: '/huespedes', label: 'Hostes', icon: Users },
       { href: '/estancies', label: 'Estades', icon: BedDouble },
-      { href: '/habitacions', label: 'Habitacions', icon: DoorOpen },
       { href: '/calendari', label: 'Calendari', icon: CalendarDays },
       { href: '/neteja', label: 'Neteja', icon: Sparkles },
-      { href: '/plantilles', label: 'Plantilles', icon: MessageCircle },
       { href: '/llibre', label: 'Llibre registre', icon: BookText },
+      { href: '/justificants', label: 'Justificants', icon: FileCheck },
     ],
   },
   {
-    title: 'Comptabilitat',
-    items: [{ href: '/balanc', label: 'Balanç', icon: PiggyBank, roles: ['ADMIN'] }],
+    items: [{ href: '/balanc', label: 'Comptabilitat', icon: PiggyBank, roles: ['ADMIN'] }],
   },
   {
     title: 'Gestió',
     items: [
-      { href: '/actius', label: 'Mascotes', icon: PawPrint },
+      { href: '/plantilles', label: 'Plantilles', icon: MessageCircle },
       { href: '/manteniment', label: 'Manteniment', icon: Wrench },
       { href: '/personal', label: 'Personal', icon: UserCog, roles: ['ADMIN'] },
-      { href: '/config', label: 'Configuració', icon: Settings, roles: ['ADMIN'] },
     ],
   },
 ];

@@ -7,7 +7,6 @@ import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AvisosPanel } from '@/components/huesped/avisos-panel';
 import { TIPUS_DOCUMENT_LABELS } from '@/lib/validation/enums';
 
 export const dynamic = 'force-dynamic';
@@ -15,10 +14,12 @@ export const dynamic = 'force-dynamic';
 export default async function HuespedesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; mascota?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, mascota } = await searchParams;
+  const nomesMascota = mascota === '1';
   const where: Prisma.HuespedWhereInput = { deletedAt: null };
+  if (nomesMascota) where.animals = { some: { deletedAt: null } };
   if (q?.trim()) {
     where.OR = [
       { nom: { contains: q, mode: 'insensitive' } },
@@ -55,10 +56,12 @@ export default async function HuespedesPage({
         }
       />
 
-      <AvisosPanel />
-
-      <form method="get" className="mb-4 flex max-w-md gap-2">
-        <Input name="q" defaultValue={q ?? ''} placeholder="Cerca per nom, document, email…" />
+      <form method="get" className="mb-4 flex max-w-lg flex-wrap items-center gap-2">
+        <Input name="q" defaultValue={q ?? ''} placeholder="Cerca per nom, document, email…" className="max-w-xs" />
+        <label className="flex items-center gap-1.5 text-sm text-slate-600">
+          <input type="checkbox" name="mascota" value="1" defaultChecked={nomesMascota} />
+          <PawPrint className="h-4 w-4 text-slate-400" /> Només amb mascota
+        </label>
         <Button type="submit" variant="outline">
           <Search className="h-4 w-4" />
         </Button>

@@ -15,6 +15,15 @@ export const tipusPagamentValues = [
   'TARGETA_CREDIT',
   'TRANSFERENCIA',
   'TARGETA_REGAL',
+  'BIZUM',
+] as const;
+// Opcions que s'ofereixen a l'alta d'estada (la resta es conserven per a
+// registres antics, però no es proposen de nou).
+export const tipusPagamentFormValues = [
+  'BIZUM',
+  'EFECTIU',
+  'TRANSFERENCIA',
+  'TARGETA_CREDIT',
 ] as const;
 export const parentescValues = [
   'AVI_AVIA',
@@ -107,6 +116,7 @@ export const TIPUS_PAGAMENT_LABELS: Record<(typeof tipusPagamentValues)[number],
   TARGETA_CREDIT: 'Targeta de crèdit',
   TRANSFERENCIA: 'Transferència',
   TARGETA_REGAL: 'Targeta regal',
+  BIZUM: 'Bizum',
 };
 
 export const PARENTESC_LABELS: Record<(typeof parentescValues)[number], string> = {

@@ -4,6 +4,7 @@ import { getSessionUser } from '@/lib/auth/session';
 import { PageHeader } from '@/components/ui/page-header';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { TreballadorForm } from '@/components/personal/treballador-form';
+import { EliminarTreballador } from '@/components/personal/eliminar-treballador';
 import { formatEur } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -44,6 +45,7 @@ export default async function PersonalPage() {
               <Th>Preu/hora</Th>
               <Th>Jornades</Th>
               <Th>Absències</Th>
+              <Th></Th>
             </tr>
           </Thead>
           <tbody>
@@ -59,6 +61,9 @@ export default async function PersonalPage() {
                 <Td>{t.preuHora ? `${formatEur(Number(t.preuHora))}/h` : '—'}</Td>
                 <Td>{t._count.jornades}</Td>
                 <Td>{t._count.absencies}</Td>
+                <Td className="text-right">
+                  <EliminarTreballador id={t.id} nom={t.nom} />
+                </Td>
               </Tr>
             ))}
           </tbody>

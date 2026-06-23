@@ -1,48 +1,54 @@
 /**
  * mossos/fitxer.ts
- * Generador del "fitxer massiu" de viatgers para el portal de Mossos d'Esquadra.
+ * Generador del "fitxer massiu" de viatgers per al portal de Mossos d'Esquadra.
  *
- * ESTADO:
- *   ✅ Motor de formato y validación: COMPLETO y correcto según las reglas
- *      documentadas (separador "|", campos vacíos que conservan su "|",
- *      nombre de fichero con secuencia, alfabeto occidental, etc.).
- *   ⚠ PROVISIONAL (§9.1/§9.4): FIELD_LAYOUT y CODES están rellenos con una
- *      versión best-effort (INT/1922/2003 + RD 933/2021), pero el ORDEN, la
- *      ESTRUCTURA y los CÓDIGOS exactos están en el "Manual d'instruccions de
- *      l'usuari" del portal (apartado "Documentació i enllaços"). Verifícalos
- *      ahí antes de usar el fichero en real y pon FORMAT_CONFIRMAT = true.
- *      Mientras sea false, el fichero se marca como provisional.
+ * Format CONFIRMAT amb el "Manual d'instruccions de l'usuari del web de registre
+ * de viatgers d'establiments d'hostalatge" (v8, actualització maig 2025), apartat
+ * 4 "Creació i format dels fitxers" + annex "Exemple fitxer .txt".
+ *
+ * Estructura (un sol .txt):
+ *   - LÍNIA TIPUS 1: dades i identificador de l'establiment (7 camps).
+ *   - LÍNIES TIPUS 2: una per viatger (32 camps).
+ *   (El tipus 0 — agrupació hotelera — no s'usa: un sol establiment.)
+ *
+ * Regles de format (§4 "ESPECIFICACIONS GENERALS"):
+ *   - Separador "|"; els camps buits CONSERVEN el seu "|".
+ *   - Sense abreviatures; alfabet occidental (es conserven accents é, ç, ñ).
+ *   - Cognoms compostos amb un sol espai. Valors alfabètics en MAJÚSCULES.
+ *   - Cada registre en una línia nova (CRLF), excepte l'últim.
+ *   - Dates "yyyyMMdd"; hores "HHmm".
  */
+import {
+  CODES,
+  provinciaToINE,
+  municipiToINE,
+  paisToISO3,
+  esEspanya,
+} from './codis';
 
 // ----------------------------------------------------------------------------
-// 1. TIPOS DE DATOS (coinciden con el modelo de datos único ya consolidado)
+// 1. TIPUS DE DADES
 // ----------------------------------------------------------------------------
 
 export type TipusRegistre = 'CONTRACTE_EN_CURS' | 'RESERVA';
 export type TipusDocument = 'DNI_NIF' | 'NIE' | 'PASSAPORT' | 'ALTRES';
 export type Sexe = 'HOME' | 'DONA';
-export type TipusPagament =
-  | 'DESTINACIO'
-  | 'EFECTIU'
-  | 'MOBIL'
-  | 'PLATAFORMA'
-  | 'TARGETA_CREDIT'
-  | 'TRANSFERENCIA'
-  | 'TARGETA_REGAL';
+export type TipusPagament = keyof typeof CODES.tipusPagament;
+export type Parentesc = keyof typeof CODES.parentesc;
 
 export interface Establiment {
-  /** Identificador para el NOMBRE del fichero (9-10 car., p.ej. "08043AAR02").
-   *  ⚠ NO es el "Id policial" numérico (000000550). Confírmalo en el portal. */
+  /** Identificador de l'establiment (9-10 car.) del portal ("Dades de
+   *  l'establiment"). Va al NOM del fitxer i al camp "Codi establiment". */
   fileIdentifier: string;
-  idPolicial: string; // 000000550
+  idPolicial: string; // 000000550 (no s'usa al fitxer)
   nom: string; // HOSTAL COLL
 }
 
 export interface Contracte {
   tipusRegistre: TipusRegistre;
   numContracte: string;
-  anyContracte: number; // p.ej. 2026
-  dataFormalitzacio: Date; // <= hoy
+  anyContracte: number;
+  dataFormalitzacio: Date; // <= avui (camp "data contracte")
   dataEntrada: Date;
   dataSortida: Date; // > dataEntrada
   numViatgers: number;
@@ -53,25 +59,25 @@ export interface Contracte {
 
 export interface Viatger {
   tipusDocument?: TipusDocument; // no si menor/reserva
-  numDocument?: string; // no si menor/reserva
-  numSuport?: string; // oblig. si DNI/NIF o NIE
+  numDocument?: string;
+  numSuport?: string; // 9 car. exactes; oblig. si DNI/NIF o NIE
   dataExpedicio?: Date;
   nom: string;
   cognom1: string;
   cognom2?: string; // oblig. si DNI/NIF
   sexe?: Sexe;
-  dataNaixement?: Date; // <= hoy
-  nacionalitat?: string;
-  email?: string; // reserva: email O telefon
+  dataNaixement?: Date; // <= avui; oblig. en contracte en curs
+  nacionalitat?: string; // nom de país (es converteix a ISO alfa-3)
+  email?: string;
   telefon?: string;
-  parentesc?: string; // oblig. si menor (en contracte en curs)
+  parentesc?: Parentesc; // oblig. si menor (contracte en curs)
   esMenor?: boolean;
-  // Dirección (oblig. si contracte en curs)
+  // Adreça (oblig. si contracte en curs)
   adreca?: string;
-  pais?: string;
-  provincia?: string; // si pais = Espanya
-  municipi?: string; // si pais = Espanya
-  localitat?: string; // si pais = estranger
+  pais?: string; // nom de país (→ ISO alfa-3)
+  provincia?: string; // nom (→ INE 2 dígits) si país = Espanya
+  municipi?: string; // nom o codi (→ INE 6 dígits) si país = Espanya
+  localitat?: string; // si país estranger
   codiPostal?: string;
 }
 
@@ -79,251 +85,247 @@ export interface ParteViatgers {
   establiment: Establiment;
   contracte: Contracte;
   viatgers: Viatger[];
+  /** Data/hora de confecció del fitxer (línia establiment). Per defecte: ara. */
+  generatedAt?: Date;
 }
 
 // ----------------------------------------------------------------------------
-// 2. CONFIGURACIÓN DE FORMATO
+// 2. CONFIGURACIÓ DE FORMAT
 // ----------------------------------------------------------------------------
 
 export type Encoding = 'latin1' | 'utf-8';
 
+const pad = (n: number, w: number) => String(n).padStart(w, '0');
+
 export const CONFIG = {
   separador: '|',
   saltLinia: '\r\n',
-  // ⚠ §9.3 CONFIRMAR EN EL MANUAL: app Java legacy -> probablemente ISO-8859-1.
+  /** App legacy del portal → ISO-8859-1 (latin1). */
   encoding: 'latin1' as Encoding,
-  formatData: (d: Date) =>
-    `${String(d.getDate()).padStart(2, '0')}/` +
-    `${String(d.getMonth() + 1).padStart(2, '0')}/` +
-    `${d.getFullYear()}`, // ⚠ §9 CONFIRMAR formato exacto (dd/mm/aaaa vs aaaammdd)
+  formatFitxer: 'V24', // activa les validacions dels camps nous (manual §4)
+  /** Data en "yyyyMMdd". */
+  formatData: (d: Date) => `${d.getFullYear()}${pad(d.getMonth() + 1, 2)}${pad(d.getDate(), 2)}`,
+  /** Hora en "HHmm". */
+  formatHora: (d: Date) => `${pad(d.getHours(), 2)}${pad(d.getMinutes(), 2)}`,
 };
 
-/** Códigos LITERALES que espera el fichero por cada enum.
- *  ⚠ §9.4 PROVISIONALES (best-effort según INT/1922/2003 + RD 933/2021). El
- *  "Manual d'instruccions" del portal indica el código exacto; revísalos antes de
- *  usar el fichero en real (un código erróneo → el portal lo rechaza). */
-export const CODES = {
-  tipusRegistre: { CONTRACTE_EN_CURS: 'C', RESERVA: 'R' }, // ⚠ verificar manual
-  tipusDocument: { DNI_NIF: 'D', NIE: 'N', PASSAPORT: 'P', ALTRES: 'O' }, // ⚠ verificar manual
-  sexe: { HOME: 'H', DONA: 'D' }, // ⚠ verificar manual (pot ser M/F)
-  tipusPagament: {
-    // ⚠ verificar manual (pot ser numèric o un altre literal)
-    DESTINACIO: 'DESTI',
-    EFECTIU: 'EFECT',
-    MOBIL: 'MOBIL',
-    PLATAFORMA: 'PLATF',
-    TARGETA_CREDIT: 'TARGE',
-    TRANSFERENCIA: 'TRANS',
-    TARGETA_REGAL: 'REGAL',
-  },
-  boolSiNo: (b?: boolean) => (b ? 'SI' : 'NO'),
-};
-
-// ----------------------------------------------------------------------------
-// 3. LAYOUT DEL FICHERO  ⛔ RELLENAR CON EL ORDEN EXACTO DEL MANUAL (§9.1)
-// ----------------------------------------------------------------------------
-/**
- * Cada entrada = una columna del registro, en el ORDEN que diga el manual.
- * `value` extrae el dato del parte. El motor de abajo ya hace todo lo demás.
- *
- * Pendiente de confirmar también la ESTRUCTURA: ¿una línea por viajero con los
- * datos del contrato repetidos? ¿o una línea de cabecera (contrato) + N líneas
- * de viajero? Se ajusta en buildLines() según lo que indique el manual.
- *
- * Ejemplo ILUSTRATIVO (NO es el orden real):
- */
-export type FieldDef = { name: string; value: (p: ParteViatgers, v: Viatger) => string };
-
-/**
- * ORDRE alineat amb el FORMULARI OFICIAL del portal (registreviatgers.mossos.gencat.cat,
- * "Fitxa individual de viatgers"): Dades del contracte → Dades identificatives →
- * Dades personals → Adreça postal. Una línia per viatger amb les dades del
- * contracte repetides.
- * ⚠ PROVISIONAL encara: els CODIS literals dels desplegables (tipus document, sexe,
- * pagament…) i si el "fitxer massiu" usa exactament aquest ordre/estructura (vs
- * capçalera+detall) estan al "Manual de fitxers massius". Confirmar i posar
- * FORMAT_CONFIRMAT = true.
- */
-export const FIELD_LAYOUT: FieldDef[] = [
-  // --- Dades del contracte (es repeteix a cada línia) ---
-  { name: 'establiment', value: (p) => p.establiment.idPolicial },
-  { name: 'tipus_registre', value: (p) => CODES.tipusRegistre[p.contracte.tipusRegistre] },
-  { name: 'num_contracte', value: (p) => p.contracte.numContracte },
-  { name: 'any_contracte', value: (p) => String(p.contracte.anyContracte) },
-  { name: 'data_formalitzacio', value: (p) => CONFIG.formatData(p.contracte.dataFormalitzacio) },
-  { name: 'data_entrada', value: (p) => CONFIG.formatData(p.contracte.dataEntrada) },
-  { name: 'data_sortida', value: (p) => CONFIG.formatData(p.contracte.dataSortida) },
-  { name: 'num_viatgers', value: (p) => String(p.contracte.numViatgers) },
-  { name: 'tipus_pagament', value: (p) => CODES.tipusPagament[p.contracte.tipusPagament] },
-  { name: 'num_habitacions', value: (p) => (p.contracte.numHabitacions != null ? String(p.contracte.numHabitacions) : '') },
-  { name: 'internet', value: (p) => CODES.boolSiNo(p.contracte.teInternet) },
-  // --- Dades identificatives ---
-  { name: 'tipus_document', value: (_, v) => (v.tipusDocument ? CODES.tipusDocument[v.tipusDocument] : '') },
-  { name: 'num_document', value: (_, v) => v.numDocument ?? '' },
-  { name: 'num_suport', value: (_, v) => v.numSuport ?? '' },
-  { name: 'data_expedicio', value: (_, v) => (v.dataExpedicio ? CONFIG.formatData(v.dataExpedicio) : '') },
-  // --- Dades personals ---
-  { name: 'nom', value: (_, v) => v.nom },
-  { name: 'cognom1', value: (_, v) => normalizaCognom(v.cognom1) },
-  { name: 'cognom2', value: (_, v) => (v.cognom2 ? normalizaCognom(v.cognom2) : '') },
-  { name: 'sexe', value: (_, v) => (v.sexe ? CODES.sexe[v.sexe] : '') },
-  { name: 'data_naixement', value: (_, v) => (v.dataNaixement ? CONFIG.formatData(v.dataNaixement) : '') },
-  { name: 'pais_nacionalitat', value: (_, v) => v.nacionalitat ?? '' },
-  { name: 'correu_electronic', value: (_, v) => v.email ?? '' },
-  { name: 'parentesc', value: (_, v) => v.parentesc ?? '' },
-  { name: 'telefon', value: (_, v) => v.telefon ?? '' },
-  // --- Adreça postal ---
-  { name: 'adreca', value: (_, v) => v.adreca ?? '' },
-  { name: 'pais', value: (_, v) => v.pais ?? '' },
-  { name: 'provincia', value: (_, v) => v.provincia ?? '' },
-  { name: 'municipi', value: (_, v) => v.municipi ?? '' },
-  { name: 'localitat', value: (_, v) => v.localitat ?? '' },
-  { name: 'codi_postal', value: (_, v) => v.codiPostal ?? '' },
-];
-
-/** ¿Hay un layout cargado (§9.1)? Ahora sí (provisional). */
+/** ¿Hi ha un layout carregat? Sí: l'estructura oficial està implementada. */
 export function isLayoutReady(): boolean {
-  return FIELD_LAYOUT.length > 0;
+  return true;
 }
 
 /**
- * ¿El formato (orden de columnas + códigos) está CONFIRMADO contra el "Manual
- * d'instruccions" oficial? Mientras sea `false`, el fitxer es PROVISIONAL: sirve
- * para probar, pero verifícalo en el portal antes de usarlo en real. Cuando lo
- * confirmes, pon `true` (y ajusta FIELD_LAYOUT/CODES si el manual difiere).
+ * El format (estructura, ordre de camps i codis) està CONFIRMAT contra el
+ * "Manual d'instruccions" oficial v8 (maig 2025) i el seu exemple de fitxer.
  */
-export const FORMAT_CONFIRMAT = false;
+export const FORMAT_CONFIRMAT = true;
 export function isFormatConfirmat(): boolean {
   return FORMAT_CONFIRMAT;
 }
 
 // ----------------------------------------------------------------------------
-// 4. MOTOR DE FORMATO (completo)
+// 3. MOTOR DE FORMAT
 // ----------------------------------------------------------------------------
 
-/** Apellidos compuestos: separados por un solo espacio (no comas, guiones...). */
+/** Cognoms compostos: separats per un sol espai (no comes, guions...). */
 function normalizaCognom(s: string): string {
   return s.trim().replace(/\s+/g, ' ');
 }
 
-/** Un campo no puede contener el separador. Se mantiene el alfabeto occidental
- *  (NO se quitan acentos: é, ç, ñ son válidos). Sin abreviaturas. */
-function formatField(raw: string | undefined): string {
-  const s = (raw ?? '').toString();
+/** Majúscules conservant accents (alfabet occidental). */
+function up(s: string | undefined): string {
+  return (s ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
+}
+
+/** Un camp no pot contenir el separador. */
+function field(raw: string | number | undefined | null): string {
+  const s = raw == null ? '' : String(raw);
   if (s.includes(CONFIG.separador)) {
-    throw new Error(`Un campo contiene el separador "${CONFIG.separador}": "${s}"`);
+    throw new Error(`Un camp conté el separador "${CONFIG.separador}": "${s}"`);
   }
   return s.trim();
 }
 
-/** Construye las líneas del fichero a partir del layout.
- *  (Ahora: una línea por viajero. Ajustar si el manual pide cabecera+detalle.)
- *  Acepta un `layout` para poder probar el motor sin tocar el stub de producción. */
-function buildLines(parte: ParteViatgers, layout: FieldDef[] = FIELD_LAYOUT): string[] {
-  if (layout.length === 0) {
-    throw new Error(
-      'FIELD_LAYOUT vacío: falta el orden de campos del manual de Mossos (§9.1). ' +
-        'Rellena src/lib/mossos/fitxer.ts → FIELD_LAYOUT con las columnas del ' +
-        '"Manual d\'instruccions de l\'usuari" antes de generar el fitxer.',
-    );
+/** Decideix on va el número de document (espanyol vs estranger) segons el tipus. */
+function documentSlots(v: Viatger): { espanyol: string; estranger: string } {
+  const num = v.numDocument ?? '';
+  if (!v.tipusDocument || !num) return { espanyol: '', estranger: '' };
+  switch (v.tipusDocument) {
+    case 'DNI_NIF':
+      return { espanyol: num, estranger: '' };
+    case 'NIE':
+    case 'ALTRES':
+      return { espanyol: '', estranger: num };
+    case 'PASSAPORT':
+      // Passaport espanyol si la nacionalitat és Espanya; si no, estranger.
+      return esEspanya(v.nacionalitat)
+        ? { espanyol: num, estranger: '' }
+        : { espanyol: '', estranger: num };
   }
-  return parte.viatgers.map((v) =>
-    layout.map((f) => formatField(f.value(parte, v))).join(CONFIG.separador),
-  );
 }
 
-/** Nombre del fichero: {identificador}.{secuencia 001-999} + ".txt". */
+/** Codi INE del municipi del viatger (necessita la província per desambiguar). */
+function municipiCodi(v: Viatger): string {
+  const cpro = provinciaToINE(v.provincia);
+  return municipiToINE(cpro, v.municipi) ?? '';
+}
+
+/** LÍNIA ESTABLIMENT (tipus 1): 7 camps. */
+function buildEstablimentLine(p: ParteViatgers): string {
+  const now = p.generatedAt ?? new Date();
+  const cols = [
+    '1',
+    field(p.establiment.fileIdentifier),
+    field(up(p.establiment.nom)),
+    field(CONFIG.formatData(now)),
+    field(CONFIG.formatHora(now)),
+    field(p.viatgers.length),
+    field(CONFIG.formatFitxer),
+  ];
+  return cols.join(CONFIG.separador);
+}
+
+/** LÍNIA VIATGER (tipus 2): 32 camps + "|" final (com a l'exemple oficial). */
+function buildViatgerLine(p: ParteViatgers, v: Viatger): string {
+  const c = p.contracte;
+  const doc = documentSlots(v);
+  const cols = [
+    '2', // 1 tipus registre
+    field(doc.espanyol), // 2 núm document espanyol
+    field(doc.estranger), // 3 núm document estranger
+    field(v.tipusDocument ? CODES.tipusDocument[v.tipusDocument] : ''), // 4 tipus document
+    field(v.dataExpedicio ? CONFIG.formatData(v.dataExpedicio) : ''), // 5 data expedició
+    field(up(normalizaCognom(v.cognom1))), // 6 primer cognom
+    field(v.cognom2 ? up(normalizaCognom(v.cognom2)) : ''), // 7 segon cognom
+    field(up(v.nom)), // 8 nom
+    field(v.sexe ? CODES.sexe[v.sexe] : ''), // 9 sexe
+    field(v.dataNaixement ? CONFIG.formatData(v.dataNaixement) : ''), // 10 data naixement
+    field(paisToISO3(v.nacionalitat) ?? ''), // 11 país nacionalitat (ISO3)
+    field(CONFIG.formatData(c.dataEntrada)), // 12 data entrada
+    field(CONFIG.formatHora(c.dataEntrada)), // 13 hora entrada
+    field(CONFIG.formatData(c.dataSortida)), // 14 data sortida
+    field(CONFIG.formatHora(c.dataSortida)), // 15 hora sortida
+    field(CONFIG.formatData(c.dataFormalitzacio)), // 16 data contracte
+    field(CODES.tipusContracte[c.tipusRegistre]), // 17 tipus contracte
+    field(up(c.numContracte)), // 18 núm contracte
+    field(c.numViatgers), // 19 núm viatgers
+    field(c.numHabitacions != null ? c.numHabitacions : ''), // 20 núm habitacions
+    field(CODES.boolSiNo(c.teInternet)), // 21 internet S/N
+    field(CODES.tipusPagament[c.tipusPagament]), // 22 tipus pagament
+    field(v.telefon ?? ''), // 23 telèfon
+    field(v.parentesc ? CODES.parentesc[v.parentesc] : ''), // 24 parentesc
+    field(v.email ?? ''), // 25 email
+    field(up(v.numSuport)), // 26 núm suport (9 car.)
+    field(up(v.adreca)), // 27 direcció postal
+    field(esEspanya(v.pais) ? provinciaToINE(v.provincia) ?? '' : ''), // 28 província INE
+    field(esEspanya(v.pais) ? municipiCodi(v) : ''), // 29 municipi INE
+    field(esEspanya(v.pais) ? '' : up(v.localitat)), // 30 localitat
+    field(paisToISO3(v.pais) ?? ''), // 31 país postal (ISO3)
+    field(v.codiPostal ?? ''), // 32 codi postal
+  ];
+  return cols.join(CONFIG.separador) + CONFIG.separador; // "|" final
+}
+
+/** Construeix totes les línies del fitxer (1 establiment + N viatgers). */
+function buildLines(parte: ParteViatgers): string[] {
+  return [buildEstablimentLine(parte), ...parte.viatgers.map((v) => buildViatgerLine(parte, v))];
+}
+
+/** Nom del fitxer: {identificador}.{seqüència 001-999} + ".txt". */
 export function buildFileName(fileIdentifier: string, sequence: number): string {
   if (!/^[A-Za-z0-9]{9,10}$/.test(fileIdentifier)) {
-    throw new Error(`fileIdentifier inválido (9-10 alfanum.): "${fileIdentifier}"`);
+    throw new Error(`fileIdentifier no vàlid (9-10 alfanum.): "${fileIdentifier}"`);
   }
-  const seq = ((sequence - 1) % 999) + 1; // 1..999, reinicia tras 999
+  const seq = ((sequence - 1) % 999) + 1; // 1..999, reinicia després de 999
   return `${fileIdentifier}.${String(seq).padStart(3, '0')}.txt`;
 }
 
-/** Devuelve el contenido del fichero como string. Codificar al escribir con
- *  CONFIG.encoding (o el de la establiment). */
-export function buildFitxer(parte: ParteViatgers, layout: FieldDef[] = FIELD_LAYOUT): string {
+/** Contingut del fitxer com a string (valida §2.3 + codis abans). */
+export function buildFitxer(parte: ParteViatgers): string {
   validaParte(parte);
-  return buildLines(parte, layout).join(CONFIG.saltLinia) + CONFIG.saltLinia;
+  return buildLines(parte).join(CONFIG.saltLinia) + CONFIG.saltLinia;
 }
 
-/**
- * Devuelve el contenido del fichero como Buffer con la codificación indicada,
- * listo para descarga/escritura a disco. Para 'latin1' usa la codificación
- * legacy (ISO-8859-1) que probablemente espera el portal (§9.3).
- */
-export function buildFitxerBuffer(
-  parte: ParteViatgers,
-  encoding: Encoding = CONFIG.encoding,
-  layout: FieldDef[] = FIELD_LAYOUT,
-): Buffer {
-  const content = buildFitxer(parte, layout);
+/** Contingut del fitxer com a Buffer amb la codificació indicada (per descàrrega). */
+export function buildFitxerBuffer(parte: ParteViatgers, encoding: Encoding = CONFIG.encoding): Buffer {
+  const content = buildFitxer(parte);
   return Buffer.from(content, encoding === 'utf-8' ? 'utf-8' : 'latin1');
 }
 
 // ----------------------------------------------------------------------------
-// 5. VALIDACIÓN DE OBLIGATORIEDAD CONDICIONAL (reglas oficiales §2.3)
+// 4. VALIDACIÓ D'OBLIGATORIETAT CONDICIONADA (§2.3 + codificació INE/ISO)
 // ----------------------------------------------------------------------------
 
-/**
- * Devuelve la lista de errores de obligatoriedad §2.3 (vacía si el parte está
- * completo). Útil para avisar al usuario ANTES de subir a Mossos sin lanzar.
- */
+/** Llista d'errors que impedeixen pujar el fitxer (buida si tot és correcte). */
 export function validaParteErrors(parte: ParteViatgers): string[] {
   const errs: string[] = [];
   const c = parte.contracte;
   const esReserva = c.tipusRegistre === 'RESERVA';
+  const avui = new Date();
 
-  if (c.dataFormalitzacio > new Date()) errs.push('data_formalitzacio > hoy');
-  if (c.dataSortida <= c.dataEntrada) errs.push('data_sortida <= data_entrada');
+  if (c.dataFormalitzacio > avui) errs.push('La data de contracte no pot ser futura');
+  if (c.dataSortida <= c.dataEntrada)
+    errs.push('La data de sortida ha de ser posterior a l’entrada');
 
   parte.viatgers.forEach((v, i) => {
-    const p = `viatger[${i}]`;
-    if (!v.nom?.trim()) errs.push(`${p}: falta nom`);
-    if (!v.cognom1?.trim()) errs.push(`${p}: falta cognom1`);
+    const p = `Viatger ${i + 1}`;
+    if (!v.nom?.trim()) errs.push(`${p}: falta el nom`);
+    if (!v.cognom1?.trim()) errs.push(`${p}: falta el primer cognom`);
+
+    // La nacionalitat, si s'informa, ha de tenir codi ISO (qualsevol tipus).
+    if (v.nacionalitat?.trim() && !paisToISO3(v.nacionalitat))
+      errs.push(`${p}: nacionalitat "${v.nacionalitat}" sense codi ISO 3166-1 (revisa el país)`);
 
     if (esReserva) {
       if (!v.email?.trim() && !v.telefon?.trim())
-        errs.push(`${p}: en reserva hace falta email o telèfon`);
-      return; // en reserva no se exige el resto
+        errs.push(`${p}: en reserva cal email o telèfon`);
+      return;
     }
 
     // CONTRACTE EN CURS
     if (!v.esMenor) {
-      if (!v.tipusDocument) errs.push(`${p}: falta tipus_document`);
-      if (!v.numDocument?.trim()) errs.push(`${p}: falta num_document`);
+      if (!v.tipusDocument) errs.push(`${p}: falta el tipus de document`);
+      if (!v.numDocument?.trim()) errs.push(`${p}: falta el número de document`);
     }
     if (v.tipusDocument === 'DNI_NIF' || v.tipusDocument === 'NIE') {
-      if (!v.numSuport?.trim()) errs.push(`${p}: falta num_suport (DNI/NIE)`);
+      if (!v.numSuport?.trim()) errs.push(`${p}: falta el número de suport (DNI/NIE)`);
+      else if (v.numSuport.trim().length !== 9)
+        errs.push(`${p}: el número de suport ha de tenir 9 caràcters exactes`);
     }
     if (v.tipusDocument === 'DNI_NIF' && !v.cognom2?.trim())
-      errs.push(`${p}: falta cognom2 (oblig. con DNI/NIF)`);
-    if (v.esMenor && !v.parentesc?.trim()) errs.push(`${p}: falta parentesc (menor)`);
-    if (v.dataNaixement && v.dataNaixement > new Date())
-      errs.push(`${p}: data_naixement > hoy`);
-    if (v.dataExpedicio && v.dataExpedicio > new Date())
-      errs.push(`${p}: data_expedicio > hoy`);
-    if (!v.adreca?.trim()) errs.push(`${p}: falta adreça (contracte en curs)`);
-    if (!v.codiPostal?.trim()) errs.push(`${p}: falta codi_postal`);
-    if (v.pais === 'Espanya') {
-      if (!v.provincia?.trim()) errs.push(`${p}: falta província (país=Espanya)`);
-      if (!v.municipi?.trim()) errs.push(`${p}: falta municipi (país=Espanya)`);
-    } else if (v.pais && !v.localitat?.trim()) {
-      errs.push(`${p}: falta localitat (país estranger)`);
+      errs.push(`${p}: falta el segon cognom (obligatori amb DNI/NIF)`);
+    if (v.esMenor && !v.parentesc) errs.push(`${p}: falta el parentesc (menor)`);
+    if (v.dataNaixement && v.dataNaixement > avui)
+      errs.push(`${p}: la data de naixement no pot ser futura`);
+    if (v.dataExpedicio && v.dataExpedicio > avui)
+      errs.push(`${p}: la data d’expedició no pot ser futura`);
+    if (!v.adreca?.trim()) errs.push(`${p}: falta l’adreça (contracte en curs)`);
+    if (!v.codiPostal?.trim()) errs.push(`${p}: falta el codi postal`);
+
+    // Dades postals: codificació INE (Espanya) o localitat (estranger).
+    if (esEspanya(v.pais)) {
+      if (!v.provincia?.trim()) errs.push(`${p}: falta la província (país = Espanya)`);
+      else if (!provinciaToINE(v.provincia))
+        errs.push(`${p}: província "${v.provincia}" sense codi INE`);
+      if (!v.municipi?.trim()) errs.push(`${p}: falta el municipi (país = Espanya)`);
+      else if (!municipiToINE(provinciaToINE(v.provincia), v.municipi))
+        errs.push(`${p}: municipi "${v.municipi}" no trobat al padró INE de la província`);
+    } else if (v.pais?.trim()) {
+      if (!paisToISO3(v.pais)) errs.push(`${p}: país "${v.pais}" sense codi ISO 3166-1`);
+      if (!v.localitat?.trim()) errs.push(`${p}: falta la localitat (país estranger)`);
     }
   });
 
   return errs;
 }
 
-/** Valida el parte §2.3 y lanza si falta algún dato obligatorio. */
+/** Valida el parte i llança si falta algun requisit per pujar a Mossos. */
 export function validaParte(parte: ParteViatgers): void {
   const errs = validaParteErrors(parte);
-  if (errs.length) throw new Error('Validación fallida:\n - ' + errs.join('\n - '));
+  if (errs.length) throw new Error('Validació fallida:\n - ' + errs.join('\n - '));
 }
 
 // ----------------------------------------------------------------------------
-// 6. Apellidos compuestos: helper exportado por si se normaliza en la entrada
+// 5. Helpers exportats
 // ----------------------------------------------------------------------------
-export const helpers = { normalizaCognom };
+export const helpers = { normalizaCognom, up };

@@ -157,19 +157,26 @@ export async function addCobrament(
       include: { cobraments: true },
     });
 
+    // Una devolució (reemborsament) es desa com a import NEGATIU: així resta de
+    // l'ingrés i del total cobrat automàticament.
+    const signedImport = input.tipus === 'DEVOLUCIO' ? -input.import : input.import;
+
     const cobrament = await tx.cobrament.create({
       data: {
         facturaId,
         metode: input.metode,
-        import: input.import,
+        import: signedImport,
         data: input.data ?? new Date(),
       },
     });
 
-    const totalCobrat = factura.cobraments.reduce((a, c) => a + Number(c.import), 0) + input.import;
-    const data: Prisma.FacturaUpdateInput = {};
-    if (totalCobrat >= Number(factura.total)) data.estat = 'COBRADA';
-    if (Object.keys(data).length) await tx.factura.update({ where: { id: facturaId }, data });
+    const totalCobrat = factura.cobraments.reduce((a, c) => a + Number(c.import), 0) + signedImport;
+    const cobrada = totalCobrat >= Number(factura.total);
+    // Es recalcula sempre: una devolució pot tornar la factura a PENDENT.
+    await tx.factura.update({
+      where: { id: facturaId },
+      data: { estat: cobrada ? 'COBRADA' : 'PENDENT' },
+    });
 
     await audit(
       {
@@ -177,12 +184,12 @@ export async function addCobrament(
         accio: 'MODIFICACIO',
         entitat: 'cobrament',
         entitatId: cobrament.id,
-        detall: { facturaId, import: input.import, metode: input.metode },
+        detall: { facturaId, import: signedImport, metode: input.metode, tipus: input.tipus },
         ip,
       },
       tx,
     );
 
-    return { cobrament, estat: totalCobrat >= Number(factura.total) ? 'COBRADA' : 'PENDENT' };
+    return { cobrament, estat: cobrada ? 'COBRADA' : 'PENDENT' };
   });
 }

@@ -62,6 +62,7 @@ enum TipusPagament {
   TARGETA_CREDIT
   TRANSFERENCIA
   TARGETA_REGAL
+  BIZUM
 }
 
 enum EstatEnviament {
@@ -367,6 +368,8 @@ model Estancia {
   // Registre desat amb dades incompletes (§2.3): editable, però no es pot pujar a
   // Mossos fins completar-lo. Es neteja automàticament quan el fitxer es genera bé.
   esBorrany         Boolean       @default(false) @map("es_borrany")
+  // Silencia l'avís de "dades pendents (*)" a Justificants per a aquesta estada.
+  avisDadesParat    Boolean       @default(false) @map("avis_dades_parat")
 
   habitacioId String?    @map("habitacio_id")
   habitacio   Habitacio? @relation(fields: [habitacioId], references: [id], onDelete: SetNull)

@@ -11,6 +11,7 @@ const UpdateSchema = z.object({
   estat: z.enum(['RESERVA', 'EN_CURS', 'FINALITZADA', 'CANCELLADA']).optional(),
   observacions: z.string().optional(),
   habitacioId: z.string().nullable().optional(),
+  avisDadesParat: z.boolean().optional(),
 });
 
 // GET /api/estancies/:id — detalle completo

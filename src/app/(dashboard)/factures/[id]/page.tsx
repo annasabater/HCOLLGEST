@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, Thead, Th, Td, Tr } from '@/components/ui/table';
-import { CobramentForm } from '@/components/factura/cobrament-form';
+import { CobramentActions } from '@/components/factura/cobrament-actions';
 import { formatDate, formatEur } from '@/lib/utils';
 import { CONCEPTE_LINIA_LABELS, METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 import { VERIFACTU_LLEGENDA } from '@/lib/verifactu/software';
@@ -125,22 +125,28 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
 
               {factura.cobraments.length > 0 && (
                 <ul className="space-y-1 border-t border-slate-100 pt-2 text-sm">
-                  {factura.cobraments.map((c) => (
-                    <li key={c.id} className="flex justify-between">
-                      <span className="text-slate-600">
-                        {METODE_COBRAMENT_LABELS[c.metode]} · {formatDate(c.data)}
-                      </span>
-                      <span>{formatEur(Number(c.import))}</span>
-                    </li>
-                  ))}
+                  {factura.cobraments.map((c) => {
+                    const imp = Number(c.import);
+                    const esDevolucio = imp < 0;
+                    return (
+                      <li key={c.id} className="flex justify-between">
+                        <span className="text-slate-600">
+                          {esDevolucio && <span className="text-red-600">Devolució · </span>}
+                          {METODE_COBRAMENT_LABELS[c.metode]} · {formatDate(c.data)}
+                        </span>
+                        <span className={esDevolucio ? 'text-red-600' : ''}>{formatEur(imp)}</span>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
 
-              {factura.estat !== 'COBRADA' && (
-                <div className="border-t border-slate-100 pt-3">
-                  <CobramentForm facturaId={factura.id} pendent={pendent} />
-                </div>
-              )}
+              <CobramentActions
+                facturaId={factura.id}
+                pendent={pendent}
+                cobrat={cobrat}
+                estat={factura.estat}
+              />
             </CardBody>
           </Card>
         </div>

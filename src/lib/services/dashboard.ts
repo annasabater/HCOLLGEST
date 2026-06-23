@@ -304,3 +304,98 @@ export async function getBalancAny(year: number, opts?: FinanceOpts) {
 }
 
 export type BalancAny = Awaited<ReturnType<typeof getBalancAny>>;
+
+/**
+ * BALANÇ DE SITUACIÓ (estat patrimonial) a una data de tall.
+ *
+ * ⚠️ Limitació important: és un balanç APROXIMAT construït amb les dades que el
+ * PMS coneix de veritat; NO és un balanç fiscal de doble partida. El patrimoni
+ * net es calcula com a figura de quadre (Actiu − Passiu), de manera que SEMPRE
+ * quadra per construcció. El que NO es pot derivar de les dades actuals queda
+ * llistat a `mancances` (amortitzacions, tresoreria bancària, creditors, IVA,
+ * saldos d'obertura…). Per defecte la data de tall és avui.
+ *
+ * Partides amb dada real:
+ *  - Immobilitzat material (actiu no corrent) = valor brut d'adquisició dels
+ *    actius donats d'alta fins a la data (`Actiu.cost`, sense amortitzar).
+ *  - Deutors comercials (actiu corrent) = factures amb estat PENDENT emeses
+ *    fins a la data.
+ *  - Tresoreria — efectiu de fiances (actiu corrent) = dipòsits en custòdia a la
+ *    data; la seva contrapartida és el passiu "Fiances a retornar".
+ *  - Fiances rebudes a retornar (passiu corrent) = mateixos dipòsits en custòdia.
+ */
+export async function getBalancSituacio(dataTall: Date) {
+  const num = (d: { _sum: Record<string, unknown> }, k: string) => Number(d._sum[k] ?? 0);
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+
+  const [immobAgg, immobCount, deutorsAgg, deutorsCount, fiancesAgg, fiancesCount] =
+    await Promise.all([
+      prisma.actiu.aggregate({
+        _sum: { cost: true },
+        where: { deletedAt: null, dataCompra: { lte: dataTall } },
+      }),
+      prisma.actiu.count({ where: { deletedAt: null, dataCompra: { lte: dataTall } } }),
+      prisma.factura.aggregate({
+        _sum: { total: true },
+        where: { deletedAt: null, estat: 'PENDENT', data: { lte: dataTall } },
+      }),
+      prisma.factura.count({ where: { deletedAt: null, estat: 'PENDENT', data: { lte: dataTall } } }),
+      // Dipòsits en custòdia A LA DATA DE TALL: creats abans i no resolts (o
+      // resolts després). Així funciona també per a una data passada.
+      prisma.diposit.aggregate({
+        _sum: { import: true },
+        where: {
+          data: { lte: dataTall },
+          OR: [{ dataResolucio: null }, { dataResolucio: { gt: dataTall } }],
+        },
+      }),
+      prisma.diposit.count({
+        where: {
+          data: { lte: dataTall },
+          OR: [{ dataResolucio: null }, { dataResolucio: { gt: dataTall } }],
+        },
+      }),
+    ]);
+
+  const immobilitzatBrut = r2(num(immobAgg, 'cost'));
+  const deutors = r2(num(deutorsAgg, 'total'));
+  const fiances = r2(num(fiancesAgg, 'import'));
+  // L'efectiu de fiances (asset) és la contrapartida exacta del passiu de fiances.
+  const tresoreriaFiances = fiances;
+
+  const totalActiu = r2(immobilitzatBrut + deutors + tresoreriaFiances);
+  const passiuNoCorrent = 0;
+  const passiuCorrent = fiances;
+  const totalPassiu = r2(passiuNoCorrent + passiuCorrent);
+  // Patrimoni net = figura de quadre. Per construcció, totalActiu == PN + passiu.
+  const patrimoniNet = r2(totalActiu - totalPassiu);
+
+  return {
+    data: `${dataTall.getFullYear()}-${String(dataTall.getMonth() + 1).padStart(2, '0')}-${String(dataTall.getDate()).padStart(2, '0')}`,
+    actiu: {
+      noCorrent: { immobilitzatBrut },
+      corrent: { deutors, tresoreriaFiances },
+      total: totalActiu,
+    },
+    patrimoniIPassiu: {
+      patrimoniNet,
+      passiuNoCorrent,
+      passiuCorrent: { fiances },
+      total: r2(patrimoniNet + totalPassiu),
+    },
+    detall: { nActius: immobCount, nFacturesPendents: deutorsCount, nDiposits: fiancesCount },
+    // Quadra sempre per construcció; ho exposem per transparència a la UI.
+    quadra: true,
+    // Partides que un balanç fiscal exacte necessitaria i que el PMS NO té.
+    mancances: [
+      "Amortització acumulada de l'immobilitzat (es mostra el valor brut d'adquisició)",
+      'Tresoreria operativa real (saldos de banc i caixa); només es comptabilitza l\'efectiu retingut en fiances',
+      'Existències',
+      'Creditors comercials: despeses pendents de pagar (el model de despeses no registra l\'estat de pagament)',
+      'IVA pendent de liquidar amb Hisenda',
+      "Capital, reserves i resultats d'exercicis anteriors (saldos d'obertura)",
+    ],
+  };
+}
+
+export type BalancSituacio = Awaited<ReturnType<typeof getBalancSituacio>>;

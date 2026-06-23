@@ -66,6 +66,13 @@ export default async function HuespedDetailPage({ params }: { params: Promise<{ 
               </Badge>
             )}
             {canEdit && (
+              <Link href={`/estancies/nou?hoste=${huesped.id}`}>
+                <Button size="sm">
+                  <BedDouble className="h-4 w-4" /> Nova estada
+                </Button>
+              </Link>
+            )}
+            {canEdit && (
               <Link href={`/huespedes/${huesped.id}/edita`}>
                 <Button variant="outline" size="sm">
                   <Pencil className="h-4 w-4" /> Editar

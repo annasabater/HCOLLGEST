@@ -7,44 +7,40 @@ import {
   helpers,
   isLayoutReady,
   isFormatConfirmat,
-  FIELD_LAYOUT,
-  type FieldDef,
   type ParteViatgers,
 } from './fitxer';
 
-// Layout de PRUEBA (no es el orden real del manual — §9). Sirve para ejercitar
-// el motor de formato (separadores, campos vacíos, salto de línea).
-const TEST_LAYOUT: FieldDef[] = [
-  { name: 'tipus_registre', value: (p) => p.contracte.tipusRegistre },
-  { name: 'num_contracte', value: (p) => p.contracte.numContracte },
-  { name: 'nom', value: (_, v) => v.nom },
-  { name: 'cognom1', value: (_, v) => v.cognom1 },
-  { name: 'cognom2', value: (_, v) => v.cognom2 ?? '' },
-  { name: 'email', value: (_, v) => v.email ?? '' },
-];
-
+// Parte complet (CONTRACTE EN CURS) amb un viatger NIE resident a Barcelona i
+// nacionalitat francesa: exercita la codificació INE (província/municipi) i ISO.
 function parteContracte(): ParteViatgers {
   return {
-    establiment: { fileIdentifier: '08043AAR02', idPolicial: '000000550', nom: 'HOSTAL COLL' },
+    establiment: { fileIdentifier: '08043AAR02', idPolicial: '000000550', nom: 'Hostal Coll' },
+    generatedAt: new Date(2026, 0, 16, 15, 23), // 2026-01-16 15:23
     contracte: {
       tipusRegistre: 'CONTRACTE_EN_CURS',
       numContracte: '12',
       anyContracte: 2026,
-      dataFormalitzacio: new Date('2026-01-10'),
-      dataEntrada: new Date('2026-02-01'),
-      dataSortida: new Date('2026-02-05'),
+      dataFormalitzacio: new Date(2026, 0, 10),
+      dataEntrada: new Date(2026, 1, 1),
+      dataSortida: new Date(2026, 1, 5),
       numViatgers: 1,
       tipusPagament: 'EFECTIU',
+      numHabitacions: 2,
+      teInternet: true,
     },
     viatgers: [
       {
+        tipusDocument: 'NIE',
+        numDocument: 'X1234567L',
+        numSuport: 'ABC123456',
         nom: 'Maria',
         cognom1: 'Garcia',
         cognom2: 'López',
-        tipusDocument: 'DNI_NIF',
-        numDocument: '12345678Z',
-        numSuport: 'ABC123456',
-        dataNaixement: new Date('1990-05-05'),
+        sexe: 'DONA',
+        dataNaixement: new Date(1990, 4, 5),
+        nacionalitat: 'França',
+        email: 'maria@x.cat',
+        telefon: '600123123',
         adreca: 'C/ Major 1',
         pais: 'Espanya',
         provincia: 'Barcelona',
@@ -55,136 +51,136 @@ function parteContracte(): ParteViatgers {
   };
 }
 
-describe('buildFileName (§2.2)', () => {
-  it('formatea {identificador}.{seq 3 dígitos}.txt', () => {
+describe('buildFileName (§4)', () => {
+  it('formata {identificador}.{seq 3 dígits}.txt', () => {
     expect(buildFileName('08043AAR02', 1)).toBe('08043AAR02.001.txt');
     expect(buildFileName('08043AAR02', 42)).toBe('08043AAR02.042.txt');
     expect(buildFileName('08043AAR02', 999)).toBe('08043AAR02.999.txt');
   });
-
-  it('reinicia la secuencia tras 999 → 001', () => {
+  it('reinicia la seqüència després de 999 → 001', () => {
     expect(buildFileName('08043AAR02', 1000)).toBe('08043AAR02.001.txt');
     expect(buildFileName('08043AAR02', 1001)).toBe('08043AAR02.002.txt');
   });
-
-  it('rechaza identificadores no alfanuméricos de 9-10 caracteres', () => {
+  it('rebutja identificadors no alfanumèrics de 9-10 caràcters', () => {
     expect(() => buildFileName('short', 1)).toThrow();
     expect(() => buildFileName('TIENE-GUION', 1)).toThrow();
-    expect(() => buildFileName('012345678901', 1)).toThrow(); // 12 chars
+    expect(() => buildFileName('012345678901', 1)).toThrow(); // 12 car.
   });
 });
 
-describe('motor de formato (§2.2)', () => {
-  it('usa "|" como separador y CRLF al final de cada línea', () => {
-    const out = buildFitxer(parteContracte(), TEST_LAYOUT);
-    expect(out).toContain('|');
+describe('estructura del fitxer (manual v8 §4)', () => {
+  it('format confirmat i layout llest', () => {
+    expect(isLayoutReady()).toBe(true);
+    expect(isFormatConfirmat()).toBe(true);
+  });
+
+  it('línia establiment (tipus 1): 7 camps, data/hora confecció, V24', () => {
+    const out = buildFitxer(parteContracte());
+    const linies = out.trimEnd().split('\r\n');
+    expect(linies[0]).toBe('1|08043AAR02|HOSTAL COLL|20260116|1523|1|V24');
+  });
+
+  it('línia viatger (tipus 2): ordre, codis, INE i ISO exactes + "|" final', () => {
+    const out = buildFitxer(parteContracte());
+    const linies = out.trimEnd().split('\r\n');
+    expect(linies[1]).toBe(
+      '2||X1234567L|N||GARCIA|LÓPEZ|MARIA|F|19900505|FRA|20260201|0000|20260205|0000|' +
+        '20260110|C|12|1|2|S|EFECT|600123123||maria@x.cat|ABC123456|C/ MAJOR 1|08|080193||ESP|08001|',
+    );
+  });
+
+  it('la línia de viatger té 32 camps (+ pipe final)', () => {
+    const out = buildFitxer(parteContracte());
+    const liniaViatger = out.trimEnd().split('\r\n')[1]!;
+    // 32 camps → 32 separadors comptant el "|" final.
+    expect(liniaViatger.split('|')).toHaveLength(33);
+    expect(liniaViatger.endsWith('|')).toBe(true);
+  });
+
+  it('una línia d’establiment + una per viatger; acaba en CRLF', () => {
+    const parte = parteContracte();
+    parte.contracte.numViatgers = 2;
+    parte.viatgers.push({ ...parte.viatgers[0]!, nom: 'Joan', cognom1: 'Soler' });
+    const out = buildFitxer(parte);
     expect(out.endsWith('\r\n')).toBe(true);
-    expect(out).toBe('CONTRACTE_EN_CURS|12|Maria|Garcia|López|\r\n');
+    expect(out.trimEnd().split('\r\n')).toHaveLength(3); // 1 establiment + 2 viatgers
   });
 
-  it('conserva el "|" de los campos vacíos (no se omiten)', () => {
-    const parte = parteContracte();
-    parte.viatgers[0]!.cognom2 = undefined;
-    parte.viatgers[0]!.email = undefined;
-    // cognom2 obligatorio con DNI/NIF → quitamos el doc para que valide
-    parte.viatgers[0]!.tipusDocument = 'PASSAPORT';
-    parte.viatgers[0]!.numSuport = undefined;
-    const out = buildFitxer(parte, TEST_LAYOUT);
-    // ...López vacío, email vacío → dos pipes finales antes del CRLF
-    expect(out).toBe('CONTRACTE_EN_CURS|12|Maria|Garcia||\r\n');
+  it('conserva accents (alfabet occidental) i codifica a latin1', () => {
+    const buf = buildFitxerBuffer(parteContracte(), 'latin1');
+    expect(Buffer.isBuffer(buf)).toBe(true);
+    expect(buf.includes(0xd3)).toBe(true); // 'Ó' (LÓPEZ) en latin1 = 0xD3
   });
 
-  it('conserva acentos (é, ç, ñ) — alfabeto occidental', () => {
-    const parte = parteContracte();
-    parte.viatgers[0]!.nom = 'Begoña';
-    parte.viatgers[0]!.cognom1 = 'Peçanha';
-    const out = buildFitxer(parte, TEST_LAYOUT);
-    expect(out).toContain('Begoña');
-    expect(out).toContain('Peçanha');
-  });
-
-  it('lanza si un campo contiene el separador "|"', () => {
+  it('llança si un camp conté el separador "|"', () => {
     const parte = parteContracte();
     parte.viatgers[0]!.nom = 'Ma|ria';
-    expect(() => buildFitxer(parte, TEST_LAYOUT)).toThrow(/separador/);
+    expect(() => buildFitxer(parte)).toThrow(/separador/);
   });
 
-  it('genera una línea por viajero', () => {
+  it('document espanyol (DNI) va al camp 2; estranger (NIE) al camp 3', () => {
     const parte = parteContracte();
-    parte.viatgers.push({ ...parte.viatgers[0]!, nom: 'Joan', cognom2: 'Soler' });
-    const out = buildFitxer(parte, TEST_LAYOUT);
-    expect(out.trimEnd().split('\r\n')).toHaveLength(2);
-  });
-
-  it('codifica a latin1 por defecto (Buffer)', () => {
-    const buf = buildFitxerBuffer(parteContracte(), 'latin1', TEST_LAYOUT);
-    expect(Buffer.isBuffer(buf)).toBe(true);
-    // 'ó' en latin1 es un solo byte 0xF3
-    expect(buf.includes(0xf3)).toBe(true);
-  });
-
-  it('el layout de PRODUCCIÓN (provisional) está cargado → isLayoutReady true', () => {
-    expect(FIELD_LAYOUT.length).toBeGreaterThan(0);
-    expect(isLayoutReady()).toBe(true);
-    // El formato es provisional hasta confirmarlo con el manual oficial (§9).
-    expect(isFormatConfirmat()).toBe(false);
-  });
-
-  it('genera el fitxer con el layout de PRODUCCIÓN sin lanzar', () => {
-    const out = buildFitxer(parteContracte());
-    expect(out.endsWith('\r\n')).toBe(true);
-    // Conté dades clau del viatger i de l'operació.
-    expect(out).toContain('Garcia');
-    expect(out).toContain('2026'); // any_contracte
-    expect(out).toContain('000000550'); // establiment (id policial)
-    expect(out.split('|').length).toBe(FIELD_LAYOUT.length); // una línia, N columnes
+    const v = parte.viatgers[0]!;
+    v.tipusDocument = 'DNI_NIF';
+    v.numDocument = '12345678Z';
+    v.cognom2 = 'López'; // oblig. amb DNI/NIF
+    const linia = buildFitxer(parte).trimEnd().split('\r\n')[1]!.split('|');
+    expect(linia[1]).toBe('12345678Z'); // camp 2 (espanyol)
+    expect(linia[2]).toBe(''); // camp 3 (estranger)
+    expect(linia[3]).toBe('D'); // tipus document
   });
 });
 
-describe('normalizaCognom (apellidos compuestos)', () => {
-  it('separa apellidos compuestos por un solo espacio', () => {
+describe('normalizaCognom (cognoms compostos)', () => {
+  it('separa cognoms compostos per un sol espai', () => {
     expect(helpers.normalizaCognom('  de   la    Fuente ')).toBe('de la Fuente');
   });
 });
 
-describe('validaParte (§2.3)', () => {
-  it('acepta un contrato en curso completo', () => {
+describe('validaParte (§2.3 + codificació)', () => {
+  it('accepta un contracte en curs complet', () => {
     expect(() => validaParte(parteContracte())).not.toThrow();
   });
-
-  it('rechaza data_sortida <= data_entrada', () => {
+  it('rebutja data de sortida <= entrada', () => {
     const parte = parteContracte();
     parte.contracte.dataSortida = parte.contracte.dataEntrada;
-    expect(() => validaParte(parte)).toThrow(/data_sortida/);
+    expect(() => validaParte(parte)).toThrow(/sortida/);
   });
-
-  it('exige num_suport con DNI/NIF', () => {
+  it('exigeix número de suport (9 car.) amb NIE', () => {
     const parte = parteContracte();
-    parte.viatgers[0]!.numSuport = undefined;
-    expect(() => validaParte(parte)).toThrow(/num_suport/);
+    parte.viatgers[0]!.numSuport = 'ABC12'; // < 9
+    expect(() => validaParte(parte)).toThrow(/suport/);
   });
-
-  it('exige cognom2 con DNI/NIF', () => {
+  it('exigeix cognom2 amb DNI/NIF', () => {
     const parte = parteContracte();
+    parte.viatgers[0]!.tipusDocument = 'DNI_NIF';
+    parte.viatgers[0]!.numDocument = '12345678Z';
     parte.viatgers[0]!.cognom2 = undefined;
-    expect(() => validaParte(parte)).toThrow(/cognom2/);
+    expect(() => validaParte(parte)).toThrow(/segon cognom/);
   });
-
-  it('en RESERVA solo exige nom, cognom1 y (email o telèfon)', () => {
+  it('rebutja municipi no trobat al padró INE', () => {
+    const parte = parteContracte();
+    parte.viatgers[0]!.municipi = 'Vilanova Inexistent';
+    expect(() => validaParte(parte)).toThrow(/padró INE/);
+  });
+  it('rebutja província sense codi INE', () => {
+    const parte = parteContracte();
+    parte.viatgers[0]!.provincia = 'Provincia Falsa';
+    expect(() => validaParte(parte)).toThrow(/INE/);
+  });
+  it('en RESERVA només exigeix nom, cognom1 i (email o telèfon)', () => {
     const parte = parteContracte();
     parte.contracte.tipusRegistre = 'RESERVA';
     parte.viatgers[0] = { nom: 'Anna', cognom1: 'Sabater', email: 'a@b.cat' };
     expect(() => validaParte(parte)).not.toThrow();
   });
-
-  it('en RESERVA falla si falta email y telèfon', () => {
+  it('en RESERVA falla si falta email i telèfon', () => {
     const parte = parteContracte();
     parte.contracte.tipusRegistre = 'RESERVA';
     parte.viatgers[0] = { nom: 'Anna', cognom1: 'Sabater' };
     expect(() => validaParte(parte)).toThrow(/email o telèfon/);
   });
-
-  it('no exige documento a un menor, pero sí parentesc', () => {
+  it('no exigeix document a un menor, però sí parentesc', () => {
     const parte = parteContracte();
     parte.viatgers[0] = {
       nom: 'Nen',
@@ -197,17 +193,10 @@ describe('validaParte (§2.3)', () => {
       municipi: 'Barcelona',
     };
     expect(() => validaParte(parte)).toThrow(/parentesc/);
-    parte.viatgers[0]!.parentesc = 'Fill/filla';
+    parte.viatgers[0]!.parentesc = 'FILL_FILLA';
     expect(() => validaParte(parte)).not.toThrow();
   });
-
-  it('si país = Espanya exige província i municipi', () => {
-    const parte = parteContracte();
-    parte.viatgers[0]!.provincia = undefined;
-    expect(() => validaParte(parte)).toThrow(/província/);
-  });
-
-  it('si país estranger exige localitat', () => {
+  it('si país estranger exigeix localitat (i no INE)', () => {
     const parte = parteContracte();
     const v = parte.viatgers[0]!;
     v.pais = 'França';
@@ -215,5 +204,7 @@ describe('validaParte (§2.3)', () => {
     v.municipi = undefined;
     v.localitat = undefined;
     expect(() => validaParte(parte)).toThrow(/localitat/);
+    v.localitat = 'Lyon';
+    expect(() => validaParte(parte)).not.toThrow();
   });
 });

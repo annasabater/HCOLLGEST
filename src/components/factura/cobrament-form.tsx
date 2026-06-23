@@ -7,10 +7,21 @@ import { Input, Select } from '@/components/ui/input';
 import { postJSON, ApiError } from '@/lib/api';
 import { optionsFrom, metodeCobramentValues, METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 
-export function CobramentForm({ facturaId, pendent }: { facturaId: string; pendent: number }) {
+export function CobramentForm({
+  facturaId,
+  defaultImport = 0,
+  tipus = 'COBRAMENT',
+  buttonLabel,
+}: {
+  facturaId: string;
+  defaultImport?: number;
+  tipus?: 'COBRAMENT' | 'DEVOLUCIO';
+  buttonLabel?: string;
+}) {
   const router = useRouter();
+  const esDevolucio = tipus === 'DEVOLUCIO';
   const [metode, setMetode] = useState('EFECTIU');
-  const [importVal, setImportVal] = useState(pendent > 0 ? String(pendent) : '');
+  const [importVal, setImportVal] = useState(defaultImport > 0 ? String(defaultImport) : '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,11 +33,18 @@ export function CobramentForm({ facturaId, pendent }: { facturaId: string; pende
       await postJSON(`/api/factures/${facturaId}/cobraments`, {
         metode,
         import: Number(importVal),
+        tipus,
       });
       setImportVal('');
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Error registrant el cobrament');
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : esDevolucio
+            ? 'Error registrant la devolució'
+            : 'Error registrant el cobrament',
+      );
     } finally {
       setSaving(false);
     }
@@ -50,12 +68,13 @@ export function CobramentForm({ facturaId, pendent }: { facturaId: string; pende
           className="h-9 w-32"
           type="number"
           step="0.01"
+          min="0"
           value={importVal}
           onChange={(e) => setImportVal(e.target.value)}
         />
       </div>
       <Button type="submit" size="sm" disabled={saving || !importVal}>
-        {saving ? 'Desant…' : 'Registrar cobrament'}
+        {saving ? 'Desant…' : (buttonLabel ?? 'Registrar cobrament')}
       </Button>
       {error && <span className="text-sm text-red-600">{error}</span>}
     </form>

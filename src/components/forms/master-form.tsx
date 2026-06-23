@@ -17,18 +17,21 @@ import {
   TIPUS_DOCUMENT_LABELS,
   sexeValues,
   SEXE_LABELS,
-  tipusPagamentValues,
+  tipusPagamentFormValues,
   TIPUS_PAGAMENT_LABELS,
   parentescValues,
   PARENTESC_LABELS,
   midaAnimalValues,
   MIDA_ANIMAL_LABELS,
+  metodeCobramentValues,
+  METODE_COBRAMENT_LABELS,
 } from '@/lib/validation/enums';
 import { isMenor } from '@/lib/dates';
 import { postJSON, ApiError, getJSON } from '@/lib/api';
 import { formatWarnings } from '@/lib/validation/documents';
 import { PROVINCIES, PAISOS } from '@/lib/data/geo';
 import { DocumentScanner } from '@/components/ocr/document-scanner';
+import { HosteSearch, type HosteLite } from '@/components/forms/hoste-search';
 import type { ViatgerOcr } from '@/lib/ocr/mrz';
 
 type ViatgerState = {
@@ -88,7 +91,44 @@ function emptyViatger(titular = false): ViatgerState {
 
 const currentYear = new Date().getFullYear();
 
-export function MasterForm({ habitacions }: { habitacions: { id: string; nom: string }[] }) {
+/** Camps d'un viatger a partir d'una fitxa d'hoste existent (reaprofitament). */
+function hostePatch(h: HosteLite): Partial<ViatgerState> {
+  const d = (s: string | null) => (s ? s.slice(0, 10) : '');
+  return {
+    huespedId: h.id,
+    nom: h.nom ?? '',
+    cognom1: h.cognom1 ?? '',
+    cognom2: h.cognom2 ?? '',
+    sexe: h.sexe ?? '',
+    dataNaixement: d(h.dataNaixement),
+    nacionalitat: h.nacionalitat ?? '',
+    tipusDocument: h.tipusDocument ?? '',
+    numDocument: h.numDocument ?? '',
+    numSuport: h.numSuport ?? '',
+    dataExpedicio: d(h.dataExpedicio),
+    email: h.email ?? '',
+    telefon: h.telefon ?? '',
+    adreca: h.adreca ?? '',
+    pais: h.pais ?? 'Espanya',
+    provincia: h.provincia ?? '',
+    municipi: h.municipi ?? '',
+    localitat: h.localitat ?? '',
+    codiPostal: h.codiPostal ?? '',
+    _recurrent: 'Hoste reaprofitat',
+  };
+}
+
+function viatgerFromHoste(h: HosteLite, titular: boolean): ViatgerState {
+  return { ...emptyViatger(titular), ...hostePatch(h) };
+}
+
+export function MasterForm({
+  habitacions,
+  initialHoste,
+}: {
+  habitacions: { id: string; nom: string }[];
+  initialHoste?: HosteLite | null;
+}) {
   const router = useRouter();
   const [tipusRegistre, setTipusRegistre] = useState<'CONTRACTE_EN_CURS' | 'RESERVA'>(
     'CONTRACTE_EN_CURS',
@@ -104,9 +144,14 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
     teInternet: true,
     observacions: '',
   });
-  const [viatgers, setViatgers] = useState<ViatgerState[]>([emptyViatger(true)]);
+  const [viatgers, setViatgers] = useState<ViatgerState[]>(() =>
+    initialHoste ? [viatgerFromHoste(initialHoste, true)] : [emptyViatger(true)],
+  );
   const [portaMascota, setPortaMascota] = useState(false);
   const [mascotes, setMascotes] = useState<{ nom: string; especie: string; mida: string }[]>([]);
+  // Municipis (INE) per província, carregats sota demanda per al selector.
+  const [municipisCache, setMunicipisCache] = useState<Record<string, string[]>>({});
+  const [pagaments, setPagaments] = useState<{ import: string; metode: string }[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -116,6 +161,23 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
 
   const setV = (i: number, patch: Partial<ViatgerState>) =>
     setViatgers((prev) => prev.map((v, idx) => (idx === i ? { ...v, ...patch } : v)));
+
+  // Reaprofita una fitxa d'hoste existent (des del cercador) en el viatger i.
+  const applyHuesped = (i: number, h: HosteLite) => setV(i, hostePatch(h));
+
+  // Carrega (un sol cop) els municipis INE d'una província per al selector.
+  const provId = (prov: string) => 'mun-' + prov.replace(/[^a-zA-Z0-9]/g, '');
+  async function loadMunicipis(prov: string) {
+    if (!prov || municipisCache[prov]) return;
+    try {
+      const r = await getJSON<{ municipis: string[] }>(
+        `/api/municipis?provincia=${encodeURIComponent(prov)}`,
+      );
+      setMunicipisCache((c) => ({ ...c, [prov]: r.municipis }));
+    } catch {
+      /* silenciós: la validació ja avisa si el municipi no es resol */
+    }
+  }
 
   // Autoreplenat des de l'OCR del document (només camps llegits).
   const applyOcr = (i: number, v: ViatgerOcr) => {
@@ -144,6 +206,13 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
   const setM = (i: number, patch: Partial<{ nom: string; especie: string; mida: string }>) =>
     setMascotes((prev) => prev.map((m, idx) => (idx === i ? { ...m, ...patch } : m)));
   const removeMascota = (i: number) => setMascotes((prev) => prev.filter((_, idx) => idx !== i));
+
+  // --- Cobrament (opcional): import + mètode, repetible (X efectiu, Y transferència…) ---
+  const addPagament = () => setPagaments((prev) => [...prev, { import: '', metode: 'EFECTIU' }]);
+  const setPag = (i: number, patch: Partial<{ import: string; metode: string }>) =>
+    setPagaments((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
+  const removePagament = (i: number) => setPagaments((prev) => prev.filter((_, idx) => idx !== i));
+  const totalPagaments = pagaments.reduce((a, p) => a + (Number(p.import) || 0), 0);
 
   const addViatger = () => setViatgers((prev) => [...prev, emptyViatger(prev.length === 0)]);
   const removeViatger = (i: number) =>
@@ -202,6 +271,13 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
               mida: m.mida || undefined,
             }))
         : undefined,
+      // Cobraments opcionals: només les línies amb import positiu.
+      pagaments: pagaments
+        .filter((p) => Number(p.import) > 0)
+        .map((p) => ({
+          metode: p.metode as (typeof metodeCobramentValues)[number],
+          import: Number(p.import),
+        })),
     };
   }
 
@@ -240,6 +316,7 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
           _noAcollir: res.estadistiques?.noAcollir ?? false,
           _anotacions: h.anotacions ?? [],
         });
+        if (h.provincia) loadMunicipis(h.provincia as string);
       }
     } catch {
       /* lookup silencioso */
@@ -335,6 +412,14 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
           <option key={pais} value={pais} />
         ))}
       </datalist>
+      {/* Datalists de municipis INE per província (carregats sota demanda). */}
+      {Object.entries(municipisCache).map(([prov, llista]) => (
+        <datalist key={prov} id={provId(prov)}>
+          {llista.map((m) => (
+            <option key={m} value={m} />
+          ))}
+        </datalist>
+      ))}
       {/* --- Tipus de registre --- */}
       <Card>
         <CardHeader>
@@ -389,7 +474,7 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
               value={estancia.tipusPagament}
               onChange={(e) => setEstancia({ ...estancia, tipusPagament: e.target.value })}
             >
-              {optionsFrom(tipusPagamentValues, TIPUS_PAGAMENT_LABELS).map((o) => (
+              {optionsFrom(tipusPagamentFormValues, TIPUS_PAGAMENT_LABELS).map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
@@ -439,6 +524,62 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
         </CardBody>
       </Card>
 
+      {/* --- Cobrament (opcional) --- */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Cobrament (opcional)</CardTitle>
+        </CardHeader>
+        <CardBody className="space-y-3">
+          <p className="text-xs text-slate-500">
+            Si ja t’han pagat, indica quant i com. Pots partir-ho en més d’un mètode (p. ex. una part
+            en efectiu i una altra per transferència). En desar es crearà un rebut amb aquests
+            cobraments. Si no, ho pots fer després des de la fitxa de l’estada.
+          </p>
+          {pagaments.map((p, i) => (
+            <div key={i} className="flex flex-wrap items-center gap-2">
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Import €"
+                className="w-32"
+                value={p.import}
+                onChange={(e) => setPag(i, { import: e.target.value })}
+              />
+              <Select
+                className="w-48"
+                value={p.metode}
+                onChange={(e) => setPag(i, { metode: e.target.value })}
+              >
+                {optionsFrom(metodeCobramentValues, METODE_COBRAMENT_LABELS).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+              <button
+                type="button"
+                className="text-slate-400 hover:text-red-600"
+                onClick={() => removePagament(i)}
+                aria-label="Treure cobrament"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" size="sm" variant="ghost" onClick={addPagament}>
+              <Plus className="h-4 w-4" /> Afegir cobrament
+            </Button>
+            {pagaments.length > 0 && (
+              <span className="text-sm text-slate-600">
+                Total: <strong>{totalPagaments.toFixed(2)} €</strong>
+              </span>
+            )}
+          </div>
+        </CardBody>
+      </Card>
+
       {/* --- Viatgers --- */}
       {viatgers.map((v, i) => {
         const refEntrada = estancia.dataEntrada ? new Date(estancia.dataEntrada) : new Date();
@@ -477,6 +618,9 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
               </div>
             </CardHeader>
             <CardBody className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="sm:col-span-2 lg:col-span-3">
+                <HosteSearch onSelect={(h) => applyHuesped(i, h)} />
+              </div>
               {(v._noAcollir || v._avisAlerta || (v._anotacions && v._anotacions.length > 0)) && (
                 <div className="space-y-2 sm:col-span-2 lg:col-span-3">
                   {v._avisAlerta && (
@@ -623,7 +767,13 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
                   {!ext ? (
                     <>
                       <Field label="Província" required error={err(P('provincia'))}>
-                        <Select value={v.provincia} onChange={(e) => setV(i, { provincia: e.target.value })}>
+                        <Select
+                          value={v.provincia}
+                          onChange={(e) => {
+                            setV(i, { provincia: e.target.value, municipi: '' });
+                            loadMunicipis(e.target.value);
+                          }}
+                        >
                           <option value="">—</option>
                           {PROVINCIES.map((pr) => (
                             <option key={pr} value={pr}>
@@ -632,8 +782,20 @@ export function MasterForm({ habitacions }: { habitacions: { id: string; nom: st
                           ))}
                         </Select>
                       </Field>
-                      <Field label="Municipi" required error={err(P('municipi'))}>
-                        <Input value={v.municipi} onChange={(e) => setV(i, { municipi: e.target.value })} />
+                      <Field
+                        label="Municipi"
+                        required
+                        error={err(P('municipi'))}
+                        hint={v.provincia ? 'Tria’l de la llista (codi INE oficial).' : 'Tria primer la província.'}
+                      >
+                        <Input
+                          list={v.provincia ? provId(v.provincia) : undefined}
+                          value={v.municipi}
+                          disabled={!v.provincia}
+                          onChange={(e) => setV(i, { municipi: e.target.value })}
+                          onFocus={() => loadMunicipis(v.provincia)}
+                          placeholder={v.provincia ? 'Comença a escriure…' : ''}
+                        />
                       </Field>
                     </>
                   ) : (

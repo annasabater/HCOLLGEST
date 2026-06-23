@@ -13,6 +13,7 @@ import {
   TipusPagamentEnum,
   ParentescEnum,
   midaAnimalValues,
+  metodeCobramentValues,
 } from './enums';
 import { endOfToday, isMenor } from '../dates';
 
@@ -76,6 +77,16 @@ export const MascotaInputSchema = z.object({
   ),
 });
 
+/**
+ * Cobrament opcional indicat ja en el moment del registre. Permet partir el preu
+ * en diversos mètodes (p. ex. una part en EFECTIU i una altra per TRANSFERENCIA).
+ * En desar, es genera un rebut amb aquests cobraments.
+ */
+export const PagamentInputSchema = z.object({
+  metode: z.enum(metodeCobramentValues),
+  import: z.coerce.number().positive('L’import ha de ser positiu'),
+});
+
 export const EstanciaInputSchema = z.object({
   tipusRegistre: TipusRegistreEnum,
   numContracte: z.string().trim().min(1, 'El número de contracte és obligatori'),
@@ -109,6 +120,7 @@ function buildRegistreSchema(borrany: boolean) {
       estancia: EstanciaInputSchema,
       viatgers: z.array(ViatgerInputSchema).min(1, 'Cal almenys un viatger'),
       mascotes: z.array(MascotaInputSchema).optional(),
+      pagaments: z.array(PagamentInputSchema).optional(),
     })
     .superRefine((data, ctx) => {
       const { estancia, viatgers } = data;
@@ -198,6 +210,7 @@ export type RegistreInput = z.input<typeof RegistreSchema>;
 export type RegistreParsed = z.output<typeof RegistreSchema>;
 export type ViatgerInput = z.input<typeof ViatgerInputSchema>;
 export type MascotaInput = z.input<typeof MascotaInputSchema>;
+export type PagamentInput = z.input<typeof PagamentInputSchema>;
 
 // Ampliació d'una estada (1.1, 1.2…): noves dates per al període ampliat.
 export const AmpliacioSchema = z

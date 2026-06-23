@@ -1,7 +1,7 @@
 import { authorize } from '@/lib/auth/guard';
 import { ROLES_ADMIN } from '@/lib/auth/rbac';
 import { badRequest } from '@/lib/http';
-import { getBalancDetall, getBalancAny } from '@/lib/services/dashboard';
+import { getBalancDetall, getBalancAny, getBalancSituacio } from '@/lib/services/dashboard';
 import { buildReportPdf, type ReportSection } from '@/lib/pdf/report';
 import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 import { teVistaRestringida } from '@/lib/auth/restriccions';
@@ -25,11 +25,49 @@ export async function GET(req: Request) {
   const sp = new URL(req.url).searchParams;
   const mesParam = sp.get('mes');
   const anyParam = sp.get('any');
+  const situacioParam = sp.get('situacio');
 
   let title: string;
   let sections: ReportSection[];
 
-  if (anyParam) {
+  if (situacioParam !== null) {
+    let dataTall = new Date();
+    if (situacioParam) {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(situacioParam);
+      if (!m) return badRequest('Data no vàlida (YYYY-MM-DD)');
+      dataTall = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59, 999);
+    }
+    const b = await getBalancSituacio(dataTall);
+    title = `Balanç de situació ${b.data}`;
+    sections = [
+      {
+        heading: 'Actiu',
+        kv: [
+          ['ACTIU NO CORRENT', eur(b.actiu.noCorrent.immobilitzatBrut)],
+          [`   Immobilitzat material (valor brut, ${b.detall.nActius} actius)`, eur(b.actiu.noCorrent.immobilitzatBrut)],
+          ['ACTIU CORRENT', eur(b.actiu.corrent.deutors + b.actiu.corrent.tresoreriaFiances)],
+          [`   Deutors comercials (${b.detall.nFacturesPendents} factures pendents)`, eur(b.actiu.corrent.deutors)],
+          ['   Tresoreria - efectiu de fiances en dipòsit', eur(b.actiu.corrent.tresoreriaFiances)],
+          ['TOTAL ACTIU', eur(b.actiu.total)],
+        ],
+      },
+      {
+        heading: 'Patrimoni net i passiu',
+        kv: [
+          ['PATRIMONI NET', eur(b.patrimoniIPassiu.patrimoniNet)],
+          ['   Patrimoni net (figura de quadre)', eur(b.patrimoniIPassiu.patrimoniNet)],
+          ['PASSIU NO CORRENT', eur(b.patrimoniIPassiu.passiuNoCorrent)],
+          ['PASSIU CORRENT', eur(b.patrimoniIPassiu.passiuCorrent.fiances)],
+          [`   Fiances rebudes a retornar (${b.detall.nDiposits} dipòsits)`, eur(b.patrimoniIPassiu.passiuCorrent.fiances)],
+          ['TOTAL PATRIMONI NET I PASSIU', eur(b.patrimoniIPassiu.total)],
+        ],
+      },
+      {
+        heading: 'Advertiment: balanç aproximat (no fiscal)',
+        kv: b.mancances.map((m) => ['No inclòs', m] as [string, string]),
+      },
+    ];
+  } else if (anyParam) {
     if (!/^\d{4}$/.test(anyParam)) return badRequest('Any no vàlid');
     const b = await getBalancAny(Number(anyParam), opts);
     title = `Balanç ${b.any}`;

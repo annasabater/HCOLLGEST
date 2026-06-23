@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
     },
   },
   // Documentos de identidad y justificantes NUNCA en el bundle del cliente.
-  serverExternalPackages: ['@prisma/client', 'bcryptjs'],
+  serverExternalPackages: ['@prisma/client', 'bcryptjs', 'sharp'],
 
   // Capçaleres de seguretat HTTP (anti-clickjacking, HSTS, sniffing, etc.).
   async headers() {

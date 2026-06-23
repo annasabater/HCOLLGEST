@@ -78,6 +78,10 @@ async function captura(page: Page, nom: string) {
   try {
     mkdirSync(CAPTURES, { recursive: true });
     await page.screenshot({ path: join(CAPTURES, `${nom}.png`), fullPage: true });
+    // Desa també l'HTML: així es poden llegir els selectors EXACTES del portal
+    // (noms de camp, ids, textos dels botons) per ajustar SEL sense endevinar.
+    const html = await page.content().catch(() => '');
+    if (html) writeFileSync(join(CAPTURES, `${nom}.html`), html, 'utf-8');
   } catch {
     /* ignore */
   }
@@ -109,9 +113,32 @@ async function generaFitxer(estanciaId: string) {
 async function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes('--dry-run');
+  const inspect = args.includes('--inspect');
   const target = args.find((a) => !a.startsWith('--'));
+
+  // Mode INSPECT: obre el portal, desa l'HTML/captura de la pàgina de login i
+  // s'atura amb l'Inspector de Playwright perquè entris a mà i navegis fins a
+  // "Fitxers massius". Així capturem els selectors reals sense pujar res.
+  if (inspect) {
+    let chromiumI: typeof import('playwright').chromium;
+    try {
+      ({ chromium: chromiumI } = await import('playwright'));
+    } catch {
+      throw new Error('Playwright no instal·lat: pnpm add -D playwright && npx playwright install chromium');
+    }
+    const browserI = await chromiumI.launch({ headless: false });
+    const pageI = await browserI.newPage();
+    await pageI.goto(PORTAL, { waitUntil: 'domcontentloaded' });
+    await captura(pageI, 'inspect-login');
+    console.log('He desat l’HTML i la captura de la pàgina de login a ./mossos-captures (inspect-login.*).');
+    console.log('S’obrirà l’Inspector: entra a mà i ves fins a "Fitxers massius". Passa’m els .html que es generin.');
+    await pageI.pause().catch(() => {});
+    await browserI.close();
+    return;
+  }
+
   if (!target && !args.includes('--all-pending')) {
-    console.error('Ús: pnpm mossos:upload <estanciaId> | --all-pending [--dry-run]');
+    console.error('Ús: pnpm mossos:upload <estanciaId> | --all-pending [--dry-run] | --inspect');
     process.exit(1);
   }
   if (!isFormatConfirmat() && !dryRun) {
@@ -139,6 +166,7 @@ async function main() {
   try {
     // ── Login ──
     await page.goto(PORTAL, { waitUntil: 'domcontentloaded' });
+    await captura(page, 'login'); // desa l'HTML del login per ajustar selectors
     await fillFirst(page, SEL.usuari, user, 'usuari');
     await fillFirst(page, SEL.contrasenya, pass, 'contrasenya');
     await clickFirst(page, SEL.entrar, 'botó entrar');

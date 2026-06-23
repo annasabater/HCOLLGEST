@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Download, Eye, AlertTriangle, Pencil } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
@@ -10,7 +10,6 @@ import { Field } from '@/components/ui/field';
 import { Card, CardBody } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
-import { AvisosPanel } from '@/components/huesped/avisos-panel';
 import { GenerarFitxerButton, type FitxerNotice } from '@/components/estancia/generar-fitxer-button';
 import { ESTAT_ENVIAMENT_LABELS } from '@/lib/validation/enums';
 import { getJSON } from '@/lib/api';
@@ -50,6 +49,7 @@ export default function LlibrePage() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<FitxerNotice | null>(null);
+  const [nomesMascota, setNomesMascota] = useState(false);
 
   const query = () => {
     const p = new URLSearchParams();
@@ -74,10 +74,20 @@ export default function LlibrePage() {
     window.open(`/api/llibre?${p.toString()}`, '_blank');
   }
 
+  // Carrega TOT el llibre automàticament en obrir la pàgina (sense filtre de dates).
+  // Els camps de data segueixen servint per acotar i tornar a prémer «Veure».
+  useEffect(() => {
+    veure();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Les accions (editar / enviar a Mossos) són per estada: només es mostren al
   // primer viatger de cada contracte per no duplicar-les ni generar fitxers repetits.
+  const visibles = (rows ?? []).filter(
+    (r) => !nomesMascota || (!!r.mascotes && r.mascotes.trim() !== '' && r.mascotes !== '—'),
+  );
   const firstRowOf = new Map<string, number>();
-  (rows ?? []).forEach((r, i) => {
+  visibles.forEach((r, i) => {
     if (!firstRowOf.has(r.estanciaId)) firstRowOf.set(r.estanciaId, i);
   });
 
@@ -95,8 +105,6 @@ export default function LlibrePage() {
         }
       />
 
-      <AvisosPanel />
-
       <Card className="mb-6">
         <CardBody className="flex flex-wrap items-end gap-3">
           <Field label="Des de">
@@ -108,6 +116,10 @@ export default function LlibrePage() {
           <Button onClick={veure} disabled={loading} variant="outline">
             <Eye className="h-4 w-4" /> {loading ? 'Carregant…' : 'Veure'}
           </Button>
+          <label className="flex items-center gap-1.5 pb-2 text-sm text-slate-600">
+            <input type="checkbox" checked={nomesMascota} onChange={(e) => setNomesMascota(e.target.checked)} />
+            Només amb mascota
+          </label>
           <Button onClick={exportCsv}>
             <Download className="h-4 w-4" /> Exportar CSV
           </Button>
@@ -126,9 +138,9 @@ export default function LlibrePage() {
       )}
 
       {rows === null ? (
-        <EmptyState>Selecciona un rang de dates i prem «Veure».</EmptyState>
-      ) : rows.length === 0 ? (
-        <EmptyState>Cap registre en aquest rang.</EmptyState>
+        <EmptyState>Carregant…</EmptyState>
+      ) : visibles.length === 0 ? (
+        <EmptyState>{nomesMascota ? 'Cap registre amb mascota.' : 'Cap registre en aquest rang.'}</EmptyState>
       ) : (
         <Table>
           <Thead>
@@ -146,7 +158,7 @@ export default function LlibrePage() {
             </tr>
           </Thead>
           <tbody>
-            {rows.map((r, i) => {
+            {visibles.map((r, i) => {
               const isFirst = firstRowOf.get(r.estanciaId) === i;
               return (
                 <Tr key={i}>

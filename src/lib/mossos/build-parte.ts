@@ -1,35 +1,16 @@
 /**
- * Mapea las entidades de la BD (Establiment + Estancia + viatgers/huéspedes)
- * a la estructura `ParteViatgers` que consume el generador del fitxer.
- * Calcula `esMenor` a partir de la fecha de nacimiento (<14 al entrar).
+ * Mapea les entitats de la BD (Establiment + Estancia + viatgers/hostes) a
+ * l'estructura `ParteViatgers` que consumeix el generador del fitxer.
+ * Calcula `esMenor` a partir de la data de naixement (<14 a l'entrada).
  */
 import type {
   Establiment as DbEstabliment,
   Estancia as DbEstancia,
   EstanciaViatger as DbViatger,
   Huesped as DbHuesped,
-  Parentesc,
 } from '@prisma/client';
 import type { ParteViatgers, Viatger } from './fitxer';
 import { isMenor } from '../dates';
-
-const PARENTESC_LABELS: Record<Parentesc, string> = {
-  AVI_AVIA: 'Avi/àvia',
-  BESAVI_BESAVIA: 'Besavi/besàvia',
-  BESNET_BESNETA: 'Besnét/besnéta',
-  CUNYAT_CUNYADA: 'Cunyat/cunyada',
-  CONJUGE: 'Cònjuge',
-  FILL_FILLA: 'Fill/filla',
-  GERMA_GERMANA: 'Germà/germana',
-  NET_NETA: 'Nét/néta',
-  PARE_MARE: 'Pare o mare',
-  NEBOT_NEBODA: 'Nebot/neboda',
-  SOGRE_SOGRA: 'Sogre/sogra',
-  ONCLE_TIA: 'Oncle/tia',
-  TUTOR_TUTORA: 'Tutor/tutora',
-  GENDRE_NORA: 'Gendre o nora',
-  ALTRES: 'Altres',
-};
 
 type ViatgerRow = DbViatger & { huesped: DbHuesped };
 
@@ -71,7 +52,7 @@ export function buildParteFromDb(
         nacionalitat: h.nacionalitat ?? undefined,
         email: h.email ?? undefined,
         telefon: h.telefon ?? undefined,
-        parentesc: row.parentesc ? PARENTESC_LABELS[row.parentesc] : undefined,
+        parentesc: row.parentesc ?? undefined,
         esMenor: row.esMenor || isMenor(h.dataNaixement, estancia.dataEntrada),
         adreca: h.adreca ?? undefined,
         pais: h.pais ?? undefined,
