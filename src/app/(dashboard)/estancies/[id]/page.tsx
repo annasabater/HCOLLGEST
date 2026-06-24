@@ -9,6 +9,7 @@ import { MascotesPanel } from '@/components/huesped/mascotes-panel';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
+import { MoreMenu } from '@/components/ui/more-menu';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EstanciaActions } from '@/components/estancia/estancia-actions';
@@ -22,7 +23,6 @@ import { preuSuggeritAllotjament } from '@/lib/services/tarifes';
 import { formatDate } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
 import {
-  TIPUS_REGISTRE_LABELS,
   TIPUS_PAGAMENT_LABELS,
   TIPUS_DOCUMENT_LABELS,
   PARENTESC_LABELS,
@@ -80,49 +80,72 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
     ? await preuSuggeritAllotjament(estancia.habitacioId, estancia.dataEntrada, estancia.dataSortida)
     : null;
 
+  // Estat REAL de l'estada (per dates) — més clar que el tipus de registre Mossos.
+  const avuiIso = toISODate(new Date());
+  const status: { label: string; tone: 'success' | 'info' | 'warning' | 'neutral' } =
+    estancia.esBorrany
+      ? { label: 'Esborrany', tone: 'warning' }
+      : estancia.estat === 'CANCELLADA'
+        ? { label: 'Cancel·lada', tone: 'neutral' }
+        : avuiIso < toISODate(estancia.dataEntrada)
+          ? { label: 'Reserva', tone: 'info' }
+          : avuiIso < toISODate(estancia.dataSortida)
+            ? { label: 'Allotjat ara', tone: 'success' }
+            : { label: 'Estada acabada', tone: 'neutral' };
+
   return (
     <div>
       <BackLink fallback="/estancies">Estades</BackLink>
       <PageHeader
         title={titular ? `${titular.nom} ${titular.cognom1}` : 'Estada'}
-        subtitle={`Contracte ${estancia.numContracte}/${estancia.anyContracte}`}
+        subtitle={
+          <span className="flex flex-wrap items-center gap-2">
+            <span>
+              Contracte {estancia.numContracte}/{estancia.anyContracte}
+            </span>
+            <Badge
+              tone={status.tone}
+              title={
+                estancia.esBorrany
+                  ? 'Registre incomplet: completa les dades per poder pujar-lo a Mossos.'
+                  : undefined
+              }
+            >
+              {status.label}
+            </Badge>
+          </span>
+        }
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <a href={`/api/estancies/${estancia.id}/fitxa-pdf`} target="_blank" rel="noreferrer">
+              <Button variant="outline" size="sm">
+                <FileSignature className="h-4 w-4" /> Fitxa PDF
+              </Button>
+            </a>
             <AmpliarEstada
               estanciaId={estancia.id}
               defaultEntrada={toISODate(estancia.dataSortida)}
               habitacions={habitacions}
               actualHabitacioId={estancia.habitacioId}
             />
-            <a href={`/api/estancies/${estancia.id}/fitxa-pdf`} target="_blank" rel="noreferrer">
-              <Button variant="outline" size="sm">
-                <FileSignature className="h-4 w-4" /> Fitxa PDF
-              </Button>
-            </a>
             {canWrite && (
-              <Link href={`/estancies/${estancia.id}/edita`}>
-                <Button variant="outline" size="sm">
-                  <Pencil className="h-4 w-4" /> Editar
-                </Button>
-              </Link>
+              <MoreMenu>
+                <Link href={`/estancies/${estancia.id}/edita`}>
+                  <Button variant="ghost" size="sm">
+                    <Pencil className="h-4 w-4" /> Editar
+                  </Button>
+                </Link>
+                {estancia.esBorrany && <TreureEsborrany estanciaId={estancia.id} />}
+                <EliminarEstada
+                  id={estancia.id}
+                  contracte={`${estancia.numContracte}/${estancia.anyContracte}`}
+                  comunicada={estancia.enviaments.some(
+                    (e) => e.estat === 'ENVIAT' || e.estat === 'ACCEPTAT',
+                  )}
+                  nFactures={estancia.factures.length}
+                />
+              </MoreMenu>
             )}
-            {canWrite && (
-              <EliminarEstada
-                id={estancia.id}
-                contracte={`${estancia.numContracte}/${estancia.anyContracte}`}
-                comunicada={estancia.enviaments.some((e) => e.estat === 'ENVIAT' || e.estat === 'ACCEPTAT')}
-                nFactures={estancia.factures.length}
-              />
-            )}
-            {estancia.esBorrany && (
-              <>
-                <Badge tone="warning" title="Registre incomplet: completa les dades per poder pujar-lo a Mossos.">
-                  Esborrany
-                </Badge>
-                {canWrite && <TreureEsborrany estanciaId={estancia.id} />}
-              </>
-            )}
-            <Badge tone="info">{TIPUS_REGISTRE_LABELS[estancia.tipusRegistre]}</Badge>
           </div>
         }
       />
@@ -168,6 +191,14 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 <Dl label="Pagament" value={TIPUS_PAGAMENT_LABELS[estancia.tipusPagament]} />
                 <Dl label="Habitació" value={estancia.habitacio?.nom} />
                 <Dl label="Internet" value={estancia.teInternet ? 'Sí' : 'No'} />
+                <Dl
+                  label="Tipus de registre (Mossos)"
+                  value={
+                    estancia.tipusRegistre === 'RESERVA'
+                      ? 'Reserva'
+                      : 'Contracte en curs (estada formalitzada)'
+                  }
+                />
                 <Dl label="Observacions" value={estancia.observacions} />
               </dl>
             </CardBody>
