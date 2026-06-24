@@ -12,7 +12,7 @@ import { addDays, toISODate } from '@/lib/dates';
 import { formatDate } from '@/lib/utils';
 import {
   fillTemplate,
-  waLink,
+  enviaWhatsApp,
   descriuTasques,
   tipusNetejaLabel,
   PLANTILLA_HOSTE,
@@ -277,11 +277,13 @@ function NetejaCard() {
         </Field>
 
         <div className="flex flex-wrap items-center gap-2">
-          <a href={waLink(treballador?.telefon, msg)} target="_blank" rel="noreferrer">
-            <Button type="button" disabled={!msg}>
-              <MessageCircle className="h-4 w-4" /> Enviar per WhatsApp
-            </Button>
-          </a>
+          <Button
+            type="button"
+            disabled={!msg}
+            onClick={() => enviaWhatsApp(treballador?.telefon, msg, treballador?.nom)}
+          >
+            <MessageCircle className="h-4 w-4" /> Enviar per WhatsApp
+          </Button>
           <Button type="button" variant="outline" onClick={() => copia(msg)}>
             <Copy className="h-4 w-4" /> Copiar
           </Button>
@@ -415,17 +417,15 @@ function HostesCard() {
                     {phone ?? 'sense telèfon'}
                   </span>
                   <div className="ml-auto flex gap-2 pb-0.5">
-                    {phone ? (
-                      <a href={waLink(phone, msgFor(e))} target="_blank" rel="noreferrer">
-                        <Button type="button" size="sm">
-                          <MessageCircle className="h-4 w-4" /> WhatsApp
-                        </Button>
-                      </a>
-                    ) : (
-                      <Button type="button" size="sm" disabled title="Aquest hoste no té telèfon">
-                        <MessageCircle className="h-4 w-4" /> WhatsApp
-                      </Button>
-                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={!phone}
+                      title={phone ? undefined : 'Aquest hoste no té telèfon'}
+                      onClick={() => enviaWhatsApp(phone, msgFor(e), nomFor(e))}
+                    >
+                      <MessageCircle className="h-4 w-4" /> WhatsApp
+                    </Button>
                     <Button type="button" size="sm" variant="outline" onClick={() => copia(msgFor(e))}>
                       <Copy className="h-4 w-4" />
                     </Button>
@@ -530,17 +530,15 @@ function BenvingudaCard() {
                           {phone ?? 'sense telèfon'}
                         </span>
                         <div className="ml-auto flex gap-2">
-                          {phone ? (
-                            <a href={waLink(phone, msgFor(e.id, nom))} target="_blank" rel="noreferrer">
-                              <Button type="button" size="sm">
-                                <MessageCircle className="h-4 w-4" /> WhatsApp
-                              </Button>
-                            </a>
-                          ) : (
-                            <Button type="button" size="sm" disabled title="Aquest hoste no té telèfon">
-                              <MessageCircle className="h-4 w-4" /> WhatsApp
-                            </Button>
-                          )}
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={!phone}
+                            title={phone ? undefined : 'Aquest hoste no té telèfon'}
+                            onClick={() => enviaWhatsApp(phone, msgFor(e.id, nom), nom)}
+                          >
+                            <MessageCircle className="h-4 w-4" /> WhatsApp
+                          </Button>
                           <Button type="button" size="sm" variant="outline" onClick={() => copia(msgFor(e.id, nom))}>
                             <Copy className="h-4 w-4" />
                           </Button>

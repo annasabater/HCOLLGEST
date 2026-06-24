@@ -89,6 +89,21 @@ export function waLink(phone: string | null | undefined, text: string): string {
   return `${base}?text=${encodeURIComponent(text)}`;
 }
 
+/**
+ * Obre WhatsApp DEMANANT confirmació abans (evita enviaments per error).
+ * Retorna true si s'ha confirmat. S'executa dins del clic (no el bloqueja el
+ * navegador). `qui` és el nom del destinatari per al missatge de confirmació.
+ */
+export function enviaWhatsApp(phone: string | null | undefined, text: string, qui?: string): boolean {
+  if (typeof window === 'undefined') return false;
+  const pregunta = qui
+    ? `Segur que vols enviar el WhatsApp a ${qui}?`
+    : 'Segur que vols enviar aquest WhatsApp?';
+  if (!window.confirm(pregunta)) return false;
+  window.open(waLink(phone, text), '_blank', 'noopener,noreferrer');
+  return true;
+}
+
 // Vocabulari de neteja per idioma. "salida" = neteja a fons (microones, nevera…),
 // "repas" = repàs lleuger. La distinció importa perquè la tarifa pot variar.
 const NETEJA_TXT: Record<

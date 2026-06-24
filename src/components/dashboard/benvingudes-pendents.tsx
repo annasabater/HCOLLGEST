@@ -7,7 +7,7 @@ import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/input';
 import { patchJSON } from '@/lib/api';
-import { fillTemplate, waLink, PLANTILLA_BENVINGUDA, LANGS, type Lang } from '@/lib/plantilles';
+import { fillTemplate, enviaWhatsApp, PLANTILLA_BENVINGUDA, LANGS, type Lang } from '@/lib/plantilles';
 
 interface Viatger {
   nom: string;
@@ -119,17 +119,15 @@ export function BenvingudesPendents({
                     </span>
                     <span className="text-xs text-slate-400">{v.telefon ?? 'sense telèfon'}</span>
                     <div className="ml-auto">
-                      {v.telefon ? (
-                        <a href={waLink(v.telefon, msg(lang, v.nom))} target="_blank" rel="noreferrer">
-                          <Button type="button" size="sm">
-                            <MessageCircle className="h-4 w-4" /> WhatsApp
-                          </Button>
-                        </a>
-                      ) : (
-                        <Button type="button" size="sm" disabled title="Aquest hoste no té telèfon">
-                          <MessageCircle className="h-4 w-4" /> WhatsApp
-                        </Button>
-                      )}
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={!v.telefon}
+                        title={v.telefon ? undefined : 'Aquest hoste no té telèfon'}
+                        onClick={() => enviaWhatsApp(v.telefon, msg(lang, v.nom), `${v.nom} ${v.cognom1}`)}
+                      >
+                        <MessageCircle className="h-4 w-4" /> WhatsApp
+                      </Button>
                     </div>
                   </div>
                 ))}
