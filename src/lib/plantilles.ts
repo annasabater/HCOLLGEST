@@ -96,10 +96,12 @@ export function waLink(phone: string | null | undefined, text: string): string {
  */
 export function enviaWhatsApp(phone: string | null | undefined, text: string, qui?: string): boolean {
   if (typeof window === 'undefined') return false;
-  const pregunta = qui
-    ? `Segur que vols enviar el WhatsApp a ${qui}?`
-    : 'Segur que vols enviar aquest WhatsApp?';
-  if (!window.confirm(pregunta)) return false;
+  const capcalera = qui
+    ? `Enviar aquest WhatsApp a ${qui}?`
+    : 'Enviar aquest WhatsApp?';
+  // Mostra el missatge sencer a la confirmació perquè el puguis revisar abans
+  // d'obrir WhatsApp. Si confirmes, s'obre WhatsApp amb el text ja escrit.
+  if (!window.confirm(`${capcalera}\n\n${text}`)) return false;
   window.open(waLink(phone, text), '_blank', 'noopener,noreferrer');
   return true;
 }
