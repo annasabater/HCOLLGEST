@@ -124,10 +124,18 @@ export async function getResum(opts?: FinanceOpts) {
       },
     }),
     prisma.jornada.aggregate({ _sum: { import: true }, where: { data: { gte: monthStart, lte: monthEnd } } }),
-    prisma.diposit.aggregate({ _sum: { import: true }, where: { estat: 'EN_CUSTODIA' } }),
     prisma.diposit.aggregate({
       _sum: { import: true },
-      where: { estat: 'RETINGUT', dataResolucio: { gte: monthStart, lte: monthEnd }, ...metodeFiltre(opts) },
+      where: { estat: 'EN_CUSTODIA', estancia: { deletedAt: null } },
+    }),
+    prisma.diposit.aggregate({
+      _sum: { import: true },
+      where: {
+        estat: 'RETINGUT',
+        dataResolucio: { gte: monthStart, lte: monthEnd },
+        estancia: { deletedAt: null },
+        ...metodeFiltre(opts),
+      },
     }),
     // Serveis/manteniments amb propera visita o renovació dins els pròxims 30 dies.
     prisma.serveiRecurrent.findMany({
@@ -218,11 +226,16 @@ export async function getBalanc(monthStart: Date, monthEnd: Date, opts?: Finance
     }),
     prisma.diposit.aggregate({
       _sum: { import: true },
-      where: { estat: 'RETINGUT', dataResolucio: { gte: monthStart, lte: monthEnd }, ...metodeFiltre(opts) },
+      where: {
+        estat: 'RETINGUT',
+        dataResolucio: { gte: monthStart, lte: monthEnd },
+        estancia: { deletedAt: null },
+        ...metodeFiltre(opts),
+      },
     }),
     prisma.diposit.aggregate({
       _sum: { import: true },
-      where: { estat: 'EN_CUSTODIA', data: { gte: monthStart, lte: monthEnd } },
+      where: { estat: 'EN_CUSTODIA', data: { gte: monthStart, lte: monthEnd }, estancia: { deletedAt: null } },
     }),
     prisma.gasto.aggregate({
       _sum: { import: true },
@@ -243,7 +256,7 @@ export async function getBalanc(monthStart: Date, monthEnd: Date, opts?: Finance
 
   // Detall dels dipòsits en custòdia del mes: de qui són i de quina estada.
   const custodiaRows = await prisma.diposit.findMany({
-    where: { estat: 'EN_CUSTODIA', data: { gte: monthStart, lte: monthEnd } },
+    where: { estat: 'EN_CUSTODIA', data: { gte: monthStart, lte: monthEnd }, estancia: { deletedAt: null } },
     orderBy: { data: 'desc' },
     include: {
       estancia: {
@@ -302,7 +315,12 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
       prisma.diposit.groupBy({
         by: ['metode'],
         _sum: { import: true },
-        where: { estat: 'RETINGUT', dataResolucio: { gte: start, lte: end }, ...metodeFiltre(opts) },
+        where: {
+          estat: 'RETINGUT',
+          dataResolucio: { gte: start, lte: end },
+          estancia: { deletedAt: null },
+          ...metodeFiltre(opts),
+        },
       }),
       prisma.gasto.groupBy({
         by: ['categoriaId'],
@@ -415,9 +433,10 @@ export type BalancAny = Awaited<ReturnType<typeof getBalancAny>>;
  *    data; la seva contrapartida és el passiu "Fiances a retornar".
  *  - Fiances rebudes a retornar (passiu corrent) = mateixos dipòsits en custòdia.
  */
-export async function getBalancSituacio(dataTall: Date) {
+export async function getBalancSituacio(dataTall: Date, opts?: { incloureCustodia?: boolean }) {
   const num = (d: { _sum: Record<string, unknown> }, k: string) => Number(d._sum[k] ?? 0);
   const r2 = (n: number) => Math.round(n * 100) / 100;
+  const incloureCustodia = opts?.incloureCustodia ?? true;
 
   const [immobAgg, immobCount, deutorsAgg, deutorsCount, fiancesAgg, fiancesCount] =
     await Promise.all([
@@ -438,19 +457,21 @@ export async function getBalancSituacio(dataTall: Date) {
         where: {
           data: { lte: dataTall },
           OR: [{ dataResolucio: null }, { dataResolucio: { gt: dataTall } }],
+          estancia: { deletedAt: null },
         },
       }),
       prisma.diposit.count({
         where: {
           data: { lte: dataTall },
           OR: [{ dataResolucio: null }, { dataResolucio: { gt: dataTall } }],
+          estancia: { deletedAt: null },
         },
       }),
     ]);
 
   const immobilitzatBrut = r2(num(immobAgg, 'cost'));
   const deutors = r2(num(deutorsAgg, 'total'));
-  const fiances = r2(num(fiancesAgg, 'import'));
+  const fiances = incloureCustodia ? r2(num(fiancesAgg, 'import')) : 0;
   // L'efectiu de fiances (asset) és la contrapartida exacta del passiu de fiances.
   const tresoreriaFiances = fiances;
 
@@ -463,6 +484,7 @@ export async function getBalancSituacio(dataTall: Date) {
 
   return {
     data: `${dataTall.getFullYear()}-${String(dataTall.getMonth() + 1).padStart(2, '0')}-${String(dataTall.getDate()).padStart(2, '0')}`,
+    inclouCustodia: incloureCustodia,
     actiu: {
       noCorrent: { immobilitzatBrut },
       corrent: { deutors, tresoreriaFiances },
@@ -474,7 +496,7 @@ export async function getBalancSituacio(dataTall: Date) {
       passiuCorrent: { fiances },
       total: r2(patrimoniNet + totalPassiu),
     },
-    detall: { nActius: immobCount, nFacturesPendents: deutorsCount, nDiposits: fiancesCount },
+    detall: { nActius: immobCount, nFacturesPendents: deutorsCount, nDiposits: incloureCustodia ? fiancesCount : 0 },
     // Quadra sempre per construcció; ho exposem per transparència a la UI.
     quadra: true,
     // Partides que un balanç fiscal exacte necessitaria i que el PMS NO té.
