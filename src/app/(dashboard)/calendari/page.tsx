@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, LogIn, LogOut, Sparkles, Check, Wrench, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LogIn, LogOut, Sparkles, Check, Wrench, X, Undo2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { CalendariHabitacio } from '@/components/habitacio/calendari-habitacio';
@@ -70,8 +70,8 @@ export default function CalendariPage() {
     load();
   }, [load]);
 
-  async function marcarFeta(id: string) {
-    await patchJSON(`/api/tasques-neteja/${id}`, { estat: 'FETA' });
+  async function setEstatTasca(id: string, estat: 'PENDENT' | 'FETA') {
+    await patchJSON(`/api/tasques-neteja/${id}`, { estat });
     load();
   }
 
@@ -207,9 +207,9 @@ export default function CalendariPage() {
                     key={t.id}
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (t.estat === 'PENDENT') marcarFeta(t.id);
+                      setEstatTasca(t.id, t.estat === 'FETA' ? 'PENDENT' : 'FETA');
                     }}
-                    title={t.estat === 'PENDENT' ? 'Marcar com a feta' : 'Feta'}
+                    title={t.estat === 'FETA' ? 'Tornar a pendent' : 'Marcar com a feta'}
                     className={cn(
                       'flex w-full items-center gap-0.5 truncate rounded px-1.5 py-0.5 text-left',
                       compact ? 'text-[10px]' : 'text-xs',
@@ -285,10 +285,10 @@ export default function CalendariPage() {
                   className="flex items-center gap-2 rounded-lg border border-slate-100 bg-amber-50/60 px-3 py-2 text-sm text-amber-900"
                 >
                   <Sparkles className="h-4 w-4 shrink-0" />
-                  <span className="flex-1">
+                  <Link href={`/neteja?data=${selected}`} className="flex-1 hover:underline" title="Veure a Neteja">
                     Neteja{t.habitacio ? ` · Hab. ${t.habitacio}` : ''} · {TIPUS_NETEJA_LABELS[t.tipus]}
                     {t.estat === 'FETA' && <span className="ml-1 text-slate-400">(feta)</span>}
-                  </span>
+                  </Link>
                   {t.estanciaId && (
                     <Link
                       href={`/estancies/${t.estanciaId}`}
@@ -297,14 +297,20 @@ export default function CalendariPage() {
                       Veure estada
                     </Link>
                   )}
-                  {t.estat === 'PENDENT' && (
-                    <button
-                      onClick={() => marcarFeta(t.id)}
-                      className="inline-flex items-center gap-1 rounded border border-amber-300 px-2 py-0.5 text-xs text-amber-800 hover:bg-amber-100"
-                    >
-                      <Check className="h-3 w-3" /> Feta
-                    </button>
-                  )}
+                  <button
+                    onClick={() => setEstatTasca(t.id, t.estat === 'FETA' ? 'PENDENT' : 'FETA')}
+                    className="inline-flex items-center gap-1 rounded border border-amber-300 px-2 py-0.5 text-xs text-amber-800 hover:bg-amber-100"
+                  >
+                    {t.estat === 'FETA' ? (
+                      <>
+                        <Undo2 className="h-3 w-3" /> Pendent
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-3 w-3" /> Feta
+                      </>
+                    )}
+                  </button>
                 </div>
               ))}
               {selServ.map((s) => (

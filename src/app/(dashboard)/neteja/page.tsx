@@ -57,6 +57,12 @@ export default function NetejaPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Si s'arriba des del calendari amb ?data=YYYY-MM-DD, obre aquell dia.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get('data');
+    if (p) setData(p);
+  }, []);
+
   // Càrrega inicial: habitacions + treballadors.
   useEffect(() => {
     getJSON<{ habitacions: Habitacio[] }>('/api/habitacions').then((r) =>
