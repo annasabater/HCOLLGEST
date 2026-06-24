@@ -2,7 +2,8 @@ import { prisma } from '@/lib/db';
 import { authorize, clientIp } from '@/lib/auth/guard';
 import { ROLES_WRITE } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
-import { handleApiError, notFound, ok } from '@/lib/http';
+import { badRequest, handleApiError, notFound, ok } from '@/lib/http';
+import { editFactura } from '@/lib/services/factura';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -23,6 +24,32 @@ export async function GET(_req: Request, ctx: Ctx) {
     });
     if (!factura) return notFound();
     return ok({ factura });
+  } catch (err) {
+    return handleApiError(err);
+  }
+}
+
+// PATCH /api/factures/:id — edita les línies d'un rebut (no d'una factura fiscal).
+export async function PATCH(req: Request, ctx: Ctx) {
+  try {
+    const auth = await authorize(ROLES_WRITE);
+    if (auth instanceof Response) return auth;
+    const { id } = await ctx.params;
+
+    const factura = await prisma.factura.findFirst({
+      where: { id, deletedAt: null },
+      select: { tipusDocument: true, verifactu: { select: { id: true } } },
+    });
+    if (!factura) return notFound();
+    if (factura.tipusDocument !== 'RECIBO' || factura.verifactu) {
+      return badRequest(
+        'Una factura fiscal (amb registre Veri*Factu) no es pot editar; cal emetre una factura rectificativa.',
+      );
+    }
+
+    const body = await req.json().catch(() => null);
+    const result = await editFactura(id, body, { id: auth.id }, clientIp(req));
+    return ok(result);
   } catch (err) {
     return handleApiError(err);
   }

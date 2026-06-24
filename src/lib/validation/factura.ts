@@ -46,6 +46,24 @@ export const CobramentCreateSchema = z.object({
   tipus: z.enum(['COBRAMENT', 'DEVOLUCIO']).default('COBRAMENT'),
 });
 
+// Edició de les línies d'un rebut ja creat (NO d'una factura fiscal Veri*Factu).
+// En desar es recalculen base/IVA/total conservant el % d'IVA i la tassa actuals.
+export const FacturaEditSchema = z.object({
+  linies: z.array(LiniaInputSchema).min(1, 'Cal almenys una línia'),
+});
+
+// Edició d'un cobrament concret (corregir mètode/import/data). El signe es
+// conserva al servei: una devolució (import negatiu) segueix sent devolució.
+export const CobramentEditSchema = z
+  .object({
+    metode: z.enum(metodeCobramentValues).optional(),
+    import: z.coerce.number().positive('L’import ha de ser positiu').optional(),
+    data: z.coerce.date().optional(),
+  })
+  .refine((d) => d.metode !== undefined || d.import !== undefined || d.data !== undefined, {
+    message: 'Res a modificar',
+  });
+
 // Pagament a compte de l'estada (sense factura encara): import + mètode + concepte.
 export const PagamentEstadaSchema = z.object({
   import: z.coerce.number().positive('L’import ha de ser positiu'),

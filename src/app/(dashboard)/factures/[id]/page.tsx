@@ -6,11 +6,11 @@ import { prisma } from '@/lib/db';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Table, Thead, Th, Td, Tr } from '@/components/ui/table';
 import { CobramentActions } from '@/components/factura/cobrament-actions';
+import { CobramentsList } from '@/components/factura/cobraments-list';
+import { LiniesCard } from '@/components/factura/linies-card';
 import { EliminarFactura } from '@/components/factura/eliminar-factura';
-import { formatDate, formatEur } from '@/lib/utils';
-import { CONCEPTE_LINIA_LABELS, METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
+import { formatEur } from '@/lib/utils';
 import { VERIFACTU_LLEGENDA } from '@/lib/verifactu/software';
 
 export const dynamic = 'force-dynamic';
@@ -36,8 +36,17 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
 
   const titular = factura.estancia.viatgers[0]?.huesped;
   const cobrat = factura.cobraments.reduce((a, c) => a + Number(c.import), 0);
+  const base = Number(factura.base);
+  const iva = Number(factura.iva);
   const total = Number(factura.total);
   const pendent = Math.max(0, total - cobrat);
+
+  // Derivats per a l'edició: el % d'IVA i la tassa es conserven en editar línies.
+  const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+  const ivaPercent = base > 0 ? round2((iva / base) * 100) : 0;
+  const tasaTotal = round2(total - base - iva);
+  // Només els rebuts són editables; una factura fiscal (Veri*Factu) no.
+  const editable = factura.tipusDocument === 'RECIBO' && !factura.verifactu;
 
   const qrDataUrl = factura.verifactu
     ? await QRCode.toDataURL(factura.verifactu.qrUrl, { width: 160, margin: 1 })
@@ -72,45 +81,21 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Línies</CardTitle>
-            </CardHeader>
-            <CardBody>
-              <Table>
-                <Thead>
-                  <tr>
-                    <Th>Concepte</Th>
-                    <Th>Descripció</Th>
-                    <Th className="text-right">Import</Th>
-                  </tr>
-                </Thead>
-                <tbody>
-                  {factura.linies.map((l) => (
-                    <Tr key={l.id}>
-                      <Td>{CONCEPTE_LINIA_LABELS[l.concepte]}</Td>
-                      <Td>{l.descripcio}</Td>
-                      <Td className="text-right">{formatEur(Number(l.import))}</Td>
-                    </Tr>
-                  ))}
-                </tbody>
-              </Table>
-              <dl className="mt-4 space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">Base imposable</dt>
-                  <dd>{formatEur(Number(factura.base))}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">IVA</dt>
-                  <dd>{formatEur(Number(factura.iva))}</dd>
-                </div>
-                <div className="flex justify-between border-t border-slate-200 pt-1 text-base font-semibold">
-                  <dt>Total</dt>
-                  <dd>{formatEur(total)}</dd>
-                </div>
-              </dl>
-            </CardBody>
-          </Card>
+          <LiniesCard
+            facturaId={factura.id}
+            linies={factura.linies.map((l) => ({
+              id: l.id,
+              concepte: l.concepte,
+              descripcio: l.descripcio,
+              import: Number(l.import),
+            }))}
+            base={base}
+            iva={iva}
+            total={total}
+            ivaPercent={ivaPercent}
+            tasaTotal={tasaTotal}
+            editable={editable}
+          />
         </div>
 
         <div>
@@ -130,23 +115,14 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
                 </span>
               </div>
 
-              {factura.cobraments.length > 0 && (
-                <ul className="space-y-1 border-t border-slate-100 pt-2 text-sm">
-                  {factura.cobraments.map((c) => {
-                    const imp = Number(c.import);
-                    const esDevolucio = imp < 0;
-                    return (
-                      <li key={c.id} className="flex justify-between">
-                        <span className="text-slate-600">
-                          {esDevolucio && <span className="text-red-600">Devolució · </span>}
-                          {METODE_COBRAMENT_LABELS[c.metode]} · {formatDate(c.data)}
-                        </span>
-                        <span className={esDevolucio ? 'text-red-600' : ''}>{formatEur(imp)}</span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+              <CobramentsList
+                cobraments={factura.cobraments.map((c) => ({
+                  id: c.id,
+                  metode: c.metode,
+                  import: Number(c.import),
+                  data: c.data,
+                }))}
+              />
 
               <CobramentActions
                 facturaId={factura.id}

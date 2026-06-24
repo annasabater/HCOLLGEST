@@ -15,6 +15,9 @@ import {
   CobramentCreateSchema,
   PagamentEstadaSchema,
   FacturaSeleccioSchema,
+  FacturaEditSchema,
+  CobramentEditSchema,
+  DipositCreateSchema,
 } from '../validation/factura';
 import { CONCEPTE_LINIA_LABELS } from '../validation/enums';
 
@@ -203,6 +206,180 @@ export async function addCobrament(
   });
 }
 
+/**
+ * Recalcula l'estat d'una factura a partir dels seus cobraments (devolucions
+ * incloses, que resten). Cobrada quan el cobrat ≥ total; si no, Pendent.
+ */
+async function recomputaEstatFactura(tx: Prisma.TransactionClient, facturaId: string) {
+  const f = await tx.factura.findUniqueOrThrow({
+    where: { id: facturaId },
+    select: { total: true, cobraments: { select: { import: true } } },
+  });
+  const cobrat = f.cobraments.reduce((a, c) => a + Number(c.import), 0);
+  const estat = cobrat >= Number(f.total) ? 'COBRADA' : 'PENDENT';
+  await tx.factura.update({ where: { id: facturaId }, data: { estat } });
+  return estat as 'COBRADA' | 'PENDENT';
+}
+
+/**
+ * Edita les línies d'un rebut ja creat i recalcula base/IVA/total (conservant
+ * el % d'IVA i la tassa actuals) i l'estat (segons el cobrat). NOMÉS per a
+ * rebuts: una factura fiscal amb registre Veri*Factu no es pot editar (cal una
+ * rectificativa); el guard del route ho bloqueja abans d'arribar aquí.
+ */
+export async function editFactura(
+  facturaId: string,
+  raw: unknown,
+  actor: { id: string } | null,
+  ip: string | null,
+) {
+  const input = FacturaEditSchema.parse(raw);
+
+  return prisma.$transaction(async (tx) => {
+    const factura = await tx.factura.findFirst({
+      where: { id: facturaId, deletedAt: null },
+      include: { verifactu: { select: { id: true } } },
+    });
+    if (!factura) throw new Error('Validación fallida: factura no trobada');
+    if (factura.tipusDocument !== 'RECIBO' || factura.verifactu) {
+      throw new Error('Validación fallida: una factura fiscal no es pot editar');
+    }
+
+    // Conserva el % d'IVA i la tassa (no editables aquí): només canvien les línies.
+    const oldBase = Number(factura.base);
+    const oldIva = Number(factura.iva);
+    const tasaTotal = round2(Number(factura.total) - oldBase - oldIva);
+    const ivaPercent = oldBase > 0 ? (oldIva / oldBase) * 100 : 0;
+
+    const base = round2(input.linies.reduce((a, l) => a + Number(l.import), 0));
+    const iva = round2((base * ivaPercent) / 100);
+    const total = round2(base + iva + tasaTotal);
+
+    await tx.liniaFactura.deleteMany({ where: { facturaId } });
+    await tx.factura.update({
+      where: { id: facturaId },
+      data: {
+        base,
+        iva,
+        total,
+        linies: {
+          create: input.linies.map((l) => ({
+            concepte: l.concepte,
+            descripcio: l.descripcio,
+            import: l.import,
+          })),
+        },
+      },
+    });
+
+    const estat = await recomputaEstatFactura(tx, facturaId);
+
+    await audit(
+      {
+        usuariId: actor?.id ?? null,
+        accio: 'MODIFICACIO',
+        entitat: 'factura',
+        entitatId: facturaId,
+        detall: { base, iva, total, linies: input.linies.length, editada: true },
+        ip,
+      },
+      tx,
+    );
+
+    return { id: facturaId, base, iva, total, estat };
+  });
+}
+
+/**
+ * Corregeix un cobrament concret (mètode/import/data). Conserva el signe: una
+ * devolució (import negatiu) segueix sent devolució. Si és d'una factura,
+ * recalcula l'estat d'aquesta.
+ */
+export async function editCobrament(
+  cobramentId: string,
+  raw: unknown,
+  actor: { id: string } | null,
+  ip: string | null,
+) {
+  const input = CobramentEditSchema.parse(raw);
+
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.cobrament.findUnique({ where: { id: cobramentId } });
+    if (!existing) throw new Error('Validación fallida: cobrament no trobat');
+
+    const data: Prisma.CobramentUpdateInput = {};
+    if (input.metode !== undefined) data.metode = input.metode;
+    if (input.data !== undefined) data.data = input.data;
+    if (input.import !== undefined) {
+      data.import = Number(existing.import) < 0 ? -input.import : input.import;
+    }
+
+    const cobrament = await tx.cobrament.update({ where: { id: cobramentId }, data });
+
+    const estat = existing.facturaId
+      ? await recomputaEstatFactura(tx, existing.facturaId)
+      : null;
+
+    await audit(
+      {
+        usuariId: actor?.id ?? null,
+        accio: 'MODIFICACIO',
+        entitat: 'cobrament',
+        entitatId: cobramentId,
+        detall: {
+          facturaId: existing.facturaId,
+          import: Number(cobrament.import),
+          metode: cobrament.metode,
+          editat: true,
+        },
+        ip,
+      },
+      tx,
+    );
+
+    return { cobrament, estat };
+  });
+}
+
+/**
+ * Elimina un cobrament (a compte o dins d'una factura). Si era d'una factura,
+ * en recalcula l'estat (pot tornar a Pendent). El document fiscal no es toca:
+ * esborrar un pagament no modifica el registre Veri*Factu.
+ */
+export async function removeCobrament(
+  cobramentId: string,
+  actor: { id: string } | null,
+  ip: string | null,
+) {
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.cobrament.findUnique({
+      where: { id: cobramentId },
+      select: { id: true, facturaId: true },
+    });
+    if (!existing) throw new Error('Validación fallida: cobrament no trobat');
+
+    await tx.cobrament.delete({ where: { id: cobramentId } });
+
+    const estat = existing.facturaId
+      ? await recomputaEstatFactura(tx, existing.facturaId)
+      : null;
+
+    await audit(
+      {
+        usuariId: actor?.id ?? null,
+        accio: 'ELIMINACIO',
+        entitat: 'cobrament',
+        entitatId: cobramentId,
+        detall: { facturaId: existing.facturaId },
+        ip,
+      },
+      tx,
+    );
+
+    return { estat };
+  });
+}
+
 /** Registra un pagament a compte de l'estada (sense factura encara). És ingrés ja. */
 export async function addPagamentEstada(
   estanciaId: string,
@@ -237,6 +414,41 @@ export async function addPagamentEstada(
     ip,
   });
   return cobrament;
+}
+
+/**
+ * Registra un dipòsit/fiança d'una estada. CUSTODIA (per defecte) = garantia
+ * retornable que NO és ingrés fins que es reté. INGRES = càrrec que ja compta
+ * com a ingrés (es crea RETINGUT amb data de resolució), però retornable.
+ */
+export async function addDiposit(
+  estanciaId: string,
+  raw: unknown,
+  actor: { id: string } | null,
+  ip: string | null,
+) {
+  const input = DipositCreateSchema.parse(raw);
+  const esIngres = input.destinacio === 'INGRES';
+  const diposit = await prisma.diposit.create({
+    data: {
+      estanciaId,
+      import: input.import,
+      data: input.data ?? new Date(),
+      metode: input.metode,
+      notes: input.notes ?? null,
+      estat: esIngres ? 'RETINGUT' : 'EN_CUSTODIA',
+      dataResolucio: esIngres ? (input.data ?? new Date()) : null,
+    },
+  });
+  await audit({
+    usuariId: actor?.id ?? null,
+    accio: 'CREACIO',
+    entitat: 'diposit',
+    entitatId: diposit.id,
+    detall: { estanciaId, import: input.import },
+    ip,
+  });
+  return diposit;
 }
 
 /**
