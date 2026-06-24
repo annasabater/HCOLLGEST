@@ -1055,3 +1055,28 @@ model Incidencia {
   @@index([estat])
   @@map("incidencia")
 }
+
+// ----------------------------------------------------------------------------
+// K. VALORACIONS (feedback dels hostes des de la pàgina de benvinguda)
+// La pàgina pública hostalcoll.com/benvinguda.html envia la valoració aquí
+// (POST /api/public/valoracions). nom/habitacio/estanciaId arriben ocults al
+// propi enllaç (?g, ?r, ?e) que es genera a /plantilles per a cada hoste.
+// ----------------------------------------------------------------------------
+
+model Valoracio {
+  id         String   @id @default(cuid())
+  puntuacio  Int                              // 1..5 estrelles
+  comentari  String?
+  nom        String?                          // nom de l'hoste (del propi enllaç)
+  habitacio  String?                          // habitació (del propi enllaç)
+  idioma     String?                          // ca / es / en / fr
+  estanciaId String?  @map("estancia_id")     // enllaç opcional a l'estada
+  vista      Boolean  @default(false)         // si ja l'has llegida al panell
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([vista])
+  @@index([createdAt])
+  @@map("valoracio")
+}

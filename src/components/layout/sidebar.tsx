@@ -11,6 +11,7 @@ import {
   FileCheck,
   Sparkles,
   MessageCircle,
+  Star,
   PiggyBank,
   UserCog,
   Truck,
@@ -48,6 +49,7 @@ const GROUPS: NavGroup[] = [
     title: 'Gestió',
     items: [
       { href: '/plantilles', label: 'Plantilles', icon: MessageCircle },
+      { href: '/valoracions', label: 'Valoracions', icon: Star },
       { href: '/serveis', label: 'Proveïdors i serveis', icon: Truck },
       { href: '/personal', label: 'Treballadors', icon: UserCog, roles: ['ADMIN'] },
       { href: '/balanc', label: 'Comptabilitat', icon: PiggyBank, roles: ['ADMIN'] },

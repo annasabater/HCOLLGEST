@@ -486,6 +486,7 @@ function BenvingudaCard() {
     let url = `${enllac}${enllac.includes('?') ? '&' : '?'}lang=${l}`;
     if (nom) url += `&g=${encodeURIComponent(nom)}`;
     if (e.habitacio?.nom) url += `&r=${encodeURIComponent(e.habitacio.nom)}`;
+    url += `&e=${encodeURIComponent(e.id)}`; // estanciaId: lliga la valoració a l'estada
     return fillTemplate(tpls[l], { nom, enllac: url });
   }
 

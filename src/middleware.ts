@@ -14,9 +14,16 @@ import { esNomesLectura } from '@/lib/auth/restriccions';
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Endpoints sempre accessibles: autenticació, diagnòstic (/api/health) i
-  // cron (/api/cron/*, que es protegeix ell mateix amb CRON_SECRET).
-  if (pathname.startsWith('/api/auth') || pathname === '/api/health' || pathname.startsWith('/api/cron')) {
+  // Endpoints sempre accessibles: autenticació, diagnòstic (/api/health),
+  // cron (/api/cron/*, que es protegeix ell mateix amb CRON_SECRET) i
+  // l'API pública (/api/public/*: valoracions dels hostes des de la web,
+  // que es protegeix amb CORS i validació).
+  if (
+    pathname.startsWith('/api/auth') ||
+    pathname === '/api/health' ||
+    pathname.startsWith('/api/cron') ||
+    pathname.startsWith('/api/public')
+  ) {
     return NextResponse.next();
   }
 
