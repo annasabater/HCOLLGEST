@@ -17,6 +17,7 @@ const UpdateSchema = z
     habitacioId: z.string().nullable().optional(),
     avisDadesParat: z.boolean().optional(),
     avisMossosParat: z.boolean().optional(),
+    benvingudaEnviada: z.boolean().optional(),
     esBorrany: z.boolean().optional(),
     // Edició de l'estada.
     dataEntrada: z.coerce.date().optional(),

@@ -37,6 +37,8 @@ const PatchSchema = z.object({
     .optional(),
   encoding: z.enum(['latin1', 'utf-8']).optional(),
   teInternetDefault: z.boolean().optional(),
+  benvingudaAutomatica: z.boolean().optional(),
+  benvingudaTothom: z.boolean().optional(),
   ieetImportPersonaNit: z.coerce.number().min(0).optional(),
   retencioPolicialAnys: z.coerce.number().int().min(1).optional(),
   retencioCrmAnys: z.coerce.number().int().min(1).optional(),

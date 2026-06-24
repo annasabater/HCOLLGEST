@@ -256,6 +256,12 @@ model Establiment {
   driveRefreshTokenEnc String? @map("drive_refresh_token_enc")
   driveFolderId        String? @map("drive_folder_id")
 
+  // Benvinguda als hostes: avís al tauler després de la primera nit.
+  // "automatica": el destinatari el decideix el sistema (titular, o tothom si
+  // "tothom"); si està desactivat (manual) s'ofereixen tots els adults a triar.
+  benvingudaAutomatica Boolean @default(false) @map("benvinguda_automatica")
+  benvingudaTothom     Boolean @default(false) @map("benvinguda_tothom")
+
   estancies Estancia[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -398,6 +404,8 @@ model Estancia {
   avisDadesParat    Boolean       @default(false) @map("avis_dades_parat")
   // Descarta l'avís del termini de Mossos (24 h) al tauler per a aquesta estada.
   avisMossosParat   Boolean       @default(false) @map("avis_mossos_parat")
+  // Benvinguda (WhatsApp) ja enviada/gestionada → treu l'avís del tauler.
+  benvingudaEnviada Boolean       @default(false) @map("benvinguda_enviada")
 
   habitacioId String?    @map("habitacio_id")
   habitacio   Habitacio? @relation(fields: [habitacioId], references: [id], onDelete: SetNull)

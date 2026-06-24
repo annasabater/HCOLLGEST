@@ -30,6 +30,7 @@ export async function getResum(opts?: FinanceOpts) {
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
   const yearStart = new Date(now.getFullYear(), 0, 1);
   const yearEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   // Posa al dia les despeses de serveis vençuts (no bloqueja el tauler si falla).
   try {
@@ -59,6 +60,8 @@ export async function getResum(opts?: FinanceOpts) {
     dipositsRetingutsMesAgg,
     serveisProxims,
     vigenciesProximes,
+    benvingudesPendentsRaw,
+    establimentBenv,
   ] = await Promise.all([
     prisma.estancia.findMany({
       where: {
@@ -151,6 +154,29 @@ export async function getResum(opts?: FinanceOpts) {
       take: 20,
       include: { proveidor: { select: { nom: true } } },
     }),
+    // Benvingudes pendents: estades que JA han passat la primera nit (entrada <
+    // avui), encara hi són (sortida ≥ avui), NO són ampliació i no s'han enviat.
+    prisma.estancia.findMany({
+      where: {
+        deletedAt: null,
+        benvingudaEnviada: false,
+        estanciaOrigenId: null,
+        dataEntrada: { lt: todayStart },
+        dataSortida: { gte: todayStart },
+      },
+      orderBy: { dataEntrada: 'asc' },
+      take: 20,
+      include: {
+        habitacio: { select: { nom: true } },
+        viatgers: {
+          orderBy: { esTitular: 'desc' },
+          include: { huesped: { select: { id: true, nom: true, cognom1: true, telefon: true } } },
+        },
+      },
+    }),
+    prisma.establiment.findFirst({
+      select: { benvingudaAutomatica: true, benvingudaTothom: true },
+    }),
   ]);
 
   const num = (d: { _sum: { import: unknown } }) => Number(d._sum.import ?? 0);
@@ -183,6 +209,20 @@ export async function getResum(opts?: FinanceOpts) {
     caducada: (s.vigenciaFi as Date) < now,
   }));
 
+  const benvingudesPendents = benvingudesPendentsRaw.map((e) => ({
+    id: e.id,
+    habitacio: e.habitacio?.nom ?? null,
+    dataEntrada: e.dataEntrada.toISOString(),
+    dataSortida: e.dataSortida.toISOString(),
+    viatgers: e.viatgers.map((v) => ({
+      nom: v.huesped.nom,
+      cognom1: v.huesped.cognom1,
+      telefon: v.huesped.telefon,
+      esTitular: v.esTitular,
+      esMenor: v.esMenor,
+    })),
+  }));
+
   return {
     pendentsEnviament,
     pendentsFirmaCount,
@@ -191,6 +231,11 @@ export async function getResum(opts?: FinanceOpts) {
     properesSortides,
     serveisProxims: serveisProximsList,
     vigenciesProximes: vigenciesProximesList,
+    benvingudes: {
+      automatica: establimentBenv?.benvingudaAutomatica ?? false,
+      tothom: establimentBenv?.benvingudaTothom ?? false,
+      pendents: benvingudesPendents,
+    },
     totals: { hostes: totalHostes, estancies: totalEstancies },
     finances: {
       ingressosMes: ingMes,

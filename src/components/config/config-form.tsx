@@ -26,6 +26,8 @@ interface Establiment {
   telefon: string | null;
   iban: string | null;
   descriptor: string | null;
+  benvingudaAutomatica: boolean;
+  benvingudaTothom: boolean;
 }
 
 export function ConfigForm() {
@@ -61,6 +63,8 @@ export function ConfigForm() {
         telefon: e.telefon ?? '',
         iban: e.iban ?? '',
         descriptor: e.descriptor ?? '',
+        benvingudaAutomatica: e.benvingudaAutomatica,
+        benvingudaTothom: e.benvingudaTothom,
       });
       setMossosPass('');
       setMsg({ tone: 'ok', text: 'Configuració desada.' });
@@ -203,6 +207,41 @@ export function ConfigForm() {
               onChange={(ev) => setE({ ...e, retencioCrmAnys: ev.target.value ? Number(ev.target.value) : null })}
             />
           </Field>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Benvinguda als hostes</CardTitle>
+        </CardHeader>
+        <CardBody className="space-y-3">
+          <label className="flex items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={e.benvingudaAutomatica}
+              onChange={(ev) => setE({ ...e, benvingudaAutomatica: ev.target.checked })}
+            />
+            <span>
+              <span className="font-medium">Benvinguda automàtica</span> — després de la primera nit,
+              el tauler proposa la benvinguda al destinatari triat (sense escollir cada cop). Si es
+              desactiva, el tauler només t’avisa que està pendent i tries a qui enviar-la.
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={e.benvingudaTothom}
+              disabled={!e.benvingudaAutomatica}
+              onChange={(ev) => setE({ ...e, benvingudaTothom: ev.target.checked })}
+            />
+            <span>
+              <span className="font-medium">Enviar a tots els hostes</span> (només si és automàtica).
+              Si es desactiva, en mode automàtic s’envia només al titular. Els menors no reben mai la
+              benvinguda.
+            </span>
+          </label>
         </CardBody>
       </Card>
 

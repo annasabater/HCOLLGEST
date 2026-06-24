@@ -21,6 +21,7 @@ import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
 import { FinancesPanel, type FinanceKpi } from '@/components/dashboard/finances-panel';
+import { BenvingudesPendents } from '@/components/dashboard/benvingudes-pendents';
 import { DescartarAvisMossos } from '@/components/estancia/descartar-avis-mossos';
 import { formatDate, formatEur } from '@/lib/utils';
 
@@ -127,6 +128,12 @@ export default async function DashboardPage() {
   return (
     <div>
       <PageHeader title="Tauler" subtitle="Visió general de l’hostal" />
+
+      <BenvingudesPendents
+        pendents={resum.benvingudes.pendents}
+        automatica={resum.benvingudes.automatica}
+        tothom={resum.benvingudes.tothom}
+      />
 
       {/* Aviso §9: el formato del fitxer es PROVISIONAL hasta confirmarlo con el manual */}
       {!isFormatConfirmat() && (
