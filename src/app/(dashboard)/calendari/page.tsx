@@ -323,7 +323,7 @@ export default function CalendariPage() {
       )}
 
       <p className="mt-4 text-xs text-slate-400">
-        <Sparkles className="mr-1 inline h-3 w-3" /> Clica un dia per veure'n entrades, sortides i
+        <Sparkles className="mr-1 inline h-3 w-3" /> Clica un dia per veure’n entrades, sortides i
         neteja i entrar-hi. Les tasques de neteja es generen automàticament en registrar una estada.
       </p>
 
