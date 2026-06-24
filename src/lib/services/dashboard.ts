@@ -241,6 +241,34 @@ export async function getBalanc(monthStart: Date, monthEnd: Date, opts?: Finance
   const despeses = num(despesesAgg);
   const personal = num(personalAgg);
 
+  // Detall dels dipòsits en custòdia del mes: de qui són i de quina estada.
+  const custodiaRows = await prisma.diposit.findMany({
+    where: { estat: 'EN_CUSTODIA', data: { gte: monthStart, lte: monthEnd } },
+    orderBy: { data: 'desc' },
+    include: {
+      estancia: {
+        select: {
+          id: true,
+          viatgers: {
+            where: { esTitular: true },
+            include: { huesped: { select: { nom: true, cognom1: true } } },
+          },
+        },
+      },
+    },
+  });
+  const custodiaDetall = custodiaRows.map((d) => {
+    const h = d.estancia?.viatgers[0]?.huesped;
+    return {
+      id: d.id,
+      import: Number(d.import),
+      data: d.data.toISOString(),
+      estanciaId: d.estancia?.id ?? null,
+      titular: h ? `${h.nom} ${h.cognom1}` : 'Sense titular',
+      motiu: d.motiu ?? null,
+    };
+  });
+
   return {
     cobraments,
     retinguts,
@@ -250,6 +278,7 @@ export async function getBalanc(monthStart: Date, monthEnd: Date, opts?: Finance
     despeses,
     personal,
     benefici: r2(ingressos - despeses - personal),
+    custodiaDetall, // de qui són els dipòsits en custòdia
   };
 }
 

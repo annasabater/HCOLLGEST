@@ -36,6 +36,14 @@ interface Breakdowns {
   adr: number;
   revpar: number;
 }
+interface CustodiaItem {
+  id: string;
+  import: number;
+  data: string;
+  estanciaId: string | null;
+  titular: string;
+  motiu: string | null;
+}
 interface Balanc extends Breakdowns {
   mes: string;
   ingressos: number;
@@ -44,6 +52,7 @@ interface Balanc extends Breakdowns {
   despeses: number;
   personal: number;
   benefici: number;
+  custodiaDetall: CustodiaItem[];
 }
 interface MesRow {
   mes: number;
@@ -406,10 +415,48 @@ export default function BalancPage() {
                 <Kpi label="Ingressos" value={<Eur value={mes.ingressos} />} icon={TrendingUp} color="text-green-600" big />
                 <Kpi label="Despeses (inclou personal)" value={<Eur value={mes.despeses + mes.personal} />} icon={TrendingDown} color="text-red-600" />
                 <Kpi label="Benefici" value={<Eur value={mes.benefici} />} icon={Wallet} color={mes.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big />
-                <Kpi label="Marge" value={`${marge(mes.benefici, mes.ingressos)}%`} icon={Percent} color="text-brand-700" />
-                <Kpi label="Ingressos + retencions" value={<Eur value={mes.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
-                <Kpi label="Dipòsits en custòdia" value={<Eur value={mes.retencions} />} icon={Coins} color="text-amber-600" />
+                <Kpi label="Ingressos + custòdia" value={<Eur value={mes.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
+                <Kpi label="Custòdia" value={<Eur value={mes.retencions} />} icon={Coins} color="text-amber-600" />
+                <Kpi
+                  label="Benefici + custòdia"
+                  value={<Eur value={mes.benefici + mes.retencions} />}
+                  icon={Wallet}
+                  color={mes.benefici + mes.retencions >= 0 ? 'text-green-600' : 'text-red-600'}
+                  big
+                />
               </div>
+
+              {mes.custodiaDetall.length > 0 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4">
+                  <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-amber-800">
+                    <Coins className="h-4 w-4" /> Dipòsits en custòdia — de qui són
+                  </p>
+                  <ul className="space-y-1 text-sm">
+                    {mes.custodiaDetall.map((d) => (
+                      <li key={d.id} className="flex items-center justify-between gap-2">
+                        <span className="text-slate-700">
+                          {d.estanciaId ? (
+                            <a href={`/estancies/${d.estanciaId}`} className="font-medium text-brand-700 hover:underline">
+                              {d.titular}
+                            </a>
+                          ) : (
+                            <span className="font-medium">{d.titular}</span>
+                          )}
+                          {d.motiu ? <span className="text-slate-400"> · {d.motiu}</span> : ''}
+                        </span>
+                        <span className="font-medium text-amber-700">
+                          <Eur value={d.import} />
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-xs text-slate-500">
+                    Són diners que guardes i has de tornar (no són ingrés). Resol-los des de la fitxa de
+                    l’estada (Pagaments i fiances).
+                  </p>
+                </div>
+              )}
+
               <BreakdownsSection data={ambPersonal(mes, mes.personal)} />
             </>
           )}
