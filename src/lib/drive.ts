@@ -191,3 +191,4 @@ export async function uploadOrUpdateFile(
 }
 
 export const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+export const PDF_MIME = 'application/pdf';

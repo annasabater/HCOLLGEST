@@ -10,11 +10,18 @@ import {
   ensureFolderPath,
   uploadOrUpdateFile,
   XLSX_MIME,
+  PDF_MIME,
 } from '@/lib/drive';
 import { buildHostesXlsx } from '@/lib/exports/hostes-xlsx';
 import { buildHabitacionsXlsx } from '@/lib/exports/habitacions-xlsx';
 import { buildIngressosDespesesXlsx } from '@/lib/exports/ingressos-despeses-xlsx';
 import { buildPersonalXlsx } from '@/lib/exports/personal-xlsx';
+import {
+  buildFitxesPdfs,
+  buildComprovantsPdfs,
+  buildFacturesPdfs,
+  type PdfFitxer,
+} from '@/lib/exports/pdfs-mes';
 
 const ESTABLIMENT_ID = 'hostal-coll';
 const MESOS = [
@@ -90,6 +97,35 @@ export async function GET(req: Request) {
     );
     await fer('Personal.xlsx', monthFolderId, () => buildPersonalXlsx(monthStart, monthEnd));
 
+    // PDFs del mes, cadascun a la seva subcarpeta dins la carpeta del mes.
+    async function pujarLot(subcarpeta: string, gen: () => Promise<PdfFitxer[]>) {
+      try {
+        const llista = await gen();
+        if (llista.length === 0) return;
+        const carpeta = await ensureFolder(token, subcarpeta, monthFolderId);
+        for (const f of llista) {
+          try {
+            await uploadOrUpdateFile(token, {
+              name: f.name,
+              parentId: carpeta,
+              mimeType: PDF_MIME,
+              data: f.data,
+            });
+            fitxers.push(`${subcarpeta}/${f.name}`);
+          } catch (e) {
+            errors.push(`${subcarpeta}/${f.name}: ${e instanceof Error ? e.message : 'error'}`);
+          }
+        }
+      } catch (e) {
+        errors.push(`${subcarpeta}: ${e instanceof Error ? e.message : 'error'}`);
+      }
+    }
+
+    await pujarLot('Fitxes de registre', () => buildFitxesPdfs(monthStart, monthEnd));
+    await pujarLot('Comprovants de Mossos', () => buildComprovantsPdfs(monthStart, monthEnd));
+    await pujarLot('factures', () => buildFacturesPdfs(monthStart, monthEnd, false));
+    await pujarLot('factures + custodia', () => buildFacturesPdfs(monthStart, monthEnd, true));
+
     await audit({
       usuariId: actorId,
       accio: 'DESCARREGA',
@@ -105,3 +141,5 @@ export async function GET(req: Request) {
 }
 
 export const dynamic = 'force-dynamic';
+// Pot generar i pujar molts PDFs (fitxes, comprovants, factures) en una crida.
+export const maxDuration = 300;
