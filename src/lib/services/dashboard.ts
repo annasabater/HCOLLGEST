@@ -155,13 +155,17 @@ export async function getResum(opts?: FinanceOpts) {
       include: { proveidor: { select: { nom: true } } },
     }),
     // Benvingudes pendents: estades que JA han passat la primera nit (entrada <
-    // avui), encara hi són (sortida ≥ avui), NO són ampliació i no s'han enviat.
+    // avui) però fa com a màxim 2 nits (si en porta més, ja no té sentit donar la
+    // benvinguda), encara hi són (sortida ≥ avui), NO són ampliació i no s'han enviat.
     prisma.estancia.findMany({
       where: {
         deletedAt: null,
         benvingudaEnviada: false,
         estanciaOrigenId: null,
-        dataEntrada: { lt: todayStart },
+        dataEntrada: {
+          gte: new Date(todayStart.getTime() - 2 * 24 * 60 * 60 * 1000),
+          lt: todayStart,
+        },
         dataSortida: { gte: todayStart },
       },
       orderBy: { dataEntrada: 'asc' },

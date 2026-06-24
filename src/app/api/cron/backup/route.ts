@@ -2,7 +2,8 @@ import { authorize, clientIp } from '@/lib/auth/guard';
 import { ROLES_ADMIN } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
 import { ok, handleApiError } from '@/lib/http';
-import { buildBackupPayload, backupFilename } from '@/lib/services/backup';
+import { buildBackupPayload } from '@/lib/services/backup';
+import { buildBackupXlsx, backupXlsxFilename } from '@/lib/exports/backup-xlsx';
 import { sendEmail } from '@/lib/email';
 
 /**
@@ -24,17 +25,18 @@ export async function GET(req: Request) {
 
     const to = process.env.BACKUP_EMAIL_TO || 'hostalcoll@gmail.com';
     const payload = await buildBackupPayload();
-    const json = JSON.stringify(payload, null, 2);
-    const filename = backupFilename();
+    const xlsx = await buildBackupXlsx();
+    const filename = backupXlsxFilename();
 
     const result = await sendEmail({
       to,
-      subject: `Còpia de seguretat · Hostal Coll · ${filename.replace('backup-hostalcoll-', '').replace('.json', '')}`,
+      subject: `Còpia de seguretat · Hostal Coll · ${filename.replace('backup-hostalcoll-', '').replace('.xlsx', '')}`,
       html: `<p>Hola,</p>
         <p>Adjuntem la <strong>còpia de seguretat completa</strong> de la gestió de l'Hostal Coll
-        (${Object.keys(payload.tables).length} taules). Guarda aquest fitxer en un lloc segur.</p>
+        en <strong>Excel</strong> (${Object.keys(payload.tables).length} fulls, un per taula).
+        Guarda aquest fitxer en un lloc segur.</p>
         <p>Generada automàticament el ${new Date().toLocaleString('ca-ES')}.</p>`,
-      attachments: [{ filename, content: Buffer.from(json).toString('base64') }],
+      attachments: [{ filename, content: xlsx.toString('base64') }],
     });
 
     await audit({
