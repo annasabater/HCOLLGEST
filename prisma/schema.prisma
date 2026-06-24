@@ -97,6 +97,7 @@ enum TipusDocumentPujat {
   PASSAPORT
   NIE
   RESIDENCIA
+  CARNET_CONDUIR
   ALTRES
 }
 

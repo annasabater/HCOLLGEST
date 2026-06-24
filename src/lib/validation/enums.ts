@@ -57,6 +57,7 @@ export const tipusDocumentPujatValues = [
   'PASSAPORT',
   'NIE',
   'RESIDENCIA',
+  'CARNET_CONDUIR',
   'ALTRES',
 ] as const;
 export const tipusNetejaValues = ['CANVI_COMPLET', 'REPAS'] as const;
@@ -161,6 +162,7 @@ export const TIPUS_DOCUMENT_PUJAT_LABELS: Record<
   PASSAPORT: 'Passaport',
   NIE: 'NIE',
   RESIDENCIA: 'Permís de residència',
+  CARNET_CONDUIR: 'Carnet de conduir',
   ALTRES: 'Altres',
 };
 
