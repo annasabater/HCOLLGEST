@@ -272,9 +272,31 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
               />
             </CollapsibleCard>
           )}
+
+          {/* Facturació — sota Pagaments, col·lapsable */}
+          {isAdmin && (
+            <CollapsibleCard
+              title="Facturació"
+              icon={<Receipt className="h-4 w-4 text-brand-600" />}
+              count={estancia.factures.length}
+              defaultOpen={estancia.factures.length > 0}
+            >
+              <FacturaPanel
+                estanciaId={estancia.id}
+                preuSuggerit={suggerit?.preu}
+                nitsSuggerides={suggerit?.nits}
+                factures={estancia.factures.map((f) => ({
+                  id: f.id,
+                  numero: f.numero,
+                  total: Number(f.total),
+                  estat: f.estat,
+                }))}
+              />
+            </CollapsibleCard>
+          )}
         </div>
 
-        {/* Mossos + Facturació */}
+        {/* Mossos */}
         <div className="space-y-6">
           <Card>
             <CardHeader className="flex items-center gap-2">
@@ -297,28 +319,6 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
               />
             </CardBody>
           </Card>
-
-          {isAdmin && (
-            <Card>
-              <CardHeader className="flex items-center gap-2">
-                <Receipt className="h-4 w-4 text-brand-600" />
-                <CardTitle>Facturació</CardTitle>
-              </CardHeader>
-              <CardBody>
-                <FacturaPanel
-                  estanciaId={estancia.id}
-                  preuSuggerit={suggerit?.preu}
-                  nitsSuggerides={suggerit?.nits}
-                  factures={estancia.factures.map((f) => ({
-                    id: f.id,
-                    numero: f.numero,
-                    total: Number(f.total),
-                    estat: f.estat,
-                  }))}
-                />
-              </CardBody>
-            </Card>
-          )}
         </div>
       </div>
     </div>
