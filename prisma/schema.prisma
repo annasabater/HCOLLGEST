@@ -901,6 +901,9 @@ model Jornada {
   preuHora      Decimal     @map("preu_hora") @db.Decimal(10, 2)
   import        Decimal     @db.Decimal(10, 2)
   notes         String?
+  // Control de pagament al treballador (p. ex. la dona de neteja).
+  pagada        Boolean     @default(false)
+  dataPagament  DateTime?   @map("data_pagament")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

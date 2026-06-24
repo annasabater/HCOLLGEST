@@ -122,24 +122,6 @@ export default async function DashboardPage() {
       icon: 'Wallet',
       color: resum.finances.beneficiMes >= 0 ? 'text-green-600' : 'text-red-600',
     },
-    {
-      label: 'Ocupació actual',
-      value: `${resum.finances.ocupacio}%`,
-      icon: 'BedDouble',
-      color: 'text-brand-600',
-    },
-    {
-      label: 'Personal a pagar (mes)',
-      value: formatEur(resum.finances.personalMes),
-      icon: 'UserCog',
-      color: 'text-slate-600',
-    },
-    {
-      label: 'Dipòsits en custòdia',
-      value: formatEur(resum.finances.dipositsCustodia),
-      icon: 'Coins',
-      color: 'text-amber-600',
-    },
   ];
 
   return (

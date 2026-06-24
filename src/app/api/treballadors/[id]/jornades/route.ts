@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db';
 import { authorize, clientIp } from '@/lib/auth/guard';
 import { ROLES_ADMIN } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
-import { badRequest, created, handleApiError, notFound } from '@/lib/http';
+import { badRequest, created, handleApiError, notFound, ok } from '@/lib/http';
 import { JornadaCreateSchema } from '@/lib/validation/personal';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -49,6 +49,47 @@ export async function POST(req: Request, ctx: Ctx) {
       ip: clientIp(req),
     });
     return created({ jornada });
+  } catch (err) {
+    return handleApiError(err);
+  }
+}
+
+// PATCH /api/treballadors/:id/jornades — marca un mes (YYYY-MM) com a pagat/pendent
+export async function PATCH(req: Request, ctx: Ctx) {
+  try {
+    const auth = await authorize(ROLES_ADMIN);
+    if (auth instanceof Response) return auth;
+    const { id } = await ctx.params;
+
+    const body = await req.json().catch(() => null);
+    const mes = String(body?.mes ?? '');
+    const pagada = Boolean(body?.pagada);
+    if (!/^\d{4}-\d{2}$/.test(mes)) return badRequest('Mes no vàlid (YYYY-MM)');
+
+    const treballador = await prisma.treballador.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true },
+    });
+    if (!treballador) return notFound();
+
+    const start = new Date(`${mes}-01T00:00:00`);
+    const end = new Date(start);
+    end.setMonth(end.getMonth() + 1);
+
+    const res = await prisma.jornada.updateMany({
+      where: { treballadorId: id, data: { gte: start, lt: end } },
+      data: { pagada, dataPagament: pagada ? new Date() : null },
+    });
+
+    await audit({
+      usuariId: auth.id,
+      accio: 'MODIFICACIO',
+      entitat: 'jornada',
+      entitatId: id,
+      detall: { treballadorId: id, mes, pagada, jornades: res.count },
+      ip: clientIp(req),
+    });
+    return ok({ count: res.count });
   } catch (err) {
     return handleApiError(err);
   }

@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Check, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
+import { Badge } from '@/components/ui/badge';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
-import { postJSON, ApiError } from '@/lib/api';
+import { postJSON, patchJSON, ApiError } from '@/lib/api';
 import { formatDate, formatEur } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
 
@@ -17,6 +18,8 @@ interface Jornada {
   hores: number;
   preuHora: number;
   import: number;
+  pagada: boolean;
+  dataPagament: string | null;
 }
 
 export function JornadesSection({
@@ -45,10 +48,28 @@ export function JornadesSection({
   const totalSel = filtered.reduce((a, j) => a + j.import, 0);
   const horesSel = filtered.reduce((a, j) => a + j.hores, 0);
   const totalGeneral = jornades.reduce((a, j) => a + j.import, 0);
+  // Pagaments: el que falta per pagar i si el mes està tot pagat.
+  const pendentSel = filtered.filter((j) => !j.pagada).reduce((a, j) => a + j.import, 0);
+  const totPagat = filtered.length > 0 && filtered.every((j) => j.pagada);
+  const dataPagat = filtered.find((j) => j.pagada && j.dataPagament)?.dataPagament ?? null;
   const mesLabel = (ym: string) =>
     new Intl.DateTimeFormat('ca-ES', { month: 'long', year: 'numeric' }).format(
       new Date(`${ym}-01T00:00:00`),
     );
+
+  const [paying, setPaying] = useState(false);
+  async function marcarMes(pagada: boolean) {
+    if (mesSel === 'all') return;
+    setPaying(true);
+    try {
+      await patchJSON(`/api/treballadors/${treballadorId}/jornades`, { mes: mesSel, pagada });
+      router.refresh();
+    } catch {
+      /* l'usuari pot tornar-ho a provar */
+    } finally {
+      setPaying(false);
+    }
+  }
 
   async function afegir(e: React.FormEvent) {
     e.preventDefault();
@@ -96,9 +117,26 @@ export function JornadesSection({
           </select>
         </label>
         <span>
-          A pagar: <strong>{formatEur(totalSel)}</strong>{' '}
+          Total mes: <strong>{formatEur(totalSel)}</strong>{' '}
           <span className="text-slate-500">({horesSel} h)</span>
         </span>
+        {filtered.length > 0 &&
+          mesSel !== 'all' &&
+          (totPagat ? (
+            <span className="flex items-center gap-2">
+              <Badge tone="success">Pagat{dataPagat ? ` · ${formatDate(dataPagat)}` : ''}</Badge>
+              <Button type="button" variant="ghost" size="sm" disabled={paying} onClick={() => marcarMes(false)}>
+                <Undo2 className="h-4 w-4" /> Desfer
+              </Button>
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              <Badge tone="warning">Pendent: {formatEur(pendentSel)}</Badge>
+              <Button type="button" size="sm" disabled={paying} onClick={() => marcarMes(true)}>
+                <Check className="h-4 w-4" /> {paying ? 'Desant…' : 'Marcar com a pagat'}
+              </Button>
+            </span>
+          ))}
         <span className="text-slate-400">·</span>
         <span className="text-slate-600">Total acumulat: {formatEur(totalGeneral)}</span>
       </div>
@@ -115,6 +153,7 @@ export function JornadesSection({
               <Th>Hores</Th>
               <Th>€/h</Th>
               <Th className="text-right">Import</Th>
+              <Th>Estat</Th>
               <Th></Th>
             </tr>
           </Thead>
@@ -125,6 +164,9 @@ export function JornadesSection({
                 <Td>{j.hores} h</Td>
                 <Td>{formatEur(j.preuHora)}</Td>
                 <Td className="text-right font-medium">{formatEur(j.import)}</Td>
+                <Td>
+                  {j.pagada ? <Badge tone="success">Pagat</Badge> : <Badge tone="warning">Pendent</Badge>}
+                </Td>
                 <Td>
                   <button className="text-slate-400 hover:text-red-600" onClick={() => esborrar(j.id)}>
                     <Trash2 className="h-4 w-4" />
