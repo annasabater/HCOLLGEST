@@ -21,6 +21,8 @@ import { TIPUS_DOCUMENT_LABELS } from '@/lib/validation/enums';
 
 export const dynamic = 'force-dynamic';
 
+const estrelles = (n: number) => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, Math.max(0, 5 - n));
+
 export default async function HuespedDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const huesped = await prisma.huesped.findFirst({
@@ -50,6 +52,14 @@ export default async function HuespedDetailPage({ params }: { params: Promise<{ 
   const user = await getSessionUser();
   const canEdit = user ? hasRole(user.role, ROLES_WRITE) : false;
   const estancies = huesped.estancies.map((ev) => ev.estancia);
+  // Valoracions de l'hoste: lligades a alguna de les seves estades (via &e a l'enllaç).
+  const estanciaIds = estancies.map((e) => e.id);
+  const valoracions = estanciaIds.length
+    ? await prisma.valoracio.findMany({
+        where: { estanciaId: { in: estanciaIds } },
+        orderBy: { createdAt: 'desc' },
+      })
+    : [];
   const nitsAcumulades = estancies.reduce((a, e) => a + nights(e.dataEntrada, e.dataSortida), 0);
   const dates = estancies.map((e) => e.dataEntrada).sort((a, b) => a.getTime() - b.getTime());
   const noAcollir = huesped.anotacions.some((a) => a.noAcollir);
@@ -214,6 +224,29 @@ export default async function HuespedDetailPage({ params }: { params: Promise<{ 
               )}
             </CardBody>
           </Card>
+
+          {/* Valoracions de l'hoste (de la pàgina de benvinguda) */}
+          {valoracions.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Valoracions ({valoracions.length})</CardTitle>
+              </CardHeader>
+              <CardBody className="space-y-3">
+                {valoracions.map((v) => (
+                  <div key={v.id} className="rounded-lg border border-slate-200 p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-amber-500" title={`${v.puntuacio}/5`}>
+                        {estrelles(v.puntuacio)}
+                      </span>
+                      {v.habitacio && <Badge tone="neutral">Habitació {v.habitacio}</Badge>}
+                      <span className="ml-auto text-xs text-slate-400">{formatDate(v.createdAt)}</span>
+                    </div>
+                    {v.comentari && <p className="mt-1 text-sm text-slate-600">“{v.comentari}”</p>}
+                  </div>
+                ))}
+              </CardBody>
+            </Card>
+          )}
         </div>
 
         {/* Documentos + Anotaciones */}
