@@ -13,10 +13,17 @@ export async function GET() {
     const auth = await authorize();
     if (auth instanceof Response) return auth;
     const e = await prisma.establiment.findUniqueOrThrow({ where: { id: ESTABLIMENT_ID } });
-    // Nunca devolver la contraseña cifrada de Mossos.
-    const { mossosPassEnc, ...safe } = e;
+    // Mai retornar secrets (contrasenya de Mossos ni el token de Drive).
+    const { mossosPassEnc, driveRefreshTokenEnc, ...safe } = e;
     void mossosPassEnc;
-    return ok({ establiment: { ...safe, mossosPassConfigurada: Boolean(e.mossosPassEnc) } });
+    void driveRefreshTokenEnc;
+    return ok({
+      establiment: {
+        ...safe,
+        mossosPassConfigurada: Boolean(e.mossosPassEnc),
+        driveConnectada: Boolean(e.driveRefreshTokenEnc),
+      },
+    });
   } catch (err) {
     return handleApiError(err);
   }

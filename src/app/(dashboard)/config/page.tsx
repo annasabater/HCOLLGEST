@@ -1,13 +1,26 @@
-import { Download, ShieldCheck, BookOpen, Mail } from 'lucide-react';
+import { Download, ShieldCheck, BookOpen, Mail, CloudUpload } from 'lucide-react';
+import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfigForm } from '@/components/config/config-form';
 import { BackupEmailButton } from '@/components/config/backup-email-button';
+import { DriveConnect } from '@/components/config/drive-connect';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ConfigPage() {
+const DRIVE_MSG: Record<string, { tone: 'ok' | 'err'; text: string }> = {
+  ok: { tone: 'ok', text: 'Google Drive connectat correctament.' },
+  error: { tone: 'err', text: 'No s’ha pogut connectar amb Google Drive. Torna-ho a provar.' },
+  noconfig: { tone: 'err', text: 'Falten les credencials de Google (GOOGLE_CLIENT_ID i GOOGLE_CLIENT_SECRET) a Vercel.' },
+  norefresh: { tone: 'err', text: 'Google no ha donat permís d’accés continu. Reconnecta i accepta tots els permisos.' },
+};
+
+export default async function ConfigPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ drive?: string }>;
+}) {
   const user = await getSessionUser();
   if (user?.role !== 'ADMIN') {
     return (
@@ -18,12 +31,32 @@ export default async function ConfigPage() {
     );
   }
 
+  const sp = await searchParams;
+  const est = await prisma.establiment.findFirst({ select: { driveRefreshTokenEnc: true } });
+  const driveConnectada = Boolean(est?.driveRefreshTokenEnc);
+  const driveMsg = sp.drive ? DRIVE_MSG[sp.drive] : null;
+
   return (
     <div className="space-y-8">
       <div>
         <PageHeader title="Configuració" subtitle="Establiment, Mossos, facturació i RGPD" />
         <ConfigForm />
       </div>
+
+      <Card>
+        <CardHeader className="flex items-center gap-2">
+          <CloudUpload className="h-4 w-4 text-brand-600" />
+          <CardTitle>Còpia automàtica a Google Drive</CardTitle>
+        </CardHeader>
+        <CardBody className="space-y-3">
+          {driveMsg && (
+            <p className={driveMsg.tone === 'ok' ? 'text-sm text-green-700' : 'text-sm text-red-600'}>
+              {driveMsg.text}
+            </p>
+          )}
+          <DriveConnect connectada={driveConnectada} />
+        </CardBody>
+      </Card>
 
       <Card>
         <CardHeader className="flex items-center gap-2">

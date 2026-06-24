@@ -251,6 +251,11 @@ model Establiment {
   iban       String?
   descriptor String? // subtítol del membret (p. ex. "Pensió · Calella")
 
+  // Google Drive — token de refresc (xifrat) per a l'export mensual automàtic,
+  // i l'id de la carpeta arrel on es desa l'estructura d'arxiu.
+  driveRefreshTokenEnc String? @map("drive_refresh_token_enc")
+  driveFolderId        String? @map("drive_folder_id")
+
   estancies Estancia[]
 
   createdAt DateTime @default(now()) @map("created_at")
