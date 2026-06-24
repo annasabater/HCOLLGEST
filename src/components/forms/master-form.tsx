@@ -31,6 +31,7 @@ import { postJSON, ApiError, getJSON } from '@/lib/api';
 import { formatWarnings } from '@/lib/validation/documents';
 import { PROVINCIES, PAISOS } from '@/lib/data/geo';
 import { DocumentScanner } from '@/components/ocr/document-scanner';
+import { PendingDocs, type PendingDoc } from '@/components/ocr/pending-docs';
 import { HosteSearch, type HosteLite } from '@/components/forms/hoste-search';
 import type { ViatgerOcr } from '@/lib/ocr/mrz';
 
@@ -61,6 +62,7 @@ type ViatgerState = {
   _noAcollir?: boolean;
   _anotacions?: { sentit: string; descripcio: string; noAcollir: boolean }[];
   _avisAlerta?: string; // coincidència amb la llista d'avisos interns
+  _docs?: PendingDoc[]; // documents d'identitat a desar després de crear l'estada
 };
 
 function emptyViatger(titular = false): ViatgerState {
@@ -227,6 +229,28 @@ export function MasterForm({
       return next;
     });
 
+  // --- Documents d'identitat pendents (es desen després de crear l'estada) ---
+  const addDoc = (i: number, file: File) =>
+    setViatgers((prev) =>
+      prev.map((v, idx) => {
+        if (idx !== i) return v;
+        const docs = v._docs ?? [];
+        // Tipus per defecte segons l'ordre: anvers, revers, després "altres".
+        const tipus = docs.length === 0 ? 'DNI_ANVERS' : docs.length === 1 ? 'DNI_REVERS' : 'ALTRES';
+        return { ...v, _docs: [...docs, { id: crypto.randomUUID(), file, tipus }] };
+      }),
+    );
+  const removeDoc = (i: number, docId: string) =>
+    setViatgers((prev) =>
+      prev.map((v, idx) => (idx === i ? { ...v, _docs: (v._docs ?? []).filter((d) => d.id !== docId) } : v)),
+    );
+  const setDocTipus = (i: number, docId: string, tipus: string) =>
+    setViatgers((prev) =>
+      prev.map((v, idx) =>
+        idx === i ? { ...v, _docs: (v._docs ?? []).map((d) => (d.id === docId ? { ...d, tipus } : d)) } : v,
+      ),
+    );
+
   function buildInput(): RegistreInput {
     return {
       estancia: {
@@ -389,10 +413,39 @@ export function MasterForm({
 
     setSubmitting(true);
     try {
-      const res = await postJSON<{ estanciaId: string }>(
+      const res = await postJSON<{ estanciaId: string; viatgerHuespedIds?: string[] }>(
         `/api/estancies${borrany ? '?borrany=1' : ''}`,
         input,
       );
+
+      // Puja els documents d'identitat pendents de cada viatger (al servidor es
+      // desen xifrats, en B/N i amb marca d'aigua). Best-effort: si algun falla,
+      // l'estada ja s'ha creat i es poden afegir des de la fitxa de l'hoste.
+      const huespedIds = res.viatgerHuespedIds ?? [];
+      let docsFallits = 0;
+      for (let i = 0; i < viatgers.length; i++) {
+        const docs = viatgers[i]?._docs ?? [];
+        const hid = huespedIds[i];
+        if (!hid || docs.length === 0) continue;
+        for (const d of docs) {
+          try {
+            const fd = new FormData();
+            fd.append('file', d.file);
+            fd.append('tipus', d.tipus);
+            const r = await fetch(`/api/huespedes/${hid}/documents`, { method: 'POST', body: fd });
+            if (!r.ok) docsFallits++;
+          } catch {
+            docsFallits++;
+          }
+        }
+      }
+      if (docsFallits > 0) {
+        alert(
+          `L'estada s'ha desat, però ${docsFallits} document(s) no s'han pogut pujar. ` +
+            'Pots afegir-los des de la fitxa de l’hoste.',
+        );
+      }
+
       router.push(`/estancies/${res.estanciaId}`);
     } catch (err) {
       if (err instanceof ApiError) setServerError(err.message);
@@ -684,8 +737,17 @@ export function MasterForm({
               {!esReserva && (
                 <>
                   <div className="sm:col-span-2 lg:col-span-3">
-                    <DocumentScanner onExtract={(ocr) => applyOcr(i, ocr)} />
+                    <DocumentScanner
+                      onExtract={(ocr) => applyOcr(i, ocr)}
+                      onImage={(file) => addDoc(i, file)}
+                    />
                   </div>
+                  <PendingDocs
+                    docs={v._docs ?? []}
+                    onAdd={(file) => addDoc(i, file)}
+                    onRemove={(docId) => removeDoc(i, docId)}
+                    onTipus={(docId, tipus) => setDocTipus(i, docId, tipus)}
+                  />
                   <Field label="Tipus de document" required={!menor} error={err(P('tipusDocument'))}>
                     <Select
                       value={v.tipusDocument}

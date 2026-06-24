@@ -13,7 +13,13 @@ const MRZ_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<';
  * foto amb la càmera o pujar una imatge existent (galeria/fitxers). Si no troba
  * MRZ, avisa que cal que es vegin les línies "<<<" del document.
  */
-export function DocumentScanner({ onExtract }: { onExtract: (v: ViatgerOcr) => void }) {
+export function DocumentScanner({
+  onExtract,
+  onImage,
+}: {
+  onExtract: (v: ViatgerOcr) => void;
+  onImage?: (file: File) => void; // la foto capturada, per desar-la com a document
+}) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -61,7 +67,10 @@ export function DocumentScanner({ onExtract }: { onExtract: (v: ViatgerOcr) => v
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ''; // permet re-escanejar el mateix fitxer
-    if (file) processFile(file);
+    if (file) {
+      onImage?.(file); // desa la foto com a document (B/N + marca d'aigua al servidor)
+      processFile(file);
+    }
   }
 
   return (

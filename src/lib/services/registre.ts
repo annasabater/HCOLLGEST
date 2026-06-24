@@ -192,7 +192,14 @@ export async function createRegistre(
       tx,
     );
 
-    return { estanciaId: est.id, reusedHuespedIds: reused, createdHuespedIds: created };
+    return {
+      estanciaId: est.id,
+      reusedHuespedIds: reused,
+      createdHuespedIds: created,
+      // IDs dels hostes en el MATEIX ordre que els viatgers d'entrada (per
+      // adjuntar documents per viatger després de crear l'estada).
+      viatgerHuespedIds: resolved.map((r) => r.huespedId),
+    };
   });
 }
 
