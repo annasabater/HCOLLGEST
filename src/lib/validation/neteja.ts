@@ -24,4 +24,20 @@ export const TascaNetejaUpdateSchema = z.object({
   notes: optStr,
 });
 
+// Full de neteja d'un dia per a una persona: substitueix d'un cop totes les
+// habitacions que aquella persona neteja aquell dia. Les habitacions no
+// incloses deixen d'estar-li assignades.
+export const TascaNetejaDiaSchema = z.object({
+  data: z.coerce.date(),
+  assignadaA: z.string().min(1, 'Cal una persona'),
+  items: z.array(
+    z.object({
+      habitacioId: z.string().min(1),
+      tipus: z.enum(tipusNetejaValues),
+      notes: optStr,
+    }),
+  ),
+});
+
 export type TascaNetejaCreateInput = z.input<typeof TascaNetejaCreateSchema>;
+export type TascaNetejaDiaInput = z.input<typeof TascaNetejaDiaSchema>;

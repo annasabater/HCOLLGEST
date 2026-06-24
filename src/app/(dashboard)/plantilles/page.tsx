@@ -34,6 +34,8 @@ interface Tasca {
   id: string;
   habitacio: { nom: string } | null;
   tipus: 'CANVI_COMPLET' | 'REPAS';
+  notes: string | null;
+  assignadaA: string | null;
 }
 interface Estancia {
   id: string;
@@ -141,13 +143,16 @@ function NetejaCard() {
   }, [data]);
 
   const treballador = treballadors.find((t) => t.id === treballadorId);
+  // Només les habitacions assignades a la persona triada (el full diari les hi assigna).
+  const tasquesPersona = tasques.filter((t) => t.assignadaA === treballadorId);
   useEffect(() => {
+    const meves = tasques.filter((t) => t.assignadaA === treballador?.id);
     setMsg(
       fillTemplate(tpls[lang], {
         nom: treballador?.nom ?? '',
         data: formatDate(data),
         habitacions: descriuTasques(
-          tasques.map((t) => ({ habitacio: t.habitacio?.nom ?? null, tipus: t.tipus })),
+          meves.map((t) => ({ habitacio: t.habitacio?.nom ?? null, tipus: t.tipus, notes: t.notes })),
           lang,
         ),
         pasillo: pasillo ? PASILLO_TXT[lang] : '',
@@ -232,15 +237,18 @@ function NetejaCard() {
           </Field>
         </div>
 
-        {/* Habitacions del dia: salida (a fons) o repàs */}
-        {tasques.length === 0 ? (
-          <p className="text-xs text-slate-500">Cap tasca de neteja assignada aquest dia.</p>
+        {/* Habitacions assignades a la persona aquest dia: salida (a fons) o repàs */}
+        {tasquesPersona.length === 0 ? (
+          <p className="text-xs text-slate-500">
+            Cap habitació assignada a {treballador?.nom ?? 'aquesta persona'} aquest dia. Assigna-les
+            al full diari de Neteja.
+          </p>
         ) : (
           <div className="space-y-2">
             <p className="text-xs font-medium text-slate-500">
               Tipus de neteja per habitació (determina la tarifa):
             </p>
-            {tasques.map((t) => (
+            {tasquesPersona.map((t) => (
               <div key={t.id} className="flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2">
                 <span className="w-28 text-sm text-slate-700">Habitació {t.habitacio?.nom ?? '?'}</span>
                 <Select
@@ -251,6 +259,7 @@ function NetejaCard() {
                   <option value="CANVI_COMPLET">{tipusNetejaLabel('CANVI_COMPLET', lang)}</option>
                   <option value="REPAS">{tipusNetejaLabel('REPAS', lang)}</option>
                 </Select>
+                {t.notes && <span className="text-xs text-slate-500">· {t.notes}</span>}
               </div>
             ))}
           </div>

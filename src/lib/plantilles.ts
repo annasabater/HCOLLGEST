@@ -100,7 +100,7 @@ export function tipusNetejaLabel(tipus: 'CANVI_COMPLET' | 'REPAS', lang: Lang): 
  * "la habitación 1: salida (a fondo), la 2: repaso".
  */
 export function descriuTasques(
-  tasques: { habitacio: string | null; tipus: 'CANVI_COMPLET' | 'REPAS' }[],
+  tasques: { habitacio: string | null; tipus: 'CANVI_COMPLET' | 'REPAS'; notes?: string | null }[],
   lang: Lang = 'es',
 ): string {
   const t = NETEJA_TXT[lang];
@@ -109,7 +109,8 @@ export function descriuTasques(
     .map((x, i) => {
       const tip = x.tipus === 'CANVI_COMPLET' ? t.salida : t.repas;
       const prefix = i === 0 ? t.first : t.rest;
-      return `${prefix} ${x.habitacio ?? '?'}${t.sep}${tip}`;
+      const nota = x.notes && x.notes.trim() ? ` (${x.notes.trim()})` : '';
+      return `${prefix} ${x.habitacio ?? '?'}${t.sep}${tip}${nota}`;
     })
     .join(', ');
 }
