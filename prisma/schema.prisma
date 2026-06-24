@@ -420,6 +420,10 @@ model EstanciaViatger {
   esTitular  Boolean    @default(false) @map("es_titular")
   parentesc  Parentesc?
   esMenor    Boolean    @default(false) @map("es_menor")
+  // Snapshot de les dades del viatger per a aquesta estada (es congela quan
+  // l'estada passa a ser antiga >7 dies de la sortida). Si està informat, el
+  // llibre/fitxa/Mossos l'usen en lloc de la fitxa viva (no reescriure el passat).
+  dadesCongelades Json? @map("dades_congelades")
 
   signatura Signatura?
 

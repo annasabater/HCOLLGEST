@@ -5,6 +5,8 @@ import { audit } from '@/lib/audit';
 import { handleApiError, notFound, ok } from '@/lib/http';
 import { HuespedUpdateSchema } from '@/lib/validation/huesped';
 import { nights } from '@/lib/dates';
+import { Prisma } from '@prisma/client';
+import { snapshotHuesped, DIES_CONGELACIO } from '@/lib/registre-snapshot';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -61,8 +63,21 @@ export async function PATCH(req: Request, ctx: Ctx) {
     const body = await req.json().catch(() => null);
     const data = HuespedUpdateSchema.parse(body);
 
-    const exists = await prisma.huesped.findFirst({ where: { id, deletedAt: null }, select: { id: true } });
-    if (!exists) return notFound();
+    const current = await prisma.huesped.findFirst({ where: { id, deletedAt: null } });
+    if (!current) return notFound();
+
+    // Congela les estades antigues (>7 dies de la sortida) amb les dades ACTUALS
+    // abans d'editar, perquè el llibre/Mossos del passat no es reescrigui.
+    const tall = new Date(Date.now() - DIES_CONGELACIO * 86_400_000);
+    await prisma.estanciaViatger.updateMany({
+      where: {
+        huespedId: id,
+        dadesCongelades: { equals: Prisma.DbNull },
+        estancia: { deletedAt: null, dataSortida: { lt: tall } },
+      },
+      data: { dadesCongelades: snapshotHuesped(current) as Prisma.InputJsonValue },
+    });
+
     const huesped = await prisma.huesped.update({ where: { id }, data });
 
     await audit({

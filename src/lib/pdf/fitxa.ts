@@ -12,6 +12,7 @@ import { PDFDocument, StandardFonts, rgb, type PDFPage } from 'pdf-lib';
 import type { Establiment, Estancia, EstanciaViatger, Huesped, Signatura } from '@prisma/client';
 import { formatDate } from '../utils';
 import { FITXA_TEMPLATE_B64 } from './fitxa-template';
+import { viatgerEfectiu } from '../registre-snapshot';
 
 type ViatgerRow = EstanciaViatger & { huesped: Huesped; signatura: Signatura | null };
 
@@ -100,7 +101,7 @@ export async function buildFitxaPdf(
     const page = (await out.copyPages(template, [0]))[0];
     if (!page) return;
     out.addPage(page);
-    const h = v?.huesped ?? null;
+    const h = v ? viatgerEfectiu(v.huesped, v.dadesCongelades) : null;
 
     // --- Datos del contrato ---
     put(page, 52, 719, establiment.idPolicial, 158);

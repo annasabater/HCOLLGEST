@@ -11,6 +11,7 @@ import type {
 } from '@prisma/client';
 import type { ParteViatgers, Viatger } from './fitxer';
 import { isMenor } from '../dates';
+import { viatgerEfectiu } from '../registre-snapshot';
 
 type ViatgerRow = DbViatger & { huesped: DbHuesped };
 
@@ -38,7 +39,8 @@ export function buildParteFromDb(
       teInternet: estancia.teInternet ?? undefined,
     },
     viatgers: viatgers.map((row): Viatger => {
-      const h = row.huesped;
+      // Estades antigues: usa les dades congelades (no reescriure el passat).
+      const h = viatgerEfectiu(row.huesped, row.dadesCongelades);
       return {
         tipusDocument: h.tipusDocument ?? undefined,
         numDocument: h.numDocument ?? undefined,

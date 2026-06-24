@@ -6,6 +6,7 @@ import { ok } from '@/lib/http';
 import { formatDate } from '@/lib/utils';
 import { PARENTESC_LABELS, TIPUS_DOCUMENT_LABELS, TIPUS_REGISTRE_LABELS, MIDA_ANIMAL_LABELS } from '@/lib/validation/enums';
 import { teVistaRestringida, ocultaDelLlibre } from '@/lib/auth/restriccions';
+import { viatgerEfectiu } from '@/lib/registre-snapshot';
 
 // GET /api/llibre?desde=&fins=&format=csv — libro de registro (conservar 3 años §2.4)
 export async function GET(req: Request) {
@@ -44,7 +45,8 @@ export async function GET(req: Request) {
 
   const rows = visibles.flatMap((e) =>
     e.viatgers.map((ev) => {
-      const h = ev.huesped;
+      // Estades antigues: usa les dades congelades (no reescriure el passat).
+      const h = viatgerEfectiu(ev.huesped, ev.dadesCongelades);
       const mascotes = h.animals
         .map((a) => `${a.nom}${a.mida ? ` (${MIDA_ANIMAL_LABELS[a.mida]})` : ''}`)
         .join(', ');
