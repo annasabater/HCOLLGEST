@@ -53,7 +53,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
       },
       enviaments: { orderBy: { createdAt: 'desc' } },
       habitacio: true,
-      factures: { orderBy: { data: 'desc' } },
+      factures: { where: { deletedAt: null }, orderBy: { data: 'desc' } },
       cobraments: { include: { factura: { select: { numero: true } } }, orderBy: { data: 'asc' } },
       diposits: { orderBy: { createdAt: 'desc' } },
       origen: { select: { id: true, numContracte: true, anyContracte: true } },
