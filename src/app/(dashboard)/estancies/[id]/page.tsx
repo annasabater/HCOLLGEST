@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Send, Receipt, FileSignature, Coins, Pencil } from 'lucide-react';
+import { ArrowLeft, Send, Receipt, FileSignature, Pencil } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
@@ -16,7 +16,6 @@ import { EliminarEstada } from '@/components/estancia/eliminar-estada';
 import { TreureEsborrany } from '@/components/estancia/treure-esborrany';
 import { FacturaPanel } from '@/components/factura/factura-panel';
 import { PagamentsPanel } from '@/components/factura/pagaments-panel';
-import { DipositsPanel } from '@/components/factura/diposits-panel';
 import { preuSuggeritAllotjament } from '@/lib/services/tarifes';
 import { formatDate } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
@@ -241,28 +240,6 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             />
           )}
 
-          {/* Dipòsits / fiances — ADMIN */}
-          {isAdmin && (
-            <Card>
-              <CardHeader className="flex items-center gap-2">
-                <Coins className="h-4 w-4 text-brand-600" />
-                <CardTitle>Dipòsits / fiances</CardTitle>
-              </CardHeader>
-              <CardBody>
-                <DipositsPanel
-                  estanciaId={estancia.id}
-                  diposits={estancia.diposits.map((d) => ({
-                    id: d.id,
-                    import: Number(d.import),
-                    data: d.data.toISOString(),
-                    metode: d.metode,
-                    estat: d.estat,
-                    motiu: d.motiu,
-                  }))}
-                />
-              </CardBody>
-            </Card>
-          )}
         </div>
 
         {/* Mossos + Facturació */}
@@ -293,7 +270,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             <Card>
               <CardHeader className="flex items-center gap-2">
                 <Receipt className="h-4 w-4 text-brand-600" />
-                <CardTitle>Pagaments / ingressos</CardTitle>
+                <CardTitle>Pagaments i fiances</CardTitle>
               </CardHeader>
               <CardBody>
                 <PagamentsPanel
@@ -307,6 +284,14 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                     data: c.data.toISOString(),
                     facturaId: c.facturaId,
                     facturaNumero: c.factura?.numero ?? null,
+                  }))}
+                  fiances={estancia.diposits.map((d) => ({
+                    id: d.id,
+                    import: Number(d.import),
+                    data: d.data.toISOString(),
+                    metode: d.metode,
+                    estat: d.estat,
+                    motiu: d.motiu,
                   }))}
                 />
               </CardBody>

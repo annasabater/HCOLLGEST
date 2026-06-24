@@ -121,6 +121,8 @@ function buildRegistreSchema(borrany: boolean) {
       viatgers: z.array(ViatgerInputSchema).min(1, 'Cal almenys un viatger'),
       mascotes: z.array(MascotaInputSchema).optional(),
       pagaments: z.array(PagamentInputSchema).optional(),
+      // Fiança(es) opcional(s) al check-in: van a custòdia (no són ingrés).
+      fiances: z.array(PagamentInputSchema).optional(),
     })
     .superRefine((data, ctx) => {
       const { estancia, viatgers } = data;

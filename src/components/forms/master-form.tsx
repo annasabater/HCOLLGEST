@@ -154,6 +154,7 @@ export function MasterForm({
   // Municipis (INE) per província, carregats sota demanda per al selector.
   const [municipisCache, setMunicipisCache] = useState<Record<string, string[]>>({});
   const [pagaments, setPagaments] = useState<{ import: string; metode: string }[]>([]);
+  const [fiances, setFiances] = useState<{ import: string; metode: string }[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -220,6 +221,13 @@ export function MasterForm({
     setPagaments((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
   const removePagament = (i: number) => setPagaments((prev) => prev.filter((_, idx) => idx !== i));
   const totalPagaments = pagaments.reduce((a, p) => a + (Number(p.import) || 0), 0);
+
+  // --- Fiança (opcional): garantia retornable, va a custòdia (no és ingrés) ---
+  const addFianca = () => setFiances((prev) => [...prev, { import: '', metode: 'EFECTIU' }]);
+  const setFia = (i: number, patch: Partial<{ import: string; metode: string }>) =>
+    setFiances((prev) => prev.map((f, idx) => (idx === i ? { ...f, ...patch } : f)));
+  const removeFianca = (i: number) => setFiances((prev) => prev.filter((_, idx) => idx !== i));
+  const totalFiances = fiances.reduce((a, f) => a + (Number(f.import) || 0), 0);
 
   const addViatger = () => setViatgers((prev) => [...prev, emptyViatger(prev.length === 0)]);
   const removeViatger = (i: number) =>
@@ -306,6 +314,13 @@ export function MasterForm({
         .map((p) => ({
           metode: p.metode as (typeof metodeCobramentValues)[number],
           import: Number(p.import),
+        })),
+      // Fiances opcionals: garantia retornable (custòdia, no és ingrés).
+      fiances: fiances
+        .filter((f) => Number(f.import) > 0)
+        .map((f) => ({
+          metode: f.metode as (typeof metodeCobramentValues)[number],
+          import: Number(f.import),
         })),
     };
   }
@@ -584,10 +599,10 @@ export function MasterForm({
         </CardBody>
       </Card>
 
-      {/* --- Cobrament (opcional) --- */}
+      {/* --- Cobrament i fiança (opcional) --- */}
       <Card>
         <CardHeader>
-          <CardTitle>Cobrament (opcional)</CardTitle>
+          <CardTitle>Cobrament i fiança (opcional)</CardTitle>
         </CardHeader>
         <CardBody className="space-y-3">
           <p className="text-xs text-slate-500">
@@ -636,6 +651,58 @@ export function MasterForm({
                 Total: <strong>{totalPagaments.toFixed(2)} €</strong>
               </span>
             )}
+          </div>
+
+          {/* --- Fiança (opcional): garantia retornable, va a custòdia --- */}
+          <div className="border-t border-slate-100 pt-3">
+            <p className="text-xs text-slate-500">
+              Fiança (garantia que <strong>tornaràs</strong>): queda en custòdia i{' '}
+              <strong>no</strong> compta com a ingrés fins que la retens.
+            </p>
+            <div className="mt-2 space-y-3">
+              {fiances.map((f, i) => (
+                <div key={i} className="flex flex-wrap items-center gap-2">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Import €"
+                    className="w-32"
+                    value={f.import}
+                    onChange={(e) => setFia(i, { import: e.target.value })}
+                  />
+                  <Select
+                    className="w-48"
+                    value={f.metode}
+                    onChange={(e) => setFia(i, { metode: e.target.value })}
+                  >
+                    {optionsFrom(metodeCobramentValues, METODE_COBRAMENT_LABELS).map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </Select>
+                  <button
+                    type="button"
+                    className="text-slate-400 hover:text-red-600"
+                    onClick={() => removeFianca(i)}
+                    aria-label="Treure fiança"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              <div className="flex flex-wrap items-center gap-3">
+                <Button type="button" size="sm" variant="ghost" onClick={addFianca}>
+                  <Plus className="h-4 w-4" /> Afegir fiança
+                </Button>
+                {fiances.length > 0 && (
+                  <span className="text-sm text-slate-600">
+                    Total fiança: <strong>{totalFiances.toFixed(2)} €</strong>
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
         </CardBody>
       </Card>

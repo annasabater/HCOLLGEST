@@ -4,7 +4,7 @@ import { ROLES_WRITE } from '@/lib/auth/rbac';
 import { created, handleApiError, ok } from '@/lib/http';
 import { RegistreSchema, RegistreEsborranySchema } from '@/lib/validation/registre';
 import { createRegistre } from '@/lib/services/registre';
-import { addPagamentEstada } from '@/lib/services/factura';
+import { addPagamentEstada, addDiposit } from '@/lib/services/factura';
 import type { Prisma } from '@prisma/client';
 
 // GET /api/estancies?estat=&desde=&fins=&q=
@@ -69,6 +69,22 @@ export async function POST(req: Request) {
         );
       } catch {
         /* l'estada ja s'ha creat; el pagament es pot afegir després */
+      }
+    }
+
+    // Fiança(es) inicial(s) opcional(s): van a custòdia (NO són ingrés fins que
+    // es retenen). Si alguna falla, l'estada ja està creada: no es trenca.
+    const fiances = (input.fiances ?? []).filter((f) => f.import > 0);
+    for (const f of fiances) {
+      try {
+        await addDiposit(
+          result.estanciaId,
+          { metode: f.metode, import: f.import, destinacio: 'CUSTODIA' },
+          { id: auth.id },
+          clientIp(req),
+        );
+      } catch {
+        /* l'estada ja s'ha creat; la fiança es pot afegir després */
       }
     }
 
