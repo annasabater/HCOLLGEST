@@ -5,6 +5,8 @@ import { ROLES_WRITE } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
 import { handleApiError, notFound, ok } from '@/lib/http';
 import { TipusPagamentEnum } from '@/lib/validation/enums';
+import { RegistreSchema, RegistreEsborranySchema } from '@/lib/validation/registre';
+import { updateRegistre } from '@/lib/services/registre';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -77,6 +79,27 @@ export async function PATCH(req: Request, ctx: Ctx) {
     });
 
     return ok({ estancia });
+  } catch (err) {
+    return handleApiError(err);
+  }
+}
+
+// PUT /api/estancies/:id — edició COMPLETA (formulari mestre): dades de
+// l'estada + viatgers + esborrany. ?borrany=1 desa amb validació laxa.
+export async function PUT(req: Request, ctx: Ctx) {
+  try {
+    const auth = await authorize(ROLES_WRITE);
+    if (auth instanceof Response) return auth;
+    const { id } = await ctx.params;
+
+    const borrany = new URL(req.url).searchParams.get('borrany') === '1';
+    const body = await req.json().catch(() => null);
+    const input = (borrany ? RegistreEsborranySchema : RegistreSchema).parse(body);
+
+    const result = await updateRegistre(id, input, { id: auth.id }, clientIp(req), {
+      esBorrany: borrany,
+    });
+    return ok(result);
   } catch (err) {
     return handleApiError(err);
   }

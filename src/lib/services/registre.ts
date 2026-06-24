@@ -204,6 +204,117 @@ export async function createRegistre(
 }
 
 /**
+ * Edita una estada existent amb el formulari mestre complet: dades de l'estada
+ * + viatgers (afegir/treure/modificar) + estat d'esborrany. Reconcilia els
+ * viatgers (els hostes reutilitzats s'actualitzen; els que es treuen es
+ * desvinculen; els nous es creen/enllacen). NO toca pagaments, fiances ni
+ * mascotes (es gestionen a la fitxa). Tampoc canvia l'estat (RESERVA/EN_CURS…).
+ */
+export async function updateRegistre(
+  estanciaId: string,
+  input: RegistreParsed,
+  actor: { id: string } | null,
+  ip: string | null,
+  opts: { esBorrany?: boolean } = {},
+): Promise<{ estanciaId: string; viatgerHuespedIds: string[] }> {
+  const { estancia, viatgers } = input;
+
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.estancia.findFirst({
+      where: { id: estanciaId, deletedAt: null },
+      include: { viatgers: true },
+    });
+    if (!existing) throw new Error('Validación fallida: estada no trobada');
+
+    // 1) Resol l'hoste de cada viatger (id donat, dedup per document, o crear) i
+    //    actualitza les seves dades (edició explícita: s'actualitza tot).
+    const resolved: { huespedId: string; v: RegistreParsed['viatgers'][number] }[] = [];
+    for (const v of viatgers) {
+      let huespedId = v.huespedId;
+      if (!huespedId && v.tipusDocument && v.numDocument) {
+        const ex = await tx.huesped.findUnique({
+          where: { huesped_document: { tipusDocument: v.tipusDocument, numDocument: v.numDocument } },
+        });
+        if (ex) huespedId = ex.id;
+      }
+      if (huespedId) {
+        await tx.huesped.update({
+          where: { id: huespedId },
+          data: huespedDataFromViatger(v) as Prisma.HuespedUpdateInput,
+        });
+      } else {
+        const h = await tx.huesped.create({ data: huespedDataFromViatger(v) });
+        huespedId = h.id;
+      }
+      resolved.push({ huespedId, v });
+    }
+
+    // 2) Reconcilia els enllaços estancia_viatger.
+    const desitjats = new Set(resolved.map((r) => r.huespedId));
+    for (const link of existing.viatgers) {
+      if (!desitjats.has(link.huespedId)) {
+        await tx.estanciaViatger.delete({ where: { id: link.id } });
+      }
+    }
+    for (const { huespedId, v } of resolved) {
+      const link = existing.viatgers.find((l) => l.huespedId === huespedId);
+      const data = {
+        esTitular: v.esTitular,
+        parentesc: v.parentesc ?? null,
+        esMenor: v.esMenor || isMenor(v.dataNaixement, estancia.dataEntrada),
+      };
+      if (link) {
+        await tx.estanciaViatger.update({ where: { id: link.id }, data });
+      } else {
+        await tx.estanciaViatger.create({ data: { estanciaId, huespedId, ...data } });
+      }
+    }
+
+    // 3) Actualitza les dades de l'estada (sense tocar l'estat ni l'establiment).
+    await tx.estancia.update({
+      where: { id: estanciaId },
+      data: {
+        tipusRegistre: estancia.tipusRegistre,
+        numContracte: estancia.numContracte,
+        anyContracte: estancia.anyContracte,
+        dataFormalitzacio: estancia.dataFormalitzacio,
+        dataEntrada: estancia.dataEntrada,
+        dataSortida: estancia.dataSortida,
+        numViatgers: viatgers.length,
+        tipusPagament: estancia.tipusPagament,
+        numHabitacions: estancia.numHabitacions ?? null,
+        teInternet: estancia.teInternet ?? null,
+        observacions: estancia.observacions ?? null,
+        esBorrany: opts.esBorrany ?? false,
+        habitacioId: estancia.habitacioId ?? null,
+      },
+    });
+
+    // 4) Sincronitza la tasca de neteja de la sortida (data/habitació) si n'hi ha.
+    if (estancia.habitacioId) {
+      await tx.tascaNeteja.updateMany({
+        where: { vinculadaSortidaId: estanciaId },
+        data: { data: estancia.dataSortida, habitacioId: estancia.habitacioId },
+      });
+    }
+
+    await audit(
+      {
+        usuariId: actor?.id ?? null,
+        accio: 'MODIFICACIO',
+        entitat: 'estancia',
+        entitatId: estanciaId,
+        detall: { numViatgers: viatgers.length, esBorrany: opts.esBorrany ?? false, editComplet: true },
+        ip,
+      },
+      tx,
+    );
+
+    return { estanciaId, viatgerHuespedIds: resolved.map((r) => r.huespedId) };
+  });
+}
+
+/**
  * Amplia una estada: crea un registre nou enllaçat a l'original, numerat
  * 1.1, 1.2… reutilitzant hostes i habitació, amb les noves dates.
  */

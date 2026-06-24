@@ -27,14 +27,14 @@ import {
   METODE_COBRAMENT_LABELS,
 } from '@/lib/validation/enums';
 import { isMenor } from '@/lib/dates';
-import { postJSON, ApiError, getJSON } from '@/lib/api';
+import { postJSON, putJSON, ApiError, getJSON } from '@/lib/api';
 import { formatWarnings } from '@/lib/validation/documents';
 import { PROVINCIES, PAISOS } from '@/lib/data/geo';
 import { DocumentScanner, type PendingDoc } from '@/components/ocr/document-scanner';
 import { HosteSearch, type HosteLite } from '@/components/forms/hoste-search';
 import type { ViatgerOcr } from '@/lib/ocr/mrz';
 
-type ViatgerState = {
+export type ViatgerState = {
   huespedId?: string;
   nom: string;
   cognom1: string;
@@ -123,30 +123,57 @@ function viatgerFromHoste(h: HosteLite, titular: boolean): ViatgerState {
   return { ...emptyViatger(titular), ...hostePatch(h) };
 }
 
+export interface MasterFormInitial {
+  tipusRegistre: 'CONTRACTE_EN_CURS' | 'RESERVA';
+  estancia: {
+    numContracte: string;
+    anyContracte: string;
+    dataFormalitzacio: string;
+    dataEntrada: string;
+    dataSortida: string;
+    tipusPagament: string;
+    habitacioId: string;
+    teInternet: boolean;
+    observacions: string;
+  };
+  viatgers: ViatgerState[];
+  esBorrany: boolean;
+}
+
 export function MasterForm({
   habitacions,
   initialHoste,
+  mode = 'create',
+  estanciaId,
+  initial,
 }: {
   habitacions: { id: string; nom: string }[];
   initialHoste?: HosteLite | null;
+  mode?: 'create' | 'edit';
+  estanciaId?: string;
+  initial?: MasterFormInitial;
 }) {
   const router = useRouter();
+  const isEdit = mode === 'edit';
   const [tipusRegistre, setTipusRegistre] = useState<'CONTRACTE_EN_CURS' | 'RESERVA'>(
-    'CONTRACTE_EN_CURS',
+    initial?.tipusRegistre ?? 'CONTRACTE_EN_CURS',
   );
-  const [estancia, setEstancia] = useState({
-    numContracte: '',
-    anyContracte: String(currentYear),
-    dataFormalitzacio: new Date().toISOString().slice(0, 10),
-    dataEntrada: '',
-    dataSortida: '',
-    tipusPagament: 'DESTINACIO',
-    habitacioId: '',
-    teInternet: true,
-    observacions: '',
-  });
+  const [estancia, setEstancia] = useState(
+    initial?.estancia ?? {
+      numContracte: '',
+      anyContracte: String(currentYear),
+      dataFormalitzacio: new Date().toISOString().slice(0, 10),
+      dataEntrada: '',
+      dataSortida: '',
+      tipusPagament: 'DESTINACIO',
+      habitacioId: '',
+      teInternet: true,
+      observacions: '',
+    },
+  );
   const [viatgers, setViatgers] = useState<ViatgerState[]>(() =>
-    initialHoste ? [viatgerFromHoste(initialHoste, true)] : [emptyViatger(true)],
+    initial?.viatgers ??
+    (initialHoste ? [viatgerFromHoste(initialHoste, true)] : [emptyViatger(true)]),
   );
   const [portaMascota, setPortaMascota] = useState(false);
   const [mascotes, setMascotes] = useState<{ nom: string; especie: string; mida: string }[]>([]);
@@ -427,10 +454,15 @@ export function MasterForm({
 
     setSubmitting(true);
     try {
-      const res = await postJSON<{ estanciaId: string; viatgerHuespedIds?: string[] }>(
-        `/api/estancies${borrany ? '?borrany=1' : ''}`,
-        input,
-      );
+      const res = isEdit
+        ? await putJSON<{ estanciaId: string; viatgerHuespedIds?: string[] }>(
+            `/api/estancies/${estanciaId}${borrany ? '?borrany=1' : ''}`,
+            input,
+          )
+        : await postJSON<{ estanciaId: string; viatgerHuespedIds?: string[] }>(
+            `/api/estancies${borrany ? '?borrany=1' : ''}`,
+            input,
+          );
 
       // Puja els documents d'identitat pendents de cada viatger (al servidor es
       // desen xifrats, en B/N i amb marca d'aigua). Best-effort: si algun falla,
@@ -461,6 +493,7 @@ export function MasterForm({
       }
 
       router.push(`/estancies/${res.estanciaId}`);
+      router.refresh();
     } catch (err) {
       if (err instanceof ApiError) setServerError(err.message);
       else setServerError('Error desant l’estada');
@@ -598,7 +631,8 @@ export function MasterForm({
         </CardBody>
       </Card>
 
-      {/* --- Cobrament i fiança (opcional) --- */}
+      {/* --- Cobrament i fiança (opcional) — només a l'alta; a l'edició es gestionen a la fitxa --- */}
+      {!isEdit && (
       <Card>
         <CardHeader>
           <CardTitle>Cobrament i fiança (opcional)</CardTitle>
@@ -705,6 +739,7 @@ export function MasterForm({
           </div>
         </CardBody>
       </Card>
+      )}
 
       {/* --- Viatgers --- */}
       {viatgers.map((v, i) => {
@@ -979,7 +1014,8 @@ export function MasterForm({
         );
       })}
 
-      {/* --- Mascotes (opcional) --- */}
+      {/* --- Mascotes (opcional) — només a l'alta; a l'edició es gestionen a la fitxa --- */}
+      {!isEdit && (
       <Card>
         <CardHeader className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
@@ -1032,6 +1068,7 @@ export function MasterForm({
           </CardBody>
         )}
       </Card>
+      )}
 
       {warnings.length > 0 && (
         <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
@@ -1075,7 +1112,7 @@ export function MasterForm({
             Desar com a esborrany
           </Button>
           <Button type="submit" disabled={submitting}>
-            {submitting ? 'Desant…' : 'Desar estada'}
+            {submitting ? 'Desant…' : isEdit ? 'Desar canvis' : 'Desar estada'}
           </Button>
         </div>
       </div>
