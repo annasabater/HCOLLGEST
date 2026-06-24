@@ -455,7 +455,7 @@ function HostesCard() {
 // --- Plantilla de benvinguda + valoració (després de la primera nit) ---------
 function BenvingudaCard() {
   const [estancies, setEstancies] = useState<Estancia[]>([]);
-  const [enllac, setEnllac] = useState('https://hostalcoll.com/benvinguda');
+  const [enllac, setEnllac] = useState('https://hostalcoll.com/benvinguda.html');
   const [tpls, setTpls] = useState<Record<Lang, string>>(PLANTILLA_BENVINGUDA);
   const [editLang, setEditLang] = useState<Lang>('ca');
   const [noms, setNoms] = useState<Record<string, string>>({}); // clau: `${estadaId}:${i}`
@@ -463,7 +463,7 @@ function BenvingudaCard() {
 
   useEffect(() => {
     setTpls(loadTpls('benvinguda'));
-    setEnllac(lsGet('enllac_benvinguda', 'https://hostalcoll.com/benvinguda'));
+    setEnllac(lsGet('enllac_benvinguda', 'https://hostalcoll.com/benvinguda.html'));
     getJSON<{ estancies: Estancia[] }>('/api/estancies').then((r) => setEstancies(r.estancies));
   }, []);
 

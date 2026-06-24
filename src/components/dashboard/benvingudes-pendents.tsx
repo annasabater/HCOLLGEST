@@ -32,7 +32,7 @@ function tplFor(lang: Lang): string {
   return lsGet(`plantilla_benvinguda_${lang}`, PLANTILLA_BENVINGUDA[lang]);
 }
 function benvLink(lang: Lang): string {
-  const base = lsGet('enllac_benvinguda', 'https://hostalcoll.com/benvinguda');
+  const base = lsGet('enllac_benvinguda', 'https://hostalcoll.com/benvinguda.html');
   return `${base}${base.includes('?') ? '&' : '?'}lang=${lang}`;
 }
 
