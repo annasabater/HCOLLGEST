@@ -177,6 +177,114 @@ function tipusFrom(m: MrzResult): ViatgerOcr['tipusDocument'] {
   return 'ALTRES';
 }
 
+// ----------------------------------------------------------------------------
+// Lectura de la CARA DEL DAVANT (best-effort, sense MRZ)
+// ----------------------------------------------------------------------------
+
+const DNI_LETTERS = 'TRWAGMYFPDXBNJZSQVHLCKE';
+
+/** Lletra de control d'un DNI (mòdul 23). Permet validar el número llegit. */
+export function dniCheckLetter(num8: string): string {
+  return DNI_LETTERS[Number(num8) % 23] ?? '';
+}
+
+function titlecase(s: string): string {
+  return s
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+/**
+ * Parser BEST-EFFORT de la cara del DAVANT d'un DNI/NIE espanyol a partir del
+ * text OCR (sense MRZ). És menys fiable que la MRZ: extreu el que pot i marca
+ * `valid` només si la lletra del DNI/NIE quadra. Funció pura i testejable.
+ */
+export function parseDniFront(rawText: string): ViatgerOcr | null {
+  const text = rawText.toUpperCase();
+  const lines = rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const compact = text.replace(/[^A-Z0-9]/g, ' ');
+
+  // --- Número de document (validant la lletra) ---
+  let numDocument: string | undefined;
+  let tipusDocument: ViatgerOcr['tipusDocument'] | undefined;
+  let valid = false;
+  const dni = compact.match(/\b(\d{8})\s*([A-Z])\b/);
+  const nie = compact.match(/\b([XYZ])\s*(\d{7})\s*([A-Z])\b/);
+  if (dni) {
+    numDocument = dni[1]! + dni[2]!;
+    tipusDocument = 'DNI_NIF';
+    valid = dniCheckLetter(dni[1]!) === dni[2]!;
+  } else if (nie) {
+    const pre: Record<string, string> = { X: '0', Y: '1', Z: '2' };
+    numDocument = nie[1]! + nie[2]! + nie[3]!;
+    tipusDocument = 'NIE';
+    valid = dniCheckLetter(`${pre[nie[1]!]}${nie[2]!}`) === nie[3]!;
+  }
+
+  // --- Dates (DD MM YYYY / DD-MM-YYYY) → naixement = la més antiga ---
+  const dates: string[] = [];
+  const reDate = /\b(\d{2})[\s.\/-](\d{2})[\s.\/-](\d{4})\b/g;
+  let md: RegExpExecArray | null;
+  while ((md = reDate.exec(text))) {
+    const dd = Number(md[1]);
+    const mm = Number(md[2]);
+    const yy = Number(md[3]);
+    if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31 && yy >= 1900 && yy <= 2100) {
+      dates.push(`${md[3]}-${md[2]}-${md[1]}`);
+    }
+  }
+  dates.sort();
+  const dataNaixement = dates[0];
+
+  // --- Sexe ---
+  let sexe: ViatgerOcr['sexe'];
+  const sx = text.match(/\bSEXO\b[^A-Z0-9]{0,4}([MF])\b/);
+  if (sx) sexe = sx[1] === 'M' ? 'HOME' : 'DONA';
+
+  // --- Nom i cognoms (per etiquetes APELLIDOS / NOMBRE) ---
+  const up = lines.map((l) => l.toUpperCase());
+  const isLabel = (s: string) =>
+    /APELLIDOS|NOMBRE|SEXO|NACIONALIDAD|VALIDEZ|NACIMIENTO|DOCUMENTO|IDESP|SOPORT|EQUIPO|^ESP$|NACIONAL/.test(s);
+  const ai = up.findIndex((l) => l.includes('APELLIDOS'));
+  const ni = up.findIndex((l) => /\bNOMBRE\b/.test(l));
+  const clean = (s: string) => s.replace(/[^A-Za-zÀ-ÿ'\s-]/g, '').trim();
+  let cognom1 = '';
+  let cognom2: string | undefined;
+  let nom = '';
+  if (ai >= 0) {
+    const end = ni > ai ? ni : ai + 3;
+    const sur = lines
+      .slice(ai + 1, end)
+      .map(clean)
+      .filter((w) => w.length >= 2 && !isLabel(w.toUpperCase()));
+    if (sur[0]) cognom1 = titlecase(sur[0]);
+    if (sur[1]) cognom2 = titlecase(sur[1]);
+  }
+  if (ni >= 0) {
+    const cand = lines
+      .slice(ni + 1, ni + 3)
+      .map(clean)
+      .filter((w) => w.length >= 2 && !isLabel(w.toUpperCase()));
+    if (cand[0]) nom = titlecase(cand[0]);
+  }
+
+  if (!numDocument && !cognom1 && !nom) return null; // res aprofitable
+  return {
+    nom,
+    cognom1,
+    cognom2,
+    tipusDocument,
+    numDocument,
+    sexe,
+    dataNaixement,
+    nacionalitat: /\bESP\b|ESPAÑOL|ESPANOL|ESPANYA/.test(text) ? 'Espanya' : undefined,
+    valid,
+  };
+}
+
 /** Converteix el resultat MRZ als camps del formulari de viatger. */
 export function mrzToViatger(m: MrzResult): ViatgerOcr {
   return {

@@ -5,7 +5,7 @@ import { ScanLine, Upload, CheckCircle2, AlertTriangle, FileText, Trash2, Lock }
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/input';
 import { optionsFrom, tipusDocumentPujatValues, TIPUS_DOCUMENT_PUJAT_LABELS } from '@/lib/validation/enums';
-import { findMrzLines, parseMrz, mrzToViatger, type ViatgerOcr } from '@/lib/ocr/mrz';
+import { findMrzLines, parseMrz, mrzToViatger, parseDniFront, type ViatgerOcr } from '@/lib/ocr/mrz';
 
 const MRZ_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<';
 
@@ -53,26 +53,54 @@ export function DocumentScanner({
           if (m.status === 'recognizing text') setProgress(Math.round(m.progress * 100));
         },
       });
+      // 1a passada: zona MRZ (darrere del DNI / sota del passaport) amb alfabet
+      // restringit, que és la lectura més fiable (porta dígits de control).
       await worker.setParameters({ tessedit_char_whitelist: MRZ_CHARS });
-      const { data } = await worker.recognize(file);
+      const passMrz = await worker.recognize(file);
+      const mrz = parseMrz(findMrzLines(passMrz.data.text));
+
+      let result: ViatgerOcr | null = mrz && mrz.valid ? mrzToViatger(mrz) : null;
+      let source: 'mrz' | 'front' | null = result ? 'mrz' : null;
+
+      if (!result) {
+        // 2a passada: text complet (cara del DAVANT), sense restricció d'alfabet.
+        await worker.setParameters({ tessedit_char_whitelist: '' });
+        const passFront = await worker.recognize(file);
+        const front = parseDniFront(passFront.data.text);
+        if (front) {
+          result = front;
+          source = 'front';
+        } else if (mrz) {
+          result = mrzToViatger(mrz); // MRZ llegida però amb algun dígit dubtós
+          source = 'mrz';
+        }
+      }
       await worker.terminate();
 
-      const mrz = parseMrz(findMrzLines(data.text));
-      if (!mrz) {
+      if (!result) {
         setMsg({
           tone: 'warn',
-          text: 'Document desat. No s’ha trobat la zona MRZ per autoreplenar: si és un DNI/passaport, fes una foto nítida on es vegin les línies «<<<».',
+          text: 'Document desat, però no s’han pogut llegir les dades. Fes una foto nítida i ben enquadrada (DNI: la cara del davant; o el darrere amb les línies «<<<»). Pots omplir-ho a mà.',
         });
         return;
       }
-      const v = mrzToViatger(mrz);
-      onExtract(v);
-      setMsg({
-        tone: v.valid ? 'ok' : 'warn',
-        text: v.valid
-          ? 'Document llegit i validat. Revisa els accents (la MRZ no en porta).'
-          : 'Document llegit, però algun dígit de control no quadra: revisa les dades.',
-      });
+
+      onExtract(result);
+      if (source === 'mrz') {
+        setMsg({
+          tone: result.valid ? 'ok' : 'warn',
+          text: result.valid
+            ? 'Document llegit i validat (MRZ). Revisa els accents (la MRZ no en porta).'
+            : 'Document llegit (MRZ), però algun dígit de control no quadra: revisa les dades.',
+        });
+      } else {
+        setMsg({
+          tone: result.valid ? 'ok' : 'warn',
+          text: result.valid
+            ? 'Dades llegides del davant (número validat). Revisa-les, sobretot els accents.'
+            : 'Dades llegides del davant. Revisa-les bé: la lectura de la cara és aproximada.',
+        });
+      }
     } catch {
       setMsg({ tone: 'warn', text: 'Document desat, però no s’ha pogut llegir el text per autoreplenar.' });
     } finally {

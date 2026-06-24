@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { checkDigit, findMrzLines, parseMrz, mrzToViatger } from './mrz';
+import { checkDigit, findMrzLines, parseMrz, mrzToViatger, parseDniFront, dniCheckLetter } from './mrz';
 
 describe('checkDigit (MRZ)', () => {
   it('calcula el dígit de control ICAO', () => {
@@ -75,5 +75,56 @@ describe('findMrzLines + Spanish DNI', () => {
 
   it('retorna null si no hi ha MRZ', () => {
     expect(parseMrz(['HOLA MON', 'SENSE MRZ'])).toBeNull();
+  });
+});
+
+describe('dniCheckLetter', () => {
+  it('calcula la lletra del DNI (mòdul 23)', () => {
+    expect(dniCheckLetter('12345678')).toBe('Z');
+    expect(dniCheckLetter('00000000')).toBe('T');
+  });
+});
+
+describe('parseDniFront (cara del davant)', () => {
+  const text = [
+    'DOCUMENTO NACIONAL DE IDENTIDAD',
+    'APELLIDOS',
+    'GARCIA',
+    'LOPEZ',
+    'NOMBRE',
+    'JUAN',
+    'SEXO  M   NACIONALIDAD  ESP',
+    'FECHA DE NACIMIENTO 15 03 1990',
+    'VALIDEZ 01 01 2030',
+    'DNI 12345678Z',
+  ].join('\n');
+
+  it('extreu document (validat), nom, cognoms, sexe i naixement', () => {
+    const v = parseDniFront(text)!;
+    expect(v.numDocument).toBe('12345678Z');
+    expect(v.tipusDocument).toBe('DNI_NIF');
+    expect(v.valid).toBe(true); // la lletra quadra
+    expect(v.cognom1).toBe('Garcia');
+    expect(v.cognom2).toBe('Lopez');
+    expect(v.nom).toBe('Juan');
+    expect(v.sexe).toBe('HOME');
+    expect(v.dataNaixement).toBe('1990-03-15'); // la data més antiga
+    expect(v.nacionalitat).toBe('Espanya');
+  });
+
+  it('marca valid=false si la lletra del DNI no quadra', () => {
+    const v = parseDniFront('DNI 12345678A')!;
+    expect(v.numDocument).toBe('12345678A');
+    expect(v.valid).toBe(false);
+  });
+
+  it('detecta NIE', () => {
+    const v = parseDniFront('NIE X1234567L')!;
+    expect(v.tipusDocument).toBe('NIE');
+    expect(v.numDocument).toBe('X1234567L');
+  });
+
+  it('retorna null si no hi ha res aprofitable', () => {
+    expect(parseDniFront('text qualsevol sense dades')).toBeNull();
   });
 });
