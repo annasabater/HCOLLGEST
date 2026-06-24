@@ -1,6 +1,6 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
+import { BackLink } from '@/components/ui/back-link';
 import { prisma } from '@/lib/db';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,9 +37,7 @@ export default async function ActiuDetailPage({ params }: { params: Promise<{ id
 
   return (
     <div>
-      <Link href="/actius" className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
-        <ArrowLeft className="h-4 w-4" /> Actius
-      </Link>
+      <BackLink fallback="/actius">Actius</BackLink>
       <PageHeader
         title={actiu.nom}
         subtitle={`${actiu.categoria} · ${info.anysAntiguitat} anys d’antiguitat`}

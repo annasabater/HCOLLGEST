@@ -26,6 +26,7 @@ export async function GET(req: Request) {
   const mesParam = sp.get('mes');
   const anyParam = sp.get('any');
   const situacioParam = sp.get('situacio');
+  const incloureCustodia = sp.get('custodia') !== 'false';
 
   let title: string;
   let sections: ReportSection[];
@@ -37,8 +38,8 @@ export async function GET(req: Request) {
       if (!m) return badRequest('Data no vàlida (YYYY-MM-DD)');
       dataTall = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59, 999);
     }
-    const b = await getBalancSituacio(dataTall);
-    title = `Balanç de situació ${b.data}`;
+    const b = await getBalancSituacio(dataTall, { incloureCustodia });
+    title = `Balanç de situació ${b.data}${b.inclouCustodia ? '' : ' sense custòdia'}`;
     sections = [
       {
         heading: 'Actiu',

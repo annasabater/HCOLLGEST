@@ -9,7 +9,9 @@ export async function GET(req: Request) {
   const auth = await authorize(ROLES_ADMIN);
   if (auth instanceof Response) return auth;
 
-  const dataParam = new URL(req.url).searchParams.get('data'); // YYYY-MM-DD
+  const params = new URL(req.url).searchParams;
+  const dataParam = params.get('data'); // YYYY-MM-DD
+  const incloureCustodia = params.get('custodia') !== 'false';
   let dataTall = new Date();
   if (dataParam) {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dataParam);
@@ -18,7 +20,7 @@ export async function GET(req: Request) {
     dataTall = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59, 999);
   }
 
-  return ok(await getBalancSituacio(dataTall));
+  return ok(await getBalancSituacio(dataTall, { incloureCustodia }));
 }
 
 export const dynamic = 'force-dynamic';

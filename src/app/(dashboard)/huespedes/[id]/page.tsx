@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Ban, BedDouble, CalendarCheck, Moon, Pencil } from 'lucide-react';
+import { Ban, BedDouble, CalendarCheck, Moon, Pencil } from 'lucide-react';
+import { BackLink } from '@/components/ui/back-link';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
@@ -62,9 +63,7 @@ export default async function HuespedDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div>
-      <Link href="/huespedes" className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
-        <ArrowLeft className="h-4 w-4" /> Hostes
-      </Link>
+      <BackLink fallback="/huespedes">Hostes</BackLink>
       <PageHeader
         title={`${huesped.nom} ${huesped.cognom1} ${huesped.cognom2 ?? ''}`}
         subtitle={

@@ -72,6 +72,7 @@ interface BalancAny extends Breakdowns {
 
 interface BalancSituacio {
   data: string;
+  inclouCustodia: boolean;
   actiu: {
     noCorrent: { immobilitzatBrut: number };
     corrent: { deutors: number; tresoreriaFiances: number };
@@ -272,13 +273,19 @@ export default function BalancPage() {
   const [any, setAny] = useState<BalancAny | null>(null);
   const [dataTall, setDataTall] = useState(todayISO);
   const [situacio, setSituacio] = useState<BalancSituacio | null>(null);
+  const [incloureCustodiaSituacio, setIncloureCustodiaSituacio] = useState(true);
 
   const mesParam = `${anchor.getFullYear()}-${String(anchor.getMonth() + 1).padStart(2, '0')}`;
   const loadMes = useCallback(async () => setMes(await getJSON<Balanc>(`/api/balanc?mes=${mesParam}`)), [mesParam]);
   const loadAny = useCallback(async () => setAny(await getJSON<BalancAny>(`/api/balanc/any?any=${year}`)), [year]);
   const loadSituacio = useCallback(
-    async () => setSituacio(await getJSON<BalancSituacio>(`/api/balanc/situacio?data=${dataTall}`)),
-    [dataTall],
+    async () =>
+      setSituacio(
+        await getJSON<BalancSituacio>(
+          `/api/balanc/situacio?data=${dataTall}&custodia=${incloureCustodiaSituacio ? 'true' : 'false'}`,
+        ),
+      ),
+    [dataTall, incloureCustodiaSituacio],
   );
   useEffect(() => {
     if (mode === 'mes') loadMes();
@@ -331,7 +338,7 @@ export default function BalancPage() {
     } else if (mode === 'situacio' && situacio) {
       const s = situacio;
       const rows: (string | number)[][] = [
-        [`Balanç de situació ${s.data}`, ''],
+        [`Balanç de situació ${s.data}${s.inclouCustodia ? '' : ' sense custòdia'}`, ''],
         ['ACTIU', ''],
         ['Actiu no corrent', ''],
         ['  Immobilitzat material (valor brut)', s.actiu.noCorrent.immobilitzatBrut.toFixed(2)],
@@ -381,7 +388,7 @@ export default function BalancPage() {
                   ? `/api/balanc/pdf?mes=${mesParam}`
                   : mode === 'any'
                     ? `/api/balanc/pdf?any=${year}`
-                    : `/api/balanc/pdf?situacio=${dataTall}`
+                    : `/api/balanc/pdf?situacio=${dataTall}&custodia=${incloureCustodiaSituacio ? 'true' : 'false'}`
               }
               target="_blank"
               rel="noreferrer"
@@ -524,7 +531,7 @@ export default function BalancPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Scale className="h-4 w-4 text-slate-400" />
             <label className="text-sm text-slate-600" htmlFor="data-tall">
               A data de
@@ -539,6 +546,22 @@ export default function BalancPage() {
             <Button variant="outline" size="sm" onClick={() => setDataTall(todayISO())}>
               Avui
             </Button>
+            <div className="ml-2 flex overflow-hidden rounded-lg border border-slate-300">
+              <button
+                type="button"
+                onClick={() => setIncloureCustodiaSituacio(true)}
+                className={cn('px-3 py-1.5 text-sm', incloureCustodiaSituacio ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}
+              >
+                Amb custòdia
+              </button>
+              <button
+                type="button"
+                onClick={() => setIncloureCustodiaSituacio(false)}
+                className={cn('border-l border-slate-300 px-3 py-1.5 text-sm', !incloureCustodiaSituacio ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}
+              >
+                Sense custòdia
+              </button>
+            </div>
           </div>
           {situacio && <SituacioView data={situacio} />}
         </div>

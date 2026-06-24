@@ -17,10 +17,18 @@ const DOC: Record<string, string> = {
   FACTURA_SIMPLIFICADA: 'Factura simplificada',
 };
 
-export default async function ImprimirFacturaPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ImprimirFacturaPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ fianca?: string }>;
+}) {
   const user = await getSessionUser();
   if (!user) redirect('/login');
   const { id } = await params;
+  const sp = await searchParams;
+  const incloureFianca = sp?.fianca === 'true';
 
   const factura = await prisma.factura.findFirst({
     where: { id, deletedAt: null },
@@ -31,6 +39,7 @@ export default async function ImprimirFacturaPage({ params }: { params: Promise<
         include: {
           habitacio: true,
           viatgers: { where: { esTitular: true }, include: { huesped: true } },
+          diposits: { where: { estat: 'EN_CUSTODIA' }, orderBy: { data: 'asc' } },
         },
       },
       verifactu: true,
@@ -44,6 +53,9 @@ export default async function ImprimirFacturaPage({ params }: { params: Promise<
   const base = Number(factura.base);
   const iva = Number(factura.iva);
   const total = Number(factura.total);
+  const fiances = incloureFianca ? factura.estancia.diposits : [];
+  const totalFianca = fiances.reduce((a, f) => a + Number(f.import), 0);
+  const totalAmbFianca = total + totalFianca;
   const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
   const tassa = round2(total - base - iva);
   const ivaPercent = base > 0 ? round2((iva / base) * 100) : 0;
@@ -126,6 +138,11 @@ export default async function ImprimirFacturaPage({ params }: { params: Promise<
               <div className="mb-3 font-serif text-2xl tracking-wide text-brand-800">
                 {DOC[factura.tipusDocument] ?? 'Factura'}
               </div>
+              {incloureFianca && (
+                <div className="mb-3 text-[10px] uppercase tracking-wider text-amber-700">
+                  Còpia amb fiança
+                </div>
+              )}
               <div className="flex items-baseline justify-end gap-3 text-sm">
                 <span className="text-[10px] uppercase tracking-wider text-slate-400">Número</span>
                 <span className="min-w-24 font-semibold text-slate-700">{factura.numero}</span>
@@ -188,10 +205,38 @@ export default async function ImprimirFacturaPage({ params }: { params: Promise<
                 <span className="font-semibold tabular-nums">{formatEur(tassa)}</span>
               </div>
             )}
+            {incloureFianca && totalFianca > 0 && (
+              <>
+                <div className="mt-2 border-t border-stone-200 px-3 py-2 text-[11px] uppercase tracking-wider text-slate-400">
+                  Fiança separada
+                </div>
+                {fiances.map((f) => (
+                  <div key={f.id} className="flex items-start justify-between px-3 py-2 text-sm">
+                    <span className="max-w-40 text-slate-500">
+                      Fiança en custòdia
+                      {f.notes ? <span className="block text-xs text-slate-400">{f.notes}</span> : null}
+                    </span>
+                    <span className="font-semibold tabular-nums">{formatEur(Number(f.import))}</span>
+                  </div>
+                ))}
+              </>
+            )}
             <div className="mt-1.5 flex items-center justify-between rounded border-t-2 border-brand-500 bg-brand-50 px-3 py-3">
               <span className="font-serif text-base tracking-wide text-brand-800">Total</span>
               <span className="text-xl font-semibold tabular-nums text-brand-800">{formatEur(total)}</span>
             </div>
+            {incloureFianca && totalFianca > 0 && (
+              <div className="mt-2 rounded border border-amber-200 bg-amber-50 px-3 py-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-amber-800">Total lliurat amb fiança</span>
+                  <span className="font-semibold tabular-nums text-amber-900">{formatEur(totalAmbFianca)}</span>
+                </div>
+                <p className="mt-1 text-[11px] leading-snug text-amber-700">
+                  La fiança queda en custòdia i no forma part de la base imposable ni de l’ingrés de la
+                  factura.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Peu */}

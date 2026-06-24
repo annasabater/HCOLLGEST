@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { BackLink } from '@/components/ui/back-link';
 import { prisma } from '@/lib/db';
 import { PageHeader } from '@/components/ui/page-header';
 import { MasterForm, type MasterFormInitial } from '@/components/forms/master-form';
@@ -67,12 +66,7 @@ export default async function EditarEstadaPage({ params }: { params: Promise<{ i
 
   return (
     <div>
-      <Link
-        href={`/estancies/${id}`}
-        className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700"
-      >
-        <ArrowLeft className="h-4 w-4" /> Estada
-      </Link>
+      <BackLink fallback={`/estancies/${id}`}>Estada</BackLink>
       <PageHeader
         title="Editar estada"
         subtitle={`Contracte ${estancia.numContracte}/${estancia.anyContracte}${

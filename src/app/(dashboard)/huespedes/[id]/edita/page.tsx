@@ -1,6 +1,5 @@
-import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { BackLink } from '@/components/ui/back-link';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
@@ -43,12 +42,7 @@ export default async function HuespedEditPage({ params }: { params: Promise<{ id
 
   return (
     <div>
-      <Link
-        href={`/huespedes/${id}`}
-        className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700"
-      >
-        <ArrowLeft className="h-4 w-4" /> Fitxa
-      </Link>
+      <BackLink fallback={`/huespedes/${id}`}>Fitxa</BackLink>
       <PageHeader title={`Editar ${h.nom} ${h.cognom1}`} subtitle="Es manté el historial intacte" />
       <HuespedEditForm huespedId={id} initial={initial} />
     </div>

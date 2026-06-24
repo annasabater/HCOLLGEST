@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Send, Receipt, FileSignature, Pencil } from 'lucide-react';
+import { Send, Receipt, FileSignature, Pencil } from 'lucide-react';
+import { BackLink } from '@/components/ui/back-link';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
@@ -81,9 +82,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
 
   return (
     <div>
-      <Link href="/estancies" className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
-        <ArrowLeft className="h-4 w-4" /> Estades
-      </Link>
+      <BackLink fallback="/estancies">Estades</BackLink>
       <PageHeader
         title={titular ? `${titular.nom} ${titular.cognom1}` : 'Estada'}
         subtitle={`Contracte ${estancia.numContracte}/${estancia.anyContracte}`}

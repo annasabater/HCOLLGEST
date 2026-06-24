@@ -1,6 +1,5 @@
-import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { BackLink } from '@/components/ui/back-link';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { PageHeader } from '@/components/ui/page-header';
@@ -29,9 +28,7 @@ export default async function TreballadorDetailPage({ params }: { params: Promis
 
   return (
     <div>
-      <Link href="/personal" className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
-        <ArrowLeft className="h-4 w-4" /> Personal
-      </Link>
+      <BackLink fallback="/personal">Personal</BackLink>
       <PageHeader
         title={t.nom}
         subtitle={`${t.carrec}${t.preuHora ? ` · ${Number(t.preuHora)} €/h` : ''}${t.dni ? ` · ${t.dni}` : ''}`}

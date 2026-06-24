@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Printer, ShieldCheck } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import { PageHeader } from '@/components/ui/page-header';
 import { FinancesNav } from '@/components/balanc/finances-nav';
@@ -15,7 +16,12 @@ export default async function FacturesPage() {
     orderBy: { data: 'desc' },
     take: 100,
     include: {
-      estancia: { include: { viatgers: { where: { esTitular: true }, include: { huesped: true } } } },
+      estancia: {
+        include: {
+          viatgers: { where: { esTitular: true }, include: { huesped: true } },
+          diposits: { where: { estat: 'EN_CUSTODIA' } },
+        },
+      },
     },
   });
 
@@ -53,6 +59,7 @@ export default async function FacturesPage() {
           <tbody>
             {factures.map((f) => {
               const t = f.estancia.viatgers[0]?.huesped;
+              const teFianca = f.estancia.diposits.length > 0;
               return (
                 <Tr key={f.id}>
                   <Td>
@@ -75,6 +82,30 @@ export default async function FacturesPage() {
                     <Badge tone={f.estat === 'COBRADA' ? 'success' : 'warning'}>
                       {f.estat === 'COBRADA' ? 'Cobrada' : 'Pendent'}
                     </Badge>
+                  </Td>
+                  <Td>
+                    <div className="flex flex-wrap gap-2">
+                      <Link
+                        href={`/imprimir/factura/${f.id}`}
+                        target="_blank"
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        <Printer className="h-3.5 w-3.5" /> Sense fiança
+                      </Link>
+                      {teFianca ? (
+                        <Link
+                          href={`/imprimir/factura/${f.id}?fianca=true`}
+                          target="_blank"
+                          className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                        >
+                          <ShieldCheck className="h-3.5 w-3.5" /> Amb fiança
+                        </Link>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-400">
+                          <ShieldCheck className="h-3.5 w-3.5" /> Amb fiança
+                        </span>
+                      )}
+                    </div>
                   </Td>
                 </Tr>
               );

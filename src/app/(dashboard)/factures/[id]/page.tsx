@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, ShieldCheck, Printer } from 'lucide-react';
+import { ShieldCheck, Printer } from 'lucide-react';
+import { BackLink } from '@/components/ui/back-link';
 import QRCode from 'qrcode';
 import { prisma } from '@/lib/db';
 import { PageHeader } from '@/components/ui/page-header';
@@ -54,12 +55,7 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div>
-      <Link
-        href="/factures"
-        className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700"
-      >
-        <ArrowLeft className="h-4 w-4" /> Facturació
-      </Link>
+      <BackLink fallback="/factures">Facturació</BackLink>
       <PageHeader
         title={`Factura ${factura.numero}`}
         subtitle={titular ? `${titular.nom} ${titular.cognom1}` : undefined}
@@ -74,7 +70,14 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
               target="_blank"
               className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              <Printer className="h-4 w-4" /> Imprimir / PDF
+              <Printer className="h-4 w-4" /> PDF sense fiança
+            </Link>
+            <Link
+              href={`/imprimir/factura/${factura.id}?fianca=true`}
+              target="_blank"
+              className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-100"
+            >
+              <ShieldCheck className="h-4 w-4" /> PDF amb fiança
             </Link>
             <EliminarFactura
               id={factura.id}
