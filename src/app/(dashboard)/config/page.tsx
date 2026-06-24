@@ -6,6 +6,7 @@ import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfigForm } from '@/components/config/config-form';
 import { BackupEmailButton } from '@/components/config/backup-email-button';
 import { DriveConnect } from '@/components/config/drive-connect';
+import { TarifesNeteja } from '@/components/config/tarifes-neteja';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,6 +43,8 @@ export default async function ConfigPage({
         <PageHeader title="Configuració" subtitle="Establiment, Mossos, facturació i RGPD" />
         <ConfigForm />
       </div>
+
+      <TarifesNeteja />
 
       <Card>
         <CardHeader className="flex items-center gap-2">

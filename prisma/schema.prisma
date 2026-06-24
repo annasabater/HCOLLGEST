@@ -262,6 +262,11 @@ model Establiment {
   benvingudaAutomatica Boolean @default(false) @map("benvinguda_automatica")
   benvingudaTothom     Boolean @default(false) @map("benvinguda_tothom")
 
+  // Tarifes de neteja (per registrar el pagament a la dona de neteja).
+  preuNetejaSortida     Decimal? @map("preu_neteja_sortida") @db.Decimal(10, 2)
+  preuNetejaManteniment Decimal? @map("preu_neteja_manteniment") @db.Decimal(10, 2)
+  preuNetejaZones       Decimal? @map("preu_neteja_zones") @db.Decimal(10, 2) // pack passadís+vorera+pati
+
   estancies Estancia[]
 
   createdAt DateTime @default(now()) @map("created_at")

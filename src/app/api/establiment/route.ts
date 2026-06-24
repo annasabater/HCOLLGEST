@@ -52,6 +52,10 @@ const PatchSchema = z.object({
   telefon: z.string().optional(),
   iban: z.string().optional(),
   descriptor: z.string().optional(),
+  // Tarifes de neteja.
+  preuNetejaSortida: z.coerce.number().min(0).optional(),
+  preuNetejaManteniment: z.coerce.number().min(0).optional(),
+  preuNetejaZones: z.coerce.number().min(0).optional(),
 });
 
 // Camps de text de la factura que, si arriben buits, es desen com a null.

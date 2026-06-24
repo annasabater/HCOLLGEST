@@ -9,7 +9,7 @@ import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getJSON, putJSON, patchJSON } from '@/lib/api';
+import { getJSON, postJSON, putJSON, patchJSON, ApiError } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { toISODate, addDays } from '@/lib/dates';
 import { tipusNetejaValues, TIPUS_NETEJA_LABELS } from '@/lib/validation/enums';
@@ -56,6 +56,10 @@ export default function NetejaPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [tarifes, setTarifes] = useState({ s: 0, m: 0, z: 0 });
+  const [zonesComunes, setZonesComunes] = useState(false);
+  const [pagant, setPagant] = useState(false);
+  const [pagMsg, setPagMsg] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
 
   // Si s'arriba des del calendari amb ?data=YYYY-MM-DD, obre aquell dia.
   useEffect(() => {
@@ -73,6 +77,19 @@ export default function NetejaPage() {
       const first = r.treballadors[0];
       if (first) setPersonId((p) => p || first.id);
     });
+    getJSON<{
+      establiment: {
+        preuNetejaSortida: string | null;
+        preuNetejaManteniment: string | null;
+        preuNetejaZones: string | null;
+      };
+    }>('/api/establiment').then((r) =>
+      setTarifes({
+        s: Number(r.establiment.preuNetejaSortida ?? 0),
+        m: Number(r.establiment.preuNetejaManteniment ?? 0),
+        z: Number(r.establiment.preuNetejaZones ?? 0),
+      }),
+    );
   }, []);
 
   // Tasques del dia triat.
@@ -164,6 +181,36 @@ export default function NetejaPage() {
 
   const seleccionades = rows.filter((r) => r.checked).length;
   const persona = treballadors.find((t) => t.id === personId);
+
+  // Càlcul del pagament a la dona de neteja segons les tarifes.
+  const nSortides = rows.filter((r) => r.checked && r.tipus === 'CANVI_COMPLET').length;
+  const nManteniments = rows.filter((r) => r.checked && r.tipus === 'REPAS').length;
+  const aPagar =
+    Math.round(
+      (nSortides * tarifes.s + nManteniments * tarifes.m + (zonesComunes ? tarifes.z : 0)) * 100,
+    ) / 100;
+  const senseTarifes = tarifes.s === 0 && tarifes.m === 0 && tarifes.z === 0;
+
+  async function registrarPagament() {
+    if (!personId || aPagar <= 0) return;
+    setPagant(true);
+    setPagMsg(null);
+    try {
+      await postJSON('/api/neteja/pagament', {
+        treballadorId: personId,
+        data,
+        sortides: nSortides,
+        manteniments: nManteniments,
+        zones: zonesComunes,
+      });
+      setPagMsg({ tone: 'ok', text: `Pagament de ${aPagar.toFixed(2)} € registrat.` });
+      loadWeek();
+    } catch (e) {
+      setPagMsg({ tone: 'err', text: e instanceof ApiError ? e.message : 'Error registrant el pagament' });
+    } finally {
+      setPagant(false);
+    }
+  }
 
   const nomPersona = (id: string | null) =>
     id ? (treballadors.find((t) => t.id === id)?.nom ?? 'Algú') : 'Sense assignar';
@@ -319,6 +366,49 @@ export default function NetejaPage() {
               <span className="flex items-center gap-1 text-sm text-green-600">
                 <CheckCheck className="h-4 w-4" /> Desat
               </span>
+            )}
+          </div>
+
+          {/* Pagament a la dona de neteja segons les tarifes configurades */}
+          <div className="space-y-2 rounded-lg bg-slate-50 px-3 py-3">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-brand-700"
+                checked={zonesComunes}
+                onChange={(e) => setZonesComunes(e.target.checked)}
+              />
+              Zones comunes (passadís, vorera, pati){tarifes.z ? ` · ${tarifes.z.toFixed(2)} €` : ''}
+            </label>
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <span className="text-slate-600">
+                A pagar: <strong className="text-slate-900">{aPagar.toFixed(2)} €</strong>
+                <span className="text-slate-400">
+                  {' '}
+                  ({nSortides} sortida{nSortides !== 1 ? 'es' : ''} · {nManteniments} manteniment
+                  {nManteniments !== 1 ? 's' : ''}
+                  {zonesComunes ? ' · zones' : ''})
+                </span>
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={registrarPagament}
+                disabled={pagant || !personId || aPagar <= 0}
+              >
+                {pagant ? 'Registrant…' : 'Registrar pagament'}
+              </Button>
+              {pagMsg && (
+                <span className={pagMsg.tone === 'ok' ? 'text-green-600' : 'text-red-600'}>
+                  {pagMsg.text}
+                </span>
+              )}
+            </div>
+            {senseTarifes && (
+              <p className="text-xs text-amber-600">
+                Configura les tarifes a Configuració → Tarifes de neteja.
+              </p>
             )}
           </div>
 
