@@ -30,8 +30,7 @@ import { isMenor } from '@/lib/dates';
 import { postJSON, ApiError, getJSON } from '@/lib/api';
 import { formatWarnings } from '@/lib/validation/documents';
 import { PROVINCIES, PAISOS } from '@/lib/data/geo';
-import { DocumentScanner } from '@/components/ocr/document-scanner';
-import { PendingDocs, type PendingDoc } from '@/components/ocr/pending-docs';
+import { DocumentScanner, type PendingDoc } from '@/components/ocr/document-scanner';
 import { HosteSearch, type HosteLite } from '@/components/forms/hoste-search';
 import type { ViatgerOcr } from '@/lib/ocr/mrz';
 
@@ -807,14 +806,11 @@ export function MasterForm({
                     <DocumentScanner
                       onExtract={(ocr) => applyOcr(i, ocr)}
                       onImage={(file) => addDoc(i, file)}
+                      docs={v._docs ?? []}
+                      onRemoveDoc={(docId) => removeDoc(i, docId)}
+                      onTipusDoc={(docId, tipus) => setDocTipus(i, docId, tipus)}
                     />
                   </div>
-                  <PendingDocs
-                    docs={v._docs ?? []}
-                    onAdd={(file) => addDoc(i, file)}
-                    onRemove={(docId) => removeDoc(i, docId)}
-                    onTipus={(docId, tipus) => setDocTipus(i, docId, tipus)}
-                  />
                   <Field label="Tipus de document" required={!menor} error={err(P('tipusDocument'))}>
                     <Select
                       value={v.tipusDocument}
