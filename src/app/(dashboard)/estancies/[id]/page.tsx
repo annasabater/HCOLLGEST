@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Send, Receipt, FileSignature, Coins } from 'lucide-react';
+import { ArrowLeft, Send, Receipt, FileSignature, Coins, Pencil } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
@@ -89,6 +89,13 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 <FileSignature className="h-4 w-4" /> Fitxa PDF
               </Button>
             </a>
+            {canWrite && (
+              <Link href={`/estancies/${estancia.id}/edita`}>
+                <Button variant="outline" size="sm">
+                  <Pencil className="h-4 w-4" /> Editar
+                </Button>
+              </Link>
+            )}
             {canWrite && (
               <EliminarEstada
                 id={estancia.id}

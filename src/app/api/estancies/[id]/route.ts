@@ -4,17 +4,34 @@ import { authorize, clientIp } from '@/lib/auth/guard';
 import { ROLES_WRITE } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
 import { handleApiError, notFound, ok } from '@/lib/http';
+import { TipusPagamentEnum } from '@/lib/validation/enums';
 
 type Ctx = { params: Promise<{ id: string }> };
 
-const UpdateSchema = z.object({
-  estat: z.enum(['RESERVA', 'EN_CURS', 'FINALITZADA', 'CANCELLADA']).optional(),
-  observacions: z.string().optional(),
-  habitacioId: z.string().nullable().optional(),
-  avisDadesParat: z.boolean().optional(),
-  avisMossosParat: z.boolean().optional(),
-  esBorrany: z.boolean().optional(),
-});
+const UpdateSchema = z
+  .object({
+    estat: z.enum(['RESERVA', 'EN_CURS', 'FINALITZADA', 'CANCELLADA']).optional(),
+    observacions: z.string().nullable().optional(),
+    habitacioId: z.string().nullable().optional(),
+    avisDadesParat: z.boolean().optional(),
+    avisMossosParat: z.boolean().optional(),
+    esBorrany: z.boolean().optional(),
+    // Edició de l'estada.
+    dataEntrada: z.coerce.date().optional(),
+    dataSortida: z.coerce.date().optional(),
+    tipusPagament: TipusPagamentEnum.optional(),
+    numHabitacions: z.coerce.number().int().min(0).nullable().optional(),
+    teInternet: z.boolean().optional(),
+  })
+  .superRefine((d, ctx) => {
+    if (d.dataEntrada && d.dataSortida && d.dataSortida <= d.dataEntrada) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dataSortida'],
+        message: 'La data de sortida ha de ser posterior a l’entrada',
+      });
+    }
+  });
 
 // GET /api/estancies/:id — detalle completo
 export async function GET(_req: Request, ctx: Ctx) {
