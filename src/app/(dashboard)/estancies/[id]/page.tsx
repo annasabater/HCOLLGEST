@@ -13,6 +13,7 @@ import { EstanciaActions } from '@/components/estancia/estancia-actions';
 import { ViatgerFirma } from '@/components/estancia/viatger-firma';
 import { AmpliarEstada } from '@/components/estancia/ampliar-estada';
 import { EliminarEstada } from '@/components/estancia/eliminar-estada';
+import { TreureEsborrany } from '@/components/estancia/treure-esborrany';
 import { FacturaPanel } from '@/components/factura/factura-panel';
 import { PagamentsPanel } from '@/components/factura/pagaments-panel';
 import { DipositsPanel } from '@/components/factura/diposits-panel';
@@ -97,9 +98,12 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
               />
             )}
             {estancia.esBorrany && (
-              <Badge tone="warning" title="Registre incomplet: completa les dades per poder pujar-lo a Mossos.">
-                Esborrany
-              </Badge>
+              <>
+                <Badge tone="warning" title="Registre incomplet: completa les dades per poder pujar-lo a Mossos.">
+                  Esborrany
+                </Badge>
+                {canWrite && <TreureEsborrany estanciaId={estancia.id} />}
+              </>
             )}
             <Badge tone="info">{TIPUS_REGISTRE_LABELS[estancia.tipusRegistre]}</Badge>
           </div>
