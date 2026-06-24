@@ -13,14 +13,24 @@ export function DriveConnect({ connectada }: { connectada: boolean }) {
     setBusy(true);
     setMsg(null);
     try {
-      const r = await getJSON<{ ok: boolean; carpeta?: string; error?: string }>(
-        '/api/cron/drive-mensual?mes=actual',
-      );
-      setMsg(
-        r.ok
-          ? { tone: 'ok', text: `Fet! S’ha creat la carpeta ${r.carpeta} i s’ha pujat Hostes.xlsx al teu Drive.` }
-          : { tone: 'err', text: r.error ?? 'No s’ha pogut exportar.' },
-      );
+      const r = await getJSON<{
+        ok: boolean;
+        carpeta?: string;
+        fitxers?: string[];
+        errors?: string[];
+        error?: string;
+      }>('/api/cron/drive-mensual?mes=actual');
+      if (r.error) {
+        setMsg({ tone: 'err', text: r.error });
+      } else {
+        const n = r.fitxers?.length ?? 0;
+        const base = `S’han pujat ${n} fitxers a la carpeta ${r.carpeta} del teu Drive (${(r.fitxers ?? []).join(', ')}).`;
+        setMsg(
+          r.ok
+            ? { tone: 'ok', text: `Fet! ${base}` }
+            : { tone: 'err', text: `${base} Amb errors: ${(r.errors ?? []).join(' · ')}` },
+        );
+      }
     } catch (e) {
       setMsg({ tone: 'err', text: e instanceof ApiError ? e.message : 'Error provant l’export.' });
     } finally {
