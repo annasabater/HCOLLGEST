@@ -39,9 +39,9 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: '/huespedes', label: 'Clients', icon: Users },
       { href: '/estancies', label: 'Estades', icon: BedDouble },
+      { href: '/llibre', label: 'Llibre registre de viatgers', icon: BookText },
       { href: '/calendari', label: 'Calendari', icon: CalendarDays },
       { href: '/neteja', label: 'Neteja', icon: Sparkles },
-      { href: '/llibre', label: 'Llibre registre de viatgers', icon: BookText },
     ],
   },
   {

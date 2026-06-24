@@ -80,6 +80,7 @@ export async function GET(req: Request) {
       estat: t.estat,
       habitacio: t.habitacio?.nom ?? null,
       assignada: t.treballador?.nom ?? null,
+      estanciaId: t.vinculadaSortidaId ?? null, // estada de la qual surt la neteja
     })),
     serveis,
   });

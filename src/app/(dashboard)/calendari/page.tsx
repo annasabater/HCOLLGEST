@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, LogIn, LogOut, Sparkles, Check, Wrench } from 'lucide-react';
+import Link from 'next/link';
+import { ChevronLeft, ChevronRight, LogIn, LogOut, Sparkles, Check, Wrench, X } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { CalendariHabitacio } from '@/components/habitacio/calendari-habitacio';
@@ -22,6 +23,7 @@ interface Tasca {
   tipus: 'CANVI_COMPLET' | 'REPAS';
   estat: 'PENDENT' | 'FETA';
   habitacio: string | null;
+  estanciaId?: string | null;
 }
 interface ServeiEv {
   id: string;
@@ -45,6 +47,7 @@ export default function CalendariPage() {
   const [anchor, setAnchor] = useState(() => new Date());
   const [data, setData] = useState<CalData | null>(null);
   const [habitacions, setHabitacions] = useState<{ id: string; nom: string }[]>([]);
+  const [selected, setSelected] = useState<string | null>(null); // dia seleccionat (ISO)
 
   const days = mode === 'mes' ? monthGridDays(anchor) : weekDays(anchor);
 
@@ -78,6 +81,19 @@ export default function CalendariPage() {
   const monthLabel = new Intl.DateTimeFormat('ca-ES', { month: 'long', year: 'numeric' }).format(anchor);
   const compact = mode === 'mes';
   const todayIso = toISODate(new Date());
+
+  // Esdeveniments del dia seleccionat (per al panell de detall sota el calendari).
+  const onSel = (iso: string) => selected != null && toISODate(new Date(iso)) === selected;
+  const selEnt = data && selected ? data.entrades.filter((e) => onSel(e.data)) : [];
+  const selSort = data && selected ? data.sortides.filter((e) => onSel(e.data)) : [];
+  const selTasq = data && selected ? data.tasques.filter((t) => onSel(t.data)) : [];
+  const selServ = data && selected ? data.serveis.filter((s) => onSel(s.data)) : [];
+  const selEmpty = !selEnt.length && !selSort.length && !selTasq.length && !selServ.length;
+  const selLabel = selected
+    ? new Intl.DateTimeFormat('ca-ES', { weekday: 'long', day: 'numeric', month: 'long' }).format(
+        new Date(selected),
+      )
+    : '';
 
   return (
     <div>
@@ -135,10 +151,15 @@ export default function CalendariPage() {
           return (
             <div
               key={i}
+              onClick={() => setSelected(iso)}
               className={cn(
-                'rounded-xl border bg-white p-1.5',
+                'cursor-pointer rounded-xl border bg-white p-1.5 transition hover:border-brand-300',
                 compact ? 'min-h-24' : 'min-h-40 p-2',
-                isToday ? 'border-brand-400 ring-1 ring-brand-200' : 'border-slate-200',
+                iso === selected
+                  ? 'border-brand-500 ring-2 ring-brand-300'
+                  : isToday
+                    ? 'border-brand-400 ring-1 ring-brand-200'
+                    : 'border-slate-200',
                 dim && 'bg-slate-50',
               )}
             >
@@ -184,7 +205,10 @@ export default function CalendariPage() {
                 {tasques.map((t) => (
                   <button
                     key={t.id}
-                    onClick={() => t.estat === 'PENDENT' && marcarFeta(t.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (t.estat === 'PENDENT') marcarFeta(t.id);
+                    }}
                     title={t.estat === 'PENDENT' ? 'Marcar com a feta' : 'Feta'}
                     className={cn(
                       'flex w-full items-center gap-0.5 truncate rounded px-1.5 py-0.5 text-left',
@@ -218,9 +242,89 @@ export default function CalendariPage() {
         })}
       </div>
 
+      {/* Detall del dia seleccionat: entra a l'estada, la tasca o el servei */}
+      {selected && (
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-semibold capitalize text-slate-700">{selLabel}</h3>
+            <button
+              onClick={() => setSelected(null)}
+              className="text-slate-400 hover:text-slate-600"
+              aria-label="Tancar"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          {selEmpty ? (
+            <p className="text-sm text-slate-400">Cap moviment aquest dia.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {selEnt.map((e) => (
+                <Link
+                  key={`e${e.id}`}
+                  href={`/estancies/${e.id}`}
+                  className="flex items-center gap-2 rounded-lg border border-slate-100 bg-green-50/60 px-3 py-2 text-sm text-green-800 hover:bg-green-50"
+                >
+                  <LogIn className="h-4 w-4 shrink-0" /> Entrada · {e.titular}
+                  {e.habitacio ? ` · Hab. ${e.habitacio}` : ''}
+                </Link>
+              ))}
+              {selSort.map((e) => (
+                <Link
+                  key={`s${e.id}`}
+                  href={`/estancies/${e.id}`}
+                  className="flex items-center gap-2 rounded-lg border border-slate-100 bg-brand-50/60 px-3 py-2 text-sm text-brand-800 hover:bg-brand-50"
+                >
+                  <LogOut className="h-4 w-4 shrink-0" /> Sortida · {e.titular}
+                  {e.habitacio ? ` · Hab. ${e.habitacio}` : ''}
+                </Link>
+              ))}
+              {selTasq.map((t) => (
+                <div
+                  key={`t${t.id}`}
+                  className="flex items-center gap-2 rounded-lg border border-slate-100 bg-amber-50/60 px-3 py-2 text-sm text-amber-900"
+                >
+                  <Sparkles className="h-4 w-4 shrink-0" />
+                  <span className="flex-1">
+                    Neteja{t.habitacio ? ` · Hab. ${t.habitacio}` : ''} · {TIPUS_NETEJA_LABELS[t.tipus]}
+                    {t.estat === 'FETA' && <span className="ml-1 text-slate-400">(feta)</span>}
+                  </span>
+                  {t.estanciaId && (
+                    <Link
+                      href={`/estancies/${t.estanciaId}`}
+                      className="text-xs font-medium text-brand-700 hover:underline"
+                    >
+                      Veure estada
+                    </Link>
+                  )}
+                  {t.estat === 'PENDENT' && (
+                    <button
+                      onClick={() => marcarFeta(t.id)}
+                      className="inline-flex items-center gap-1 rounded border border-amber-300 px-2 py-0.5 text-xs text-amber-800 hover:bg-amber-100"
+                    >
+                      <Check className="h-3 w-3" /> Feta
+                    </button>
+                  )}
+                </div>
+              ))}
+              {selServ.map((s) => (
+                <Link
+                  key={`v${s.id}`}
+                  href="/serveis"
+                  className="flex items-center gap-2 rounded-lg border border-slate-100 bg-sky-50/60 px-3 py-2 text-sm text-sky-800 hover:bg-sky-50"
+                >
+                  <Wrench className="h-4 w-4 shrink-0" /> {s.activitat}
+                  {s.proveidor ? ` · ${s.proveidor}` : ''}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <p className="mt-4 text-xs text-slate-400">
-        <Sparkles className="mr-1 inline h-3 w-3" /> Les tasques de neteja es generen automàticament en
-        registrar una estada amb habitació. Clica una tasca pendent per marcar-la com a feta.
+        <Sparkles className="mr-1 inline h-3 w-3" /> Clica un dia per veure'n entrades, sortides i
+        neteja i entrar-hi. Les tasques de neteja es generen automàticament en registrar una estada.
       </p>
 
       {/* Ocupació per habitació (vista habitació per habitació) */}
