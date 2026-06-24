@@ -214,7 +214,7 @@ export type PagamentInput = z.input<typeof PagamentInputSchema>;
 
 // Ampliació d'una estada (1.1, 1.2…): noves dates per al període ampliat.
 export const AmpliacioSchema = z
-  .object({ dataEntrada: reqDate, dataSortida: reqDate })
+  .object({ dataEntrada: reqDate, dataSortida: reqDate, habitacioId: optStr })
   .superRefine((d, ctx) => {
     if (d.dataSortida <= d.dataEntrada) {
       ctx.addIssue({

@@ -202,7 +202,7 @@ export async function createRegistre(
  */
 export async function ampliarEstancia(
   estanciaId: string,
-  dates: { dataEntrada: Date; dataSortida: Date },
+  dates: { dataEntrada: Date; dataSortida: Date; habitacioId?: string | null },
   actor: { id: string } | null,
   ip: string | null,
 ): Promise<{ estanciaId: string; numContracte: string }> {
@@ -214,6 +214,8 @@ export async function ampliarEstancia(
         where: { id: rootId },
         include: { viatgers: true },
       });
+      // Habitació de l'ampliació: la indicada o, per defecte, la de l'estada.
+      const habId = dates.habitacioId !== undefined ? dates.habitacioId : root.habitacioId;
 
       const count = await tx.estancia.count({ where: { estanciaOrigenId: rootId } });
       const numContracte = `${root.numContracte}.${count + 1}`;
@@ -233,7 +235,7 @@ export async function ampliarEstancia(
           numHabitacions: root.numHabitacions,
           teInternet: root.teInternet,
           estat: 'EN_CURS',
-          ...(root.habitacioId ? { habitacio: { connect: { id: root.habitacioId } } } : {}),
+          ...(habId ? { habitacio: { connect: { id: habId } } } : {}),
         },
       });
 
@@ -249,11 +251,11 @@ export async function ampliarEstancia(
         });
       }
 
-      if (root.habitacioId) {
+      if (habId) {
         await tx.tascaNeteja.create({
           data: {
             data: dates.dataSortida,
-            habitacioId: root.habitacioId,
+            habitacioId: habId,
             tipus: 'CANVI_COMPLET',
             estat: 'PENDENT',
             vinculadaSortidaId: nova.id,

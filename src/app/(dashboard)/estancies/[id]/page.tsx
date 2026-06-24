@@ -65,6 +65,12 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
   });
   if (!estancia) notFound();
 
+  const habitacions = await prisma.habitacio.findMany({
+    where: { deletedAt: null },
+    orderBy: { nom: 'asc' },
+    select: { id: true, nom: true },
+  });
+
   const user = await getSessionUser();
   const isAdmin = user?.role === 'ADMIN';
   const canWrite = user ? hasRole(user.role, ROLES_WRITE) : false;
@@ -83,7 +89,12 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
         subtitle={`Contracte ${estancia.numContracte}/${estancia.anyContracte}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <AmpliarEstada estanciaId={estancia.id} defaultEntrada={toISODate(estancia.dataSortida)} />
+            <AmpliarEstada
+              estanciaId={estancia.id}
+              defaultEntrada={toISODate(estancia.dataSortida)}
+              habitacions={habitacions}
+              actualHabitacioId={estancia.habitacioId}
+            />
             <a href={`/api/estancies/${estancia.id}/fitxa-pdf`} target="_blank" rel="noreferrer">
               <Button variant="outline" size="sm">
                 <FileSignature className="h-4 w-4" /> Fitxa PDF
