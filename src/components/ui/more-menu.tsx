@@ -30,7 +30,9 @@ export function MoreMenu({ children, label = 'Més' }: { children: ReactNode; la
       {open && (
         <div
           onClick={() => setOpen(false)}
-          className="absolute right-0 z-30 mt-1 flex min-w-48 flex-col items-stretch gap-1 rounded-lg border border-slate-200 bg-white p-1.5 shadow-lg"
+          // Uniformitza els fills (Link/Button heterogenis) com a files de menú:
+          // amplada completa, alineats a l'esquerra i sense vora individual.
+          className="absolute right-0 z-30 mt-1 flex min-w-52 flex-col gap-0.5 rounded-lg border border-slate-200 bg-white p-1.5 shadow-lg [&>*]:w-full [&_a]:w-full [&_button]:w-full [&_button]:justify-start [&_button]:border-0 [&_button]:bg-transparent [&_button]:font-normal [&_button:hover]:bg-slate-100"
         >
           {children}
         </div>
