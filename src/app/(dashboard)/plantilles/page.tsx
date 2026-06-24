@@ -481,9 +481,11 @@ function BenvingudaCard() {
     setEnllac(v);
     window.localStorage.setItem('enllac_benvinguda', v);
   }
-  function msgFor(estadaId: string, nom: string): string {
-    const l = langs[estadaId] ?? 'ca';
-    const url = `${enllac}${enllac.includes('?') ? '&' : '?'}lang=${l}`;
+  function msgFor(e: Estancia, nom: string): string {
+    const l = langs[e.id] ?? 'ca';
+    let url = `${enllac}${enllac.includes('?') ? '&' : '?'}lang=${l}`;
+    if (nom) url += `&g=${encodeURIComponent(nom)}`;
+    if (e.habitacio?.nom) url += `&r=${encodeURIComponent(e.habitacio.nom)}`;
     return fillTemplate(tpls[l], { nom, enllac: url });
   }
 
@@ -535,11 +537,11 @@ function BenvingudaCard() {
                             size="sm"
                             disabled={!phone}
                             title={phone ? undefined : 'Aquest hoste no té telèfon'}
-                            onClick={() => enviaWhatsApp(phone, msgFor(e.id, nom), nom)}
+                            onClick={() => enviaWhatsApp(phone, msgFor(e, nom), nom)}
                           >
                             <MessageCircle className="h-4 w-4" /> WhatsApp
                           </Button>
-                          <Button type="button" size="sm" variant="outline" onClick={() => copia(msgFor(e.id, nom))}>
+                          <Button type="button" size="sm" variant="outline" onClick={() => copia(msgFor(e, nom))}>
                             <Copy className="h-4 w-4" />
                           </Button>
                         </div>
