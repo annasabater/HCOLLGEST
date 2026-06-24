@@ -22,6 +22,18 @@ export const PLANTILLA_HOSTE: Record<Lang, string> = {
   en: 'Hello {nom}, tomorrow around {hora} we will come to clean room {habitacio}. Thank you!',
 };
 
+/**
+ * Plantilla de benvinguda + valoració (variables {nom} {enllac}).
+ * S'envia després de la primera nit; conté l'enllaç a la pàgina de benvinguda
+ * (guia de Calella + valoració per WhatsApp).
+ */
+export const PLANTILLA_BENVINGUDA: Record<Lang, string> = {
+  ca: 'Hola {nom}! 😊 Esperem que la primera nit a l’Hostal Coll hagi anat molt bé. Aquí tens una petita guia de benvinguda (què fer a Calella, info útil…) i, si vols, ens pots deixar la teva valoració: {enllac}',
+  es: '¡Hola {nom}! 😊 Esperamos que la primera noche en Hostal Coll haya ido muy bien. Aquí tienes una pequeña guía de bienvenida (qué hacer en Calella, info útil…) y, si quieres, puedes dejarnos tu valoración: {enllac}',
+  fr: 'Bonjour {nom} ! 😊 Nous espérons que votre première nuit à l’Hostal Coll s’est bien passée. Voici un petit guide de bienvenue (que faire à Calella, infos utiles…) et, si vous le souhaitez, laissez-nous votre avis : {enllac}',
+  en: 'Hi {nom}! 😊 We hope your first night at Hostal Coll went well. Here’s a little welcome guide (what to do in Calella, useful info…) and, if you like, you can leave us your review: {enllac}',
+};
+
 /** Plantilla per a la neteja (variables {nom} {data} {habitacions} {pasillo} {pati} {vorera} {hora}). */
 export const PLANTILLA_NETEJA: Record<Lang, string> = {
   ca: 'Bones {nom}, demà ({data}) tens: {habitacions}.{pasillo}{pati}{vorera}{hora} Gràcies!',

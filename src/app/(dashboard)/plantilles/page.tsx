@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MessageCircle, Copy, Sparkles, Users, Phone } from 'lucide-react';
+import { MessageCircle, Copy, Sparkles, Users, Phone, Hand } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input, Select, Textarea } from '@/components/ui/input';
@@ -17,6 +17,7 @@ import {
   tipusNetejaLabel,
   PLANTILLA_HOSTE,
   PLANTILLA_NETEJA,
+  PLANTILLA_BENVINGUDA,
   PASILLO_TXT,
   PATI_TXT,
   VORERA_TXT,
@@ -49,8 +50,13 @@ function lsGet(key: string, def: string): string {
   if (typeof window === 'undefined') return def;
   return window.localStorage.getItem(key) ?? def;
 }
-function loadTpls(kind: 'hoste' | 'neteja'): Record<Lang, string> {
-  const base = kind === 'hoste' ? PLANTILLA_HOSTE : PLANTILLA_NETEJA;
+function loadTpls(kind: 'hoste' | 'neteja' | 'benvinguda'): Record<Lang, string> {
+  const base =
+    kind === 'hoste'
+      ? PLANTILLA_HOSTE
+      : kind === 'benvinguda'
+        ? PLANTILLA_BENVINGUDA
+        : PLANTILLA_NETEJA;
   const out = { ...base };
   (Object.keys(base) as Lang[]).forEach((l) => {
     out[l] = lsGet(`plantilla_${kind}_${l}`, base[l]);
@@ -79,6 +85,7 @@ export default function PlantillesPage() {
       <PageHeader title="Plantilles" subtitle="Missatges de WhatsApp per a neteja i hostes (multiidioma)" />
       <div className="space-y-6">
         <MeuWhatsApp />
+        <BenvingudaCard />
         <NetejaCard />
         <HostesCard />
       </div>
@@ -438,6 +445,124 @@ function HostesCard() {
           <Textarea className="mt-2" rows={2} value={tpls[editLang]} onChange={(e) => saveTpl(e.target.value)} />
           <p className="mt-1 text-xs text-slate-400">
             Variables: {'{nom}'} {'{hora}'} {'{habitacio}'}. Es desa al navegador.
+          </p>
+        </details>
+      </CardBody>
+    </Card>
+  );
+}
+
+// --- Plantilla de benvinguda + valoració (després de la primera nit) ---------
+function BenvingudaCard() {
+  const [estancies, setEstancies] = useState<Estancia[]>([]);
+  const [enllac, setEnllac] = useState('https://hostalcoll.com/benvinguda');
+  const [tpls, setTpls] = useState<Record<Lang, string>>(PLANTILLA_BENVINGUDA);
+  const [editLang, setEditLang] = useState<Lang>('ca');
+  const [noms, setNoms] = useState<Record<string, string>>({}); // clau: `${estadaId}:${i}`
+  const [langs, setLangs] = useState<Record<string, Lang>>({}); // idioma per estada
+
+  useEffect(() => {
+    setTpls(loadTpls('benvinguda'));
+    setEnllac(lsGet('enllac_benvinguda', 'https://hostalcoll.com/benvinguda'));
+    getJSON<{ estancies: Estancia[] }>('/api/estancies').then((r) => setEstancies(r.estancies));
+  }, []);
+
+  const avui = toISODate(new Date());
+  // Hostes que ja han passat la PRIMERA NIT i encara hi són (entrada < avui ≤ sortida).
+  const elegibles = estancies.filter(
+    (e) => toISODate(new Date(e.dataEntrada)) < avui && avui <= toISODate(new Date(e.dataSortida)),
+  );
+
+  function saveTpl(v: string) {
+    setTpls((prev) => ({ ...prev, [editLang]: v }));
+    window.localStorage.setItem(`plantilla_benvinguda_${editLang}`, v);
+  }
+  function setLink(v: string) {
+    setEnllac(v);
+    window.localStorage.setItem('enllac_benvinguda', v);
+  }
+  function msgFor(estadaId: string, nom: string): string {
+    const l = langs[estadaId] ?? 'ca';
+    const url = `${enllac}${enllac.includes('?') ? '&' : '?'}lang=${l}`;
+    return fillTemplate(tpls[l], { nom, enllac: url });
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex items-center gap-2">
+        <Hand className="h-4 w-4 text-brand-600" />
+        <CardTitle>Benvinguda i valoració</CardTitle>
+      </CardHeader>
+      <CardBody className="space-y-4">
+        <Field label="Enllaç de benvinguda" hint="La pàgina que reben els hostes. Es desa al navegador.">
+          <Input value={enllac} onChange={(e) => setLink(e.target.value)} />
+        </Field>
+
+        {elegibles.length === 0 ? (
+          <p className="text-sm text-slate-400">Cap hoste que hagi passat la primera nit ara mateix.</p>
+        ) : (
+          <div className="space-y-3">
+            {elegibles.map((e) => (
+              <div key={e.id} className="rounded-lg border border-slate-200 p-3">
+                <div className="mb-2 flex flex-wrap items-center gap-2 text-sm font-medium text-slate-700">
+                  <span>{e.habitacio ? `Habitació ${e.habitacio.nom}` : 'Sense habitació'}</span>
+                  <span className="text-xs font-normal text-slate-400">
+                    {formatDate(e.dataEntrada)} – {formatDate(e.dataSortida)}
+                  </span>
+                  <span className="ml-auto">
+                    <LangSelect value={langs[e.id] ?? 'ca'} onChange={(l) => setLangs({ ...langs, [e.id]: l })} />
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  {e.viatgers.map((v, i) => {
+                    const key = `${e.id}:${i}`;
+                    const nom = noms[key] ?? v.huesped.nom;
+                    const phone = v.huesped.telefon;
+                    return (
+                      <div key={key} className="flex flex-wrap items-center gap-2">
+                        <Input
+                          className="w-36"
+                          value={nom}
+                          onChange={(ev) => setNoms({ ...noms, [key]: ev.target.value })}
+                        />
+                        <span className="text-xs text-slate-400">
+                          {v.esTitular ? 'Titular · ' : ''}
+                          {phone ?? 'sense telèfon'}
+                        </span>
+                        <div className="ml-auto flex gap-2">
+                          {phone ? (
+                            <a href={waLink(phone, msgFor(e.id, nom))} target="_blank" rel="noreferrer">
+                              <Button type="button" size="sm">
+                                <MessageCircle className="h-4 w-4" /> WhatsApp
+                              </Button>
+                            </a>
+                          ) : (
+                            <Button type="button" size="sm" disabled title="Aquest hoste no té telèfon">
+                              <MessageCircle className="h-4 w-4" /> WhatsApp
+                            </Button>
+                          )}
+                          <Button type="button" size="sm" variant="outline" onClick={() => copia(msgFor(e.id, nom))}>
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <details className="text-sm">
+          <summary className="cursor-pointer text-slate-500">Editar plantilla per defecte (per idioma)</summary>
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-xs text-slate-500">Idioma:</span>
+            <LangSelect value={editLang} onChange={setEditLang} className="max-w-40" />
+          </div>
+          <Textarea className="mt-2" rows={3} value={tpls[editLang]} onChange={(e) => saveTpl(e.target.value)} />
+          <p className="mt-1 text-xs text-slate-400">
+            Variables: {'{nom}'} {'{enllac}'}. Es desa al navegador.
           </p>
         </details>
       </CardBody>
