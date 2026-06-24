@@ -8,6 +8,7 @@ import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { postJSON, getJSON, ApiError } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { toISODate } from '@/lib/dates';
 
 interface RoomDisp {
   id: string;
@@ -33,8 +34,16 @@ export function AmpliarEstada({
   const [dataSortida, setDataSortida] = useState('');
   const [habitacioId, setHabitacioId] = useState(actualHabitacioId ?? '');
   const [disp, setDisp] = useState<RoomDisp[]>([]);
+  const [reaprofitar, setReaprofitar] = useState(true);
+  const [llocSignatura, setLlocSignatura] = useState('Barcelona');
+  const [dataSignatura, setDataSignatura] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function obre() {
+    setOpen(true);
+    if (!dataSignatura) setDataSignatura(toISODate(new Date())); // dia de l'ampliació
+  }
 
   const carregaDisp = useCallback(
     async (desde: string) => {
@@ -75,6 +84,8 @@ export function AmpliarEstada({
         dataEntrada,
         dataSortida,
         habitacioId: habitacioId || undefined,
+        reaprofitarFirmes: reaprofitar,
+        ...(reaprofitar ? { dataSignatura, llocSignatura } : {}),
       });
       router.push(`/estancies/${res.estanciaId}`);
     } catch (err) {
@@ -86,7 +97,7 @@ export function AmpliarEstada({
 
   if (!open) {
     return (
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+      <Button variant="outline" size="sm" onClick={obre}>
         <CalendarPlus className="h-4 w-4" /> Ampliar estada
       </Button>
     );
@@ -125,6 +136,23 @@ export function AmpliarEstada({
         <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
           Cancel·lar
         </Button>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-2">
+        <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
+          <input type="checkbox" checked={reaprofitar} onChange={(e) => setReaprofitar(e.target.checked)} />
+          Reaprofitar les signatures (no cal tornar a signar)
+        </label>
+        {reaprofitar && (
+          <>
+            <Field label="Localitat de la signatura">
+              <Input value={llocSignatura} onChange={(e) => setLlocSignatura(e.target.value)} />
+            </Field>
+            <Field label="Data de la signatura">
+              <Input type="date" value={dataSignatura} onChange={(e) => setDataSignatura(e.target.value)} />
+            </Field>
+          </>
+        )}
       </div>
 
       {sel && (

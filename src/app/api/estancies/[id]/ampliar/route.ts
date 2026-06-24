@@ -13,10 +13,11 @@ export async function POST(req: Request, ctx: Ctx) {
     if (auth instanceof Response) return auth;
     const { id } = await ctx.params;
     const body = await req.json().catch(() => null);
-    const { dataEntrada, dataSortida, habitacioId } = AmpliacioSchema.parse(body);
+    const { dataEntrada, dataSortida, habitacioId, reaprofitarFirmes, dataSignatura, llocSignatura } =
+      AmpliacioSchema.parse(body);
     const result = await ampliarEstancia(
       id,
-      { dataEntrada, dataSortida, habitacioId },
+      { dataEntrada, dataSortida, habitacioId, reaprofitarFirmes, dataSignatura, llocSignatura },
       { id: auth.id },
       clientIp(req),
     );

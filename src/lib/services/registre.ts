@@ -202,7 +202,14 @@ export async function createRegistre(
  */
 export async function ampliarEstancia(
   estanciaId: string,
-  dates: { dataEntrada: Date; dataSortida: Date; habitacioId?: string | null },
+  dates: {
+    dataEntrada: Date;
+    dataSortida: Date;
+    habitacioId?: string | null;
+    reaprofitarFirmes?: boolean;
+    dataSignatura?: Date | null;
+    llocSignatura?: string | null;
+  },
   actor: { id: string } | null,
   ip: string | null,
 ): Promise<{ estanciaId: string; numContracte: string }> {
@@ -212,7 +219,7 @@ export async function ampliarEstancia(
       const rootId = base.estanciaOrigenId ?? base.id;
       const root = await tx.estancia.findUniqueOrThrow({
         where: { id: rootId },
-        include: { viatgers: true },
+        include: { viatgers: { include: { signatura: true } } },
       });
       // Habitació de l'ampliació: la indicada o, per defecte, la de l'estada.
       const habId = dates.habitacioId !== undefined ? dates.habitacioId : root.habitacioId;
@@ -239,8 +246,9 @@ export async function ampliarEstancia(
         },
       });
 
+      const reaprofita = dates.reaprofitarFirmes ?? false;
       for (const v of root.viatgers) {
-        await tx.estanciaViatger.create({
+        const nv = await tx.estanciaViatger.create({
           data: {
             estanciaId: nova.id,
             huespedId: v.huespedId,
@@ -249,6 +257,20 @@ export async function ampliarEstancia(
             esMenor: v.esMenor,
           },
         });
+        // Reaprofita la signatura de l'estada original, amb la "Localitat i data"
+        // del dia de l'ampliació (o la indicada). Així no cal tornar a signar.
+        if (reaprofita && v.signatura) {
+          await tx.signatura.create({
+            data: {
+              estanciaViatgerId: nv.id,
+              imatge: v.signatura.imatge,
+              llocSignatura: dates.llocSignatura ?? v.signatura.llocSignatura,
+              data: dates.dataSignatura ?? new Date(),
+              hora: v.signatura.hora,
+              usuariId: actor?.id ?? null,
+            },
+          });
+        }
       }
 
       if (habId) {
