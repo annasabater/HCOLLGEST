@@ -35,7 +35,18 @@ const PatchSchema = z.object({
   retencioCrmAnys: z.coerce.number().int().min(1).optional(),
   mossosUser: z.string().optional(),
   mossosPass: z.string().optional(), // se cifra antes de guardar
+  // Dades per a la factura impresa (cadena buida = esborrar → null).
+  raoSocial: z.string().optional(),
+  adreca: z.string().optional(),
+  codiPostal: z.string().optional(),
+  poblacio: z.string().optional(),
+  telefon: z.string().optional(),
+  iban: z.string().optional(),
+  descriptor: z.string().optional(),
 });
+
+// Camps de text de la factura que, si arriben buits, es desen com a null.
+const CAMPS_FACTURA = ['raoSocial', 'adreca', 'codiPostal', 'poblacio', 'telefon', 'iban', 'descriptor'] as const;
 
 export async function PATCH(req: Request) {
   try {
@@ -48,6 +59,9 @@ export async function PATCH(req: Request) {
     const { mossosPass, ...rest } = input;
     const data: Record<string, unknown> = { ...rest };
     if (rest.fileIdentifier === '') data.fileIdentifier = null;
+    for (const k of CAMPS_FACTURA) {
+      if (data[k] === '') data[k] = null;
+    }
     if (mossosPass) data.mossosPassEnc = encryptString(mossosPass);
 
     const establiment = await prisma.establiment.update({ where: { id: ESTABLIMENT_ID }, data });

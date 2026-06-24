@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, Printer } from 'lucide-react';
 import QRCode from 'qrcode';
 import { prisma } from '@/lib/db';
 import { PageHeader } from '@/components/ui/page-header';
@@ -69,6 +69,13 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
             <Badge tone={factura.estat === 'COBRADA' ? 'success' : 'warning'}>
               {factura.estat === 'COBRADA' ? 'Cobrada' : 'Pendent'}
             </Badge>
+            <Link
+              href={`/imprimir/factura/${factura.id}`}
+              target="_blank"
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <Printer className="h-4 w-4" /> Imprimir / PDF
+            </Link>
             <EliminarFactura
               id={factura.id}
               numero={factura.numero}

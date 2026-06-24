@@ -18,6 +18,14 @@ interface Establiment {
   retencioCrmAnys: number | null;
   mossosUser: string | null;
   mossosPassConfigurada?: boolean;
+  // Dades per a la factura impresa.
+  raoSocial: string | null;
+  adreca: string | null;
+  codiPostal: string | null;
+  poblacio: string | null;
+  telefon: string | null;
+  iban: string | null;
+  descriptor: string | null;
 }
 
 export function ConfigForm() {
@@ -46,6 +54,13 @@ export function ConfigForm() {
         retencioCrmAnys: e.retencioCrmAnys ?? undefined,
         mossosUser: e.mossosUser ?? undefined,
         mossosPass: mossosPass || undefined,
+        raoSocial: e.raoSocial ?? '',
+        adreca: e.adreca ?? '',
+        codiPostal: e.codiPostal ?? '',
+        poblacio: e.poblacio ?? '',
+        telefon: e.telefon ?? '',
+        iban: e.iban ?? '',
+        descriptor: e.descriptor ?? '',
       });
       setMossosPass('');
       setMsg({ tone: 'ok', text: 'Configuració desada.' });
@@ -111,6 +126,51 @@ export function ConfigForm() {
               value={mossosPass}
               onChange={(ev) => setMossosPass(ev.target.value)}
               placeholder="••••••••"
+            />
+          </Field>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Dades per a la factura</CardTitle>
+        </CardHeader>
+        <CardBody className="grid gap-4 sm:grid-cols-3">
+          <Field label="Titular / raó social" hint="Si es deixa buit, s’usa el nom de l’establiment.">
+            <Input
+              value={e.raoSocial ?? ''}
+              onChange={(ev) => setE({ ...e, raoSocial: ev.target.value })}
+              placeholder={e.nom}
+            />
+          </Field>
+          <Field label="Descriptor" hint="Subtítol del membret.">
+            <Input
+              value={e.descriptor ?? ''}
+              onChange={(ev) => setE({ ...e, descriptor: ev.target.value })}
+              placeholder="p. ex. Pensió · Calella"
+            />
+          </Field>
+          <Field label="Telèfon">
+            <Input value={e.telefon ?? ''} onChange={(ev) => setE({ ...e, telefon: ev.target.value })} />
+          </Field>
+          <Field label="Adreça">
+            <Input
+              value={e.adreca ?? ''}
+              onChange={(ev) => setE({ ...e, adreca: ev.target.value })}
+              placeholder="C/ … , núm."
+            />
+          </Field>
+          <Field label="Codi postal">
+            <Input value={e.codiPostal ?? ''} onChange={(ev) => setE({ ...e, codiPostal: ev.target.value })} />
+          </Field>
+          <Field label="Població">
+            <Input value={e.poblacio ?? ''} onChange={(ev) => setE({ ...e, poblacio: ev.target.value })} />
+          </Field>
+          <Field label="IBAN" className="sm:col-span-3">
+            <Input
+              value={e.iban ?? ''}
+              onChange={(ev) => setE({ ...e, iban: ev.target.value })}
+              placeholder="ES00 0000 0000 0000 0000 0000"
             />
           </Field>
         </CardBody>

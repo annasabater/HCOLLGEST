@@ -241,6 +241,16 @@ model Establiment {
   verifactuSerie    String  @default("FAC") @map("verifactu_serie")
   verifactuTestMode Boolean @default(true) @map("verifactu_test_mode")
 
+  // Dades per a la factura impresa (emissor + pagament). Si raoSocial és buit
+  // s'usa `nom`. El CIF ja és l'identificador fiscal de l'emissor.
+  raoSocial  String? @map("rao_social")
+  adreca     String?
+  codiPostal String? @map("codi_postal")
+  poblacio   String?
+  telefon    String?
+  iban       String?
+  descriptor String? // subtítol del membret (p. ex. "Pensió · Calella")
+
   estancies Estancia[]
 
   createdAt DateTime @default(now()) @map("created_at")
