@@ -190,11 +190,20 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                         {ev.esTitular && <Badge tone="info" className="ml-2">Titular</Badge>}
                         {ev.esMenor && <Badge tone="neutral" className="ml-2">Menor</Badge>}
                       </Link>
-                      <ViatgerFirma
-                        estanciaId={estancia.id}
-                        viatgerId={ev.id}
-                        signatura={ev.signatura ? { data: ev.signatura.data, hora: ev.signatura.hora } : null}
-                      />
+                      <div className="flex items-center gap-2">
+                        {canWrite && (
+                          <Link href={`/huespedes/${h.id}/edita`}>
+                            <Button variant="ghost" size="sm">
+                              <Pencil className="h-4 w-4" /> Editar dades
+                            </Button>
+                          </Link>
+                        )}
+                        <ViatgerFirma
+                          estanciaId={estancia.id}
+                          viatgerId={ev.id}
+                          signatura={ev.signatura ? { data: ev.signatura.data, hora: ev.signatura.hora } : null}
+                        />
+                      </div>
                     </div>
                     <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       <Dl
