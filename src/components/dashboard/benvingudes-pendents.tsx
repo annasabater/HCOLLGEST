@@ -31,11 +31,12 @@ function lsGet(key: string, def: string): string {
 function tplFor(lang: Lang): string {
   return lsGet(`plantilla_benvinguda_${lang}`, PLANTILLA_BENVINGUDA[lang]);
 }
-function benvLink(lang: Lang, nom: string, habitacio: string | null): string {
+function benvLink(lang: Lang, nom: string, habitacio: string | null, estanciaId: string): string {
   const base = lsGet('enllac_benvinguda', 'https://hostalcoll.com/benvinguda.html');
   let url = `${base}${base.includes('?') ? '&' : '?'}lang=${lang}`;
   if (nom) url += `&g=${encodeURIComponent(nom)}`;
   if (habitacio) url += `&r=${encodeURIComponent(habitacio)}`;
+  if (estanciaId) url += `&e=${encodeURIComponent(estanciaId)}`;
   return url;
 }
 
@@ -60,8 +61,8 @@ export function BenvingudesPendents({
 
   if (pendents.length === 0) return null;
 
-  function msg(lang: Lang, nom: string, habitacio: string | null): string {
-    return fillTemplate(tplFor(lang), { nom, enllac: benvLink(lang, nom, habitacio) });
+  function msg(lang: Lang, nom: string, habitacio: string | null, estanciaId: string): string {
+    return fillTemplate(tplFor(lang), { nom, enllac: benvLink(lang, nom, habitacio, estanciaId) });
   }
   async function marcar(id: string) {
     setBusy(id);
@@ -127,7 +128,7 @@ export function BenvingudesPendents({
                         size="sm"
                         disabled={!v.telefon}
                         title={v.telefon ? undefined : 'Aquest hoste no té telèfon'}
-                        onClick={() => enviaWhatsApp(v.telefon, msg(lang, v.nom, p.habitacio), `${v.nom} ${v.cognom1}`)}
+                        onClick={() => enviaWhatsApp(v.telefon, msg(lang, v.nom, p.habitacio, p.id), `${v.nom} ${v.cognom1}`)}
                       >
                         <MessageCircle className="h-4 w-4" /> WhatsApp
                       </Button>
