@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -62,7 +63,7 @@ export function LoginForm() {
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="pr-12"
+            className="pr-11 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
             required
           />
           <button
@@ -70,9 +71,9 @@ export function LoginForm() {
             onClick={() => setShowPassword((v) => !v)}
             aria-label={showPassword ? 'Amagar la contrasenya' : 'Mostrar la contrasenya'}
             aria-pressed={showPassword}
-            className="absolute inset-y-0 right-0 flex items-center px-3 text-xs font-medium text-slate-500 hover:text-brand-700 focus:outline-none focus-visible:text-brand-700"
+            className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-brand-700 focus:outline-none focus-visible:text-brand-700"
           >
-            {showPassword ? 'Amagar' : 'Mostrar'}
+            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
           </button>
         </div>
       </Field>
