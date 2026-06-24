@@ -7,6 +7,7 @@ import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
 import { MascotesPanel } from '@/components/huesped/mascotes-panel';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { CollapsibleCard } from '@/components/ui/collapsible-card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EstanciaActions } from '@/components/estancia/estancia-actions';
@@ -240,6 +241,37 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             />
           )}
 
+          {/* Pagaments i fiances — sota mascotes, col·lapsable i compacte */}
+          {isAdmin && (
+            <CollapsibleCard
+              title="Pagaments i fiances"
+              icon={<Receipt className="h-4 w-4 text-brand-600" />}
+              count={estancia.cobraments.length + estancia.diposits.length}
+              defaultOpen={estancia.cobraments.length + estancia.diposits.length > 0}
+            >
+              <PagamentsPanel
+                estanciaId={estancia.id}
+                pagaments={estancia.cobraments.map((c) => ({
+                  id: c.id,
+                  import: Number(c.import),
+                  metode: c.metode,
+                  concepte: c.concepte,
+                  descripcio: c.descripcio,
+                  data: c.data.toISOString(),
+                  facturaId: c.facturaId,
+                  facturaNumero: c.factura?.numero ?? null,
+                }))}
+                fiances={estancia.diposits.map((d) => ({
+                  id: d.id,
+                  import: Number(d.import),
+                  data: d.data.toISOString(),
+                  metode: d.metode,
+                  estat: d.estat,
+                  motiu: d.motiu,
+                }))}
+              />
+            </CollapsibleCard>
+          )}
         </div>
 
         {/* Mossos + Facturació */}
@@ -265,38 +297,6 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
               />
             </CardBody>
           </Card>
-
-          {isAdmin && (
-            <Card>
-              <CardHeader className="flex items-center gap-2">
-                <Receipt className="h-4 w-4 text-brand-600" />
-                <CardTitle>Pagaments i fiances</CardTitle>
-              </CardHeader>
-              <CardBody>
-                <PagamentsPanel
-                  estanciaId={estancia.id}
-                  pagaments={estancia.cobraments.map((c) => ({
-                    id: c.id,
-                    import: Number(c.import),
-                    metode: c.metode,
-                    concepte: c.concepte,
-                    descripcio: c.descripcio,
-                    data: c.data.toISOString(),
-                    facturaId: c.facturaId,
-                    facturaNumero: c.factura?.numero ?? null,
-                  }))}
-                  fiances={estancia.diposits.map((d) => ({
-                    id: d.id,
-                    import: Number(d.import),
-                    data: d.data.toISOString(),
-                    metode: d.metode,
-                    estat: d.estat,
-                    motiu: d.motiu,
-                  }))}
-                />
-              </CardBody>
-            </Card>
-          )}
 
           {isAdmin && (
             <Card>
