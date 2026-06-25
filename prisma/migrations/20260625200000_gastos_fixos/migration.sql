@@ -1,0 +1,1 @@
+ALTER TABLE "servei_recurrent" ADD COLUMN IF NOT EXISTS "es_fix" BOOLEAN NOT NULL DEFAULT false;

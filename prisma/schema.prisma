@@ -806,6 +806,7 @@ model ServeiRecurrent {
   vigenciaInici  DateTime?        @map("vigencia_inici")
   vigenciaFi     DateTime?        @map("vigencia_fi")
   generaDespesa  Boolean          @default(true) @map("genera_despesa") // crear Gasto automàtic en vèncer
+  esFix          Boolean          @default(false) @map("es_fix") // gasto fix manual (lloguer, llum…)
   observacions   String?
   actiu          Boolean          @default(true)
 
