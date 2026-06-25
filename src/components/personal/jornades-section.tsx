@@ -26,10 +26,12 @@ export function JornadesSection({
   treballadorId,
   preuHora,
   jornades,
+  tarifes,
 }: {
   treballadorId: string;
   preuHora: number | null;
   jornades: Jornada[];
+  tarifes: { s: number; m: number; z: number };
 }) {
   const router = useRouter();
   const [data, setData] = useState(toISODate(new Date()));
@@ -37,6 +39,44 @@ export function JornadesSection({
   const [preu, setPreu] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Sense preu/hora → es cobra PER TASQUES de neteja (sortides, manteniments, zones).
+  const perTasques = !preuHora || preuHora <= 0;
+  const [sortides, setSortides] = useState('');
+  const [manteniments, setManteniments] = useState('');
+  const [zones, setZones] = useState(false);
+  const senseTarifes = tarifes.s === 0 && tarifes.m === 0 && tarifes.z === 0;
+  const aPagar =
+    Math.round(
+      ((Number(sortides) || 0) * tarifes.s +
+        (Number(manteniments) || 0) * tarifes.m +
+        (zones ? tarifes.z : 0)) *
+        100,
+    ) / 100;
+
+  async function registrarTasques(e: React.FormEvent) {
+    e.preventDefault();
+    if (aPagar <= 0) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await postJSON('/api/neteja/pagament', {
+        treballadorId,
+        data,
+        sortides: Number(sortides) || 0,
+        manteniments: Number(manteniments) || 0,
+        zones,
+      });
+      setSortides('');
+      setManteniments('');
+      setZones(false);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   // Filtre per mes (YYYY-MM). Per defecte, el mes en curs.
   const mesActual = toISODate(new Date()).slice(0, 7);
@@ -178,26 +218,73 @@ export function JornadesSection({
         </Table>
       )}
 
-      <form onSubmit={afegir} className="grid items-end gap-2 border-t border-slate-100 pt-4 sm:grid-cols-4">
-        <Field label="Dia">
-          <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
-        </Field>
-        <Field label="Hores">
-          <Input type="number" step="0.25" value={hores} onChange={(e) => setHores(e.target.value)} />
-        </Field>
-        <Field label={`€/hora${preuHora ? ` (per defecte ${preuHora})` : ''}`}>
-          <Input
-            type="number"
-            step="0.01"
-            placeholder={preuHora ? String(preuHora) : 'Indica el preu'}
-            value={preu}
-            onChange={(e) => setPreu(e.target.value)}
-          />
-        </Field>
-        <Button type="submit" disabled={saving || !hores}>
-          <Plus className="h-4 w-4" /> Afegir jornada
-        </Button>
-      </form>
+      {perTasques ? (
+        <form onSubmit={registrarTasques} className="space-y-3 border-t border-slate-100 pt-4">
+          <p className="text-xs text-slate-500">
+            Cobra <strong>per tasques de neteja</strong> (no per hores), segons les tarifes de
+            Configuració.
+          </p>
+          <div className="grid items-end gap-2 sm:grid-cols-4">
+            <Field label="Dia">
+              <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+            </Field>
+            <Field label={`Sortides${tarifes.s ? ` (${tarifes.s} €)` : ''}`}>
+              <Input type="number" min="0" value={sortides} onChange={(e) => setSortides(e.target.value)} />
+            </Field>
+            <Field label={`Manteniments${tarifes.m ? ` (${tarifes.m} €)` : ''}`}>
+              <Input
+                type="number"
+                min="0"
+                value={manteniments}
+                onChange={(e) => setManteniments(e.target.value)}
+              />
+            </Field>
+            <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-brand-700"
+                checked={zones}
+                onChange={(e) => setZones(e.target.checked)}
+              />
+              Zones{tarifes.z ? ` (${tarifes.z} €)` : ''}
+            </label>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm text-slate-600">
+              A pagar: <strong className="text-slate-900">{aPagar.toFixed(2)} €</strong>
+            </span>
+            <Button type="submit" disabled={saving || aPagar <= 0}>
+              <Plus className="h-4 w-4" /> Registrar pagament
+            </Button>
+            {senseTarifes && (
+              <span className="text-xs text-amber-600">
+                Configura les tarifes a Configuració → Tarifes de neteja.
+              </span>
+            )}
+          </div>
+        </form>
+      ) : (
+        <form onSubmit={afegir} className="grid items-end gap-2 border-t border-slate-100 pt-4 sm:grid-cols-4">
+          <Field label="Dia">
+            <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+          </Field>
+          <Field label="Hores">
+            <Input type="number" step="0.25" value={hores} onChange={(e) => setHores(e.target.value)} />
+          </Field>
+          <Field label={`€/hora${preuHora ? ` (per defecte ${preuHora})` : ''}`}>
+            <Input
+              type="number"
+              step="0.01"
+              placeholder={preuHora ? String(preuHora) : 'Indica el preu'}
+              value={preu}
+              onChange={(e) => setPreu(e.target.value)}
+            />
+          </Field>
+          <Button type="submit" disabled={saving || !hores}>
+            <Plus className="h-4 w-4" /> Afegir jornada
+          </Button>
+        </form>
+      )}
       {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
   );

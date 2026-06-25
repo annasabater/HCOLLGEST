@@ -26,6 +26,16 @@ export default async function TreballadorDetailPage({ params }: { params: Promis
   });
   if (!t) notFound();
 
+  // Tarifes de neteja (per als treballadors que cobren per tasques, sense preu/hora).
+  const est = await prisma.establiment.findFirst({
+    select: { preuNetejaSortida: true, preuNetejaManteniment: true, preuNetejaZones: true },
+  });
+  const tarifes = {
+    s: est?.preuNetejaSortida ? Number(est.preuNetejaSortida) : 0,
+    m: est?.preuNetejaManteniment ? Number(est.preuNetejaManteniment) : 0,
+    z: est?.preuNetejaZones ? Number(est.preuNetejaZones) : 0,
+  };
+
   return (
     <div>
       <BackLink fallback="/personal">Personal</BackLink>
@@ -37,12 +47,13 @@ export default async function TreballadorDetailPage({ params }: { params: Promis
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Jornades i pagaments (per hores)</CardTitle>
+            <CardTitle>Jornades i pagaments {t.preuHora ? '(per hores)' : '(per tasques)'}</CardTitle>
           </CardHeader>
           <CardBody>
             <JornadesSection
               treballadorId={t.id}
               preuHora={t.preuHora ? Number(t.preuHora) : null}
+              tarifes={tarifes}
               jornades={t.jornades.map((j) => ({
                 id: j.id,
                 data: j.data.toISOString(),
