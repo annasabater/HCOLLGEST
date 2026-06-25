@@ -30,6 +30,7 @@ async function addWatermark(buf: Buffer, mime: string): Promise<Buffer> {
       .toBuffer();
 
     return await img
+      .grayscale()
       .composite([{ input: dimmed, gravity: 'center' }])
       .jpeg({ quality: 90 })
       .toBuffer();

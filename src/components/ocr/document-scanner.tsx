@@ -172,11 +172,11 @@ export function DocumentScanner({
                   <button
                     type="button"
                     onClick={() => setLightbox(thumb)}
-                    className="shrink-0"
+                    className="shrink-0 relative"
                     title="Veure imatge"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={thumb} alt={d.file.name} className="h-10 w-10 rounded object-cover border border-slate-200" />
+                    <img src={thumb} alt={d.file.name} className="h-10 w-10 rounded object-cover border border-slate-200" style={{ filter: 'grayscale(100%)' }} />
                   </button>
                 ) : (
                   <FileText className="h-4 w-4 shrink-0 text-slate-400" />
@@ -226,13 +226,27 @@ export function DocumentScanner({
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
           onClick={() => setLightbox(null)}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={lightbox}
-            alt="Document"
-            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="relative" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightbox}
+              alt="Document"
+              className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+              style={{ filter: 'grayscale(100%)' }}
+            />
+            {/* Watermark overlay */}
+            <div
+              className="pointer-events-none absolute inset-0 flex items-center justify-center"
+              aria-hidden
+            >
+              <span
+                className="text-3xl font-bold tracking-widest text-black/35 select-none"
+                style={{ transform: 'rotate(-30deg)', whiteSpace: 'nowrap' }}
+              >
+                HOSTAL COLL
+              </span>
+            </div>
+          </div>
           <button
             type="button"
             className="absolute right-4 top-4 text-white/80 hover:text-white text-2xl font-bold"
