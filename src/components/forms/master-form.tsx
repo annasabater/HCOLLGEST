@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Trash2, UserCheck, Search, AlertTriangle, PawPrint } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -187,6 +187,66 @@ export function MasterForm({
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
+
+  // ── Esborrany (localStorage) — només en mode creació ──────────────────────
+  const DRAFT_KEY = 'estancia-nou-draft';
+  const [draftBanner, setDraftBanner] = useState(false);
+  const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Comprova si hi ha un esborrany en muntar (mode create i sense initial)
+  useEffect(() => {
+    if (mode !== 'create' || initial) return;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) setDraftBanner(true);
+    } catch { /* ignorar */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Restaura l'esborrany
+  function restaurarDraft() {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw) as {
+        tipusRegistre: typeof tipusRegistre;
+        estancia: typeof estancia;
+        viatgers: ViatgerState[];
+        portaMascota: boolean;
+        mascotes: typeof mascotes;
+        pagaments: typeof pagaments;
+        fiances: typeof fiances;
+      };
+      setTipusRegistre(d.tipusRegistre ?? 'CONTRACTE_EN_CURS');
+      setEstancia(d.estancia ?? estancia);
+      setViatgers(d.viatgers?.length ? d.viatgers : viatgers);
+      setPortaMascota(d.portaMascota ?? false);
+      setMascotes(d.mascotes ?? []);
+      setPagaments(d.pagaments ?? []);
+      setFiances(d.fiances ?? []);
+    } catch { /* ignorar */ }
+    setDraftBanner(false);
+  }
+
+  function descartarDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignorar */ }
+    setDraftBanner(false);
+  }
+
+  // Autodesat cada 800 ms de calma
+  useEffect(() => {
+    if (mode !== 'create') return;
+    if (draftTimer.current) clearTimeout(draftTimer.current);
+    draftTimer.current = setTimeout(() => {
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({
+          tipusRegistre, estancia, viatgers, portaMascota, mascotes, pagaments, fiances,
+        }));
+      } catch { /* ignorar */ }
+    }, 800);
+    return () => { if (draftTimer.current) clearTimeout(draftTimer.current); };
+  }, [mode, tipusRegistre, estancia, viatgers, portaMascota, mascotes, pagaments, fiances]);
+  // ──────────────────────────────────────────────────────────────────────────
 
   const esReserva = tipusRegistre === 'RESERVA';
 
@@ -499,6 +559,7 @@ export function MasterForm({
         );
       }
 
+      try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignorar */ }
       router.push(`/estancies/${res.estanciaId}`);
       router.refresh();
     } catch (err) {
@@ -519,6 +580,15 @@ export function MasterForm({
       }}
       className="space-y-6"
     >
+      {draftBanner && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <span>S&apos;ha trobat un esborrany. Vols continuar des d&apos;on ho vas deixar?</span>
+          <div className="flex shrink-0 gap-2">
+            <button type="button" onClick={restaurarDraft} className="font-medium underline">Continuar</button>
+            <button type="button" onClick={descartarDraft} className="text-amber-600 underline">Descartar</button>
+          </div>
+        </div>
+      )}
       <datalist id="paisos">
         {PAISOS.map((pais) => (
           <option key={pais} value={pais} />
