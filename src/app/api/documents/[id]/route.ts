@@ -11,15 +11,18 @@ async function addWatermark(buf: Buffer, mime: string): Promise<Buffer> {
   if (!mime.startsWith('image/')) return buf;
   const img = sharp(buf);
   const { width = 800, height = 600 } = await img.metadata();
-  const fontSize = Math.max(28, Math.round(Math.min(width, height) / 12));
-  const svg = `<svg width="${width}" height="${height}">
-    <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle"
-      transform="rotate(-30,${width / 2},${height / 2})"
+  const cx = Math.round(width / 2);
+  const cy = Math.round(height / 2);
+  const fontSize = Math.max(30, Math.round(Math.min(width, height) / 10));
+  // xmlns requerit per librsvg; fill-opacity en lloc de rgba(); coordenades absolutes
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+    <text x="${cx}" y="${cy}" text-anchor="middle" alignment-baseline="middle"
+      transform="rotate(-30 ${cx} ${cy})"
       font-family="sans-serif" font-size="${fontSize}" font-weight="bold"
-      fill="rgba(122,31,43,0.28)" letter-spacing="4">HOSTAL COLL</text>
+      fill="#7A1F2B" fill-opacity="0.30">HOSTAL COLL</text>
   </svg>`;
   return img
-    .composite([{ input: Buffer.from(svg), gravity: 'center' }])
+    .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
     .jpeg({ quality: 90 })
     .toBuffer();
 }
