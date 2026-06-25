@@ -103,6 +103,7 @@ export const EstanciaInputSchema = z.object({
   habitacioId: optStr,
   teInternet: z.boolean().optional(),
   observacions: optStr,
+  idioma: z.enum(['ca', 'es', 'en', 'fr']).optional(),
 });
 
 /**

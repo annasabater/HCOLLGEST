@@ -36,6 +36,7 @@ export default async function EditarEstadaPage({ params }: { params: Promise<{ i
       habitacioId: estancia.habitacioId ?? '',
       teInternet: estancia.teInternet ?? false,
       observacions: estancia.observacions ?? '',
+      idioma: estancia.idioma ?? 'ca',
     },
     viatgers: estancia.viatgers.map((ev) => ({
       huespedId: ev.huesped.id,

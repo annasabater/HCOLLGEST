@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, LogIn, LogOut, Sparkles, Check, Wrench, X, U
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { CalendariHabitacio } from '@/components/habitacio/calendari-habitacio';
+import { CalendariOcupacioTotal } from '@/components/habitacio/calendari-ocupacio-total';
 import { getJSON, patchJSON } from '@/lib/api';
 import { addDays, addMonths, monthGridDays, sameMonth, toISODate, weekDays } from '@/lib/dates';
 import { cn } from '@/lib/utils';
@@ -332,6 +333,11 @@ export default function CalendariPage() {
         <Sparkles className="mr-1 inline h-3 w-3" /> Clica un dia per veure’n entrades, sortides i
         neteja i entrar-hi. Les tasques de neteja es generen automàticament en registrar una estada.
       </p>
+
+      {/* Ocupació de totes les habitacions simultàniament (6 colors) */}
+      <div className="mt-8">
+        <CalendariOcupacioTotal />
+      </div>
 
       {/* Ocupació per habitació (vista habitació per habitació) */}
       {habitacions.length > 0 && (

@@ -43,6 +43,7 @@ interface Estancia {
   id: string;
   dataEntrada: string;
   dataSortida: string;
+  idioma: string | null;
   habitacio: { nom: string } | null;
   viatgers: { esTitular: boolean; huesped: { nom: string; cognom1: string; telefon: string | null } }[];
 }
@@ -322,7 +323,16 @@ function HostesCard() {
 
   useEffect(() => {
     setTpls(loadTpls('hoste'));
-    getJSON<{ estancies: Estancia[] }>('/api/estancies').then((r) => setEstancies(r.estancies));
+    getJSON<{ estancies: Estancia[] }>('/api/estancies').then((r) => {
+      setEstancies(r.estancies);
+      const defaults: Record<string, Lang> = {};
+      r.estancies.forEach((e) => {
+        if (e.idioma && ['ca', 'es', 'en', 'fr'].includes(e.idioma)) {
+          defaults[e.id] = e.idioma as Lang;
+        }
+      });
+      setLangs(defaults);
+    });
   }, []);
 
   // Estades que cobreixen el dia de neteja triat (l'hoste hi és aquell dia).
@@ -466,7 +476,16 @@ function BenvingudaCard() {
   useEffect(() => {
     setTpls(loadTpls('benvinguda'));
     setEnllac(lsGet('enllac_benvinguda', 'https://hostalcoll.com/benvinguda.html'));
-    getJSON<{ estancies: Estancia[] }>('/api/estancies').then((r) => setEstancies(r.estancies));
+    getJSON<{ estancies: Estancia[] }>('/api/estancies').then((r) => {
+      setEstancies(r.estancies);
+      const defaults: Record<string, Lang> = {};
+      r.estancies.forEach((e) => {
+        if (e.idioma && ['ca', 'es', 'en', 'fr'].includes(e.idioma)) {
+          defaults[e.id] = e.idioma as Lang;
+        }
+      });
+      setLangs(defaults);
+    });
   }, []);
 
   const avui = toISODate(new Date());

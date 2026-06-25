@@ -17,6 +17,10 @@
     {
       "path": "/api/cron/drive-mensual",
       "schedule": "15 6 1 * *"
+    },
+    {
+      "path": "/api/cron/emails",
+      "schedule": "0 8 * * *"
     }
   ]
 }

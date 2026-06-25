@@ -62,6 +62,7 @@ export async function getResum(opts?: FinanceOpts) {
     vigenciesProximes,
     benvingudesPendentsRaw,
     establimentBenv,
+    sortidesTodayRaw,
   ] = await Promise.all([
     prisma.estancia.findMany({
       where: {
@@ -181,6 +182,17 @@ export async function getResum(opts?: FinanceOpts) {
     prisma.establiment.findFirst({
       select: { benvingudaAutomatica: true, benvingudaTothom: true },
     }),
+    prisma.estancia.findMany({
+      where: {
+        deletedAt: null,
+        dataSortida: {
+          gte: todayStart,
+          lt: new Date(todayStart.getTime() + 86_400_000),
+        },
+      },
+      orderBy: { dataSortida: 'asc' },
+      include: { viatgers: { where: { esTitular: true }, include: { huesped: true } }, habitacio: true },
+    }),
   ]);
 
   const num = (d: { _sum: { import: unknown } }) => Number(d._sum.import ?? 0);
@@ -227,12 +239,21 @@ export async function getResum(opts?: FinanceOpts) {
     })),
   }));
 
+  const sortidesToday = sortidesTodayRaw.map((e) => ({
+    id: e.id,
+    habitacio: e.habitacio?.nom ?? null,
+    titular: e.viatgers[0]?.huesped
+      ? `${e.viatgers[0].huesped.nom} ${e.viatgers[0].huesped.cognom1}`
+      : '—',
+  }));
+
   return {
     pendentsEnviament,
     pendentsFirmaCount,
     enviamentsError,
     properesEntrades,
     properesSortides,
+    sortidesToday,
     serveisProxims: serveisProximsList,
     vigenciesProximes: vigenciesProximesList,
     benvingudes: {

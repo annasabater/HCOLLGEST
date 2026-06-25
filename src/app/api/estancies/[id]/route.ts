@@ -13,6 +13,7 @@ type Ctx = { params: Promise<{ id: string }> };
 const UpdateSchema = z
   .object({
     estat: z.enum(['RESERVA', 'EN_CURS', 'FINALITZADA', 'CANCELLADA']).optional(),
+    tipusRegistre: z.enum(['RESERVA', 'CONTRACTE_EN_CURS']).optional(),
     observacions: z.string().nullable().optional(),
     habitacioId: z.string().nullable().optional(),
     avisDadesParat: z.boolean().optional(),
@@ -25,6 +26,7 @@ const UpdateSchema = z
     tipusPagament: TipusPagamentEnum.optional(),
     numHabitacions: z.coerce.number().int().min(0).nullable().optional(),
     teInternet: z.boolean().optional(),
+    idioma: z.enum(['ca', 'es', 'en', 'fr']).nullable().optional(),
   })
   .superRefine((d, ctx) => {
     if (d.dataEntrada && d.dataSortida && d.dataSortida <= d.dataEntrada) {

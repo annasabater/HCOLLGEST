@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Send, Receipt, FileSignature, Pencil } from 'lucide-react';
+import { Send, Receipt, FileSignature, Pencil, Mail } from 'lucide-react';
 import { BackLink } from '@/components/ui/back-link';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
@@ -17,6 +17,8 @@ import { ViatgerFirma } from '@/components/estancia/viatger-firma';
 import { AmpliarEstada } from '@/components/estancia/ampliar-estada';
 import { EliminarEstada } from '@/components/estancia/eliminar-estada';
 import { TreureEsborrany } from '@/components/estancia/treure-esborrany';
+import { ConvertirAEnCurs } from '@/components/estancia/convertir-a-en-curs';
+import { EmailsPanel } from '@/components/estancia/emails-panel';
 import { FacturaPanel } from '@/components/factura/factura-panel';
 import { PagamentsPanel } from '@/components/factura/pagaments-panel';
 import { preuSuggeritAllotjament } from '@/lib/services/tarifes';
@@ -122,6 +124,9 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 <FileSignature className="h-4 w-4" /> Fitxa PDF
               </Button>
             </a>
+            {canWrite && estancia.estat === 'RESERVA' && (
+              <ConvertirAEnCurs estanciaId={estancia.id} />
+            )}
             <AmpliarEstada
               estanciaId={estancia.id}
               defaultEntrada={toISODate(estancia.dataSortida)}
@@ -346,6 +351,25 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   numRegistre: e.numRegistre,
                   errorMsg: e.errorMsg,
                 }))}
+              />
+            </CardBody>
+          </Card>
+
+          {/* Emails programats (benvinguda / gràcies + ressenya) */}
+          <Card>
+            <CardHeader className="flex items-center gap-2">
+              <Mail className="h-4 w-4 text-brand-600" />
+              <CardTitle>Emails programats</CardTitle>
+            </CardHeader>
+            <CardBody>
+              <EmailsPanel
+                estanciaId={estancia.id}
+                titularNom={titular ? `${titular.nom} ${titular.cognom1}` : ''}
+                titularEmail={titular?.email ?? null}
+                habitacioNom={estancia.habitacio?.nom ?? null}
+                dataEntrada={estancia.dataEntrada.toISOString()}
+                dataSortida={estancia.dataSortida.toISOString()}
+                idioma={estancia.idioma ?? 'ca'}
               />
             </CardBody>
           </Card>

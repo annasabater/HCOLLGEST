@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { Printer, ShieldCheck } from 'lucide-react';
 import { prisma } from '@/lib/db';
+import { getSessionUser } from '@/lib/auth/session';
+import { teVistaRestringida } from '@/lib/auth/restriccions';
 import { PageHeader } from '@/components/ui/page-header';
 import { FinancesNav } from '@/components/balanc/finances-nav';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +13,10 @@ import { formatDate } from '@/lib/utils';
 export const dynamic = 'force-dynamic';
 
 export default async function FacturesPage() {
-  const factures = await prisma.factura.findMany({
+  const user = await getSessionUser();
+  const restringit = teVistaRestringida(user);
+
+  const totes = await prisma.factura.findMany({
     where: { deletedAt: null },
     orderBy: { data: 'desc' },
     take: 100,
@@ -24,6 +29,9 @@ export default async function FacturesPage() {
       },
     },
   });
+  // Vista restringida de propietat: amaga les factures d'estades amb fiança en
+  // custòdia (les que tenen un dipòsit EN_CUSTODIA).
+  const factures = restringit ? totes.filter((f) => f.estancia.diposits.length === 0) : totes;
 
   const pendents = factures.filter((f) => f.estat === 'PENDENT');
   const totalPendent = pendents.reduce((a, f) => a + Number(f.total), 0);

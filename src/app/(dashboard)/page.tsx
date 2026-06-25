@@ -12,6 +12,7 @@ import {
   Wrench,
   CalendarClock,
   ShieldAlert,
+  Sparkles,
 } from 'lucide-react';
 import { getResum } from '@/lib/services/dashboard';
 import { isFormatConfirmat } from '@/lib/mossos/fitxer';
@@ -134,6 +135,34 @@ export default async function DashboardPage() {
         automatica={resum.benvingudes.automatica}
         tothom={resum.benvingudes.tothom}
       />
+
+      {/* Alerta de sortides avui: recordatori de marcar neteja */}
+      {resum.sortidesToday.length > 0 && (
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
+          <div className="flex-1">
+            <p className="font-medium">
+              {resum.sortidesToday.length === 1
+                ? 'Hi ha 1 sortida avui'
+                : `Hi ha ${resum.sortidesToday.length} sortides avui`}
+              {' — '}
+              <Link href="/neteja" className="underline underline-offset-2 hover:text-blue-900">
+                marca la neteja
+              </Link>
+            </p>
+            <ul className="mt-1 space-y-0.5 text-blue-700">
+              {resum.sortidesToday.map((s) => (
+                <li key={s.id}>
+                  <Link href={`/estancies/${s.id}`} className="hover:underline">
+                    {s.titular}
+                    {s.habitacio ? ` · Hab. ${s.habitacio}` : ''}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
 
       {/* Aviso §9: el formato del fitxer es PROVISIONAL hasta confirmarlo con el manual */}
       {!isFormatConfirmat() && (
