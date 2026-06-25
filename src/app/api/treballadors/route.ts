@@ -12,7 +12,7 @@ export async function GET() {
   const treballadors = await prisma.treballador.findMany({
     where: { deletedAt: null },
     orderBy: { nom: 'asc' },
-    select: { id: true, nom: true, carrec: true, telefon: true },
+    select: { id: true, nom: true, carrec: true, telefon: true, preuSortida: true, preuManteniment: true, preuZones: true },
   });
   return ok({ treballadors });
 }
