@@ -135,6 +135,7 @@ export interface MasterFormInitial {
     habitacioId: string;
     teInternet: boolean;
     observacions: string;
+    idioma: string;
   };
   viatgers: ViatgerState[];
   esBorrany: boolean;
@@ -169,6 +170,7 @@ export function MasterForm({
       habitacioId: '',
       teInternet: true,
       observacions: '',
+      idioma: 'ca',
     },
   );
   const [viatgers, setViatgers] = useState<ViatgerState[]>(() =>
@@ -221,9 +223,13 @@ export function MasterForm({
     if (v.cognom2) patch.cognom2 = v.cognom2;
     if (v.tipusDocument) patch.tipusDocument = v.tipusDocument;
     if (v.numDocument) patch.numDocument = v.numDocument;
+    if (v.numSuport) patch.numSuport = v.numSuport;
     if (v.sexe) patch.sexe = v.sexe;
     if (v.dataNaixement) patch.dataNaixement = v.dataNaixement;
     if (v.nacionalitat) patch.nacionalitat = v.nacionalitat;
+    if (v.adreca) patch.adreca = v.adreca;
+    if (v.codiPostal) patch.codiPostal = v.codiPostal;
+    if (v.localitat) patch.localitat = v.localitat;
     setV(i, patch);
   };
 
@@ -299,6 +305,7 @@ export function MasterForm({
         habitacioId: estancia.habitacioId || undefined,
         teInternet: estancia.teInternet,
         observacions: estancia.observacions || undefined,
+        idioma: (estancia.idioma || 'ca') as 'ca' | 'es' | 'en' | 'fr',
       },
       viatgers: viatgers.map((v) => ({
         huespedId: v.huespedId,
@@ -621,7 +628,18 @@ export function MasterForm({
               ))}
             </Select>
           </Field>
-          <Field label="Observacions" className="sm:col-span-2 lg:col-span-3">
+          <Field label="Idioma de comunicació">
+            <Select
+              value={estancia.idioma}
+              onChange={(e) => setEstancia({ ...estancia, idioma: e.target.value })}
+            >
+              <option value="ca">Català</option>
+              <option value="es">Castellà</option>
+              <option value="en">Anglès</option>
+              <option value="fr">Francès</option>
+            </Select>
+          </Field>
+          <Field label="Observacions" className="sm:col-span-2 lg:col-span-2">
             <Input
               uppercase
               value={estancia.observacions}

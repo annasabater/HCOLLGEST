@@ -5,7 +5,7 @@ import { ScanLine, Upload, CheckCircle2, AlertTriangle, FileText, Trash2, Lock }
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/input';
 import { optionsFrom, tipusDocumentPujatValues, TIPUS_DOCUMENT_PUJAT_LABELS } from '@/lib/validation/enums';
-import { findMrzLines, parseMrz, mrzToViatger, parseDniFront, type ViatgerOcr } from '@/lib/ocr/mrz';
+import { findMrzLines, parseMrz, mrzToViatger, parseDniFront, parseDniReverso, type ViatgerOcr } from '@/lib/ocr/mrz';
 
 const MRZ_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<';
 
@@ -60,19 +60,37 @@ export function DocumentScanner({
       const mrz = parseMrz(findMrzLines(passMrz.data.text));
 
       let result: ViatgerOcr | null = mrz && mrz.valid ? mrzToViatger(mrz) : null;
-      let source: 'mrz' | 'front' | null = result ? 'mrz' : null;
+      let source: 'mrz' | 'front' | 'revers' | null = result ? 'mrz' : null;
+
+      // 2a passada: text complet (cara del DAVANT o del REVERS), sense restricció.
+      await worker.setParameters({ tessedit_char_whitelist: '' });
+      const passFull = await worker.recognize(file);
+      const fullText = passFull.data.text;
 
       if (!result) {
-        // 2a passada: text complet (cara del DAVANT), sense restricció d'alfabet.
-        await worker.setParameters({ tessedit_char_whitelist: '' });
-        const passFront = await worker.recognize(file);
-        const front = parseDniFront(passFront.data.text);
-        if (front) {
+        // Intenta cara del davant i cara del revers (un o l'altre tindrà dades).
+        const front = parseDniFront(fullText);
+        const revers = parseDniReverso(fullText);
+
+        if (front && revers) {
+          // Fusiona: les dades d'identitat del davant + l'adreça del revers.
+          result = { ...front, adreca: revers.adreca, codiPostal: revers.codiPostal, localitat: revers.localitat, provinciaNom: revers.provinciaNom };
+          source = 'front';
+        } else if (front) {
           result = front;
           source = 'front';
+        } else if (revers) {
+          result = revers;
+          source = 'revers';
         } else if (mrz) {
           result = mrzToViatger(mrz); // MRZ llegida però amb algun dígit dubtós
           source = 'mrz';
+        }
+      } else if (result && source === 'mrz') {
+        // MRZ vàlida: aprofita igualment el revers si hi ha dades d'adreça.
+        const revers = parseDniReverso(fullText);
+        if (revers) {
+          result = { ...result, adreca: revers.adreca, codiPostal: revers.codiPostal, localitat: revers.localitat, provinciaNom: revers.provinciaNom };
         }
       }
       await worker.terminate();
@@ -86,7 +104,9 @@ export function DocumentScanner({
       }
 
       onExtract(result);
-      if (source === 'mrz') {
+      if (source === 'revers') {
+        setMsg({ tone: 'ok', text: 'Cara del revers llegida: adreça, codi postal i localitat autoreplens. Revisa-ho.' });
+      } else if (source === 'mrz') {
         setMsg({
           tone: result.valid ? 'ok' : 'warn',
           text: result.valid
@@ -150,9 +170,9 @@ export function DocumentScanner({
       </div>
 
       <p className="mt-1.5 text-xs text-slate-500">
-        DNI / passaport: autoreplena nom, cognoms, document, naixement, sexe i nacionalitat. Cada foto
-        es desa xifrada, en blanc i negre i amb marca d’aigua. Pots afegir-ne diversos (DNI anvers i
-        revers, carnet de conduir…).
+        DNI anvers: autoreplena nom, cognoms, document, número de suport, sexe i nacionalitat.
+        DNI revers: autoreplena adreça, codi postal i localitat. Cada foto es desa xifrada, en blanc i negre
+        i amb marca d’aigua. Pots afegir-ne diversos (anvers i revers per separat).
       </p>
 
       {msg && (

@@ -12,6 +12,7 @@ export interface MrzResult {
   documentType: string;
   issuingCountry: string;
   numDocument: string;
+  numSuport?: string; // IDESP (camp opcional línia 1 TD1)
   cognom1: string;
   cognom2?: string;
   nom: string;
@@ -28,9 +29,15 @@ export interface ViatgerOcr {
   cognom2?: string;
   tipusDocument?: 'DNI_NIF' | 'NIE' | 'PASSAPORT' | 'ALTRES';
   numDocument?: string;
+  numSuport?: string;
   sexe?: 'HOME' | 'DONA';
   dataNaixement?: string;
   nacionalitat?: string;
+  // Camps de la cara del revers (adreça)
+  adreca?: string;
+  codiPostal?: string;
+  localitat?: string;
+  provinciaNom?: string;
   valid: boolean;
 }
 
@@ -141,11 +148,14 @@ export function parseMrz(lines: string[]): MrzResult | null {
       checkDigit(numDocumentRaw) === Number(l1[14]) &&
       checkDigit(birth) === Number(l2[6]) &&
       checkDigit(expiry) === Number(l2[14]);
+    // Camp opcional línia 1 (pos 15-29): IDESP / número de suport del DNI espanyol.
+    const numSuportRaw = l1.slice(15, 29).replace(/</g, '').trim();
     return {
       format: 'TD1',
       documentType: l1.slice(0, 2).replace(/</g, ''),
       issuingCountry: l1.slice(2, 5).replace(/</g, ''),
       numDocument: numDocumentRaw.replace(/</g, ''),
+      numSuport: numSuportRaw.length >= 3 ? numSuportRaw : undefined,
       ...name,
       nacionalitat: l2.slice(15, 18).replace(/</g, ''),
       sexe: sexFrom(l2[7]!),
@@ -241,8 +251,18 @@ export function parseDniFront(rawText: string): ViatgerOcr | null {
 
   // --- Sexe ---
   let sexe: ViatgerOcr['sexe'];
-  const sx = text.match(/\bSEXO\b[^A-Z0-9]{0,4}([MF])\b/);
+  const sx =
+    text.match(/\bSEXO\b[^A-Z0-9]{0,4}([MF])\b/) ||
+    text.match(/\bSEXE\b[^A-Z0-9]{0,4}([MF])\b/) ||
+    text.match(/\bSEX[OE]?\s*[:\-]?\s*([MF])\b/);
   if (sx) sexe = sx[1] === 'M' ? 'HOME' : 'DONA';
+
+  // --- Número de suport (IDESP, SOPORTE, SOPORT) ---
+  let numSuport: string | undefined;
+  const idesp = compact.match(/\bIDESP\s*([A-Z0-9]{6,12})\b/) ||
+    text.match(/SOPORT[E]?\s*[:\s]+([A-Z0-9]{6,12})\b/) ||
+    text.match(/NÚM[\s.]+SOPORT[E]?\s*[:\s]+([A-Z0-9]{6,12})\b/i);
+  if (idesp) numSuport = idesp[1];
 
   // --- Nom i cognoms (per etiquetes APELLIDOS / NOMBRE) ---
   const up = lines.map((l) => l.toUpperCase());
@@ -278,10 +298,84 @@ export function parseDniFront(rawText: string): ViatgerOcr | null {
     cognom2,
     tipusDocument,
     numDocument,
+    numSuport,
     sexe,
     dataNaixement,
     nacionalitat: /\bESP\b|ESPAÑOL|ESPANOL|ESPANYA/.test(text) ? 'Espanya' : undefined,
     valid,
+  };
+}
+
+/**
+ * Parser BEST-EFFORT de la cara del REVERS d'un DNI/NIE espanyol.
+ * Extreu l'adreça, codi postal, localitat i província (text lliure OCR).
+ * Retorna null si no detecta cap indicador de cara revers.
+ */
+export function parseDniReverso(rawText: string): ViatgerOcr | null {
+  const text = rawText.toUpperCase();
+  const lines = rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const up = lines.map((l) => l.toUpperCase());
+
+  // Indicadors que estem a la cara del revers.
+  const esReverso =
+    /DOMICIL|MUNICIPIO|MUNICIPIP|MUNICIPI\b|PROVINCIA|LLOC DE NAIX|LUGAR DE NAC/.test(text);
+  if (!esReverso) return null;
+
+  const cleanText = (s: string) =>
+    s.replace(/[^A-Za-zÀ-ÿ0-9\s,./ºª'-]/g, '').trim();
+  const isMetadata = (s: string) =>
+    /DOMICIL|MUNICIPIO|MUNICIPI|PROVINCIA|LLOC|LUGAR|NAIX|NACIM|EXPED|DNI|NIF|NIE|IDESP|ESP|SUPORT|SOPORT/i.test(s);
+
+  // Cerca línies de context rellevants per a cada etiqueta.
+  function nextNonLabelLine(labelIdx: number): string | undefined {
+    for (let i = labelIdx + 1; i < lines.length && i <= labelIdx + 3; i++) {
+      const l = lines[i]!;
+      if (l.length >= 3 && !isMetadata(l)) return cleanText(l);
+    }
+    return undefined;
+  }
+
+  // Adreça: línia següent a "DOMICILIO" / "DOMICILI"
+  const domIdx = up.findIndex((l) => /DOMICIL/.test(l));
+  const adreca = domIdx >= 0 ? nextNonLabelLine(domIdx) : undefined;
+
+  // Codi postal: 5 dígits
+  const cpMatch = text.match(/\b(\d{5})\b/);
+  const codiPostal = cpMatch?.[1];
+
+  // Localitat: línia següent a "MUNICIPIO" / "MUNICIPI" o la que conté el CP
+  let localitat: string | undefined;
+  const munIdx = up.findIndex((l) => /MUNICIPIO|MUNICIPIP|MUNICIPI\b/.test(l));
+  if (munIdx >= 0) {
+    const raw = nextNonLabelLine(munIdx);
+    // Neteja el CP si apareix a la mateixa línia
+    localitat = raw?.replace(/\b\d{5}\b/, '').replace(/\s+/g, ' ').trim();
+  }
+  if (!localitat && cpMatch) {
+    // Fallback: línia que conté el CP
+    const cpLine = lines.find((l) => l.includes(cpMatch[1]!));
+    if (cpLine) {
+      localitat = cleanText(cpLine.replace(cpMatch[1]!, '')).trim();
+    }
+  }
+
+  // Província: línia següent a "PROVINCIA"
+  let provinciaNom: string | undefined;
+  const provIdx = up.findIndex((l) => /PROVINCIA\b/.test(l));
+  if (provIdx >= 0) {
+    provinciaNom = nextNonLabelLine(provIdx);
+  }
+
+  if (!adreca && !codiPostal && !localitat) return null;
+
+  return {
+    nom: '',
+    cognom1: '',
+    adreca: adreca || undefined,
+    codiPostal: codiPostal || undefined,
+    localitat: localitat || undefined,
+    provinciaNom: provinciaNom || undefined,
+    valid: false,
   };
 }
 
@@ -293,6 +387,7 @@ export function mrzToViatger(m: MrzResult): ViatgerOcr {
     cognom2: m.cognom2,
     tipusDocument: tipusFrom(m),
     numDocument: m.numDocument || undefined,
+    numSuport: m.numSuport || undefined,
     sexe: m.sexe,
     dataNaixement: m.dataNaixement,
     nacionalitat: NACIONALITAT_LABELS[m.nacionalitat] ?? (m.nacionalitat || undefined),
