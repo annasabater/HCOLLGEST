@@ -107,3 +107,45 @@ export function buildBenvingudaEmail(
     html: BASE_HTML(fill(BENVINGUDA_HTML[lang], vars)),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Text pla per WhatsApp (benvinguda)
+// ---------------------------------------------------------------------------
+
+const BENVINGUDA_WA: Record<LangEmail, string> = {
+  ca: `Hola {{nom}}! 👋
+
+Estem encantats de tenir-te a l'Hostal Coll a partir d'avui. La teva habitació és la {{habitacio}}.
+
+Si necessites qualsevol cosa, estem aquí. Bona estada! 🏨
+
+— L'equip de l'Hostal Coll`,
+  es: `¡Hola {{nom}}! 👋
+
+Estamos encantados de tenerte en el Hostal Coll a partir de hoy. Tu habitación es la {{habitacio}}.
+
+Si necesitas cualquier cosa, aquí estamos. ¡Que disfrutes tu estancia! 🏨
+
+— El equipo del Hostal Coll`,
+  en: `Hi {{nom}}! 👋
+
+We're delighted to have you at Hostal Coll starting today. Your room is {{habitacio}}.
+
+If you need anything at all, we're here for you. Enjoy your stay! 🏨
+
+— The Hostal Coll team`,
+  fr: `Bonjour {{nom}} ! 👋
+
+Nous sommes ravis de vous accueillir à l'Hostal Coll à partir d'aujourd'hui. Votre chambre est le {{habitacio}}.
+
+N'hésitez pas si vous avez besoin de quoi que ce soit. Bon séjour ! 🏨
+
+— L'équipe de l'Hostal Coll`,
+};
+
+export function buildBenvingudaWhatsApp(
+  lang: LangEmail,
+  vars: { nom: string; habitacio: string },
+): string {
+  return fill(BENVINGUDA_WA[lang], vars);
+}

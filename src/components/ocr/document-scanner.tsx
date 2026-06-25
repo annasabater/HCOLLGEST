@@ -1,7 +1,7 @@
 ﻿'use client';
 
-import { useRef, useState } from 'react';
-import { ScanLine, Upload, CheckCircle2, AlertTriangle, FileText, Trash2, Lock } from 'lucide-react';
+import { useRef, useState, useEffect } from 'react';
+import { ScanLine, Upload, CheckCircle2, AlertTriangle, FileText, Trash2, Lock, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/input';
 import { optionsFrom, tipusDocumentPujatValues, TIPUS_DOCUMENT_PUJAT_LABELS } from '@/lib/validation/enums';
@@ -39,6 +39,21 @@ export function DocumentScanner({
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [msg, setMsg] = useState<{ tone: 'ok' | 'warn'; text: string } | null>(null);
+  const [previews, setPreviews] = useState<Record<string, string>>({});
+  const [lightbox, setLightbox] = useState<string | null>(null);
+
+  // Genera URLs de previsualització per a cada imatge pendent
+  useEffect(() => {
+    const list = docs ?? [];
+    const urls: Record<string, string> = {};
+    list.forEach((d) => {
+      if (d.file.type.startsWith('image/')) {
+        urls[d.id] = URL.createObjectURL(d.file);
+      }
+    });
+    setPreviews(urls);
+    return () => { Object.values(urls).forEach(URL.revokeObjectURL); };
+  }, [docs]);
 
   async function processFile(file: File) {
     setBusy(true);
@@ -145,38 +160,87 @@ export function DocumentScanner({
 
       {list.length > 0 && (
         <ul className="mt-2 space-y-2">
-          {list.map((d) => (
-            <li
-              key={d.id}
-              className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm"
-            >
-              <FileText className="h-4 w-4 shrink-0 text-slate-400" />
-              <span className="min-w-0 flex-1 truncate text-slate-700">{d.file.name}</span>
-              <Select
-                value={d.tipus}
-                onChange={(e) => onTipusDoc?.(d.id, e.target.value)}
-                className="h-8 w-44"
+          {list.map((d) => {
+            const thumb = previews[d.id];
+            return (
+              <li
+                key={d.id}
+                className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm"
               >
-                {opts.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-              <button
-                type="button"
-                className="text-slate-400 hover:text-red-600"
-                onClick={() => onRemoveDoc?.(d.id)}
-                aria-label="Treure document"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </li>
-          ))}
+                {/* Miniatura o icona */}
+                {thumb ? (
+                  <button
+                    type="button"
+                    onClick={() => setLightbox(thumb)}
+                    className="shrink-0"
+                    title="Veure imatge"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={thumb} alt={d.file.name} className="h-10 w-10 rounded object-cover border border-slate-200" />
+                  </button>
+                ) : (
+                  <FileText className="h-4 w-4 shrink-0 text-slate-400" />
+                )}
+                <span className="min-w-0 flex-1 truncate text-slate-700">{d.file.name}</span>
+                <Select
+                  value={d.tipus}
+                  onChange={(e) => onTipusDoc?.(d.id, e.target.value)}
+                  className="h-8 w-44"
+                >
+                  {opts.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
+                {thumb && (
+                  <button
+                    type="button"
+                    className="text-slate-400 hover:text-brand-600"
+                    onClick={() => setLightbox(thumb)}
+                    title="Veure imatge gran"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="text-slate-400 hover:text-red-600"
+                  onClick={() => onRemoveDoc?.(d.id)}
+                  aria-label="Treure document"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </li>
+            );
+          })}
           <li className="flex items-center gap-1.5 text-xs text-slate-400">
             <Lock className="h-3 w-3" /> Es desen en crear l&apos;estada.
           </li>
         </ul>
+      )}
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setLightbox(null)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightbox}
+            alt="Document"
+            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            type="button"
+            className="absolute right-4 top-4 text-white/80 hover:text-white text-2xl font-bold"
+            onClick={() => setLightbox(null)}
+          >
+            ✕
+          </button>
+        </div>
       )}
     </div>
   );

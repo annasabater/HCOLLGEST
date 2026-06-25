@@ -366,6 +366,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 estanciaId={estancia.id}
                 titularNom={titular ? `${titular.nom} ${titular.cognom1}` : ''}
                 titularEmail={titular?.email ?? null}
+                titularTelefon={titular?.telefon ?? null}
                 habitacioNom={estancia.habitacio?.nom ?? null}
                 dataEntrada={estancia.dataEntrada.toISOString()}
                 dataSortida={estancia.dataSortida.toISOString()}

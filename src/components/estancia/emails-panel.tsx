@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Trash2, Send, Clock, CheckCircle, XCircle, Plus } from 'lucide-react';
+import { Trash2, Send, Clock, CheckCircle, XCircle, Plus, MessageCircle, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { getJSON, postJSON, delJSON, ApiError } from '@/lib/api';
+import { buildBenvingudaWhatsApp, type LangEmail } from '@/lib/email-templates';
 
-type Lang = 'ca' | 'es' | 'en' | 'fr';
+type Lang = LangEmail;
 const LANGS = [
   { code: 'ca' as Lang, label: 'Català' },
   { code: 'es' as Lang, label: 'Castellà' },
@@ -37,10 +38,17 @@ function localDatetimeValue(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function waUrl(phone: string, text: string): string {
+  const clean = phone.replace(/\s+/g, '').replace(/^00/, '+');
+  const num = clean.startsWith('+') ? clean : `+34${clean}`;
+  return `https://wa.me/${num.replace('+', '')}?text=${encodeURIComponent(text)}`;
+}
+
 export function EmailsPanel({
   estanciaId,
   titularNom,
   titularEmail,
+  titularTelefon,
   habitacioNom,
   dataEntrada,
   dataSortida,
@@ -49,6 +57,7 @@ export function EmailsPanel({
   estanciaId: string;
   titularNom: string;
   titularEmail: string | null;
+  titularTelefon: string | null;
   habitacioNom: string | null;
   dataEntrada: string;
   dataSortida: string;
@@ -56,12 +65,13 @@ export function EmailsPanel({
 }) {
   const [emails, setEmails] = useState<EmailP[]>([]);
   const [form, setForm] = useState<'gracies' | 'benvinguda' | null>(null);
+  const [canal, setCanal] = useState<'email' | 'whatsapp'>('email');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Camps del formulari
   const defaultLang = (['ca', 'es', 'en', 'fr'].includes(idioma) ? idioma : 'ca') as Lang;
   const [a, setA] = useState(titularEmail ?? '');
+  const [telefon, setTelefon] = useState(titularTelefon ?? '');
   const [nom, setNom] = useState(titularNom);
   const [lang, setLang] = useState<Lang>(defaultLang);
   const [programatPer, setProgramatPer] = useState('');
@@ -78,21 +88,29 @@ export function EmailsPanel({
   function openForm(tipus: 'gracies' | 'benvinguda') {
     setErr(null);
     setA(titularEmail ?? '');
+    setTelefon(titularTelefon ?? '');
     setNom(titularNom);
     setLang(defaultLang);
+    setCanal('email');
     if (tipus === 'gracies') {
-      // Endemà de la sortida a les 12:00
       const d = new Date(dataSortida);
       d.setDate(d.getDate() + 1);
       d.setHours(12, 0, 0, 0);
       setProgramatPer(localDatetimeValue(d));
     } else {
-      // Dia d'entrada a les 09:00
       const d = new Date(dataEntrada);
       d.setHours(9, 0, 0, 0);
       setProgramatPer(localDatetimeValue(d));
     }
     setForm(tipus);
+  }
+
+  function openWhatsApp() {
+    const text = buildBenvingudaWhatsApp(lang, {
+      nom: nom || titularNom,
+      habitacio: habitacioNom ?? '',
+    });
+    window.open(waUrl(telefon, text), '_blank');
   }
 
   async function submit() {
@@ -137,7 +155,7 @@ export function EmailsPanel({
             <Plus className="h-4 w-4" /> Email de gràcies
           </Button>
           <Button type="button" size="sm" variant="outline" onClick={() => openForm('benvinguda')}>
-            <Plus className="h-4 w-4" /> Email de benvinguda
+            <Plus className="h-4 w-4" /> Benvinguda
           </Button>
         </div>
       )}
@@ -146,40 +164,107 @@ export function EmailsPanel({
       {form !== null && (
         <div className="rounded-xl border border-brand-200 bg-brand-50 p-4">
           <p className="mb-3 text-sm font-semibold text-brand-800">
-            Programar: {tipusLabel(form)}
+            {tipusLabel(form)}
           </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Correu destinatari">
-              <Input type="email" value={a} onChange={(e) => setA(e.target.value)} />
-            </Field>
-            <Field label="Nom">
-              <Input value={nom} onChange={(e) => setNom(e.target.value)} />
-            </Field>
-            <Field label="Idioma">
-              <Select value={lang} onChange={(e) => setLang(e.target.value as Lang)}>
-                {LANGS.map((l) => (
-                  <option key={l.code} value={l.code}>{l.label}</option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Enviar el">
-              <Input
-                type="datetime-local"
-                value={programatPer}
-                onChange={(e) => setProgramatPer(e.target.value)}
-              />
-            </Field>
-            {form === 'gracies' && (
-              <Field label="Enllaç ressenya Google" className="sm:col-span-2">
-                <Input value={enlacRessenya} onChange={(e) => setEnlacRessenya(e.target.value)} />
+
+          {/* Selector de canal (només per a benvinguda) */}
+          {form === 'benvinguda' && (
+            <div className="mb-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setCanal('email')}
+                className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  canal === 'email'
+                    ? 'border-brand-600 bg-brand-600 text-white'
+                    : 'border-slate-300 bg-white text-slate-600 hover:border-brand-400'
+                }`}
+              >
+                <Mail className="h-3.5 w-3.5" /> Email
+              </button>
+              <button
+                type="button"
+                onClick={() => setCanal('whatsapp')}
+                className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  canal === 'whatsapp'
+                    ? 'border-green-600 bg-green-600 text-white'
+                    : 'border-slate-300 bg-white text-slate-600 hover:border-green-400'
+                }`}
+              >
+                <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+              </button>
+            </div>
+          )}
+
+          {canal === 'whatsapp' && form === 'benvinguda' ? (
+            /* Formulari WhatsApp */
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Telèfon">
+                <Input
+                  type="tel"
+                  value={telefon}
+                  onChange={(e) => setTelefon(e.target.value)}
+                  placeholder="+34 666 123 456"
+                />
               </Field>
-            )}
-          </div>
+              <Field label="Nom">
+                <Input value={nom} onChange={(e) => setNom(e.target.value)} />
+              </Field>
+              <Field label="Idioma">
+                <Select value={lang} onChange={(e) => setLang(e.target.value as Lang)}>
+                  {LANGS.map((l) => (
+                    <option key={l.code} value={l.code}>{l.label}</option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+          ) : (
+            /* Formulari Email */
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Correu destinatari">
+                <Input type="email" value={a} onChange={(e) => setA(e.target.value)} />
+              </Field>
+              <Field label="Nom">
+                <Input value={nom} onChange={(e) => setNom(e.target.value)} />
+              </Field>
+              <Field label="Idioma">
+                <Select value={lang} onChange={(e) => setLang(e.target.value as Lang)}>
+                  {LANGS.map((l) => (
+                    <option key={l.code} value={l.code}>{l.label}</option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Enviar el">
+                <Input
+                  type="datetime-local"
+                  value={programatPer}
+                  onChange={(e) => setProgramatPer(e.target.value)}
+                />
+              </Field>
+              {form === 'gracies' && (
+                <Field label="Enllaç ressenya Google" className="sm:col-span-2">
+                  <Input value={enlacRessenya} onChange={(e) => setEnlacRessenya(e.target.value)} />
+                </Field>
+              )}
+            </div>
+          )}
+
           {err && <p className="mt-2 text-xs text-red-600">{err}</p>}
           <div className="mt-3 flex gap-2">
-            <Button type="button" size="sm" onClick={submit} disabled={saving}>
-              <Send className="h-4 w-4" /> {saving ? 'Desant…' : 'Programar'}
-            </Button>
+            {canal === 'whatsapp' && form === 'benvinguda' ? (
+              <Button
+                type="button"
+                size="sm"
+                onClick={openWhatsApp}
+                disabled={!telefon}
+                className="bg-green-600 hover:bg-green-700 text-white border-green-600"
+              >
+                <MessageCircle className="h-4 w-4" /> Obrir WhatsApp
+              </Button>
+            ) : (
+              <Button type="button" size="sm" onClick={submit} disabled={saving}>
+                <Send className="h-4 w-4" /> {saving ? 'Desant…' : 'Programar'}
+              </Button>
+            )}
             <Button type="button" size="sm" variant="outline" onClick={() => setForm(null)}>
               Cancel·lar
             </Button>

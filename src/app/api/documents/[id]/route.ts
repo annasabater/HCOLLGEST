@@ -1,10 +1,28 @@
 import { NextResponse } from 'next/server';
+import sharp from 'sharp';
 import { prisma } from '@/lib/db';
 import { authorize, clientIp } from '@/lib/auth/guard';
 import { ROLES_WRITE } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
 import { handleApiError, noContent, notFound } from '@/lib/http';
 import { readEncryptedUpload } from '@/lib/storage';
+
+async function addWatermark(buf: Buffer, mime: string): Promise<Buffer> {
+  if (!mime.startsWith('image/')) return buf;
+  const img = sharp(buf);
+  const { width = 800, height = 600 } = await img.metadata();
+  const fontSize = Math.max(28, Math.round(Math.min(width, height) / 12));
+  const svg = `<svg width="${width}" height="${height}">
+    <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle"
+      transform="rotate(-30,${width / 2},${height / 2})"
+      font-family="sans-serif" font-size="${fontSize}" font-weight="bold"
+      fill="rgba(122,31,43,0.28)" letter-spacing="4">HOSTAL COLL</text>
+  </svg>`;
+  return img
+    .composite([{ input: Buffer.from(svg), gravity: 'center' }])
+    .jpeg({ quality: 90 })
+    .toBuffer();
+}
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -34,9 +52,13 @@ export async function GET(req: Request, ctx: Ctx) {
       ip: clientIp(req),
     });
 
-    return new NextResponse(new Uint8Array(plain), {
+    const mime = doc.mime || 'application/octet-stream';
+    const served = await addWatermark(plain, mime);
+    const servedMime = mime.startsWith('image/') ? 'image/jpeg' : mime;
+
+    return new NextResponse(new Uint8Array(served), {
       headers: {
-        'Content-Type': doc.mime || 'application/octet-stream',
+        'Content-Type': servedMime,
         'Content-Disposition': `inline; filename="${doc.fitxerNom.replace(/"/g, '')}"`,
         'Cache-Control': 'private, no-store',
       },

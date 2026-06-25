@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ShieldCheck, Printer } from 'lucide-react';
+import { ShieldCheck, Printer, FileText } from 'lucide-react';
 import { BackLink } from '@/components/ui/back-link';
 import QRCode from 'qrcode';
 import { prisma } from '@/lib/db';
@@ -78,6 +78,20 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
               className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-100"
             >
               <ShieldCheck className="h-4 w-4" /> PDF amb fiança
+            </Link>
+            <Link
+              href={`/imprimir/factura-simple/${factura.id}?custodia=true`}
+              target="_blank"
+              className="inline-flex items-center gap-1 rounded-lg border border-brand-300 bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100"
+            >
+              <FileText className="h-4 w-4" /> Simple (client)
+            </Link>
+            <Link
+              href={`/imprimir/factura-simple/${factura.id}`}
+              target="_blank"
+              className="inline-flex items-center gap-1 rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm font-medium text-brand-600 hover:bg-brand-50"
+            >
+              <FileText className="h-4 w-4" /> Simple (sense custòdia)
             </Link>
             <EliminarFactura
               id={factura.id}

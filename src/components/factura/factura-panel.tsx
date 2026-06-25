@@ -78,21 +78,41 @@ export function FacturaPanel({
         <p className="text-sm text-slate-400">Sense factures.</p>
       )}
       {factures.map((f) => (
-        <Link
-          key={f.id}
-          href={`/factures/${f.id}`}
-          className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50"
-        >
-          <span className="flex items-center gap-2 font-medium text-slate-800">
-            <Receipt className="h-4 w-4 text-slate-400" /> {f.numero}
-          </span>
-          <span className="flex items-center gap-2">
-            {formatEur(Number(f.total))}
-            <Badge tone={f.estat === 'COBRADA' ? 'success' : 'warning'}>
-              {f.estat === 'COBRADA' ? 'Cobrada' : 'Pendent'}
-            </Badge>
-          </span>
-        </Link>
+        <div key={f.id} className="rounded-lg border border-slate-200 text-sm">
+          <Link
+            href={`/factures/${f.id}`}
+            className="flex items-center justify-between px-3 py-2 hover:bg-slate-50"
+          >
+            <span className="flex items-center gap-2 font-medium text-slate-800">
+              <Receipt className="h-4 w-4 text-slate-400" /> {f.numero}
+            </span>
+            <span className="flex items-center gap-2">
+              {formatEur(Number(f.total))}
+              <Badge tone={f.estat === 'COBRADA' ? 'success' : 'warning'}>
+                {f.estat === 'COBRADA' ? 'Cobrada' : 'Pendent'}
+              </Badge>
+            </span>
+          </Link>
+          <div className="flex gap-2 border-t border-slate-100 px-3 py-1.5">
+            <a
+              href={`/imprimir/factura-simple/${f.id}?custodia=true`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-brand-600 hover:underline"
+            >
+              Factura simple (client)
+            </a>
+            <span className="text-slate-300">·</span>
+            <a
+              href={`/imprimir/factura-simple/${f.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-slate-500 hover:underline"
+            >
+              Sense custòdia
+            </a>
+          </div>
+        </div>
       ))}
 
       {open ? (
