@@ -22,6 +22,7 @@ import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
 import { BenvingudesPendents } from '@/components/dashboard/benvingudes-pendents';
+import { GlobalSearch } from '@/components/layout/global-search';
 import { DescartarAvisMossos } from '@/components/estancia/descartar-avis-mossos';
 import { formatDate, formatEur } from '@/lib/utils';
 
@@ -106,7 +107,7 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title="Tauler" subtitle="Visió general de l’hostal" />
+      <PageHeader title="Tauler" subtitle="Visió general de l’hostal" actions={<GlobalSearch />} />
 
       <BenvingudesPendents
         pendents={resum.benvingudes.pendents}

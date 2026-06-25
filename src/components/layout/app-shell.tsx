@@ -7,7 +7,6 @@ import { Menu, X, Settings } from 'lucide-react';
 import type { Role } from '@prisma/client';
 import { Sidebar } from '@/components/layout/sidebar';
 import { LogoutButton } from '@/components/layout/logout-button';
-import { GlobalSearch } from '@/components/layout/global-search';
 import { AmountsVisibilityProvider } from '@/components/finances/amounts-visibility';
 import { RestringitProvider } from '@/components/layout/restringit-context';
 import { cn } from '@/lib/utils';
@@ -93,18 +92,15 @@ export function AppShell({
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col bg-slate-50">
-        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/80 px-4 py-3 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/80 px-4 py-3 backdrop-blur sm:px-6 lg:hidden">
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="rounded-lg border border-slate-300 p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
+            className="rounded-lg border border-slate-300 p-2 text-slate-600 hover:bg-slate-100"
             aria-label="Obrir menú"
           >
             <Menu className="h-5 w-5" />
           </button>
-          <div className="min-w-0 flex-1">
-            <GlobalSearch />
-          </div>
         </header>
         <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">{children}</div>
       </main>
