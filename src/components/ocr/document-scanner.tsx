@@ -111,7 +111,7 @@ export function DocumentScanner({
 
       <div className="flex flex-wrap items-center gap-2">
         <FileText className="h-4 w-4 text-brand-600" />
-        <span className="text-sm font-medium text-slate-700">Documents d'identitat</span>
+        <span className="text-sm font-medium text-slate-700">Documents d&apos;identitat</span>
         {list.length > 0 && <span className="text-xs text-slate-400">({list.length})</span>}
         <div className="ml-auto flex gap-2">
           <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => cameraRef.current?.click()}>
@@ -125,7 +125,7 @@ export function DocumentScanner({
       </div>
 
       <p className="mt-1.5 text-xs text-slate-500">
-        DNI (anvers i revers), passaport, NIE o carnet de conduir. S'autoreplenen totes les dades
+        DNI (anvers i revers), passaport, NIE o carnet de conduir. S&apos;autoreplenen totes les dades
         disponibles: nom, cognoms, número, suport, sexe, data de naixement, nacionalitat, adreça…
         Cada foto es desa xifrada. Pots afegir-ne diversos.
       </p>
@@ -172,7 +172,7 @@ export function DocumentScanner({
             </li>
           ))}
           <li className="flex items-center gap-1.5 text-xs text-slate-400">
-            <Lock className="h-3 w-3" /> Es desen en crear l'estada.
+            <Lock className="h-3 w-3" /> Es desen en crear l&apos;estada.
           </li>
         </ul>
       )}
