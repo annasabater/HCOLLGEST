@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Save, Check, Undo2, CheckCheck } from 'lucide-react';
+import { Save, Check, Undo2, CheckCheck, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { Field } from '@/components/ui/field';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getJSON, postJSON, putJSON, patchJSON, ApiError } from '@/lib/api';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatEur } from '@/lib/utils';
 import { toISODate, addDays } from '@/lib/dates';
 import { tipusNetejaValues, TIPUS_NETEJA_LABELS } from '@/lib/validation/enums';
 
@@ -63,6 +63,25 @@ export default function NetejaPage() {
   const [zonesComunes, setZonesComunes] = useState(false);
   const [pagant, setPagant] = useState(false);
   const [pagMsg, setPagMsg] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
+  const [jornades, setJornades] = useState<{ id: string; notes: string | null; import: number }[]>([]);
+
+  const loadJornades = useCallback(async () => {
+    if (!personId || !data) return;
+    const desde = data;
+    const fins = data;
+    const r = await getJSON<{ jornades: { id: string; notes: string | null; import: number }[] }>(
+      `/api/treballadors/${personId}/jornades?desde=${desde}&fins=${fins}`,
+    ).catch(() => ({ jornades: [] }));
+    setJornades(r.jornades);
+  }, [personId, data]);
+
+  useEffect(() => { void loadJornades(); }, [loadJornades]);
+
+  async function eliminarJornada(id: string) {
+    if (!confirm('Segur que vols eliminar aquest pagament?')) return;
+    await fetch(`/api/jornades/${id}`, { method: 'DELETE' });
+    void loadJornades();
+  }
 
   // Si s'arriba des del calendari amb ?data=YYYY-MM-DD, obre aquell dia.
   useEffect(() => {
@@ -206,6 +225,7 @@ export default function NetejaPage() {
         zones: zonesComunes,
       });
       setPagMsg({ tone: 'ok', text: `Pagament de ${aPagar.toFixed(2)} € registrat.` });
+      void loadJornades();
       loadWeek();
     } catch (e) {
       setPagMsg({ tone: 'err', text: e instanceof ApiError ? e.message : 'Error registrant el pagament' });
@@ -415,6 +435,27 @@ export default function NetejaPage() {
                 </Link>
                 .
               </p>
+            )}
+            {jornades.length > 0 && (
+              <div className="mt-2 space-y-1">
+                <p className="text-xs font-medium text-slate-500">Pagaments registrats avui:</p>
+                {jornades.map((j) => (
+                  <div key={j.id} className="flex items-center justify-between gap-2 rounded-md bg-white px-2 py-1 text-sm">
+                    <span className="text-slate-700">{j.notes ?? 'Neteja'}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-slate-800">{formatEur(j.import)}</span>
+                      <button
+                        type="button"
+                        className="text-slate-400 hover:text-red-600"
+                        onClick={() => eliminarJornada(j.id)}
+                        title="Eliminar pagament"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 

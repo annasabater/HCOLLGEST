@@ -9,6 +9,33 @@ type Ctx = { params: Promise<{ id: string }> };
 
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
+// GET /api/treballadors/:id/jornades?desde=YYYY-MM-DD&fins=YYYY-MM-DD
+export async function GET(req: Request, ctx: Ctx) {
+  try {
+    const auth = await authorize(ROLES_ADMIN);
+    if (auth instanceof Response) return auth;
+    const { id } = await ctx.params;
+    const url = new URL(req.url);
+    const desde = url.searchParams.get('desde');
+    const fins = url.searchParams.get('fins');
+    const where: Record<string, unknown> = { treballadorId: id, deletedAt: null };
+    if (desde) where.data = { ...(where.data as object ?? {}), gte: new Date(desde) };
+    if (fins) {
+      const finsDate = new Date(fins);
+      finsDate.setDate(finsDate.getDate() + 1);
+      where.data = { ...(where.data as object ?? {}), lt: finsDate };
+    }
+    const jornades = await prisma.jornada.findMany({
+      where,
+      orderBy: { data: 'desc' },
+      select: { id: true, data: true, notes: true, import: true, pagada: true },
+    });
+    return ok({ jornades });
+  } catch (err) {
+    return handleApiError(err);
+  }
+}
+
 // POST /api/treballadors/:id/jornades — registra un dia treballat (hores → import)
 export async function POST(req: Request, ctx: Ctx) {
   try {
