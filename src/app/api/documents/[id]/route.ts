@@ -9,22 +9,31 @@ import { readEncryptedUpload } from '@/lib/storage';
 
 async function addWatermark(buf: Buffer, mime: string): Promise<Buffer> {
   if (!mime.startsWith('image/')) return buf;
-  const img = sharp(buf);
-  const { width = 800, height = 600 } = await img.metadata();
-  const cx = Math.round(width / 2);
-  const cy = Math.round(height / 2);
-  const fontSize = Math.max(30, Math.round(Math.min(width, height) / 10));
-  // xmlns requerit per librsvg; fill-opacity en lloc de rgba(); coordenades absolutes
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-    <text x="${cx}" y="${cy}" text-anchor="middle" alignment-baseline="middle"
-      transform="rotate(-30 ${cx} ${cy})"
-      font-family="sans-serif" font-size="${fontSize}" font-weight="bold"
-      fill="#7A1F2B" fill-opacity="0.30">HOSTAL COLL</text>
-  </svg>`;
-  return img
-    .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
-    .jpeg({ quality: 90 })
-    .toBuffer();
+  try {
+    const img = sharp(buf);
+    const { width = 800, height = 600 } = await img.metadata();
+    const cx = Math.round(width / 2);
+    const cy = Math.round(height / 2);
+    const fontSize = Math.max(40, Math.round(Math.min(width, height) / 8));
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+      <text x="${cx}" y="${cy}" text-anchor="middle"
+        transform="rotate(-30 ${cx} ${cy})"
+        font-family="sans-serif" font-size="${fontSize}" font-weight="bold"
+        fill="#000000" fill-opacity="0.40">HOSTAL COLL</text>
+    </svg>`;
+    // Renderitza el SVG → PNG transparent, després el composa sobre la imatge
+    const overlay = await sharp(Buffer.from(svg))
+      .resize(width, height)
+      .png()
+      .toBuffer();
+    return await img
+      .composite([{ input: overlay, top: 0, left: 0 }])
+      .jpeg({ quality: 90 })
+      .toBuffer();
+  } catch (err) {
+    console.error('[watermark error]', err);
+    return buf;
+  }
 }
 
 type Ctx = { params: Promise<{ id: string }> };
