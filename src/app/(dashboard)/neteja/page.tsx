@@ -21,6 +21,9 @@ interface Habitacio {
 interface Treballador {
   id: string;
   nom: string;
+  preuSortida: number | null;
+  preuManteniment: number | null;
+  preuZones: number | null;
 }
 interface Tasca {
   id: string;
@@ -77,20 +80,19 @@ export default function NetejaPage() {
       const first = r.treballadors[0];
       if (first) setPersonId((p) => p || first.id);
     });
-    getJSON<{
-      establiment: {
-        preuNetejaSortida: string | null;
-        preuNetejaManteniment: string | null;
-        preuNetejaZones: string | null;
-      };
-    }>('/api/establiment').then((r) =>
-      setTarifes({
-        s: Number(r.establiment.preuNetejaSortida ?? 0),
-        m: Number(r.establiment.preuNetejaManteniment ?? 0),
-        z: Number(r.establiment.preuNetejaZones ?? 0),
-      }),
-    );
   }, []);
+
+  // Actualitza les tarifes quan canvia la persona seleccionada.
+  useEffect(() => {
+    const t = treballadors.find((t) => t.id === personId);
+    if (t) {
+      setTarifes({
+        s: Number(t.preuSortida ?? 0),
+        m: Number(t.preuManteniment ?? 0),
+        z: Number(t.preuZones ?? 0),
+      });
+    }
+  }, [personId, treballadors]);
 
   // Tasques del dia triat.
   const loadDay = useCallback(async () => {
@@ -407,7 +409,11 @@ export default function NetejaPage() {
             </div>
             {senseTarifes && (
               <p className="text-xs text-amber-600">
-                Configura les tarifes a Configuració → Tarifes de neteja.
+                Configura les tarifes al perfil del treballador a{' '}
+                <Link href="/personal" className="underline">
+                  Treballadors
+                </Link>
+                .
               </p>
             )}
           </div>
