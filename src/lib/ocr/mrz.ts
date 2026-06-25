@@ -39,6 +39,7 @@ export interface ViatgerOcr {
   localitat?: string;
   provinciaNom?: string;
   valid: boolean;
+  warnings?: string[];
 }
 
 function charVal(c: string): number {

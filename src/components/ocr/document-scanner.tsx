@@ -1,13 +1,11 @@
-'use client';
+﻿'use client';
 
 import { useRef, useState } from 'react';
 import { ScanLine, Upload, CheckCircle2, AlertTriangle, FileText, Trash2, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/input';
 import { optionsFrom, tipusDocumentPujatValues, TIPUS_DOCUMENT_PUJAT_LABELS } from '@/lib/validation/enums';
-import { findMrzLines, parseMrz, mrzToViatger, parseDniFront, parseDniReverso, type ViatgerOcr } from '@/lib/ocr/mrz';
-
-const MRZ_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<';
+import type { ViatgerOcr } from '@/lib/ocr/mrz';
 
 export interface PendingDoc {
   id: string;
@@ -44,85 +42,42 @@ export function DocumentScanner({
 
   async function processFile(file: File) {
     setBusy(true);
-    setProgress(0);
+    setProgress(10);
     setMsg(null);
     try {
-      const { createWorker } = await import('tesseract.js');
-      const worker = await createWorker('eng', 1, {
-        logger: (m: { status: string; progress: number }) => {
-          if (m.status === 'recognizing text') setProgress(Math.round(m.progress * 100));
-        },
-      });
-      // 1a passada: zona MRZ (darrere del DNI / sota del passaport) amb alfabet
-      // restringit, que és la lectura més fiable (porta dígits de control).
-      await worker.setParameters({ tessedit_char_whitelist: MRZ_CHARS });
-      const passMrz = await worker.recognize(file);
-      const mrz = parseMrz(findMrzLines(passMrz.data.text));
+      const formData = new FormData();
+      formData.append('image', file);
 
-      let result: ViatgerOcr | null = mrz && mrz.valid ? mrzToViatger(mrz) : null;
-      let source: 'mrz' | 'front' | 'revers' | null = result ? 'mrz' : null;
+      setProgress(30);
+      const res = await fetch('/api/ocr/document', { method: 'POST', body: formData });
+      setProgress(90);
 
-      // 2a passada: text complet (cara del DAVANT o del REVERS), sense restricció.
-      await worker.setParameters({ tessedit_char_whitelist: '' });
-      const passFull = await worker.recognize(file);
-      const fullText = passFull.data.text;
-
-      if (!result) {
-        // Intenta cara del davant i cara del revers (un o l'altre tindrà dades).
-        const front = parseDniFront(fullText);
-        const revers = parseDniReverso(fullText);
-
-        if (front && revers) {
-          // Fusiona: les dades d'identitat del davant + l'adreça del revers.
-          result = { ...front, adreca: revers.adreca, codiPostal: revers.codiPostal, localitat: revers.localitat, provinciaNom: revers.provinciaNom };
-          source = 'front';
-        } else if (front) {
-          result = front;
-          source = 'front';
-        } else if (revers) {
-          result = revers;
-          source = 'revers';
-        } else if (mrz) {
-          result = mrzToViatger(mrz); // MRZ llegida però amb algun dígit dubtós
-          source = 'mrz';
-        }
-      } else if (result && source === 'mrz') {
-        // MRZ vàlida: aprofita igualment el revers si hi ha dades d'adreça.
-        const revers = parseDniReverso(fullText);
-        if (revers) {
-          result = { ...result, adreca: revers.adreca, codiPostal: revers.codiPostal, localitat: revers.localitat, provinciaNom: revers.provinciaNom };
-        }
+      if (!res.ok) {
+        setMsg({ tone: 'warn', text: "Document desat, però no s'ha pogut llegir el text per autoreplenar." });
+        return;
       }
-      await worker.terminate();
 
-      if (!result) {
+      const { result, warnings } = (await res.json()) as { result: ViatgerOcr; warnings: string[] };
+      setProgress(100);
+
+      const hasUsefulData = result.nom || result.cognom1 || result.numDocument || result.adreca;
+      if (!hasUsefulData) {
         setMsg({
           tone: 'warn',
-          text: 'Document desat, però no s’han pogut llegir les dades. Fes una foto nítida i ben enquadrada (DNI: la cara del davant; o el darrere amb les línies «<<<»). Pots omplir-ho a mà.',
+          text: "Document desat, però no s'han pogut llegir les dades. Fes una foto nítida i ben enquadrada. Pots omplir-ho a mà.",
         });
         return;
       }
 
-      onExtract(result);
-      if (source === 'revers') {
-        setMsg({ tone: 'ok', text: 'Cara del revers llegida: adreça, codi postal i localitat autoreplens. Revisa-ho.' });
-      } else if (source === 'mrz') {
-        setMsg({
-          tone: result.valid ? 'ok' : 'warn',
-          text: result.valid
-            ? 'Document llegit i validat (MRZ). Revisa els accents (la MRZ no en porta).'
-            : 'Document llegit (MRZ), però algun dígit de control no quadra: revisa les dades.',
-        });
+      onExtract({ ...result, warnings });
+
+      if (warnings && warnings.length > 0) {
+        setMsg({ tone: 'warn', text: `Dades llegides. Avisos: ${warnings.join(' · ')}` });
       } else {
-        setMsg({
-          tone: result.valid ? 'ok' : 'warn',
-          text: result.valid
-            ? 'Dades llegides del davant (número validat). Revisa-les, sobretot els accents.'
-            : 'Dades llegides del davant. Revisa-les bé: la lectura de la cara és aproximada.',
-        });
+        setMsg({ tone: 'ok', text: "Dades llegides correctament. Revisa-les i corregeix si cal." });
       }
     } catch {
-      setMsg({ tone: 'warn', text: 'Document desat, però no s’ha pogut llegir el text per autoreplenar.' });
+      setMsg({ tone: 'warn', text: "Document desat, però no s'ha pogut llegir el text per autoreplenar." });
     } finally {
       setBusy(false);
     }
@@ -156,7 +111,7 @@ export function DocumentScanner({
 
       <div className="flex flex-wrap items-center gap-2">
         <FileText className="h-4 w-4 text-brand-600" />
-        <span className="text-sm font-medium text-slate-700">Documents d’identitat</span>
+        <span className="text-sm font-medium text-slate-700">Documents d'identitat</span>
         {list.length > 0 && <span className="text-xs text-slate-400">({list.length})</span>}
         <div className="ml-auto flex gap-2">
           <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => cameraRef.current?.click()}>
@@ -170,9 +125,9 @@ export function DocumentScanner({
       </div>
 
       <p className="mt-1.5 text-xs text-slate-500">
-        DNI anvers: autoreplena nom, cognoms, document, número de suport, sexe i nacionalitat.
-        DNI revers: autoreplena adreça, codi postal i localitat. Cada foto es desa xifrada, en blanc i negre
-        i amb marca d’aigua. Pots afegir-ne diversos (anvers i revers per separat).
+        DNI (anvers i revers), passaport, NIE o carnet de conduir. S'autoreplenen totes les dades
+        disponibles: nom, cognoms, número, suport, sexe, data de naixement, nacionalitat, adreça…
+        Cada foto es desa xifrada. Pots afegir-ne diversos.
       </p>
 
       {msg && (
@@ -217,7 +172,7 @@ export function DocumentScanner({
             </li>
           ))}
           <li className="flex items-center gap-1.5 text-xs text-slate-400">
-            <Lock className="h-3 w-3" /> Es desen en crear l’estada.
+            <Lock className="h-3 w-3" /> Es desen en crear l'estada.
           </li>
         </ul>
       )}
