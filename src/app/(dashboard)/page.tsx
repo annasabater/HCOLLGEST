@@ -21,7 +21,6 @@ import { teVistaRestringida } from '@/lib/auth/restriccions';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
-import { FinancesPanel, type FinanceKpi } from '@/components/dashboard/finances-panel';
 import { BenvingudesPendents } from '@/components/dashboard/benvingudes-pendents';
 import { DescartarAvisMossos } from '@/components/estancia/descartar-avis-mossos';
 import { formatDate, formatEur } from '@/lib/utils';
@@ -102,27 +101,6 @@ export default async function DashboardPage() {
       icon: Wrench,
       tone: resum.alertes.serveisProxims > 0 ? ('warning' as const) : ('success' as const),
       href: '/serveis',
-    },
-  ];
-
-  const finances: FinanceKpi[] = [
-    {
-      label: 'Ingressos (mes)',
-      value: formatEur(resum.finances.ingressosMes),
-      icon: 'TrendingUp',
-      color: 'text-green-600',
-    },
-    {
-      label: 'Despeses (mes)',
-      value: formatEur(resum.finances.despesesMes),
-      icon: 'TrendingDown',
-      color: 'text-red-600',
-    },
-    {
-      label: 'Benefici (mes)',
-      value: formatEur(resum.finances.beneficiMes),
-      icon: 'Wallet',
-      color: resum.finances.beneficiMes >= 0 ? 'text-green-600' : 'text-red-600',
     },
   ];
 
@@ -252,9 +230,6 @@ export default async function DashboardPage() {
           </ul>
         </div>
       )}
-
-      {/* KPIs financers — només per a l'ADMIN */}
-      {isAdmin && <FinancesPanel items={finances} />}
 
       {/* Tarjetas de alerta */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
