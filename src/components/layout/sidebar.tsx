@@ -15,7 +15,6 @@ import {
   PiggyBank,
   UserCog,
   Truck,
-  CalendarClock,
 } from 'lucide-react';
 import type { Role } from '@prisma/client';
 import { cn } from '@/lib/utils';
@@ -53,8 +52,7 @@ const GROUPS: NavGroup[] = [
       { href: '/plantilles', label: 'Plantilles', icon: MessageCircle },
       { href: '/valoracions', label: 'Valoracions', icon: Star },
       { href: '/serveis', label: 'Proveïdors i serveis', icon: Truck },
-      { href: '/gastos-fixos', label: 'Gastos fixos', icon: CalendarClock, roles: ['ADMIN'], hideRestringit: true },
-      { href: '/personal', label: 'Treballadors', icon: UserCog, roles: ['ADMIN'], hideRestringit: true },
+{ href: '/personal', label: 'Treballadors', icon: UserCog, roles: ['ADMIN'], hideRestringit: true },
       { href: '/balanc', label: 'Comptabilitat', icon: PiggyBank, roles: ['ADMIN'] },
       { href: '/justificants', label: 'Justificants', icon: FileCheck },
     ],
