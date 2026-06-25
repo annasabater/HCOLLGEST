@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MessageCircle, Copy, Sparkles, Users, Phone, Hand } from 'lucide-react';
+import { MessageCircle, Copy, Sparkles, Users, Phone, Hand, Mail, CheckCircle } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input, Select, Textarea } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
-import { getJSON, patchJSON } from '@/lib/api';
+import { getJSON, patchJSON, postJSON, ApiError } from '@/lib/api';
+import { buildGraciesEmail } from '@/lib/email-templates';
 import { useRestringit } from '@/components/layout/restringit-context';
 import { addDays, toISODate } from '@/lib/dates';
 import { formatDate } from '@/lib/utils';
@@ -45,7 +46,7 @@ interface Estancia {
   dataSortida: string;
   idioma: string | null;
   habitacio: { nom: string } | null;
-  viatgers: { esTitular: boolean; huesped: { nom: string; cognom1: string; telefon: string | null } }[];
+  viatgers: { esTitular: boolean; huesped: { nom: string; cognom1: string; telefon: string | null; email: string | null } }[];
 }
 
 function lsGet(key: string, def: string): string {
@@ -91,6 +92,7 @@ export default function PlantillesPage() {
         <BenvingudaCard />
         {!restringit && <NetejaCard />}
         <HostesCard />
+        <GraciesCard />
       </div>
     </div>
   );
@@ -211,22 +213,14 @@ function NetejaCard() {
           <Field label="Idioma">
             <LangSelect value={lang} onChange={setLang} />
           </Field>
-          <Field label="Passadís">
+          <Field label="Zones comunes">
             <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
-              <input type="checkbox" checked={pasillo} onChange={(e) => setPasillo(e.target.checked)} />
-              Incloure el passadís
-            </label>
-          </Field>
-          <Field label="Pati">
-            <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
-              <input type="checkbox" checked={pati} onChange={(e) => setPati(e.target.checked)} />
-              Incloure el pati
-            </label>
-          </Field>
-          <Field label="Vorera">
-            <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
-              <input type="checkbox" checked={vorera} onChange={(e) => setVorera(e.target.checked)} />
-              Incloure la vorera
+              <input
+                type="checkbox"
+                checked={pasillo && pati && vorera}
+                onChange={(e) => { setPasillo(e.target.checked); setPati(e.target.checked); setVorera(e.target.checked); }}
+              />
+              Passadís, vorera i pati
             </label>
           </Field>
           <Field label="Hora aproximada">
@@ -458,6 +452,129 @@ function HostesCard() {
           <p className="mt-1 text-xs text-slate-400">
             Variables: {'{nom}'} {'{hora}'} {'{habitacio}'}. Es desa al navegador.
           </p>
+        </details>
+      </CardBody>
+    </Card>
+  );
+}
+
+// --- Email de gràcies + ressenya Google (l'endemà de la sortida) -------------
+function GraciesCard() {
+  const [estancies, setEstancies] = useState<Estancia[]>([]);
+  const [enlacRessenya, setEnlacRessenya] = useState('https://g.page/r/hostalcoll/review');
+  const [editLang, setEditLang] = useState<Lang>('ca');
+  const [scheduling, setScheduling] = useState<Record<string, boolean>>({});
+  const [done, setDone] = useState<Record<string, boolean>>({});
+  const [errs, setErrs] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    setEnlacRessenya(lsGet('enlac_ressenya', 'https://g.page/r/hostalcoll/review'));
+    getJSON<{ estancies: Estancia[] }>('/api/estancies').then((r) => setEstancies(r.estancies));
+  }, []);
+
+  function setLink(v: string) {
+    setEnlacRessenya(v);
+    window.localStorage.setItem('enlac_ressenya', v);
+  }
+
+  const avui = toISODate(new Date());
+  const fa3dies = toISODate(addDays(new Date(), -3));
+  const elegibles = estancies.filter((e) => {
+    const sortida = toISODate(new Date(e.dataSortida));
+    return sortida >= fa3dies && sortida <= avui;
+  });
+
+  async function programar(e: Estancia) {
+    const titular = e.viatgers.find((v) => v.esTitular) ?? e.viatgers[0];
+    const email = titular?.huesped.email;
+    if (!email) { setErrs((p) => ({ ...p, [e.id]: 'Sense correu' })); return; }
+    const lang: Lang = (e.idioma && (['ca', 'es', 'en', 'fr'] as string[]).includes(e.idioma))
+      ? (e.idioma as Lang) : 'ca';
+    const d = addDays(new Date(e.dataSortida), 1);
+    d.setHours(12, 0, 0, 0);
+    setScheduling((p) => ({ ...p, [e.id]: true }));
+    setErrs((p) => ({ ...p, [e.id]: '' }));
+    try {
+      await postJSON('/api/emails-programats', {
+        estanciaId: e.id, tipus: 'gracies', a: email,
+        nomDestinatari: titular?.huesped.nom, lang,
+        programatPer: d.toISOString(), enlacRessenya,
+      });
+      setDone((p) => ({ ...p, [e.id]: true }));
+    } catch (ex) {
+      setErrs((p) => ({ ...p, [e.id]: ex instanceof ApiError ? ex.message : 'Error' }));
+    } finally {
+      setScheduling((p) => ({ ...p, [e.id]: false }));
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex items-center gap-2">
+        <Mail className="h-4 w-4 text-brand-600" />
+        <CardTitle>Email de gràcies + ressenya Google</CardTitle>
+      </CardHeader>
+      <CardBody className="space-y-4">
+        <Field label="Enllaç ressenya Google" hint="Es desa al navegador.">
+          <Input value={enlacRessenya} onChange={(e) => setLink(e.target.value)} />
+        </Field>
+
+        {elegibles.length === 0 ? (
+          <p className="text-sm text-slate-400">Cap hoste amb sortida recent (últims 3 dies).</p>
+        ) : (
+          <div className="space-y-2">
+            {elegibles.map((e) => {
+              const titular = e.viatgers.find((v) => v.esTitular) ?? e.viatgers[0];
+              const email = titular?.huesped.email;
+              return (
+                <div key={e.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 p-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-700">
+                      {titular?.huesped.nom} {titular?.huesped.cognom1}
+                      {e.habitacio ? <span className="ml-1 text-xs font-normal text-slate-400">· Hab. {e.habitacio.nom}</span> : null}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      Sortida {formatDate(e.dataSortida)} · {email ?? <span className="text-red-400">sense correu</span>}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {done[e.id] ? (
+                      <span className="flex items-center gap-1 text-xs text-green-600">
+                        <CheckCircle className="h-3.5 w-3.5" /> Programat per demà 12:00
+                      </span>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={!email || scheduling[e.id]}
+                        title={email ? undefined : 'Aquest hoste no té correu electrònic'}
+                        onClick={() => programar(e)}
+                      >
+                        <Mail className="h-4 w-4" />
+                        {scheduling[e.id] ? 'Desant…' : 'Programar email'}
+                      </Button>
+                    )}
+                    {errs[e.id] && <span className="text-xs text-red-600">{errs[e.id]}</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <details className="text-sm">
+          <summary className="cursor-pointer text-slate-500">Previsualitzar plantilla (per idioma)</summary>
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-xs text-slate-500">Idioma:</span>
+            <LangSelect value={editLang} onChange={setEditLang} className="max-w-40" />
+          </div>
+          <div className="mt-2 overflow-hidden rounded-lg border border-slate-200">
+            <iframe
+              srcDoc={buildGraciesEmail(editLang, { nom: 'Anna', enlacRessenya }).html}
+              className="h-72 w-full"
+              title="Previsualització email de gràcies"
+            />
+          </div>
         </details>
       </CardBody>
     </Card>

@@ -418,13 +418,6 @@ export default function NetejaPage() {
             )}
           </div>
 
-          <p className="pt-1 text-xs text-slate-400">
-            Les zones comunes (passadís, vorera, pati) es trien en enviar l’avís a{' '}
-            <Link href="/plantilles" className="text-brand-700 underline">
-              Plantilles
-            </Link>
-            .
-          </p>
         </CardBody>
       </Card>
 
