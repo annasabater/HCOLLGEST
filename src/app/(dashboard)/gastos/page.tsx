@@ -298,7 +298,7 @@ function GastosVariablesTab() {
   const [proveidors, setProveidors] = useState<Prov[]>([]);
   const [habitacions, setHabitacions] = useState<Hab[]>([]);
   const [gastos, setGastos] = useState<Gasto[]>([]);
-  const [total, setTotal] = useState(0);
+  const [_total, setTotal] = useState(0);
   const [perCat, setPerCat] = useState<Record<string, number>>({});
 
   const [fDesde, setFDesde] = useState('');
