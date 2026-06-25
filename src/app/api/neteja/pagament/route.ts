@@ -5,7 +5,6 @@ import { ROLES_ADMIN } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
 import { created, badRequest, handleApiError, notFound } from '@/lib/http';
 
-const ESTABLIMENT_ID = 'hostal-coll';
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 const Schema = z.object({
@@ -27,17 +26,13 @@ export async function POST(req: Request) {
 
     const treballador = await prisma.treballador.findFirst({
       where: { id: input.treballadorId, deletedAt: null },
-      select: { id: true },
+      select: { id: true, preuSortida: true, preuManteniment: true, preuZones: true },
     });
     if (!treballador) return notFound();
 
-    const est = await prisma.establiment.findUnique({
-      where: { id: ESTABLIMENT_ID },
-      select: { preuNetejaSortida: true, preuNetejaManteniment: true, preuNetejaZones: true },
-    });
-    const pS = est?.preuNetejaSortida ? Number(est.preuNetejaSortida) : 0;
-    const pM = est?.preuNetejaManteniment ? Number(est.preuNetejaManteniment) : 0;
-    const pZ = est?.preuNetejaZones ? Number(est.preuNetejaZones) : 0;
+    const pS = treballador.preuSortida ? Number(treballador.preuSortida) : 0;
+    const pM = treballador.preuManteniment ? Number(treballador.preuManteniment) : 0;
+    const pZ = treballador.preuZones ? Number(treballador.preuZones) : 0;
     const importTotal = round2(
       input.sortides * pS + input.manteniments * pM + (input.zones ? pZ : 0),
     );
