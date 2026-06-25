@@ -3,7 +3,12 @@ import { authorize } from '@/lib/auth/guard';
 import { handleApiError } from '@/lib/http';
 import type { ViatgerOcr } from '@/lib/ocr/mrz';
 
+// Claude pot trigar 10-20 s en imatges grans; ampliem el timeout de la funció.
+export const maxDuration = 60;
+
 const client = new Anthropic();
+
+const SUPPORTED_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']);
 
 const SYSTEM_PROMPT = `Ets un sistema d'extracció de dades de documents d'identitat espanyols i europeus.
 Analitza la imatge i extreu totes les dades disponibles.
@@ -51,9 +56,14 @@ export async function POST(req: Request) {
       return Response.json({ error: 'Cal enviar un camp "image"' }, { status: 400 });
     }
 
+    // Normalitza el tipus MIME: image/jpg → image/jpeg; formats no suportats → image/jpeg
+    const rawType = file.type || 'image/jpeg';
+    const mediaType = (
+      rawType === 'image/jpg' || !SUPPORTED_TYPES.has(rawType) ? 'image/jpeg' : rawType
+    ) as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+
     const bytes = await file.arrayBuffer();
     const base64 = Buffer.from(bytes).toString('base64');
-    const mediaType = (file.type || 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
 
     const message = await client.messages.create({
       model: 'claude-opus-4-8',
@@ -77,14 +87,10 @@ export async function POST(req: Request) {
 
     let parsed: Partial<ViatgerOcr> & { warnings?: string[]; dataCaducitat?: string };
     try {
-      // Strip markdown code fences if Claude wraps in ```json ... ```
       const clean = text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
       parsed = JSON.parse(clean) as typeof parsed;
     } catch {
-      return Response.json(
-        { error: 'Resposta invàlida del model', raw: text },
-        { status: 502 },
-      );
+      return Response.json({ error: 'Resposta invàlida del model', raw: text }, { status: 502 });
     }
 
     const result: ViatgerOcr = {

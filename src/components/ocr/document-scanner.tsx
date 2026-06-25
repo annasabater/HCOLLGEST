@@ -53,7 +53,9 @@ export function DocumentScanner({
       setProgress(90);
 
       if (!res.ok) {
-        setMsg({ tone: 'warn', text: "Document desat, però no s'ha pogut llegir el text per autoreplenar." });
+        let detail = '';
+        try { const j = await res.json() as { error?: string }; detail = j.error ? ` (${j.error})` : ''; } catch { /* ignore */ }
+        setMsg({ tone: 'warn', text: `Document desat, però no s'ha pogut llegir el text${detail}. Torna-ho a provar o omple-ho a mà.` });
         return;
       }
 
