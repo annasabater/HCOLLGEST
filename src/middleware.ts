@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifySessionToken } from '@/lib/auth/jwt';
 import { SESSION_COOKIE } from '@/lib/auth/types';
-import { esNomesLectura } from '@/lib/auth/restriccions';
+import { esNomesLectura, teVistaRestringida } from '@/lib/auth/restriccions';
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -52,6 +52,15 @@ export async function middleware(req: NextRequest) {
   const isAdminOnly = ADMIN_ONLY.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   if (isAdminOnly && user.role !== 'ADMIN') {
     return NextResponse.redirect(new URL('/', req.url));
+  }
+
+  // Vista restringida de propietat (hcoll): amaga mòduls operatius. Bloqueja
+  // també l'accés directe per URL a les pàgines (neteja, personal, tarifes).
+  if (!isApi && teVistaRestringida(user)) {
+    const OCULT_RESTRINGIT = ['/neteja', '/personal', '/tarifes'];
+    if (OCULT_RESTRINGIT.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+      return NextResponse.redirect(new URL('/', req.url));
+    }
   }
 
   // Compte de NOMÉS LECTURA: ho veu tot (entra com ADMIN) però no pot escriure

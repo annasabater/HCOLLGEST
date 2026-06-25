@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, Thead, Th, Td, Tr } from '@/components/ui/table';
 import { getJSON } from '@/lib/api';
+import { useRestringit } from '@/components/layout/restringit-context';
 import { addMonths } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { BalancChart } from '@/components/balanc/balanc-chart';
@@ -266,6 +267,7 @@ function BreakdownsSection({ data }: { data: Breakdowns }) {
 }
 
 export default function BalancPage() {
+  const restringit = useRestringit(); // vista de propietat: amaga custòdia/personal
   const [mode, setMode] = useState<Mode>('mes');
   const [anchor, setAnchor] = useState(() => new Date());
   const [year, setYear] = useState(() => new Date().getFullYear());
@@ -282,10 +284,10 @@ export default function BalancPage() {
     async () =>
       setSituacio(
         await getJSON<BalancSituacio>(
-          `/api/balanc/situacio?data=${dataTall}&custodia=${incloureCustodiaSituacio ? 'true' : 'false'}`,
+          `/api/balanc/situacio?data=${dataTall}&custodia=${!restringit && incloureCustodiaSituacio ? 'true' : 'false'}`,
         ),
       ),
-    [dataTall, incloureCustodiaSituacio],
+    [dataTall, incloureCustodiaSituacio, restringit],
   );
   useEffect(() => {
     if (mode === 'mes') loadMes();
@@ -422,18 +424,22 @@ export default function BalancPage() {
                 <Kpi label="Ingressos" value={<Eur value={mes.ingressos} />} icon={TrendingUp} color="text-green-600" big />
                 <Kpi label="Despeses (sense personal)" value={<Eur value={mes.despeses} />} icon={TrendingDown} color="text-red-600" />
                 <Kpi label="Benefici" value={<Eur value={mes.benefici} />} icon={Wallet} color={mes.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big />
-                <Kpi label="Ingressos + custòdia" value={<Eur value={mes.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
-                <Kpi label="Despeses (amb personal)" value={<Eur value={mes.despeses + mes.personal} />} icon={TrendingDown} color="text-red-600" />
-                <Kpi
-                  label="Benefici + custòdia"
-                  value={<Eur value={mes.benefici + mes.retencions} />}
-                  icon={Wallet}
-                  color={mes.benefici + mes.retencions >= 0 ? 'text-green-600' : 'text-red-600'}
-                  big
-                />
+                {!restringit && (
+                  <>
+                    <Kpi label="Ingressos + custòdia" value={<Eur value={mes.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
+                    <Kpi label="Despeses (amb personal)" value={<Eur value={mes.despeses + mes.personal} />} icon={TrendingDown} color="text-red-600" />
+                    <Kpi
+                      label="Benefici + custòdia"
+                      value={<Eur value={mes.benefici + mes.retencions} />}
+                      icon={Wallet}
+                      color={mes.benefici + mes.retencions >= 0 ? 'text-green-600' : 'text-red-600'}
+                      big
+                    />
+                  </>
+                )}
               </div>
 
-              {mes.custodiaDetall.length > 0 && (
+              {!restringit && mes.custodiaDetall.length > 0 && (
                 <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4">
                   <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-amber-800">
                     <Coins className="h-4 w-4" /> Dipòsits en custòdia — de qui són
@@ -546,22 +552,24 @@ export default function BalancPage() {
             <Button variant="outline" size="sm" onClick={() => setDataTall(todayISO())}>
               Avui
             </Button>
-            <div className="ml-2 flex overflow-hidden rounded-lg border border-slate-300">
-              <button
-                type="button"
-                onClick={() => setIncloureCustodiaSituacio(true)}
-                className={cn('px-3 py-1.5 text-sm', incloureCustodiaSituacio ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}
-              >
-                Amb custòdia
-              </button>
-              <button
-                type="button"
-                onClick={() => setIncloureCustodiaSituacio(false)}
-                className={cn('border-l border-slate-300 px-3 py-1.5 text-sm', !incloureCustodiaSituacio ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}
-              >
-                Sense custòdia
-              </button>
-            </div>
+            {!restringit && (
+              <div className="ml-2 flex overflow-hidden rounded-lg border border-slate-300">
+                <button
+                  type="button"
+                  onClick={() => setIncloureCustodiaSituacio(true)}
+                  className={cn('px-3 py-1.5 text-sm', incloureCustodiaSituacio ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}
+                >
+                  Amb custòdia
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIncloureCustodiaSituacio(false)}
+                  className={cn('border-l border-slate-300 px-3 py-1.5 text-sm', !incloureCustodiaSituacio ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}
+                >
+                  Sense custòdia
+                </button>
+              </div>
+            )}
           </div>
           {situacio && <SituacioView data={situacio} />}
         </div>

@@ -8,6 +8,7 @@ import { Input, Select, Textarea } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { getJSON, patchJSON } from '@/lib/api';
+import { useRestringit } from '@/components/layout/restringit-context';
 import { addDays, toISODate } from '@/lib/dates';
 import { formatDate } from '@/lib/utils';
 import {
@@ -80,13 +81,14 @@ function LangSelect({ value, onChange, className }: { value: Lang; onChange: (l:
 }
 
 export default function PlantillesPage() {
+  const restringit = useRestringit();
   return (
     <div>
       <PageHeader title="Plantilles" subtitle="Missatges de WhatsApp per a neteja i hostes (multiidioma)" />
       <div className="space-y-6">
         <MeuWhatsApp />
         <BenvingudaCard />
-        <NetejaCard />
+        {!restringit && <NetejaCard />}
         <HostesCard />
       </div>
     </div>

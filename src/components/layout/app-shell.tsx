@@ -9,6 +9,7 @@ import { Sidebar } from '@/components/layout/sidebar';
 import { LogoutButton } from '@/components/layout/logout-button';
 import { GlobalSearch } from '@/components/layout/global-search';
 import { AmountsVisibilityProvider } from '@/components/finances/amounts-visibility';
+import { RestringitProvider } from '@/components/layout/restringit-context';
 import { cn } from '@/lib/utils';
 
 const ROLE_LABEL: Record<string, string> = {
@@ -36,6 +37,7 @@ export function AppShell({
 
   return (
     <AmountsVisibilityProvider>
+    <RestringitProvider value={readOnly}>
     <div className="flex min-h-screen">
       {/* Fons fosc quan el menú està obert (només mòbil/tablet) */}
       {open && (
@@ -68,7 +70,7 @@ export function AppShell({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <Sidebar role={user.role} />
+        <Sidebar role={user.role} restringit={readOnly} />
         <div className="border-t border-brand-800 p-3">
           {user.role === 'ADMIN' ? (
             <Link
@@ -107,6 +109,7 @@ export function AppShell({
         <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">{children}</div>
       </main>
     </div>
+    </RestringitProvider>
     </AmountsVisibilityProvider>
   );
 }

@@ -24,6 +24,7 @@ interface NavItem {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   roles?: Role[];
+  hideRestringit?: boolean; // amagat per a la vista restringida de propietat
 }
 
 interface NavGroup {
@@ -42,7 +43,7 @@ const GROUPS: NavGroup[] = [
       { href: '/estancies', label: 'Estades', icon: BedDouble },
       { href: '/llibre', label: 'Llibre registre de viatgers', icon: BookText },
       { href: '/calendari', label: 'Calendari', icon: CalendarDays },
-      { href: '/neteja', label: 'Neteja', icon: Sparkles },
+      { href: '/neteja', label: 'Neteja', icon: Sparkles, hideRestringit: true },
     ],
   },
   {
@@ -51,20 +52,22 @@ const GROUPS: NavGroup[] = [
       { href: '/plantilles', label: 'Plantilles', icon: MessageCircle },
       { href: '/valoracions', label: 'Valoracions', icon: Star },
       { href: '/serveis', label: 'Proveïdors i serveis', icon: Truck },
-      { href: '/personal', label: 'Treballadors', icon: UserCog, roles: ['ADMIN'] },
+      { href: '/personal', label: 'Treballadors', icon: UserCog, roles: ['ADMIN'], hideRestringit: true },
       { href: '/balanc', label: 'Comptabilitat', icon: PiggyBank, roles: ['ADMIN'] },
       { href: '/justificants', label: 'Justificants', icon: FileCheck },
     ],
   },
 ];
 
-export function Sidebar({ role }: { role: Role }) {
+export function Sidebar({ role, restringit = false }: { role: Role; restringit?: boolean }) {
   const pathname = usePathname();
 
   return (
     <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
       {GROUPS.map((group, gi) => {
-        const items = group.items.filter((i) => !i.roles || i.roles.includes(role));
+        const items = group.items.filter(
+          (i) => (!i.roles || i.roles.includes(role)) && !(restringit && i.hideRestringit),
+        );
         if (items.length === 0) return null;
         return (
           <div key={gi} className={gi > 0 ? 'mt-4' : ''}>
