@@ -42,7 +42,7 @@ export default async function PersonalPage() {
             <tr>
               <Th>Nom</Th>
               <Th>Càrrec</Th>
-              <Th>Preu/hora</Th>
+              <Th>Pagament</Th>
               <Th>Jornades</Th>
               <Th>Absències</Th>
               <Th></Th>
@@ -58,7 +58,13 @@ export default async function PersonalPage() {
                   {t.dni && <div className="text-xs text-slate-400">{t.dni}</div>}
                 </Td>
                 <Td>{t.carrec}</Td>
-                <Td>{t.preuHora ? `${formatEur(Number(t.preuHora))}/h` : '—'}</Td>
+                <Td>
+                  {t.preuHora
+                    ? `${formatEur(Number(t.preuHora))}/h`
+                    : t.preuSortida
+                    ? `Tasques (S:${formatEur(Number(t.preuSortida))} M:${formatEur(Number(t.preuManteniment ?? 0))} Z:${formatEur(Number(t.preuZones ?? 0))})`
+                    : '—'}
+                </Td>
                 <Td>{t._count.jornades}</Td>
                 <Td>{t._count.absencies}</Td>
                 <Td className="text-right">
@@ -69,6 +75,9 @@ export default async function PersonalPage() {
                         nom: t.nom,
                         carrec: t.carrec,
                         preuHora: t.preuHora != null ? String(Number(t.preuHora)) : '',
+                        preuSortida: t.preuSortida != null ? String(Number(t.preuSortida)) : '',
+                        preuManteniment: t.preuManteniment != null ? String(Number(t.preuManteniment)) : '',
+                        preuZones: t.preuZones != null ? String(Number(t.preuZones)) : '',
                         telefon: t.telefon ?? '',
                         email: t.email ?? '',
                         dni: t.dni ?? '',

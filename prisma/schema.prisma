@@ -401,6 +401,7 @@ model Estancia {
   numHabitacions    Int?          @map("num_habitacions")
   teInternet        Boolean?      @map("te_internet")
   observacions      String?
+  idioma            String?       @default("ca") // ca / es / en / fr
   estat             EstatEstancia @default(RESERVA)
   // Registre desat amb dades incompletes (§2.3): editable, però no es pot pujar a
   // Mossos fins completar-lo. Es neteja automàticament quan el fitxer es genera bé.
@@ -428,6 +429,7 @@ model Estancia {
   anotacions    AnotacioHuesped[]
   tasquesNeteja TascaNeteja[]
   diposits      Diposit[]
+  emailsProgramats EmailProgramat[]
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -904,6 +906,9 @@ model Treballador {
   dataContractacio DateTime  @map("data_contractacio")
   carrec           String
   preuHora         Decimal?  @map("preu_hora") @db.Decimal(10, 2) // €/hora (pagament per hores)
+  preuSortida      Decimal?  @map("preu_sortida") @db.Decimal(10, 2) // €/sortida (mode per tasques)
+  preuManteniment  Decimal?  @map("preu_manteniment") @db.Decimal(10, 2) // €/manteniment
+  preuZones        Decimal?  @map("preu_zones") @db.Decimal(10, 2) // €/pack zones comunes
   salari           Decimal?  @db.Decimal(10, 2)
   costEmpresa      Decimal?  @map("cost_empresa") @db.Decimal(10, 2)
 
@@ -1084,4 +1089,24 @@ model Valoracio {
   @@index([vista])
   @@index([createdAt])
   @@map("valoracio")
+}
+
+// Emails programats per enviar-se en un moment futur (gràcies/ressenya, benvinguda).
+model EmailProgramat {
+  id             String    @id @default(cuid())
+  estanciaId     String    @map("estancia_id")
+  estancia       Estancia  @relation(fields: [estanciaId], references: [id])
+  tipus          String    // 'gracies' | 'benvinguda'
+  a              String    // adreça destinatari
+  nomDestinatari String?   @map("nom_destinatari")
+  asumpte        String
+  cos            String    @db.Text // HTML
+  programatPer   DateTime  @map("programat_per") // quan s'ha d'enviar
+  enviatAt       DateTime? @map("enviat_at")
+  errorMsg       String?   @map("error_msg")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@index([programatPer])
+  @@index([enviatAt])
+  @@map("email_programat")
 }

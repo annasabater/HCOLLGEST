@@ -26,14 +26,10 @@ export default async function TreballadorDetailPage({ params }: { params: Promis
   });
   if (!t) notFound();
 
-  // Tarifes de neteja (per als treballadors que cobren per tasques, sense preu/hora).
-  const est = await prisma.establiment.findFirst({
-    select: { preuNetejaSortida: true, preuNetejaManteniment: true, preuNetejaZones: true },
-  });
   const tarifes = {
-    s: est?.preuNetejaSortida ? Number(est.preuNetejaSortida) : 0,
-    m: est?.preuNetejaManteniment ? Number(est.preuNetejaManteniment) : 0,
-    z: est?.preuNetejaZones ? Number(est.preuNetejaZones) : 0,
+    s: t.preuSortida ? Number(t.preuSortida) : 0,
+    m: t.preuManteniment ? Number(t.preuManteniment) : 0,
+    z: t.preuZones ? Number(t.preuZones) : 0,
   };
 
   return (

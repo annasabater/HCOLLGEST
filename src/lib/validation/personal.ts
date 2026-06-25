@@ -21,7 +21,10 @@ export const TreballadorCreateSchema = z.object({
     z.string().email().optional(),
   ),
   dataContractacio: z.coerce.date().optional(),
-  preuHora: optNum, // €/hora
+  preuHora: optNum, // €/hora (mode per hores)
+  preuSortida: optNum, // €/sortida (mode per tasques)
+  preuManteniment: optNum,
+  preuZones: optNum,
   salari: optNum,
   costEmpresa: optNum,
 });
