@@ -12,22 +12,25 @@ async function addWatermark(buf: Buffer, mime: string): Promise<Buffer> {
   try {
     const img = sharp(buf);
     const { width = 800, height = 600 } = await img.metadata();
-    const cx = Math.round(width / 2);
-    const cy = Math.round(height / 2);
-    const fontSize = Math.max(40, Math.round(Math.min(width, height) / 8));
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-      <text x="${cx}" y="${cy}" text-anchor="middle"
-        transform="rotate(-30 ${cx} ${cy})"
-        font-family="sans-serif" font-size="${fontSize}" font-weight="bold"
-        fill="#000000" fill-opacity="0.40">HOSTAL COLL</text>
-    </svg>`;
-    // Renderitza el SVG → PNG transparent, després el composa sobre la imatge
-    const overlay = await sharp(Buffer.from(svg))
-      .resize(width, height)
+    const targetH = Math.max(40, Math.round(Math.min(width, height) / 8));
+
+    // Text natiu de sharp (Pango/libvips) — no depèn de fonts del sistema ni librsvg
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const textImg = await (sharp as any)({ text: { text: 'HOSTAL COLL', rgba: true, dpi: 144 } })
+      .resize(null, targetH, { fit: 'inside' })
+      .png()
+      .toBuffer() as Buffer;
+
+    // Reduïm l'opacitat manipulant el canal alpha directament
+    const { data, info } = await sharp(textImg).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    for (let i = 3; i < data.length; i += 4) data[i] = Math.round(data[i] * 0.45);
+    const dimmed = await sharp(data, { raw: { width: info.width!, height: info.height!, channels: 4 } })
+      .rotate(-30, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
       .png()
       .toBuffer();
+
     return await img
-      .composite([{ input: overlay, top: 0, left: 0 }])
+      .composite([{ input: dimmed, gravity: 'center' }])
       .jpeg({ quality: 90 })
       .toBuffer();
   } catch (err) {
