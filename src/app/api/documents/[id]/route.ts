@@ -23,7 +23,7 @@ async function addWatermark(buf: Buffer, mime: string): Promise<Buffer> {
 
     // Reduïm l'opacitat manipulant el canal alpha directament
     const { data, info } = await sharp(textImg).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-    for (let i = 3; i < data.length; i += 4) data[i] = Math.round(data[i] * 0.45);
+    for (let i = 3; i < data.length; i += 4) data[i] = Math.round((data[i] ?? 255) * 0.45);
     const dimmed = await sharp(data, { raw: { width: info.width!, height: info.height!, channels: 4 } })
       .rotate(-30, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
       .png()
