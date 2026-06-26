@@ -83,6 +83,7 @@ export function EmailsPanel({
       .catch(() => {});
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [estanciaId]);
 
   function openForm(tipus: 'gracies' | 'benvinguda') {

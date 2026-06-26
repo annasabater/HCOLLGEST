@@ -345,7 +345,7 @@ export function PagamentsPanel({
             {tipus === 'PAGAMENT' ? (
               <Select value={etapa} onChange={(e) => setEtapa(e.target.value as typeof etapa)}>
                 <option value="A compte">A compte (reserva anticipada)</option>
-                <option value="Cobro">Cobro (pagament a l'arribada)</option>
+                <option value="Cobro">Cobro (pagament a l&apos;arribada)</option>
                 <option value="Altre">Altre…</option>
               </Select>
             ) : (

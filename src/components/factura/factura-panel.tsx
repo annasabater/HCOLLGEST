@@ -40,7 +40,7 @@ export function FacturaPanel({
   numViatgers,
   dataEntrada,
   dataSortida,
-  numContracte,
+  numContracte: _numContracte,
 }: {
   estanciaId: string;
   factures: FacturaLite[];
