@@ -25,7 +25,8 @@ import { buildFileName, buildFitxerBuffer, isFormatConfirmat, type Encoding } fr
 import { decryptString } from '../src/lib/crypto';
 
 const prisma = new PrismaClient();
-const PORTAL = 'https://registreviatgers.mossos.gencat.cat';
+// La URL "pelada" dona 403; el login real de l'aplicació Java és aquesta ruta.
+const PORTAL = 'https://registreviatgers.mossos.gencat.cat/mossos_hotels/AppJava/login.do';
 const CAPTURES = join(process.cwd(), 'mossos-captures');
 
 // ───────────────────────── SELECTORS (best-effort) ─────────────────────────
@@ -101,6 +102,7 @@ async function generaFitxer(estanciaId: string) {
     prisma.estanciaViatger.findMany({ where: { estanciaId }, include: { huesped: true }, orderBy: { esTitular: 'desc' } }),
   ]);
   const parte = buildParteFromDb(establiment, estancia, viatgers);
+  parte.contracte.tipusPagament = 'DESTINACIO'; // a Mossos: "Pagament a destinació" per defecte
   const encoding = (establiment.encoding as Encoding) || 'latin1';
   const seq = (await prisma.enviamentMossos.count()) + 1;
   const fitxerNom = buildFileName(establiment.fileIdentifier!, seq);

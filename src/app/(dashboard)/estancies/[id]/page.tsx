@@ -357,6 +357,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             <CardBody>
               <EstanciaActions
                 estanciaId={estancia.id}
+                esAmpliacio={!!estancia.origen}
                 enviaments={estancia.enviaments.map((e) => ({
                   id: e.id,
                   estat: e.estat,

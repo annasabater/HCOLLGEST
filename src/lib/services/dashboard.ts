@@ -70,6 +70,9 @@ export async function getResum(opts?: FinanceOpts) {
         estat: { in: ['EN_CURS', 'RESERVA'] },
         enviaments: { none: { estat: { in: ['ENVIAT', 'ACCEPTAT'] } } },
         avisMossosParat: false,
+        // Les ampliacions NO compten com a pendents: els hostes ja es van
+        // comunicar a Mossos en l'estada original (§4: no reenviar ja informats).
+        estanciaOrigenId: null,
       },
       orderBy: { dataEntrada: 'asc' },
       take: 20,
