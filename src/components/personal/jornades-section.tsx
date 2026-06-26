@@ -1,14 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, Check, Undo2 } from 'lucide-react';
+import { Plus, Trash2, Check, Undo2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
-import { postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
+import { postJSON, patchJSON, delJSON, getJSON, ApiError } from '@/lib/api';
 import { formatDate, formatEur } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
 
@@ -43,17 +43,57 @@ export function JornadesSection({
 
   // Sense preu/hora → es cobra PER TASQUES de neteja (sortides, manteniments, zones).
   const perTasques = !preuHora || preuHora <= 0;
-  const [sortides, setSortides] = useState('');
-  const [manteniments, setManteniments] = useState('');
-  const [zones, setZones] = useState(false);
-  const senseTarifes = tarifes.s === 0 && tarifes.m === 0 && tarifes.z === 0;
-  const aPagar =
-    Math.round(
-      ((Number(sortides) || 0) * tarifes.s +
-        (Number(manteniments) || 0) * tarifes.m +
-        (zones ? tarifes.z : 0)) *
-        100,
-    ) / 100;
+
+  // ── Picker de tasques ──────────────────────────────────────────────────────
+  interface TascaOpc {
+    id: string;
+    data: string;
+    tipus: string;
+    hab: string;
+    import: number;
+    sel: boolean;
+  }
+
+  const [rangeFrom, setRangeFrom] = useState(toISODate(new Date()));
+  const [rangeTo, setRangeTo] = useState(toISODate(new Date()));
+  const [opcions, setOpcions] = useState<TascaOpc[]>([]);
+  const [loadingOpc, setLoadingOpc] = useState(false);
+  const [zonesAdia, setZonesAdia] = useState<Record<string, boolean>>({});
+
+  const carregarTasques = useCallback(async () => {
+    setLoadingOpc(true);
+    try {
+      const r = await getJSON<{ tasques: { id: string; data: string; tipus: string; habitacio: { nom: string } | null }[] }>(
+        `/api/treballadors/${treballadorId}/tasques?from=${rangeFrom}&to=${rangeTo}`,
+      );
+      setOpcions(
+        r.tasques.map((t) => ({
+          id: t.id,
+          data: t.data,
+          tipus: t.tipus,
+          hab: t.habitacio?.nom ?? '?',
+          import: t.tipus === 'CANVI_COMPLET' ? tarifes.s : tarifes.m,
+          sel: true,
+        })),
+      );
+    } finally {
+      setLoadingOpc(false);
+    }
+  }, [treballadorId, rangeFrom, rangeTo, tarifes.s, tarifes.m]);
+
+  useEffect(() => { carregarTasques(); }, [carregarTasques]);
+
+  function toggleTasca(id: string) {
+    setOpcions((prev) => prev.map((o) => (o.id === id ? { ...o, sel: !o.sel } : o)));
+  }
+  function toggleZonaDate(d: string) {
+    setZonesAdia((prev) => ({ ...prev, [d]: !prev[d] }));
+  }
+
+  const diesUnics = Array.from(new Set(opcions.map((o) => o.data.slice(0, 10)))).sort();
+  const totalTasques = opcions.filter((o) => o.sel).reduce((a, o) => a + o.import, 0);
+  const totalZones = diesUnics.filter((d) => zonesAdia[d]).length * tarifes.z;
+  const aPagar = Math.round((totalTasques + totalZones) * 100) / 100;
 
   async function registrarTasques(e: React.FormEvent) {
     e.preventDefault();
@@ -61,16 +101,23 @@ export function JornadesSection({
     setSaving(true);
     setError(null);
     try {
-      await postJSON('/api/neteja/pagament', {
-        treballadorId,
-        data,
-        sortides: Number(sortides) || 0,
-        manteniments: Number(manteniments) || 0,
-        zones,
-      });
-      setSortides('');
-      setManteniments('');
-      setZones(false);
+      // Registra un pagament per dia amb les tasques seleccionades
+      const perDia: Record<string, { sortides: number; manteniments: number; zones: boolean }> = {};
+      for (const o of opcions.filter((x) => x.sel)) {
+        const d = o.data.slice(0, 10);
+        if (!perDia[d]) perDia[d] = { sortides: 0, manteniments: 0, zones: false };
+        if (o.tipus === 'CANVI_COMPLET') perDia[d].sortides++;
+        else perDia[d].manteniments++;
+      }
+      for (const d of diesUnics) {
+        if (zonesAdia[d] && !perDia[d]) perDia[d] = { sortides: 0, manteniments: 0, zones: true };
+        else if (perDia[d] && zonesAdia[d]) perDia[d].zones = true;
+      }
+      for (const [dia, vals] of Object.entries(perDia)) {
+        await postJSON('/api/neteja/pagament', { treballadorId, data: dia, ...vals });
+      }
+      setOpcions((prev) => prev.map((o) => ({ ...o, sel: false })));
+      setZonesAdia({});
       router.refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error');
@@ -78,6 +125,8 @@ export function JornadesSection({
       setSaving(false);
     }
   }
+
+  const senseTarifes = tarifes.s === 0 && tarifes.m === 0 && tarifes.z === 0;
 
   // Filtre per mes (YYYY-MM). Per defecte, el mes en curs.
   const mesActual = toISODate(new Date()).slice(0, 7);
@@ -244,47 +293,80 @@ export function JornadesSection({
 
       {perTasques ? (
         <form onSubmit={registrarTasques} className="space-y-3 border-t border-slate-100 pt-4">
-          <p className="text-xs text-slate-500">
-            Cobra <strong>per tasques de neteja</strong> (no per hores), segons les tarifes de
-            Configuració.
-          </p>
-          <div className="grid items-end gap-2 sm:grid-cols-4">
-            <Field label="Dia">
-              <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+          {/* Selector de periode */}
+          <div className="flex flex-wrap items-end gap-2">
+            <Field label="Des de">
+              <Input type="date" value={rangeFrom} onChange={(e) => setRangeFrom(e.target.value)} />
             </Field>
-            <Field label={`Sortides${tarifes.s ? ` (${tarifes.s} €)` : ''}`}>
-              <Input type="number" min="0" value={sortides} onChange={(e) => setSortides(e.target.value)} />
+            <Field label="Fins a">
+              <Input type="date" value={rangeTo} onChange={(e) => setRangeTo(e.target.value)} />
             </Field>
-            <Field label={`Manteniments${tarifes.m ? ` (${tarifes.m} €)` : ''}`}>
-              <Input
-                type="number"
-                min="0"
-                value={manteniments}
-                onChange={(e) => setManteniments(e.target.value)}
-              />
-            </Field>
-            <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                className="h-4 w-4 accent-brand-700"
-                checked={zones}
-                onChange={(e) => setZones(e.target.checked)}
-              />
-              Zones{tarifes.z ? ` (${tarifes.z} €)` : ''}
-            </label>
+            <Button type="button" variant="outline" size="sm" onClick={carregarTasques} disabled={loadingOpc}>
+              <RefreshCw className={`h-4 w-4 ${loadingOpc ? 'animate-spin' : ''}`} />
+            </Button>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+
+          {/* Llista de tasques clicables */}
+          {senseTarifes ? (
+            <p className="text-xs text-amber-600">Configura les tarifes a Configuració → Tarifes de neteja.</p>
+          ) : loadingOpc ? (
+            <p className="text-xs text-slate-400">Carregant tasques…</p>
+          ) : opcions.length === 0 ? (
+            <p className="text-xs text-slate-400">Cap tasca feta en aquest periode.</p>
+          ) : (
+            <div className="space-y-3">
+              {diesUnics.map((dia) => {
+                const tasquesDia = opcions.filter((o) => o.data.slice(0, 10) === dia);
+                return (
+                  <div key={dia} className="rounded-lg border border-slate-200 p-3">
+                    <div className="mb-2 text-xs font-semibold text-slate-500">{formatDate(dia)}</div>
+                    <div className="flex flex-wrap gap-2">
+                      {tasquesDia.map((o) => (
+                        <button
+                          key={o.id}
+                          type="button"
+                          onClick={() => toggleTasca(o.id)}
+                          className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                            o.sel
+                              ? 'border-brand-400 bg-brand-50 text-brand-800'
+                              : 'border-slate-200 bg-white text-slate-400 line-through'
+                          }`}
+                        >
+                          {o.sel && <Check className="h-3.5 w-3.5" />}
+                          Hab. {o.hab} · {o.tipus === 'CANVI_COMPLET' ? 'Sortida' : 'Mantenim.'}
+                          <span className="text-xs opacity-70">{formatEur(o.import)}</span>
+                        </button>
+                      ))}
+                      {tarifes.z > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => toggleZonaDate(dia)}
+                          className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                            zonesAdia[dia]
+                              ? 'border-brand-400 bg-brand-50 text-brand-800'
+                              : 'border-slate-200 bg-white text-slate-400'
+                          }`}
+                        >
+                          {zonesAdia[dia] && <Check className="h-3.5 w-3.5" />}
+                          Zones comunes
+                          <span className="text-xs opacity-70">{formatEur(tarifes.z)}</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3">
             <span className="text-sm text-slate-600">
-              A pagar: <strong className="text-slate-900">{aPagar.toFixed(2)} €</strong>
+              A pagar: <strong className="text-slate-900 text-base">{formatEur(aPagar)}</strong>
             </span>
             <Button type="submit" disabled={saving || aPagar <= 0}>
               <Plus className="h-4 w-4" /> Registrar pagament
             </Button>
-            {senseTarifes && (
-              <span className="text-xs text-amber-600">
-                Configura les tarifes a Configuració → Tarifes de neteja.
-              </span>
-            )}
+            {error && <span className="text-sm text-red-600">{error}</span>}
           </div>
         </form>
       ) : (
