@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db';
 import { authorize, clientIp } from '@/lib/auth/guard';
-import { ROLES_ADMIN } from '@/lib/auth/rbac';
+import { ROLES_WRITE } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
 import { handleApiError, notFound, ok } from '@/lib/http';
 import { DipositResolSchema, DipositEditSchema } from '@/lib/validation/factura';
@@ -12,7 +12,7 @@ type Ctx = { params: Promise<{ id: string }> };
 //   - sense `estat` → edita import/mètode/notes (només si està EN_CUSTODIA)
 export async function PATCH(req: Request, ctx: Ctx) {
   try {
-    const auth = await authorize(ROLES_ADMIN);
+    const auth = await authorize(ROLES_WRITE);
     if (auth instanceof Response) return auth;
     const { id } = await ctx.params;
 
@@ -58,7 +58,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
 // DELETE /api/diposits/:id — elimina un dipòsit (només si està EN_CUSTODIA).
 export async function DELETE(req: Request, ctx: Ctx) {
   try {
-    const auth = await authorize(ROLES_ADMIN);
+    const auth = await authorize(ROLES_WRITE);
     if (auth instanceof Response) return auth;
     const { id } = await ctx.params;
 
