@@ -18,6 +18,7 @@ interface Jornada {
   hores: number;
   preuHora: number;
   import: number;
+  notes: string | null;
   pagada: boolean;
   dataPagament: string | null;
 }
@@ -201,6 +202,7 @@ export function JornadesSection({
           <Thead>
             <tr>
               <Th>Dia</Th>
+              <Th>Concepte</Th>
               <Th>Hores</Th>
               <Th>€/h</Th>
               <Th className="text-right">Import</Th>
@@ -212,6 +214,7 @@ export function JornadesSection({
             {filtered.map((j) => (
               <Tr key={j.id} className={j.pagada ? 'opacity-60' : ''}>
                 <Td>{formatDate(j.data)}</Td>
+                <Td className="text-xs text-slate-500">{j.notes ? j.notes.replace('[auto] ', '') : '—'}</Td>
                 <Td>{j.hores > 0 ? `${j.hores} h` : '—'}</Td>
                 <Td>{j.preuHora > 0 ? formatEur(j.preuHora) : '—'}</Td>
                 <Td className="text-right font-medium">{formatEur(j.import)}</Td>

@@ -43,48 +43,35 @@ async function syncJornadaAuto(treballadorId: string, data: Date) {
   if (manteniments) parts.push(`${manteniments} manteniment${manteniments > 1 ? 's' : ''}`);
   const notes = `[auto] Neteja: ${parts.join(', ') || 'cap tasca'}`;
 
-  // Busca QUALSEVOL jornada de neteja d'aquest treballador en aquest dia
-  // (tant les [auto] com les registrades manualment amb "Neteja: ...")
-  const allNeteja = await prisma.jornada.findMany({
-    where: {
-      treballadorId,
-      data: { gte: dayStart, lte: dayEnd },
-      OR: [
-        { notes: { startsWith: '[auto]' } },
-        { notes: { startsWith: 'Neteja:' } },
-      ],
-    },
-    orderBy: { createdAt: 'asc' },
-  });
+  await prisma.$transaction(async (tx) => {
+    const allNeteja = await tx.jornada.findMany({
+      where: {
+        treballadorId,
+        data: { gte: dayStart, lte: dayEnd },
+        OR: [
+          { notes: { startsWith: '[auto]' } },
+          { notes: { startsWith: 'Neteja:' } },
+        ],
+      },
+      orderBy: { createdAt: 'asc' },
+    });
 
-  // Queda una sola entrada; les duplicades s'eliminen
-  const existing = allNeteja[0] ?? null;
-  const duplicats = allNeteja.slice(1);
-  if (duplicats.length > 0) {
-    await prisma.jornada.deleteMany({ where: { id: { in: duplicats.map((d) => d.id) } } });
-  }
-
-  if (importTotal > 0) {
-    if (existing) {
-      await prisma.jornada.update({
-        where: { id: existing.id },
-        data: { import: importTotal, notes },
-      });
-    } else {
-      await prisma.jornada.create({
-        data: {
-          treballadorId,
-          data,
-          hores: 0,
-          preuHora: 0,
-          import: importTotal,
-          notes,
-        },
-      });
+    const existing = allNeteja[0] ?? null;
+    const duplicats = allNeteja.slice(1);
+    if (duplicats.length > 0) {
+      await tx.jornada.deleteMany({ where: { id: { in: duplicats.map((d) => d.id) } } });
     }
-  } else if (existing && !existing.pagada) {
-    await prisma.jornada.delete({ where: { id: existing.id } });
-  }
+
+    if (importTotal > 0) {
+      if (existing) {
+        await tx.jornada.update({ where: { id: existing.id }, data: { import: importTotal, notes } });
+      } else {
+        await tx.jornada.create({ data: { treballadorId, data, hores: 0, preuHora: 0, import: importTotal, notes } });
+      }
+    } else if (existing && !existing.pagada) {
+      await tx.jornada.delete({ where: { id: existing.id } });
+    }
+  });
 }
 
 // PATCH /api/tasques-neteja/:id — marcar FETA, reasignar, cambiar tipo/fecha…

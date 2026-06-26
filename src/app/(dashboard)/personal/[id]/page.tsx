@@ -83,7 +83,7 @@ export default async function TreballadorDetailPage({ params }: { params: Promis
                 hores: Number(j.hores),
                 preuHora: Number(j.preuHora),
                 import: Number(j.import),
-                notes: (j as { notes?: string | null }).notes ?? null,
+                notes: j.notes ?? null,
                 pagada: j.pagada,
                 dataPagament: j.dataPagament ? j.dataPagament.toISOString() : null,
               }))}

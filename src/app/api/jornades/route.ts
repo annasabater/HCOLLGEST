@@ -13,12 +13,14 @@ export async function GET(req: Request) {
     const mes = url.searchParams.get('mes'); // YYYY-MM
 
     const where = mes
-      ? {
-          data: {
-            gte: new Date(`${mes}-01T00:00:00`),
-            lte: new Date(`${mes}-31T23:59:59`),
-          },
-        }
+      ? (() => {
+          const parts = mes.split('-');
+          const y = Number(parts[0]);
+          const m = Number(parts[1]);
+          const ini = new Date(y, m - 1, 1, 0, 0, 0);
+          const fi = new Date(y, m, 0, 23, 59, 59, 999); // darrer dia del mes
+          return { data: { gte: ini, lte: fi } };
+        })()
       : undefined;
 
     const jornades = await prisma.jornada.findMany({
