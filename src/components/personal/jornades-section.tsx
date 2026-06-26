@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
-import { postJSON, patchJSON, ApiError } from '@/lib/api';
+import { postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { formatDate, formatEur } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
 
@@ -132,9 +132,20 @@ export function JornadesSection({
     }
   }
 
+  const [toggling, setToggling] = useState<string | null>(null);
+  async function togglePagada(id: string, pagada: boolean) {
+    setToggling(id);
+    try {
+      await patchJSON(`/api/jornades/${id}`, { pagada });
+      router.refresh();
+    } finally {
+      setToggling(null);
+    }
+  }
+
   async function esborrar(id: string) {
     if (!confirm('Segur que vols eliminar aquesta jornada?')) return;
-    await fetch(`/api/jornades/${id}`, { method: 'DELETE' });
+    await delJSON(`/api/jornades/${id}`);
     router.refresh();
   }
 
@@ -199,13 +210,23 @@ export function JornadesSection({
           </Thead>
           <tbody>
             {filtered.map((j) => (
-              <Tr key={j.id}>
+              <Tr key={j.id} className={j.pagada ? 'opacity-60' : ''}>
                 <Td>{formatDate(j.data)}</Td>
-                <Td>{j.hores} h</Td>
-                <Td>{formatEur(j.preuHora)}</Td>
+                <Td>{j.hores > 0 ? `${j.hores} h` : '—'}</Td>
+                <Td>{j.preuHora > 0 ? formatEur(j.preuHora) : '—'}</Td>
                 <Td className="text-right font-medium">{formatEur(j.import)}</Td>
                 <Td>
-                  {j.pagada ? <Badge tone="success">Pagat</Badge> : <Badge tone="warning">Pendent</Badge>}
+                  <button
+                    type="button"
+                    disabled={toggling === j.id}
+                    onClick={() => togglePagada(j.id, !j.pagada)}
+                    title={j.pagada ? 'Marcar com a pendent' : 'Marcar com a pagat'}
+                    className="flex items-center gap-1"
+                  >
+                    {j.pagada
+                      ? <Badge tone="success"><Check className="h-3 w-3 mr-0.5" />Pagat</Badge>
+                      : <Badge tone="warning">Pendent</Badge>}
+                  </button>
                 </Td>
                 <Td>
                   <button className="text-slate-400 hover:text-red-600" onClick={() => esborrar(j.id)}>
