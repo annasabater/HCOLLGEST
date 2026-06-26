@@ -63,7 +63,7 @@ export function PagamentsPanel({
   const [tipus, setTipus] = useState<'PAGAMENT' | 'FIANCA'>('PAGAMENT');
   const [importVal, setImport] = useState('');
   const [metode, setMetode] = useState('EFECTIU');
-  const [concepte, setConcepte] = useState('ALLOTJAMENT');
+  const [dataCobrament, setDataCobrament] = useState(() => new Date().toISOString().slice(0, 10));
   const [etapa, setEtapa] = useState<'A compte' | 'Cobro' | 'Altre'>('Cobro');
   const [altreText, setAltreText] = useState('');
   const [sel, setSel] = useState<Set<string>>(new Set());
@@ -107,19 +107,22 @@ export function PagamentsPanel({
           metode,
           destinacio: 'CUSTODIA',
           notes: notesVal,
+          data: dataCobrament || undefined,
         });
       } else {
         await postJSON(`/api/estancies/${estanciaId}/pagaments`, {
           import: Number(importVal),
           metode,
-          concepte,
+          concepte: 'ALLOTJAMENT',
           descripcio: notesVal,
+          data: dataCobrament || undefined,
           facturaId: facturaIdDest || undefined,
         });
       }
       setImport('');
       setAltreText('');
       setFacturaIdDest('');
+      setDataCobrament(new Date().toISOString().slice(0, 10));
       setOpen(false);
       router.refresh();
     } catch (err) {
@@ -180,16 +183,18 @@ export function PagamentsPanel({
     }
   }
 
+  const teBres = aCompte.length > 0 || facturats.length > 0 || fiancesActives.length > 0;
+
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-500">
-        Registra els cobraments de l’estada (inicial, resta, extres). Compten com a ingrés de seguida.
-        Després fes la factura/rebut marcant quins hi vols incloure; els que deixis sense marcar queden
-        a compte i els pots tornar.
-      </p>
-      <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
-        A compte (sense factura): <strong>{formatEur(totalACompte)}</strong>
-      </div>
+      {!teBres && (
+        <p className="text-sm text-slate-400 italic">Sense pagaments ni fiances registrats.</p>
+      )}
+      {aCompte.length > 0 && (
+        <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
+          A compte (sense factura): <strong>{formatEur(totalACompte)}</strong>
+        </div>
+      )}
 
       {aCompte.length > 0 && (
         <div className="space-y-2">
@@ -201,7 +206,6 @@ export function PagamentsPanel({
               <input type="checkbox" checked={sel.has(p.id)} onChange={() => toggle(p.id)} />
               <span className="font-medium text-slate-800">{formatEur(p.import)}</span>
               <span className="text-slate-400">
-                · {CONCEPTE_LINIA_LABELS[p.concepte]}
                 {p.descripcio ? ` · ${p.descripcio}` : ''} · {METODE_COBRAMENT_LABELS[p.metode]} ·{' '}
                 {formatDate(p.data)}
               </span>
@@ -347,17 +351,12 @@ export function PagamentsPanel({
                 </option>
               ))}
             </Select>
-            {tipus === 'PAGAMENT' && (
-              <Select value={concepte} onChange={(e) => setConcepte(e.target.value)}>
-                {optionsFrom(concepteLiniaValues, CONCEPTE_LINIA_LABELS)
-                  .filter((o) => o.value !== 'EXTRA')
-                  .map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-              </Select>
-            )}
+            <Input
+              type="date"
+              value={dataCobrament}
+              onChange={(e) => setDataCobrament(e.target.value)}
+              aria-label="Data de cobrament"
+            />
             <Select value={etapa} onChange={(e) => setEtapa(e.target.value as typeof etapa)}>
               <option value="A compte">A compte (reserva anticipada)</option>
               <option value="Cobro">Cobro (pagament a l&apos;arribada)</option>
