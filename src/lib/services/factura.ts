@@ -501,7 +501,7 @@ export async function createFacturaSeleccio(
         iva: 0,
         total,
         estat: 'COBRADA',
-        tipusDocument: 'RECIBO',
+        tipusDocument: input.tipusDocument ?? 'RECIBO',
         linies: {
           create: pagaments.map((p) => ({
             concepte: p.concepte,

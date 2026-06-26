@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Trash2, Receipt, Undo2, ShieldCheck, ChevronDown, Pencil, Check, X } from 'lucide-react';
+import { Plus, Trash2, FileText, Undo2, ShieldCheck, ChevronDown, Pencil, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -72,9 +72,8 @@ export function PagamentsPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Selection for rebut
+  // Selecció per crear factura
   const [sel, setSel] = useState<Set<string>>(new Set());
-  const [selFianca, setSelFianca] = useState<Set<string>>(new Set());
 
   // Expanded fiances section
   const [fiancaOberta, setFiancaOberta] = useState(false);
@@ -103,12 +102,9 @@ export function PagamentsPanel({
   const fiancesActives = fiances.filter((f) => f.estat !== 'TORNAT');
   const fiancesCustodia = fiances.filter((f) => f.estat === 'EN_CUSTODIA');
   const custodia = fiancesCustodia.reduce((a, f) => a + f.import, 0);
-  const selFiancaTotal = fiancesCustodia.filter((f) => selFianca.has(f.id)).reduce((a, f) => a + f.import, 0);
 
   const toggle = (id: string) =>
     setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  const toggleFianca = (id: string) =>
-    setSelFianca((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const togglePucTornar = (id: string) =>
     setPucTornar((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
@@ -226,31 +222,21 @@ export function PagamentsPanel({
     }
   }
 
-  async function generarRebut() {
+  async function crearFactura(tipusDocument: 'FACTURA_SIMPLIFICADA' | 'FACTURA') {
     const ids = aCompte.filter((p) => sel.has(p.id)).map((p) => p.id);
-    const fiancaIds = fiancesCustodia.filter((f) => selFianca.has(f.id)).map((f) => f.id);
-    if (!ids.length && !fiancaIds.length) return;
-
-    // Rebut de sola fiança
-    if (!ids.length && fiancaIds.length > 0) {
-      window.open(`/imprimir/fianca/${estanciaId}`, '_blank');
-      return;
-    }
-
+    if (!ids.length) return;
     setBusy(true);
     setError(null);
     try {
-      const res = await postJSON(`/api/estancies/${estanciaId}/factura-seleccio`, { pagamentIds: ids }) as { factura: { id: string } };
+      const res = await postJSON(`/api/estancies/${estanciaId}/factura-seleccio`, {
+        pagamentIds: ids,
+        tipusDocument,
+      }) as { factura: { id: string } };
       setSel(new Set());
-      setSelFianca(new Set());
-      if (fiancaIds.length > 0 && res?.factura?.id) {
-        window.open(`/imprimir/factura-simple/${res.factura.id}?custodia=true`, '_blank');
-        router.refresh();
-      } else {
-        router.refresh();
-      }
+      window.open(`/imprimir/factura-simple/${res.factura.id}`, '_blank');
+      router.refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Error generant el rebut');
+      setError(err instanceof ApiError ? err.message : 'Error creant la factura');
     } finally {
       setBusy(false);
     }
@@ -278,7 +264,6 @@ export function PagamentsPanel({
   }
 
   const teBres = aCompte.length > 0 || facturats.length > 0 || fiancesActives.length > 0;
-  const canRebut = selTotal > 0 || selFiancaTotal > 0;
 
   return (
     <div className="space-y-4">
@@ -293,7 +278,7 @@ export function PagamentsPanel({
         </div>
       )}
 
-      {(aCompte.length > 0 || fiancesCustodia.length > 0) && (
+      {aCompte.length > 0 && (
         <div className="space-y-2">
           {aCompte.map((p) =>
             editPagId === p.id ? (
@@ -356,27 +341,31 @@ export function PagamentsPanel({
             )
           )}
 
-          {/* Fiances en custòdia seleccionables per al rebut */}
+          {/* Fiances en custòdia — visualització ràpida (no seleccionables aquí) */}
           {fiancesCustodia.map((f) => (
-            <label
+            <div
               key={f.id}
-              className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2 text-sm cursor-pointer"
+              className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2 text-sm"
             >
-              <input
-                type="checkbox"
-                checked={selFianca.has(f.id)}
-                onChange={() => toggleFianca(f.id)}
-              />
+              <ShieldCheck className="h-4 w-4 text-amber-500 shrink-0" />
               <span className="font-medium text-slate-800">{formatEur(f.import)}</span>
               <span className="text-slate-400">
                 · {f.notes ?? 'Fiança'} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
               </span>
-            </label>
+            </div>
           ))}
 
-          <Button type="button" size="sm" onClick={generarRebut} disabled={busy || !canRebut}>
-            <Receipt className="h-4 w-4" /> Fer rebut ({formatEur(selTotal + selFiancaTotal)})
-          </Button>
+          {selTotal > 0 && (
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="text-xs text-slate-500">Crear factura amb {formatEur(selTotal)}:</span>
+              <Button type="button" size="sm" variant="outline" onClick={() => crearFactura('FACTURA_SIMPLIFICADA')} disabled={busy}>
+                <FileText className="h-4 w-4" /> Factura simplificada
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => crearFactura('FACTURA')} disabled={busy}>
+                <FileText className="h-4 w-4" /> Factura fiscal
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
