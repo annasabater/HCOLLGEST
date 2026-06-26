@@ -66,16 +66,22 @@ export function JornadesSection({
       const r = await getJSON<{ tasques: { id: string; data: string; tipus: string; habitacio: { nom: string } | null }[] }>(
         `/api/treballadors/${treballadorId}/tasques?from=${rangeFrom}&to=${rangeTo}`,
       );
-      setOpcions(
-        r.tasques.map((t) => ({
-          id: t.id,
-          data: t.data,
-          tipus: t.tipus,
-          hab: t.habitacio?.nom ?? '?',
-          import: t.tipus === 'CANVI_COMPLET' ? tarifes.s : tarifes.m,
-          sel: true,
-        })),
-      );
+      // Dies que ja tenen jornada registrada → tasques d'aquell dia surten desseleccionades
+    const diesAmbJornada = new Set(
+      jornades
+        .filter((j) => j.notes && (j.notes.startsWith('[auto]') || j.notes.startsWith('Neteja:')))
+        .map((j) => j.data.slice(0, 10)),
+    );
+    setOpcions(
+      r.tasques.map((t) => ({
+        id: t.id,
+        data: t.data,
+        tipus: t.tipus,
+        hab: t.habitacio?.nom ?? '?',
+        import: t.tipus === 'CANVI_COMPLET' ? tarifes.s : tarifes.m,
+        sel: !diesAmbJornada.has(t.data.slice(0, 10)),
+      })),
+    );
     } finally {
       setLoadingOpc(false);
     }
@@ -252,8 +258,8 @@ export function JornadesSection({
             <tr>
               <Th>Dia</Th>
               <Th>Concepte</Th>
-              <Th>Hores</Th>
-              <Th>€/h</Th>
+              {!perTasques && <Th>Hores</Th>}
+              {!perTasques && <Th>€/h</Th>}
               <Th className="text-right">Import</Th>
               <Th>Estat</Th>
               <Th></Th>
@@ -264,8 +270,8 @@ export function JornadesSection({
               <Tr key={j.id} className={j.pagada ? 'opacity-60' : ''}>
                 <Td>{formatDate(j.data)}</Td>
                 <Td className="text-xs text-slate-500">{j.notes ? j.notes.replace('[auto] ', '') : '—'}</Td>
-                <Td>{j.hores > 0 ? `${j.hores} h` : '—'}</Td>
-                <Td>{j.preuHora > 0 ? formatEur(j.preuHora) : '—'}</Td>
+                {!perTasques && <Td>{j.hores > 0 ? `${j.hores} h` : '—'}</Td>}
+                {!perTasques && <Td>{j.preuHora > 0 ? formatEur(j.preuHora) : '—'}</Td>}
                 <Td className="text-right font-medium">{formatEur(j.import)}</Td>
                 <Td>
                   <button
@@ -318,8 +324,13 @@ export function JornadesSection({
               {diesUnics.map((dia) => {
                 const tasquesDia = opcions.filter((o) => o.data.slice(0, 10) === dia);
                 return (
-                  <div key={dia} className="rounded-lg border border-slate-200 p-3">
-                    <div className="mb-2 text-xs font-semibold text-slate-500">{formatDate(dia)}</div>
+                  <div key={dia} className={`rounded-lg border p-3 ${tasquesDia.every(o => !o.sel) && !zonesAdia[dia] ? 'border-green-200 bg-green-50' : 'border-slate-200'}`}>
+                    <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-500">
+                      {formatDate(dia)}
+                      {tasquesDia.every(o => !o.sel) && !zonesAdia[dia] && (
+                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-green-700">Ja registrat</span>
+                      )}
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {tasquesDia.map((o) => (
                         <button
