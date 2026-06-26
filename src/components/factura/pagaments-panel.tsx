@@ -99,9 +99,7 @@ export function PagamentsPanel({
     setBusy(true);
     setError(null);
     try {
-      const notesVal = tipus === 'FIANCA'
-        ? (altreText || undefined)
-        : (etapa === 'Altre' ? (altreText || undefined) : etapa);
+      const notesVal = etapa === 'Altre' ? (altreText || undefined) : etapa;
       if (tipus === 'FIANCA') {
         await postJSON(`/api/estancies/${estanciaId}/diposits`, {
           import: Number(importVal),
@@ -335,27 +333,21 @@ export function PagamentsPanel({
             </Select>
             {tipus === 'PAGAMENT' && (
               <Select value={concepte} onChange={(e) => setConcepte(e.target.value)}>
-                {optionsFrom(concepteLiniaValues, CONCEPTE_LINIA_LABELS).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
+                {optionsFrom(concepteLiniaValues, CONCEPTE_LINIA_LABELS)
+                  .filter((o) => o.value !== 'EXTRA')
+                  .map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
               </Select>
             )}
-            {tipus === 'PAGAMENT' ? (
-              <Select value={etapa} onChange={(e) => setEtapa(e.target.value as typeof etapa)}>
-                <option value="A compte">A compte (reserva anticipada)</option>
-                <option value="Cobro">Cobro (pagament a l&apos;arribada)</option>
-                <option value="Altre">Altre…</option>
-              </Select>
-            ) : (
-              <Input
-                placeholder="Notes (opcional)"
-                value={altreText}
-                onChange={(e) => setAltreText(e.target.value)}
-              />
-            )}
-            {tipus === 'PAGAMENT' && etapa === 'Altre' && (
+            <Select value={etapa} onChange={(e) => setEtapa(e.target.value as typeof etapa)}>
+              <option value="A compte">A compte (reserva anticipada)</option>
+              <option value="Cobro">Cobro (pagament a l&apos;arribada)</option>
+              <option value="Altre">Altre…</option>
+            </Select>
+            {etapa === 'Altre' && (
               <Input
                 placeholder="Descripció"
                 value={altreText}
