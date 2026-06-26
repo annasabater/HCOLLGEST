@@ -327,11 +327,20 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 dataEntrada={estancia.dataEntrada?.toISOString() ?? null}
                 dataSortida={estancia.dataSortida?.toISOString() ?? null}
                 numContracte={estancia.numContracte?.toString() ?? null}
+                pagaments={estancia.cobraments.map((c) => ({
+                  import: Number(c.import),
+                  facturaId: c.facturaId,
+                }))}
+                fiances={estancia.diposits.map((d) => ({
+                  import: Number(d.import),
+                  estat: d.estat,
+                }))}
                 factures={estancia.factures.map((f) => ({
                   id: f.id,
                   numero: f.numero,
                   total: Number(f.total),
                   estat: f.estat,
+                  tipusDocument: f.tipusDocument,
                 }))}
               />
             </CollapsibleCard>

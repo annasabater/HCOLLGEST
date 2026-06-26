@@ -231,7 +231,7 @@ export function PagamentsPanel({
             </label>
           )}
           <Button type="button" size="sm" onClick={generarRebut} disabled={busy || selTotal <= 0}>
-            <Receipt className="h-4 w-4" /> Fer rebut amb els marcats ({formatEur(selTotal)})
+            <Receipt className="h-4 w-4" /> Fer rebut ({formatEur(incloureFianca ? selTotal + custodia : selTotal)})
           </Button>
         </div>
       )}

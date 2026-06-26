@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, Receipt } from 'lucide-react';
+import { Plus, Trash2, Receipt, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -28,8 +28,15 @@ interface FacturaLite {
   numero: string;
   total: string | number;
   estat: 'PENDENT' | 'COBRADA';
+  tipusDocument?: string;
 }
 type Linia = { concepte: string; descripcio: string; import: string };
+
+const TIPUS_LABEL: Record<string, string> = {
+  RECIBO: 'Rebut',
+  FACTURA_SIMPLIFICADA: 'Factura simplificada',
+  FACTURA: 'Factura F1',
+};
 
 export function FacturaPanel({
   estanciaId,
@@ -41,6 +48,8 @@ export function FacturaPanel({
   dataEntrada,
   dataSortida,
   numContracte: _numContracte,
+  pagaments,
+  fiances,
 }: {
   estanciaId: string;
   factures: FacturaLite[];
@@ -51,20 +60,42 @@ export function FacturaPanel({
   dataEntrada?: string | null;
   dataSortida?: string | null;
   numContracte?: string | null;
+  pagaments?: { import: number; facturaId: string | null }[];
+  fiances?: { import: number; estat: string }[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [linies, setLinies] = useState<Linia[]>(() => {
+  const [tipusDocument, setTipusDocument] = useState('RECIBO');
+
+  // Import suggerit: suma de pagaments a compte + fiances en custòdia (si n'hi ha),
+  // o bé el preu suggerit per les nits, o buit.
+  function calcImportSuggerit(): string {
+    const totalPagaments = (pagaments ?? [])
+      .filter((p) => !p.facturaId)
+      .reduce((a, p) => a + p.import, 0);
+    const totalFiances = (fiances ?? [])
+      .filter((f) => f.estat === 'EN_CUSTODIA')
+      .reduce((a, f) => a + f.import, 0);
+    const total = totalPagaments + totalFiances;
+    if (total > 0) return String(total);
+    if (preuSuggerit) return String(preuSuggerit);
+    return '';
+  }
+
+  function buildDesc(): string {
     const habLabel = tipusHabitacio(habitacioNom);
     const personesLabel = numViatgers ? ` (${numViatgers} ${numViatgers === 1 ? 'persona' : 'persones'})` : '';
     const datesLabel = dataEntrada && dataSortida
       ? ` · Del ${fmtDateShort(dataEntrada)} al ${fmtDateShort(dataSortida)}`
       : '';
-    const desc = habitacioNom
+    return habitacioNom
       ? `${habLabel}${personesLabel}${datesLabel}`
       : (nitsSuggerides ? `Habitació (${nitsSuggerides} nits)` : 'Habitació');
-    return [{ concepte: 'ALLOTJAMENT', descripcio: desc, import: preuSuggerit ? String(preuSuggerit) : '' }];
-  });
+  }
+
+  const [linies, setLinies] = useState<Linia[]>(() => [
+    { concepte: 'ALLOTJAMENT', descripcio: buildDesc(), import: calcImportSuggerit() },
+  ]);
   const [ivaPercent, setIvaPercent] = useState('10');
   const [aplicarTasa, setAplicarTasa] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -73,6 +104,12 @@ export function FacturaPanel({
   const setLinia = (i: number, patch: Partial<Linia>) =>
     setLinies((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
+  function obrir() {
+    // Re-calcula l'import cada vegada que s'obre (pagaments poden haver canviat)
+    setLinies([{ concepte: 'ALLOTJAMENT', descripcio: buildDesc(), import: calcImportSuggerit() }]);
+    setOpen(true);
+  }
+
   async function crear(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -80,6 +117,7 @@ export function FacturaPanel({
     try {
       await postJSON('/api/factures', {
         estanciaId,
+        tipusDocument,
         ivaPercent: Number(ivaPercent),
         aplicarTasa,
         linies: linies.map((l) => ({
@@ -89,15 +127,6 @@ export function FacturaPanel({
         })),
       });
       setOpen(false);
-      const habLabel = tipusHabitacio(habitacioNom);
-      const personesLabel = numViatgers ? ` (${numViatgers} ${numViatgers === 1 ? 'persona' : 'persones'})` : '';
-      const datesLabel = dataEntrada && dataSortida
-        ? ` · Del ${fmtDateShort(dataEntrada)} al ${fmtDateShort(dataSortida)}`
-        : '';
-      const desc = habitacioNom
-        ? `${habLabel}${personesLabel}${datesLabel}`
-        : (nitsSuggerides ? `Habitació (${nitsSuggerides} nits)` : 'Habitació');
-      setLinies([{ concepte: 'ALLOTJAMENT', descripcio: desc, import: preuSuggerit ? String(preuSuggerit) : '' }]);
       router.refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error creant la factura');
@@ -106,10 +135,15 @@ export function FacturaPanel({
     }
   }
 
+  function printUrl(f: FacturaLite, ambCustodia = false): string {
+    if (f.tipusDocument === 'FACTURA') return `/imprimir/factura/${f.id}`;
+    return `/imprimir/factura-simple/${f.id}${ambCustodia ? '?custodia=true' : ''}`;
+  }
+
   return (
     <div className="space-y-3">
       {factures.length === 0 && !open && (
-        <p className="text-sm text-slate-400">Sense factures.</p>
+        <p className="text-sm text-slate-400 italic">Sense factures.</p>
       )}
       {factures.map((f) => (
         <div key={f.id} className="rounded-lg border border-slate-200 text-sm">
@@ -119,6 +153,11 @@ export function FacturaPanel({
           >
             <span className="flex items-center gap-2 font-medium text-slate-800">
               <Receipt className="h-4 w-4 text-slate-400" /> {f.numero}
+              {f.tipusDocument && (
+                <span className="text-xs font-normal text-slate-400">
+                  {TIPUS_LABEL[f.tipusDocument] ?? f.tipusDocument}
+                </span>
+              )}
             </span>
             <span className="flex items-center gap-2">
               {formatEur(Number(f.total))}
@@ -127,23 +166,23 @@ export function FacturaPanel({
               </Badge>
             </span>
           </Link>
-          <div className="flex gap-2 border-t border-slate-100 px-3 py-1.5">
+          <div className="flex flex-wrap gap-2 border-t border-slate-100 px-3 py-1.5">
             <a
-              href={`/imprimir/factura-simple/${f.id}?custodia=true`}
+              href={printUrl(f, true)}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-brand-600 hover:underline"
+              className="flex items-center gap-1 text-xs text-brand-600 hover:underline"
             >
-              Factura simple (client)
+              <FileText className="h-3 w-3" /> Imprimir (amb fiança)
             </a>
             <span className="text-slate-300">·</span>
             <a
-              href={`/imprimir/factura-simple/${f.id}`}
+              href={printUrl(f, false)}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-slate-500 hover:underline"
             >
-              Sense custòdia
+              Sense fiança
             </a>
           </div>
         </div>
@@ -151,6 +190,24 @@ export function FacturaPanel({
 
       {open ? (
         <form onSubmit={crear} className="space-y-3 rounded-lg border border-slate-200 p-3">
+          {/* Tipus de document */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-medium text-slate-500">Tipus:</span>
+            {(['RECIBO', 'FACTURA_SIMPLIFICADA', 'FACTURA'] as const).map((t) => (
+              <label key={t} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                <input
+                  type="radio"
+                  name="tipusDocument"
+                  value={t}
+                  checked={tipusDocument === t}
+                  onChange={() => setTipusDocument(t)}
+                />
+                {TIPUS_LABEL[t]}
+              </label>
+            ))}
+          </div>
+
+          {/* Línies */}
           {linies.map((l, i) => (
             <div key={i} className="grid grid-cols-12 gap-2">
               <Select
@@ -227,7 +284,7 @@ export function FacturaPanel({
           </div>
         </form>
       ) : (
-        <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+        <Button size="sm" variant="outline" onClick={obrir}>
           <Plus className="h-4 w-4" /> Nova factura
         </Button>
       )}
