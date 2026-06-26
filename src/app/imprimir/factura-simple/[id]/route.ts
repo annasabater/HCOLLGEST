@@ -57,8 +57,6 @@ export async function GET(
   const ivaPercent = base > 0 ? round2((iva / base) * 100) : 0;
 
   const diposits = ambCustodia ? factura.estancia.diposits : [];
-  const totalDiposits = diposits.reduce((a, d) => a + Number(d.import), 0);
-  const totalAmbDiposits = total + totalDiposits;
 
   const habitacioNom = esc(factura.estancia.habitacio?.nom ?? '');
 
@@ -89,33 +87,28 @@ export async function GET(
       <td class="it-del"><button class="del" type="button" aria-label="Eliminar línia">×</button></td>
     </tr>`).join('');
 
-  // Línies de cobrament (A compte / Cobro) — mostren l'etiqueta i l'import real
-  const cobramentsHtml = factura.cobraments.filter((c) => Number(c.import) > 0).map((c) => {
-    const label = esc(c.descripcio ?? METODE_COBRAMENT_LABELS[c.metode as keyof typeof METODE_COBRAMENT_LABELS] ?? 'Pagament');
-    const val = esc(plain(Number(c.import)));
-    return `
+  // Línies de cobrament (A compte / Cobro) + fiança (si s'inclou) — com a línies normals
+  const cobramentsHtml = [
+    ...factura.cobraments.filter((c) => Number(c.import) > 0).map((c) => ({
+      label: c.descripcio ?? METODE_COBRAMENT_LABELS[c.metode as keyof typeof METODE_COBRAMENT_LABELS] ?? 'Pagament',
+      val: Number(c.import),
+    })),
+    ...diposits.map((d) => ({
+      label: d.notes ?? 'Fiança',
+      val: Number(d.import),
+    })),
+  ].map(({ label, val }) => `
     <tr class="item">
       <td class="c-qty"><input class="in qty" inputmode="decimal" aria-label="Quantitat" value="1"></td>
-      <td><input class="in concept" aria-label="Concepte" value="${label}"></td>
-      <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${val}"></td>
-      <td class="c-amt"><input class="in amount" inputmode="decimal" aria-label="Import" value="${val}"></td>
+      <td><input class="in concept" aria-label="Concepte" value="${esc(label)}"></td>
+      <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${esc(plain(val))}"></td>
+      <td class="c-amt"><input class="in amount" inputmode="decimal" aria-label="Import" value="${esc(plain(val))}"></td>
       <td class="it-del"><button class="del" type="button" aria-label="Eliminar línia">×</button></td>
-    </tr>`;
-  }).join('');
+    </tr>`).join('');
 
   const dipositsHtml = diposits.length > 0 ? `
-    <div class="custodia-block">
-      <div class="custodia-title">Fiança en custòdia</div>
-      ${diposits.map((d) => `
-        <div class="custodia-row">
-          <span class="custodia-lab">${esc(d.notes || 'Fiança')} <span class="custodia-date">(${fmtDate(d.data)})</span></span>
-          <span class="custodia-val">${money(Number(d.import))}</span>
-        </div>`).join('')}
-      <div class="custodia-total">
-        <span>Total lliurat amb fiança</span>
-        <span id="totalAmbFianca">${money(totalAmbDiposits)}</span>
-      </div>
-      <div class="custodia-note">La fiança queda en custòdia i no forma part de la base imposable ni de l'ingrés de la factura.</div>
+    <div style="display:none" id="__custodia_compat__">
+      <!-- fiança inclosa a les línies -->
     </div>` : '';
 
   const html = `<!doctype html>
@@ -205,13 +198,7 @@ export async function GET(
   .sum-row.grand .lab{ color:var(--ink); font-family:Georgia,serif; font-size:16px; letter-spacing:.5px; }
   .sum-row.grand .val{ color:var(--ink); font-size:20px; }
   .iva-note{ text-align:right; font-size:10.5px; color:var(--muted); margin-top:7px; padding-right:12px; font-style:italic; }
-  .custodia-block{ margin-top:28px; border-top:1.5px dashed var(--accent); padding-top:18px; }
-  .custodia-title{ font-size:10px; text-transform:uppercase; letter-spacing:2px; color:var(--accent); margin-bottom:12px; font-weight:600; }
-  .custodia-row{ display:flex; justify-content:space-between; padding:6px 12px; color:var(--muted); font-size:13px; }
-  .custodia-date{ font-size:11px; }
-  .custodia-val{ font-weight:600; }
-  .custodia-total{ display:flex; justify-content:space-between; margin-top:10px; background:var(--warm-tint); border-top:2px solid var(--accent); border-radius:4px; padding:13px 12px; font-family:Georgia,serif; font-size:16px; color:var(--ink); }
-  .custodia-note{ font-size:10.5px; color:var(--muted); margin-top:10px; font-style:italic; line-height:1.5; }
+
   .footer{ display:flex; justify-content:space-between; align-items:flex-end; gap:30px; margin-top:38px; padding-top:16px; border-top:1px solid var(--line); }
   .pay{ display:grid; grid-template-columns:auto 1fr; gap:5px 12px; align-items:center; max-width:360px; }
   .pay-lab{ font-size:10px; text-transform:uppercase; letter-spacing:1.4px; color:var(--muted); }
@@ -363,12 +350,6 @@ export async function GET(
     document.getElementById('base').textContent = money(base);
     document.getElementById('iva').textContent = money(iva);
     document.getElementById('total').textContent = money(tot);
-    const tf = document.getElementById('totalAmbFianca');
-    if (tf) {
-      let fiances = 0;
-      document.querySelectorAll('.custodia-val').forEach(v => fiances += num(v.textContent));
-      tf.textContent = money(tot + fiances);
-    }
   }
 
   document.addEventListener('input', e => {
