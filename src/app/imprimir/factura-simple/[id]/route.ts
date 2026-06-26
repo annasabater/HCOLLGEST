@@ -50,11 +50,11 @@ export async function GET(
   const establiment = await prisma.establiment.findFirst();
   const titular = factura.estancia.viatgers[0]?.huesped ?? null;
 
-  const base = Number(factura.base);
-  const iva = Number(factura.iva);
-  const total = Number(factura.total);
-  const tassa = round2(total - base - iva);
-  const ivaPercent = base > 0 ? round2((iva / base) * 100) : 0;
+  // Total real: suma dels cobraments + dipòsits inclosos (no la base de la factura, que pot estar desfasada)
+  const totalCobraments = round2(
+    factura.cobraments.filter((c) => Number(c.import) > 0).reduce((a, c) => a + Number(c.import), 0) +
+    (ambCustodia ? factura.estancia.diposits : []).reduce((a, d) => a + Number(d.import), 0),
+  );
 
   const diposits = ambCustodia ? factura.estancia.diposits : [];
 
@@ -62,10 +62,30 @@ export async function GET(
 
   const emNom = esc(establiment?.raoSocial || establiment?.nom || 'Hostal Coll');
   const emDescriptor = esc(establiment?.poblacio ? `Casa de Hostes · ${establiment.poblacio}` : 'Casa de Hostes · Calella');
-  const emNif = esc(establiment?.cif ? `NIF ${establiment.cif}` : '');
-  const emAdreca = esc(establiment?.adreca ?? '');
-  const emCpPob = esc([establiment?.codiPostal, establiment?.poblacio].filter(Boolean).join(' '));
   const emTelefon = esc(establiment?.telefon ? `Tel. ${establiment.telefon}` : '');
+
+  // Número: usem el número de contracte de l'estada (no el número intern de factura)
+  const numeroDisplay = esc(String(factura.estancia.numContracte ?? factura.numero));
+
+  // Descripció de la línia de concepte: habitació + persones + dates de l'estada
+  function tipusHab(nom: string | null | undefined): string {
+    if (!nom) return 'Habitació';
+    const n = parseInt(nom.replace(/\D/g, ''), 10);
+    if (!isNaN(n) && n >= 1 && n <= 4) return 'Habitació doble';
+    if (!isNaN(n) && n >= 5 && n <= 6) return 'Habitació individual';
+    return nom;
+  }
+  const numV = factura.estancia.numViatgers;
+  const habTipus = tipusHab(factura.estancia.habitacio?.nom);
+  const habConcept = esc(habTipus + (numV ? ` (${numV} ${numV === 1 ? 'persona' : 'persones'})` : ''));
+  const habDates = esc(
+    factura.estancia.dataEntrada && factura.estancia.dataSortida
+      ? `Del ${fmtDate(factura.estancia.dataEntrada)} al ${fmtDate(factura.estancia.dataSortida)}`
+      : '',
+  );
+
+  // Data opcional per a cobraments i dipòsits
+  const fmtDataOpc = (d: Date | null | undefined) => (d ? ' ' + fmtDate(d) : '');
 
   const clientNom = titular
     ? esc([titular.nom, titular.cognom1, titular.cognom2].filter(Boolean).join(' '))
@@ -74,27 +94,27 @@ export async function GET(
   const clientAdreca = esc(titular?.adreca ?? '');
   const clientCpPob = esc([titular?.codiPostal, titular?.municipi || titular?.localitat].filter(Boolean).join(' '));
 
-  // Línies de concepte (Hab doble, etc.) — sense import, ja que l'import va a les línies de cobrament
-  const linesHtml = factura.linies.map((l) => `
+  // Línia de concepte: sempre mostra habitació + dates (ignorem l.descripcio que pot ser "A compte")
+  const linesHtml = `
     <tr class="item">
       <td class="c-qty"><input class="in qty" inputmode="decimal" aria-label="Quantitat" value="1"></td>
       <td>
-        <input class="in concept" aria-label="Concepte" value="${esc(l.descripcio)}">
-        <input class="in detail" aria-label="Detall" placeholder="">
+        <input class="in concept" aria-label="Concepte" value="${habConcept}">
+        <input class="in detail" aria-label="Detall" value="${habDates}" placeholder="">
       </td>
       <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value=""></td>
       <td class="c-amt"><input class="in amount" inputmode="decimal" aria-label="Import" value=""></td>
       <td class="it-del"><button class="del" type="button" aria-label="Eliminar línia">×</button></td>
-    </tr>`).join('');
+    </tr>`;
 
-  // Línies de cobrament (A compte / Cobro) + fiança (si s'inclou) — com a línies normals
+  // Línies de cobrament (A compte / Cobro) + fiança (si s'inclou) — amb data a l'etiqueta
   const cobramentsHtml = [
     ...factura.cobraments.filter((c) => Number(c.import) > 0).map((c) => ({
-      label: c.descripcio ?? METODE_COBRAMENT_LABELS[c.metode as keyof typeof METODE_COBRAMENT_LABELS] ?? 'Pagament',
+      label: (c.descripcio ?? METODE_COBRAMENT_LABELS[c.metode as keyof typeof METODE_COBRAMENT_LABELS] ?? 'Pagament') + fmtDataOpc(c.data),
       val: Number(c.import),
     })),
     ...diposits.map((d) => ({
-      label: d.notes ?? 'Fiança',
+      label: (d.notes ?? 'Fiança') + fmtDataOpc(d.data),
       val: Number(d.import),
     })),
   ].map(({ label, val }) => `
@@ -258,9 +278,9 @@ export async function GET(
       </div>
       <div class="issuer">
         <input class="in" aria-label="Titular" value="Elisabet Nualart Coll" style="color:var(--slate);font-weight:500"><br>
-        <input class="in" aria-label="NIF" value="${emNif}"><br>
-        <input class="in" aria-label="Adreça" value="${emAdreca}"><br>
-        <input class="in" aria-label="CP i Localitat" value="${emCpPob}"><br>
+        <input class="in" aria-label="NIF" value="NIF 38835174L"><br>
+        <input class="in" aria-label="Adreça" value="C/ Sant Isidre, 54"><br>
+        <input class="in" aria-label="CP i Localitat" value="08370 Calella (Barcelona)"><br>
         <input class="in" aria-label="Telèfon" value="${emTelefon}">
       </div>
     </header>
@@ -278,7 +298,7 @@ export async function GET(
       <div class="meta">
         <div class="meta-title">Factura</div>
         <div class="meta-badge">Simplificada</div>
-        <div class="meta-row"><span class="k">Número</span><span class="v"><input class="in" aria-label="Número" value="${esc(factura.numero)}"></span></div>
+        <div class="meta-row"><span class="k">Número</span><span class="v"><input class="in" aria-label="Número" value="${numeroDisplay}"></span></div>
         <div class="meta-row"><span class="k">Data</span><span class="v"><input class="in" aria-label="Data" value="${fmtDate(factura.data)}"></span></div>
         ${habitacioNom ? `<div class="meta-row"><span class="k">Habitació</span><span class="v"><input class="in" aria-label="Habitació" value="${habitacioNom}"></span></div>` : ''}
       </div>
@@ -302,12 +322,8 @@ export async function GET(
     </div>
 
     <div class="summary">
-      <div class="sum-row"><span class="lab">Base imposable</span><span class="val" id="base">${money(base)}</span></div>
-      <div class="sum-row"><span class="lab">IVA (<input class="in rate" id="rate" inputmode="decimal" aria-label="Tipus d'IVA" value="${ivaPercent}">%) inclòs</span><span class="val" id="iva">${money(iva)}</span></div>
-      ${tassa > 0 ? `<div class="sum-row"><span class="lab">Taxa turística (IEET)</span><span class="val" id="tassa">${money(tassa)}</span></div>` : ''}
-      <div class="sum-row grand"><span class="lab">Total</span><span class="val" id="total">${money(total)}</span></div>
+      <div class="sum-row grand"><span class="lab">Total</span><span class="val" id="total">${money(totalCobraments)}</span></div>
     </div>
-    <div class="iva-note">IVA inclòs en l'import total.</div>
 
     ${dipositsHtml}
 
@@ -344,17 +360,14 @@ export async function GET(
   function recalc() {
     let tot = 0;
     document.querySelectorAll('.amount').forEach(a => tot += num(a.value));
-    const rate = num(document.getElementById('rate').value);
-    const base = rate ? tot / (1 + rate / 100) : tot;
-    const iva = tot - base;
-    document.getElementById('base').textContent = money(base);
-    document.getElementById('iva').textContent = money(iva);
     document.getElementById('total').textContent = money(tot);
   }
 
+  document.addEventListener('DOMContentLoaded', recalc);
+
   document.addEventListener('input', e => {
     if (e.target.matches('.qty, .price')) { lineCalc(e.target.closest('.item')); recalc(); }
-    else if (e.target.matches('.amount, #rate')) recalc();
+    else if (e.target.matches('.amount')) recalc();
   });
   document.addEventListener('blur', e => {
     if (e.target.matches('.price, .amount')) {
