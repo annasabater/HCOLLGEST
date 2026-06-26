@@ -8,7 +8,6 @@ import { prisma } from '../db';
 import { audit } from '../audit';
 import { nights } from '../dates';
 import { computeFacturaTotals } from '../factura-calc';
-import { buildRegistreAlta, type TipoFactura } from '../verifactu/record';
 import type { FacturaCreateInput } from '../validation/factura';
 import {
   FacturaCreateSchema,
@@ -81,60 +80,8 @@ export async function createFactura(
       });
     }
 
-    // Veri*Factu: si és una factura fiscal (no un recibo), genera el registre
-    // d'alta encadenat (huella SHA-256 + QR) dins de la mateixa transacció.
-    if (input.tipusDocument !== 'RECIBO') {
-      const tipusFactura: TipoFactura = input.tipusDocument === 'FACTURA' ? 'F1' : 'F2';
-      const prev = await tx.registreVerifactu.findFirst({ orderBy: { createdAt: 'desc' } });
-      const descripcio = input.descripcioOperacio ?? 'Allotjament i serveis';
-      const built = buildRegistreAlta({
-        idEmisor: establiment.cif,
-        nomEmisor: establiment.nom,
-        serie: establiment.verifactuSerie,
-        numero,
-        tipusFactura,
-        dataExpedicio: data,
-        descripcio,
-        base,
-        tipusIva: input.ivaPercent,
-        quotaIva: iva,
-        importNoSubjecte: tasaTotal,
-        nifDestinatari: input.nifDestinatari,
-        nomDestinatari: input.nomDestinatari,
-        huellaAnterior: prev?.huella ?? '',
-        now: new Date(),
-        testMode: establiment.verifactuTestMode,
-      });
-
-      await tx.registreVerifactu.create({
-        data: {
-          facturaId: factura.id,
-          tipusFactura,
-          serie: establiment.verifactuSerie,
-          numero,
-          numSerieFactura: built.numSerieFactura,
-          dataExpedicio: data,
-          nifEmisor: establiment.cif,
-          nomEmisor: establiment.nom,
-          nifDestinatari: input.nifDestinatari ?? null,
-          nomDestinatari: input.nomDestinatari ?? null,
-          descripcio,
-          baseImposable: base,
-          tipusIva: input.ivaPercent,
-          quotaIva: iva,
-          importNoSubjecte: tasaTotal,
-          quotaTotal: built.quotaTotal,
-          importTotal: built.importeTotal,
-          huella: built.huella,
-          huellaAnterior: prev?.huella ?? '',
-          fechaHoraHuso: built.fechaHoraHuso,
-          qrUrl: built.qrUrl,
-          registreJson: built.registro as unknown as Prisma.InputJsonValue,
-          softwareJson: built.software as unknown as Prisma.InputJsonValue,
-          estat: 'GENERAT',
-        },
-      });
-    }
+    // VERI*FACTU — DESACTIVAT: no es generen registres fins que es configuri
+    // el certificat AEAT i s'activi explícitament. Tornar a activar quan calgui.
 
     await audit(
       {
