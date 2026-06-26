@@ -9,6 +9,7 @@ import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CobramentActions } from '@/components/factura/cobrament-actions';
 import { CobramentsList } from '@/components/factura/cobraments-list';
+import { ToggleEstatFactura } from '@/components/factura/toggle-estat-factura';
 import { LiniesCard } from '@/components/factura/linies-card';
 import { EliminarFactura } from '@/components/factura/eliminar-factura';
 import { formatEur } from '@/lib/utils';
@@ -188,6 +189,8 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
                   ))}
                 </div>
               )}
+
+              <ToggleEstatFactura facturaId={factura.id} estat={factura.estat} />
 
               <CobramentActions
                 facturaId={factura.id}
