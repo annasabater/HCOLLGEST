@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Plus, Trash2, Paperclip, Filter, Camera, Upload, X } from 'lucide-react';
+import { Plus, Trash2, Paperclip, Filter, Camera, Upload, X, Users } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { FinancesNav } from '@/components/balanc/finances-nav';
 import { Button } from '@/components/ui/button';
@@ -463,6 +463,115 @@ function GastosVariablesTab() {
   );
 }
 
+// ─── Pestanya Personal ────────────────────────────────────────────────────────
+
+interface JornadaRow {
+  id: string;
+  data: string;
+  import: string | number;
+  notes: string | null;
+  pagada: boolean;
+  treballador: { id: string; nom: string; carrec: string | null } | null;
+}
+
+function PersonalTab() {
+  const mesActual = toISODate(new Date()).slice(0, 7);
+  const [mes, setMes] = useState(mesActual);
+  const [jornades, setJornades] = useState<JornadaRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    getJSON<{ jornades: JornadaRow[] }>(`/api/jornades?mes=${mes}`)
+      .then((r) => setJornades(r.jornades))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [mes]);
+
+  const total = jornades.reduce((a, j) => a + Number(j.import), 0);
+  const pendent = jornades.filter((j) => !j.pagada).reduce((a, j) => a + Number(j.import), 0);
+
+  // Genera 12 mesos disponibles (mes actual + 11 anteriors)
+  const mesos = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+
+  return (
+    <>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-2 text-sm">
+          <span className="text-slate-600">Mes:</span>
+          <select
+            value={mes}
+            onChange={(e) => setMes(e.target.value)}
+            className="h-9 rounded-lg border border-slate-300 bg-white px-2 text-sm capitalize"
+          >
+            {mesos.map((m) => (
+              <option key={m} value={m}>
+                {new Date(`${m}-01T00:00:00`).toLocaleDateString('ca-ES', { month: 'long', year: 'numeric' })}
+              </option>
+            ))}
+          </select>
+        </label>
+        <span className="text-sm text-slate-600">
+          Total: <strong>{formatEur(total)}</strong>
+        </span>
+        {pendent > 0 && (
+          <span className="text-sm text-amber-600">
+            Pendent: <strong>{formatEur(pendent)}</strong>
+          </span>
+        )}
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-slate-400">Carregant…</p>
+      ) : jornades.length === 0 ? (
+        <EmptyState>Sense registres de personal per a aquest mes.</EmptyState>
+      ) : (
+        <Table>
+          <Thead>
+            <tr>
+              <Th>Data</Th>
+              <Th>Treballador</Th>
+              <Th>Concepte</Th>
+              <Th>Estat</Th>
+              <Th className="text-right">Import</Th>
+            </tr>
+          </Thead>
+          <tbody>
+            {jornades.map((j) => (
+              <Tr key={j.id}>
+                <Td>{formatDate(j.data)}</Td>
+                <Td>
+                  <a href={`/personal/${j.treballador?.id}`} className="font-medium text-brand-700 hover:underline">
+                    {j.treballador?.nom ?? '—'}
+                  </a>
+                  {j.treballador?.carrec && (
+                    <span className="ml-1 text-xs text-slate-400">({j.treballador.carrec})</span>
+                  )}
+                </Td>
+                <Td className="text-sm text-slate-600">
+                  {j.notes
+                    ? j.notes.replace('[auto] ', '')
+                    : `${Number(j.import) > 0 ? 'Jornada' : '—'}`}
+                </Td>
+                <Td>
+                  {j.pagada
+                    ? <Badge tone="success">Pagat</Badge>
+                    : <Badge tone="warning">Pendent</Badge>}
+                </Td>
+                <Td className="text-right font-medium">{formatEur(Number(j.import))}</Td>
+              </Tr>
+            ))}
+          </tbody>
+        </Table>
+      )}
+    </>
+  );
+}
+
 // ─── Pàgina principal ─────────────────────────────────────────────────────────
 
 function GastosContent() {
@@ -475,23 +584,25 @@ function GastosContent() {
       <PageHeader title="Despeses" subtitle="Gestió de despeses del hostal" />
       <FinancesNav />
 
-      {/* Sub-pestanyes Variables / Fixes */}
+      {/* Sub-pestanyes Variables / Fixes / Personal */}
       <div className="mb-6 flex gap-1 border-b border-slate-200">
-        {(['variables', 'fixes'] as const).map((t) => (
+        {(['variables', 'fixes', 'personal'] as const).map((t) => (
           <button
             key={t}
-            onClick={() => router.replace(t === 'variables' ? '/gastos' : '/gastos?tab=fixes')}
+            onClick={() => router.replace(t === 'variables' ? '/gastos' : `/gastos?tab=${t}`)}
             className={cn(
               '-mb-px border-b-2 px-4 py-2 text-sm font-medium capitalize transition-colors',
               tab === t ? 'border-brand-700 text-brand-800' : 'border-transparent text-slate-500 hover:text-slate-800',
             )}
           >
-            {t === 'variables' ? 'Variables' : 'Fixes'}
+            {t === 'variables' ? 'Variables' : t === 'fixes' ? 'Fixes' : (
+              <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> Personal</span>
+            )}
           </button>
         ))}
       </div>
 
-      {tab === 'fixes' ? <GastosFixesTab /> : <GastosVariablesTab />}
+      {tab === 'fixes' ? <GastosFixesTab /> : tab === 'personal' ? <PersonalTab /> : <GastosVariablesTab />}
     </div>
   );
 }

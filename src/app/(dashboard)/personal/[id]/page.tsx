@@ -7,6 +7,7 @@ import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { AbsenciaForm } from '@/components/personal/absencia-nomina-forms';
 import { JornadesSection } from '@/components/personal/jornades-section';
+import { TasquesNetejaSection } from '@/components/personal/tasques-neteja-section';
 import { formatDate } from '@/lib/utils';
 import { TIPUS_ABSENCIA_LABELS } from '@/lib/validation/enums';
 
@@ -22,6 +23,11 @@ export default async function TreballadorDetailPage({ params }: { params: Promis
     include: {
       absencies: { orderBy: { dataInici: 'desc' } },
       jornades: { orderBy: { data: 'desc' }, take: 200 },
+      tasquesNeteja: {
+        orderBy: { data: 'desc' },
+        take: 300,
+        include: { habitacio: { select: { nom: true } } },
+      },
     },
   });
   if (!t) notFound();
@@ -32,6 +38,18 @@ export default async function TreballadorDetailPage({ params }: { params: Promis
     z: t.preuZones ? Number(t.preuZones) : 0,
   };
 
+  const tasquesRows = t.tasquesNeteja.map((tk) => ({
+    id: tk.id,
+    data: tk.data.toISOString(),
+    habitacio: tk.habitacio?.nom ?? null,
+    tipus: tk.tipus,
+    estat: tk.estat,
+    importCalculat:
+      tk.tipus === 'CANVI_COMPLET' ? tarifes.s : tarifes.m,
+  }));
+
+  const perTasques = !t.preuHora;
+
   return (
     <div>
       <BackLink fallback="/personal">Personal</BackLink>
@@ -41,6 +59,15 @@ export default async function TreballadorDetailPage({ params }: { params: Promis
       />
 
       <div className="space-y-6">
+        {/* Tasques de neteja (només per als que cobren per tasques) */}
+        {perTasques && tasquesRows.length > 0 && (
+          <Card>
+            <CardBody>
+              <TasquesNetejaSection tasques={tasquesRows} />
+            </CardBody>
+          </Card>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle>Jornades i pagaments {t.preuHora ? '(per hores)' : '(per tasques)'}</CardTitle>
@@ -56,6 +83,7 @@ export default async function TreballadorDetailPage({ params }: { params: Promis
                 hores: Number(j.hores),
                 preuHora: Number(j.preuHora),
                 import: Number(j.import),
+                notes: (j as { notes?: string | null }).notes ?? null,
                 pagada: j.pagada,
                 dataPagament: j.dataPagament ? j.dataPagament.toISOString() : null,
               }))}
