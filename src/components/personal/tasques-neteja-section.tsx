@@ -15,12 +15,6 @@ interface TascaRow {
   importCalculat: number;
 }
 
-interface MesGroup {
-  mes: string;
-  tasques: TascaRow[];
-  total: number;
-  pendentPagament: number;
-}
 
 function mesLabel(ym: string) {
   return new Intl.DateTimeFormat('ca-ES', { month: 'long', year: 'numeric' }).format(
