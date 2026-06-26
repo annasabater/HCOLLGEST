@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Trash2, Receipt, Undo2, ShieldCheck } from 'lucide-react';
+import { Plus, Trash2, Receipt, Undo2, ShieldCheck, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -68,6 +68,7 @@ export function PagamentsPanel({
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [facturaIdDest, setFacturaIdDest] = useState('');
   const [incloureFianca, setIncloureFianca] = useState(false);
+  const [fiancaOberta, setFiancaOberta] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -256,18 +257,23 @@ export function PagamentsPanel({
         </div>
       )}
 
-      {/* Fiances (garantia retornable) — en custòdia, no són ingrés fins que es retenen */}
+      {/* Fiances (garantia retornable) — col·lapsable, tancat per defecte */}
       {fiancesActives.length > 0 && (
-        <div className="space-y-2 border-t border-slate-100 pt-3">
-          <div className="flex items-center justify-between">
+        <div className="border-t border-slate-100 pt-3">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between text-left"
+            onClick={() => setFiancaOberta((o) => !o)}
+          >
             <p className="flex items-center gap-1 text-xs font-medium text-slate-500">
               <ShieldCheck className="h-3.5 w-3.5" /> Fiances (garantia retornable)
             </p>
-            <span className="text-xs text-slate-500">
+            <span className="flex items-center gap-2 text-xs text-slate-500">
               En custòdia: <strong>{formatEur(custodia)}</strong>
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${fiancaOberta ? 'rotate-180' : ''}`} />
             </span>
-          </div>
-          {fiancesActives.map((f) => (
+          </button>
+          {fiancaOberta && <div className="mt-2 space-y-2">{fiancesActives.map((f) => (
             <div key={f.id} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
               <div className="flex items-center justify-between">
                 <span className="font-medium text-slate-800">
@@ -323,7 +329,7 @@ export function PagamentsPanel({
                 </Button>
               </div>
             </div>
-          ))}
+          ))}</div>}
         </div>
       )}
 
