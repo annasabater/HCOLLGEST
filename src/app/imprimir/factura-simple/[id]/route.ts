@@ -261,7 +261,7 @@ export async function GET(
 <body>
 
 <div class="toolbar">
-  <div class="tb-brand">Hostal Coll<span class="tb-badge">${ambCustodia ? 'Amb custòdia' : 'Sense custòdia'}</span></div>
+  <div class="tb-brand">Hostal Coll<span class="tb-badge">${ambCustodia ? 'Factura simple amb fiança' : 'Factura simple'}</span></div>
   <div class="tb-actions">
     <button id="addLine" class="btn ghost">+ Afegir línia</button>
     <button id="print" class="btn solid">Imprimir / Guardar PDF</button>
@@ -328,7 +328,7 @@ export async function GET(
     ${dipositsHtml}
 
     <footer class="footer">
-      <div class="note">Gràcies per la seva estada</div>
+      <div></div>
     </footer>
 
   </div>

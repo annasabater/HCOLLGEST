@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ShieldCheck, Printer, FileText } from 'lucide-react';
+import { ShieldCheck, Printer, FileText, ShieldAlert } from 'lucide-react';
 import { BackLink } from '@/components/ui/back-link';
 import QRCode from 'qrcode';
 import { prisma } from '@/lib/db';
@@ -13,6 +13,14 @@ import { LiniesCard } from '@/components/factura/linies-card';
 import { EliminarFactura } from '@/components/factura/eliminar-factura';
 import { formatEur } from '@/lib/utils';
 import { VERIFACTU_LLEGENDA } from '@/lib/verifactu/software';
+
+const METODE_LABEL: Record<string, string> = {
+  EFECTIU: 'Efectiu', TARGETA: 'Targeta', TRANSFERENCIA: 'Transferència',
+  BIZUM: 'Bizum', ALTRES: 'Altres',
+};
+const FIANCA_ESTAT_LABEL: Record<string, string> = {
+  EN_CUSTODIA: 'En custòdia', TORNAT: 'Tornat', RETINGUT: 'Retingut (ingrés)',
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +37,12 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
     include: {
       linies: true,
       cobraments: { orderBy: { data: 'asc' } },
-      estancia: { include: { viatgers: { where: { esTitular: true }, include: { huesped: true } } } },
+      estancia: {
+        include: {
+          viatgers: { where: { esTitular: true }, include: { huesped: true } },
+          diposits: { orderBy: { data: 'asc' } },
+        },
+      },
       verifactu: true,
     },
   });
@@ -60,45 +73,53 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
         title={`Factura ${factura.numero}`}
         subtitle={titular ? `${titular.nom} ${titular.cognom1}` : undefined}
         actions={
-          <div className="flex items-center gap-2">
-            <Badge tone="neutral">{DOC_LABEL[factura.tipusDocument] ?? factura.tipusDocument}</Badge>
-            <Badge tone={factura.estat === 'COBRADA' ? 'success' : 'warning'}>
-              {factura.estat === 'COBRADA' ? 'Cobrada' : 'Pendent'}
-            </Badge>
-            <Link
-              href={`/imprimir/factura/${factura.id}`}
-              target="_blank"
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              <Printer className="h-4 w-4" /> PDF sense fiança
-            </Link>
-            <Link
-              href={`/imprimir/factura/${factura.id}?fianca=true`}
-              target="_blank"
-              className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-100"
-            >
-              <ShieldCheck className="h-4 w-4" /> PDF amb fiança
-            </Link>
-            <Link
-              href={`/imprimir/factura-simple/${factura.id}?custodia=true`}
-              target="_blank"
-              className="inline-flex items-center gap-1 rounded-lg border border-brand-300 bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100"
-            >
-              <FileText className="h-4 w-4" /> Simple (client)
-            </Link>
-            <Link
-              href={`/imprimir/factura-simple/${factura.id}`}
-              target="_blank"
-              className="inline-flex items-center gap-1 rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm font-medium text-brand-600 hover:bg-brand-50"
-            >
-              <FileText className="h-4 w-4" /> Simple (sense custòdia)
-            </Link>
-            <EliminarFactura
-              id={factura.id}
-              numero={factura.numero}
-              redirectTo={`/estancies/${factura.estanciaId}`}
-              teVerifactu={!!factura.verifactu}
-            />
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <Badge tone="neutral">{DOC_LABEL[factura.tipusDocument] ?? factura.tipusDocument}</Badge>
+              <Badge tone={factura.estat === 'COBRADA' ? 'success' : 'warning'}>
+                {factura.estat === 'COBRADA' ? 'Cobrada' : 'Pendent'}
+              </Badge>
+            </div>
+            {/* Fila 1: amb fiança (amber) */}
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/imprimir/factura/${factura.id}?fianca=true`}
+                target="_blank"
+                className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-100"
+              >
+                <ShieldCheck className="h-4 w-4" /> Factura fiscal amb fiança
+              </Link>
+              <Link
+                href={`/imprimir/factura-simple/${factura.id}?custodia=true`}
+                target="_blank"
+                className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-100"
+              >
+                <ShieldAlert className="h-4 w-4" /> Factura simple amb fiança
+              </Link>
+              <EliminarFactura
+                id={factura.id}
+                numero={factura.numero}
+                redirectTo={`/estancies/${factura.estanciaId}`}
+                teVerifactu={!!factura.verifactu}
+              />
+            </div>
+            {/* Fila 2: sense fiança (muted) */}
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/imprimir/factura/${factura.id}`}
+                target="_blank"
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              >
+                <Printer className="h-4 w-4" /> Factura fiscal
+              </Link>
+              <Link
+                href={`/imprimir/factura-simple/${factura.id}`}
+                target="_blank"
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              >
+                <FileText className="h-4 w-4" /> Factura simple
+              </Link>
+            </div>
           </div>
         }
       />
@@ -147,6 +168,26 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
                   data: c.data,
                 }))}
               />
+
+              {factura.estancia.diposits.length > 0 && (
+                <div className="border-t border-slate-100 pt-3 space-y-1">
+                  <p className="flex items-center gap-1 text-xs font-medium text-slate-500 mb-2">
+                    <ShieldCheck className="h-3.5 w-3.5" /> Fiances
+                  </p>
+                  {factura.estancia.diposits.map((d) => (
+                    <div key={d.id} className="flex justify-between text-sm">
+                      <span className="text-slate-500">
+                        {d.notes ?? 'Fiança'} · {METODE_LABEL[d.metode] ?? d.metode}
+                        {d.data && ` · ${d.data.toLocaleDateString('ca-ES', { day:'2-digit', month:'2-digit', year:'numeric' })}`}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        {formatEur(Number(d.import))}
+                        <span className="text-xs text-amber-600">{FIANCA_ESTAT_LABEL[d.estat] ?? d.estat}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <CobramentActions
                 facturaId={factura.id}

@@ -119,7 +119,6 @@ export async function GET(
         <span>Total lliurat amb fiança</span>
         <span id="totalAmbFianca">${money(totalAmbFianca)}</span>
       </div>
-      <div class="custodia-note">La fiança queda en custòdia i no forma part de la base imposable ni de l'ingrés de la factura.</div>
     </div>` : '';
 
   const qrHtml = qrDataUrl ? `
@@ -269,7 +268,7 @@ export async function GET(
 <body>
 
 <div class="toolbar">
-  <div class="tb-brand">Hostal Coll <span class="tb-badge">Factura fiscal</span></div>
+  <div class="tb-brand">Hostal Coll <span class="tb-badge">${ambFianca ? 'Factura fiscal amb fiança' : 'Factura fiscal'}</span></div>
   <div class="tb-actions">
     <button id="addLine" class="btn ghost">+ Afegir línia</button>
     <button id="print" class="btn solid">Imprimir / Guardar PDF</button>
@@ -305,8 +304,8 @@ export async function GET(
       </div>
       <div class="meta">
         <div class="meta-title">Factura</div>
-        <div class="meta-badge">${esc(factura.tipusDocument === 'FACTURA_SIMPLIFICADA' ? 'Simplificada' : 'F1')}</div>
-        <div class="meta-row"><span class="k">Número</span><span class="v"><input class="in" aria-label="Número" value="${esc(factura.numero)}"></span></div>
+        <div class="meta-badge">${esc(factura.tipusDocument === 'FACTURA_SIMPLIFICADA' ? 'Simplificada' : '')}${ambFianca ? '<span style="font-size:10px;color:#7A6868"> · Amb fiança</span>' : ''}</div>
+        <div class="meta-row"><span class="k">Número</span><span class="v"><input class="in" aria-label="Número" value="${esc(String(factura.estancia.numContracte ?? factura.numero))}"></span></div>
         <div class="meta-row"><span class="k">Data</span><span class="v"><input class="in" aria-label="Data" value="${fmtDate(factura.data)}"></span></div>
       </div>
     </section>
@@ -339,7 +338,7 @@ export async function GET(
 
     <footer class="footer">
       ${emIban ? `<div class="pay"><span class="pay-lab">IBAN</span><span>${emIban}</span></div>` : '<div></div>'}
-      <div class="note">Gràcies per la confiança</div>
+      <div></div>
     </footer>
 
     ${qrHtml}
