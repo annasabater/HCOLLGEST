@@ -11,7 +11,7 @@ import { Field } from '@/components/ui/field';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
-import { getJSON, postJSON, ApiError } from '@/lib/api';
+import { getJSON, postJSON, delJSON, ApiError } from '@/lib/api';
 import { formatDate, formatEur } from '@/lib/utils';
 import { optionsFrom, concepteLiniaValues, CONCEPTE_LINIA_LABELS } from '@/lib/validation/enums';
 
@@ -87,6 +87,20 @@ export default function VerifactuPage() {
     setLinies((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
   const [enviantId, setEnviantId] = useState<string | null>(null);
+  const [eliminantId, setEliminantId] = useState<string | null>(null);
+
+  async function eliminar(id: string, num: string) {
+    if (!confirm(`Eliminar el registre "${num}"?\nAixò trenca la cadena d'integritat.`)) return;
+    setEliminantId(id);
+    try {
+      await delJSON(`/api/verifactu/${id}`);
+      loadChain();
+    } catch {
+      setError('No s\'ha pogut eliminar el registre');
+    } finally {
+      setEliminantId(null);
+    }
+  }
 
   async function enviarAeat(id: string) {
     setEnviantId(id);
@@ -291,6 +305,7 @@ export default function VerifactuPage() {
               <Th>Integritat</Th>
               <Th>AEAT</Th>
               <Th>QR</Th>
+              <Th></Th>
             </tr>
           </Thead>
           <tbody>
@@ -339,6 +354,17 @@ export default function VerifactuPage() {
                   <a href={c.qrUrl} target="_blank" rel="noreferrer" className="text-brand-600" title="URL de cotejo AEAT">
                     <QrCode className="h-4 w-4" />
                   </a>
+                </Td>
+                <Td>
+                  <button
+                    type="button"
+                    title="Eliminar registre"
+                    disabled={eliminantId === c.id}
+                    onClick={() => eliminar(c.id, c.numSerieFactura)}
+                    className="text-slate-400 hover:text-red-600 disabled:opacity-40"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </Td>
               </Tr>
             ))}
