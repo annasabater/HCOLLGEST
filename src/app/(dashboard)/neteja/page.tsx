@@ -482,7 +482,7 @@ export default function NetejaPage() {
                           {nomPersona(key || null)}
                         </span>
                         <span className="flex flex-wrap gap-1">
-                          {tasks.map((t) => (
+                          {[...tasks].sort((a, b) => (a.habitacio?.nom ?? '').localeCompare(b.habitacio?.nom ?? '', 'ca', { numeric: true })).map((t) => (
                             <span
                               key={t.id}
                               title={t.notes ?? undefined}
