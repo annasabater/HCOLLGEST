@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ShieldCheck, Printer, FileText, ShieldAlert } from 'lucide-react';
 import { BackLink } from '@/components/ui/back-link';
-import QRCode from 'qrcode';
 import { prisma } from '@/lib/db';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +12,6 @@ import { ToggleEstatFactura } from '@/components/factura/toggle-estat-factura';
 import { LiniesCard } from '@/components/factura/linies-card';
 import { EliminarFactura } from '@/components/factura/eliminar-factura';
 import { formatEur } from '@/lib/utils';
-import { VERIFACTU_LLEGENDA } from '@/lib/verifactu/software';
 
 const METODE_LABEL: Record<string, string> = {
   EFECTIU: 'Efectiu', TARGETA: 'Targeta', TRANSFERENCIA: 'Transferència',
@@ -62,10 +60,6 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
   const tasaTotal = round2(total - base - iva);
   // Només els rebuts són editables; una factura fiscal (Veri*Factu) no.
   const editable = factura.tipusDocument === 'RECIBO' && !factura.verifactu;
-
-  const qrDataUrl = factura.verifactu
-    ? await QRCode.toDataURL(factura.verifactu.qrUrl, { width: 160, margin: 1 })
-    : null;
 
   return (
     <div>
@@ -203,49 +197,6 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      {factura.verifactu && qrDataUrl && (
-        <Card className="mt-6 border-brand-200">
-          <CardHeader className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-brand-600" />
-            <CardTitle>Registre Veri*Factu (AEAT)</CardTitle>
-          </CardHeader>
-          <CardBody className="flex flex-col gap-6 sm:flex-row">
-            <div className="shrink-0 text-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qrDataUrl} alt="QR de cotejo AEAT" width={160} height={160} className="rounded-lg border border-slate-200" />
-              <p className="mt-2 max-w-40 text-[11px] text-slate-500">{VERIFACTU_LLEGENDA}</p>
-            </div>
-            <dl className="grid flex-1 grid-cols-2 gap-3 text-sm">
-              <div>
-                <dt className="text-xs uppercase text-slate-400">Núm. sèrie factura</dt>
-                <dd>{factura.verifactu.numSerieFactura}</dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase text-slate-400">Tipus (AEAT)</dt>
-                <dd>{factura.verifactu.tipusFactura}</dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase text-slate-400">Data/hora generació</dt>
-                <dd className="text-xs">{factura.verifactu.fechaHoraHuso}</dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase text-slate-400">Estat</dt>
-                <dd>{factura.verifactu.estat}</dd>
-              </div>
-              <div className="col-span-2">
-                <dt className="text-xs uppercase text-slate-400">Huella (SHA-256)</dt>
-                <dd className="break-all font-mono text-xs">{factura.verifactu.huella}</dd>
-              </div>
-              <div className="col-span-2">
-                <dt className="text-xs uppercase text-slate-400">Huella anterior (encadenament)</dt>
-                <dd className="break-all font-mono text-xs text-slate-500">
-                  {factura.verifactu.huellaAnterior || '— (primer registre)'}
-                </dd>
-              </div>
-            </dl>
-          </CardBody>
-        </Card>
-      )}
     </div>
   );
 }
