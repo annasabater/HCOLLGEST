@@ -332,7 +332,7 @@ export function PagamentsPanel({
                   {pucTornar.has(f.id) && f.estat === 'EN_CUSTODIA' && (
                     <div className="mt-2 flex flex-wrap gap-2">
                       <Button type="button" size="sm" variant="outline" onClick={() => resoldreFianca(f.id, 'TORNAT')}>
-                        <Undo2 className="h-4 w-4" /> Tornar a l'hoste
+                        <Undo2 className="h-4 w-4" /> Tornar a l&apos;hoste
                       </Button>
                       <Button type="button" size="sm" variant="outline" onClick={() => resoldreFianca(f.id, 'RETINGUT')}>
                         Retenir (ingrés)
