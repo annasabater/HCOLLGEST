@@ -35,7 +35,7 @@ type Linia = { concepte: string; descripcio: string; import: string };
 const TIPUS_LABEL: Record<string, string> = {
   RECIBO: 'Rebut',
   FACTURA_SIMPLIFICADA: 'Factura simplificada',
-  FACTURA: 'Factura F1',
+  FACTURA: 'Factura fiscal',
 };
 
 export function FacturaPanel({

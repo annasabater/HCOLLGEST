@@ -30,7 +30,7 @@ export const FacturaCreateSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['nifDestinatari'],
-        message: 'La factura completa (F1) requereix el NIF del destinatari',
+        message: 'La factura fiscal requereix el NIF del destinatari',
       });
     }
   });

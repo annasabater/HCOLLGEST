@@ -39,7 +39,7 @@ type Linia = { concepte: string; descripcio: string; import: string };
 
 const DOC_OPTIONS = [
   { value: 'RECIBO', label: 'Recibo (sense Veri*Factu)' },
-  { value: 'FACTURA', label: 'Factura completa (F1)' },
+  { value: 'FACTURA', label: 'Factura fiscal' },
   { value: 'FACTURA_SIMPLIFICADA', label: 'Factura simplificada (F2)' },
 ];
 
@@ -213,7 +213,7 @@ export default function VerifactuPage() {
                 <Field label="Descripció de l’operació" className="sm:col-span-3">
                   <Input value={descripcioOperacio} onChange={(e) => setDescripcio(e.target.value)} />
                 </Field>
-                <Field label="NIF destinatari" required={esF1} hint={esF1 ? 'Obligatori per a F1' : 'Opcional en F2'}>
+                <Field label="NIF destinatari" required={esF1} hint={esF1 ? 'Obligatori per a factura fiscal' : 'Opcional en simplificada'}>
                   <Input value={nifDestinatari} onChange={(e) => setNif(e.target.value)} />
                 </Field>
                 <Field label="Nom destinatari">

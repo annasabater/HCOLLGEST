@@ -27,7 +27,7 @@ export const dynamic = 'force-dynamic';
 
 const DOC_LABEL: Record<string, string> = {
   RECIBO: 'Recibo',
-  FACTURA: 'Factura (F1)',
+  FACTURA: 'Factura fiscal',
   FACTURA_SIMPLIFICADA: 'Factura simplificada (F2)',
 };
 

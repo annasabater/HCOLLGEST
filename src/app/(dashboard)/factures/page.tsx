@@ -78,8 +78,8 @@ export default async function FacturesPage() {
                       {f.tipusDocument === 'RECIBO'
                         ? 'Recibo'
                         : f.tipusDocument === 'FACTURA'
-                          ? 'Factura F1'
-                          : 'Factura F2'}
+                          ? 'Factura fiscal'
+                          : 'Factura simplificada'}
                     </div>
                   </Td>
                   <Td>{t ? `${t.nom} ${t.cognom1}` : '—'}</Td>
