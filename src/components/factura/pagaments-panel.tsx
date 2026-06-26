@@ -65,7 +65,7 @@ export function PagamentsPanel({
   const [importVal, setImport] = useState('');
   const [metode, setMetode] = useState('EFECTIU');
   const [dataCobrament, setDataCobrament] = useState(() => new Date().toISOString().slice(0, 10));
-  const [etapa, setEtapa] = useState<'A compte' | 'Cobro' | 'Altre'>('Cobro');
+  const [etapa, setEtapa] = useState<'A compte' | 'Cobro' | 'Altre'>('A compte');
   const [altreText, setAltreText] = useState('');
   const [observacions, setObservacions] = useState('');
   const [pucTornar, setPucTornar] = useState<Set<string>>(new Set());
@@ -97,7 +97,10 @@ export function PagamentsPanel({
 
   function obrir(t: 'PAGAMENT' | 'FIANCA') {
     setTipus(t);
+    setEtapa(t === 'PAGAMENT' ? 'A compte' : 'Cobro');
     setObservacions('');
+    setImport('');
+    setAltreText('');
     setError(null);
     setOpen(true);
   }
