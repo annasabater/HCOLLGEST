@@ -151,11 +151,11 @@ export function EmailsPanel({
       {/* Botons per programar */}
       {form === null && (
         <div className="flex flex-wrap gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={() => openForm('gracies')}>
-            <Plus className="h-4 w-4" /> Email de gràcies
-          </Button>
           <Button type="button" size="sm" variant="outline" onClick={() => openForm('benvinguda')}>
             <Plus className="h-4 w-4" /> Benvinguda
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => openForm('gracies')}>
+            <Plus className="h-4 w-4" /> Email de gràcies
           </Button>
         </div>
       )}
@@ -279,11 +279,17 @@ export function EmailsPanel({
       {emails.map((e) => (
         <div
           key={e.id}
-          className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2"
+          className={`flex items-start gap-3 rounded-lg border px-3 py-2 ${
+            e.enviatAt
+              ? 'border-green-200 bg-green-50'
+              : e.errorMsg
+                ? 'border-red-200 bg-red-50'
+                : 'border-slate-200 bg-white'
+          }`}
         >
           <div className="mt-0.5">
             {e.enviatAt ? (
-              <CheckCircle className="h-4 w-4 text-green-500" />
+              <CheckCircle className="h-4 w-4 text-green-600" />
             ) : e.errorMsg ? (
               <XCircle className="h-4 w-4 text-red-500" />
             ) : (
@@ -291,12 +297,18 @@ export function EmailsPanel({
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-slate-700">
-              {tipusLabel(e.tipus)} · {e.a}
+            <p className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+              {tipusLabel(e.tipus)}
+              {e.enviatAt && (
+                <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">
+                  Enviat
+                </span>
+              )}
+              <span className="font-normal text-slate-500">{e.a}</span>
             </p>
             <p className="text-xs text-slate-500">
               {e.enviatAt
-                ? `Enviat ${fmt(e.enviatAt)}`
+                ? `${fmt(e.enviatAt)}`
                 : e.errorMsg
                   ? `Error: ${e.errorMsg}`
                   : `Programat per ${fmt(e.programatPer)}`}
