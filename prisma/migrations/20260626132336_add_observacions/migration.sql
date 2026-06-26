@@ -1,0 +1,2 @@
+﻿ALTER TABLE cobrament ADD COLUMN IF NOT EXISTS observacions TEXT;
+ALTER TABLE diposit ADD COLUMN IF NOT EXISTS observacions TEXT;

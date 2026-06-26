@@ -670,11 +670,12 @@ model Cobrament {
   estancia   Estancia        @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
   facturaId  String?         @map("factura_id")
   factura    Factura?        @relation(fields: [facturaId], references: [id], onDelete: SetNull)
-  concepte   ConcepteLinia   @default(ALLOTJAMENT)
-  descripcio String?
-  metode     MetodeCobrament
-  import     Decimal         @db.Decimal(10, 2)
-  data       DateTime
+  concepte     ConcepteLinia   @default(ALLOTJAMENT)
+  descripcio   String?
+  observacions String?
+  metode       MetodeCobrament
+  import       Decimal         @db.Decimal(10, 2)
+  data         DateTime
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -695,6 +696,7 @@ model Diposit {
   estat         EstatDiposit @default(EN_CUSTODIA)
   motiu         String? // motiu de la retenció (desperfecte…)
   notes         String?
+  observacions  String?
   dataResolucio DateTime?    @map("data_resolucio") // quan es torna o es retén
 
   createdAt DateTime @default(now()) @map("created_at")

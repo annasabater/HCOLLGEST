@@ -305,6 +305,8 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   metode: d.metode,
                   estat: d.estat,
                   motiu: d.motiu,
+                  notes: d.notes ?? null,
+                  observacions: d.observacions ?? null,
                 }))}
               />
             </CollapsibleCard>

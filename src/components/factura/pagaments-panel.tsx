@@ -36,6 +36,8 @@ export interface Fianca {
   metode: keyof typeof METODE_COBRAMENT_LABELS;
   estat: 'EN_CUSTODIA' | 'TORNAT' | 'RETINGUT';
   motiu: string | null;
+  notes: string | null;
+  observacions: string | null;
 }
 
 const FIANCA_ESTAT_LABEL: Record<Fianca['estat'], string> = {
@@ -65,6 +67,8 @@ export function PagamentsPanel({
   const [dataCobrament, setDataCobrament] = useState(() => new Date().toISOString().slice(0, 10));
   const [etapa, setEtapa] = useState<'A compte' | 'Cobro' | 'Altre'>('Cobro');
   const [altreText, setAltreText] = useState('');
+  const [observacions, setObservacions] = useState('');
+  const [pucTornar, setPucTornar] = useState<Set<string>>(new Set());
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [facturaIdDest, setFacturaIdDest] = useState('');
   const [incloureFianca, setIncloureFianca] = useState(false);
@@ -88,8 +92,12 @@ export function PagamentsPanel({
       return n;
     });
 
+  const togglePucTornar = (id: string) =>
+    setPucTornar((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+
   function obrir(t: 'PAGAMENT' | 'FIANCA') {
     setTipus(t);
+    setObservacions('');
     setError(null);
     setOpen(true);
   }
@@ -107,6 +115,7 @@ export function PagamentsPanel({
           metode,
           destinacio: 'CUSTODIA',
           notes: notesVal,
+          observacions: observacions || undefined,
           data: dataCobrament || undefined,
         });
       } else {
@@ -115,12 +124,14 @@ export function PagamentsPanel({
           metode,
           concepte: 'ALLOTJAMENT',
           descripcio: notesVal,
+          observacions: observacions || undefined,
           data: dataCobrament || undefined,
           facturaId: facturaIdDest || undefined,
         });
       }
       setImport('');
       setAltreText('');
+      setObservacions('');
       setFacturaIdDest('');
       setDataCobrament(new Date().toISOString().slice(0, 10));
       setOpen(false);
@@ -138,7 +149,7 @@ export function PagamentsPanel({
       await delJSON(`/api/cobraments/${id}`);
       router.refresh();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : 'No s’ha pogut eliminar');
+      alert(err instanceof ApiError ? err.message : "No s'ha pogut eliminar");
     }
   }
 
@@ -169,7 +180,7 @@ export function PagamentsPanel({
       await patchJSON(`/api/diposits/${id}`, { estat, motiu });
       router.refresh();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : 'No s’ha pogut actualitzar la fiança');
+      alert(err instanceof ApiError ? err.message : "No s'ha pogut actualitzar la fiança");
     }
   }
 
@@ -179,7 +190,7 @@ export function PagamentsPanel({
       await delJSON(`/api/diposits/${id}`);
       router.refresh();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : 'No s’ha pogut eliminar');
+      alert(err instanceof ApiError ? err.message : "No s'ha pogut eliminar");
     }
   }
 
@@ -257,7 +268,7 @@ export function PagamentsPanel({
         </div>
       )}
 
-      {/* Fiances (garantia retornable) — col·lapsable, tancat per defecte */}
+      {/* Fiances (garantia retornable) — col·lapsable, mateixa estètica que pagaments */}
       {fiancesActives.length > 0 && (
         <div className="border-t border-slate-100 pt-3">
           <button
@@ -273,74 +284,74 @@ export function PagamentsPanel({
               <ChevronDown className={`h-3.5 w-3.5 transition-transform ${fiancaOberta ? 'rotate-180' : ''}`} />
             </span>
           </button>
-          {fiancaOberta && <div className="mt-2 space-y-2">{fiancesActives.map((f) => (
-            <div key={f.id} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-slate-800">
-                  {formatEur(f.import)}{' '}
-                  <span className="text-slate-400">
-                    · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
-                  </span>
-                </span>
-                <Badge tone={f.estat === 'RETINGUT' ? 'success' : 'neutral'}>
-                  {FIANCA_ESTAT_LABEL[f.estat]}
-                </Badge>
-              </div>
-              {f.motiu && <p className="mt-1 text-xs text-slate-500">{f.motiu}</p>}
-              <div className="mt-2 flex flex-wrap gap-2">
-                {f.estat === 'EN_CUSTODIA' && (
-                  <>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => resoldreFianca(f.id, 'TORNAT')}
-                    >
-                      <Undo2 className="h-4 w-4" /> Tornar a l’hoste
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => resoldreFianca(f.id, 'RETINGUT')}
-                    >
-                      Retenir (ingrés)
-                    </Button>
-                  </>
-                )}
-                {f.estat === 'RETINGUT' && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => resoldreFianca(f.id, 'TORNAT')}
-                  >
-                    <Undo2 className="h-4 w-4" /> Tornar (reemborsar)
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => eliminarFianca(f.id)}
-                  title="Eliminar fiança"
-                >
-                  <Trash2 className="h-4 w-4 text-red-600" />
-                </Button>
-              </div>
+          {fiancaOberta && (
+            <div className="mt-2 space-y-2">
+              {fiancesActives.map((f) => (
+                <div key={f.id} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-slate-800">
+                      {formatEur(f.import)}
+                      <span className="text-slate-400 font-normal">
+                        {f.notes ? ` · ${f.notes}` : ''} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
+                      </span>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Badge tone={f.estat === 'RETINGUT' ? 'success' : 'neutral'}>
+                        {FIANCA_ESTAT_LABEL[f.estat]}
+                      </Badge>
+                      <button
+                        type="button"
+                        className="text-slate-400 hover:text-red-600"
+                        onClick={() => eliminarFianca(f.id)}
+                        title="Eliminar fiança"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  {f.observacions && (
+                    <p className="mt-1 text-xs text-slate-400 italic">{f.observacions}</p>
+                  )}
+                  {f.motiu && <p className="mt-0.5 text-xs text-slate-500">{f.motiu}</p>}
+
+                  {/* Checkbox per activar les accions de resolució */}
+                  {f.estat === 'EN_CUSTODIA' && (
+                    <label className="mt-2 flex items-center gap-2 cursor-pointer text-xs text-slate-500">
+                      <input
+                        type="checkbox"
+                        checked={pucTornar.has(f.id)}
+                        onChange={() => togglePucTornar(f.id)}
+                        className="rounded"
+                      />
+                      Es pot tornar / gestionar
+                    </label>
+                  )}
+                  {pucTornar.has(f.id) && f.estat === 'EN_CUSTODIA' && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Button type="button" size="sm" variant="outline" onClick={() => resoldreFianca(f.id, 'TORNAT')}>
+                        <Undo2 className="h-4 w-4" /> Tornar a l'hoste
+                      </Button>
+                      <Button type="button" size="sm" variant="outline" onClick={() => resoldreFianca(f.id, 'RETINGUT')}>
+                        Retenir (ingrés)
+                      </Button>
+                    </div>
+                  )}
+                  {f.estat === 'RETINGUT' && (
+                    <div className="mt-2">
+                      <Button type="button" size="sm" variant="outline" onClick={() => resoldreFianca(f.id, 'TORNAT')}>
+                        <Undo2 className="h-4 w-4" /> Tornar (reemborsar)
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}</div>}
+          )}
         </div>
       )}
 
       {open ? (
         <form onSubmit={afegir} className="space-y-2 rounded-lg border border-slate-200 p-3">
-          {tipus === 'FIANCA' && (
-            <p className="rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">
-              La fiança queda <strong>en custòdia</strong> i <strong>no</strong> compta com a ingrés
-              fins que la retens.
-            </p>
-          )}
           <div className="grid grid-cols-2 gap-2">
             <Input
               type="number"
@@ -375,6 +386,12 @@ export function PagamentsPanel({
                 className="col-span-2"
               />
             )}
+            <Input
+              placeholder="Observacions internes (no apareix a la factura)"
+              value={observacions}
+              onChange={(e) => setObservacions(e.target.value)}
+              className="col-span-2"
+            />
             {tipus === 'PAGAMENT' && facturesActuals && facturesActuals.length > 0 && (
               <Select value={facturaIdDest} onChange={(e) => setFacturaIdDest(e.target.value)} className="col-span-2">
                 <option value="">No afegir a cap factura</option>
