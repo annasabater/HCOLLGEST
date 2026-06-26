@@ -11,6 +11,18 @@ import { postJSON, ApiError } from '@/lib/api';
 import { formatEur } from '@/lib/utils';
 import { optionsFrom, concepteLiniaValues, CONCEPTE_LINIA_LABELS } from '@/lib/validation/enums';
 
+function tipusHabitacio(nom: string | null | undefined): string {
+  if (!nom) return 'Habitació';
+  const num = parseInt(nom.replace(/\D/g, ''), 10);
+  if (!isNaN(num) && num >= 1 && num <= 4) return 'Habitació doble';
+  if (!isNaN(num) && num >= 5 && num <= 6) return 'Habitació individual';
+  return nom;
+}
+function fmtDateShort(d: string | null | undefined): string {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('ca-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
 interface FacturaLite {
   id: string;
   numero: string;
@@ -24,21 +36,35 @@ export function FacturaPanel({
   factures,
   preuSuggerit,
   nitsSuggerides,
+  habitacioNom,
+  numViatgers,
+  dataEntrada,
+  dataSortida,
+  numContracte,
 }: {
   estanciaId: string;
   factures: FacturaLite[];
   preuSuggerit?: number;
   nitsSuggerides?: number;
+  habitacioNom?: string | null;
+  numViatgers?: number | null;
+  dataEntrada?: string | null;
+  dataSortida?: string | null;
+  numContracte?: string | null;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [linies, setLinies] = useState<Linia[]>([
-    {
-      concepte: 'ALLOTJAMENT',
-      descripcio: nitsSuggerides ? `Allotjament (${nitsSuggerides} nits)` : 'Allotjament',
-      import: preuSuggerit ? String(preuSuggerit) : '',
-    },
-  ]);
+  const [linies, setLinies] = useState<Linia[]>(() => {
+    const habLabel = tipusHabitacio(habitacioNom);
+    const personesLabel = numViatgers ? ` (${numViatgers} ${numViatgers === 1 ? 'persona' : 'persones'})` : '';
+    const datesLabel = dataEntrada && dataSortida
+      ? ` · Del ${fmtDateShort(dataEntrada)} al ${fmtDateShort(dataSortida)}`
+      : '';
+    const desc = habitacioNom
+      ? `${habLabel}${personesLabel}${datesLabel}`
+      : (nitsSuggerides ? `Habitació (${nitsSuggerides} nits)` : 'Habitació');
+    return [{ concepte: 'ALLOTJAMENT', descripcio: desc, import: preuSuggerit ? String(preuSuggerit) : '' }];
+  });
   const [ivaPercent, setIvaPercent] = useState('10');
   const [aplicarTasa, setAplicarTasa] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -63,7 +89,15 @@ export function FacturaPanel({
         })),
       });
       setOpen(false);
-      setLinies([{ concepte: 'ALLOTJAMENT', descripcio: 'Allotjament', import: '' }]);
+      const habLabel = tipusHabitacio(habitacioNom);
+      const personesLabel = numViatgers ? ` (${numViatgers} ${numViatgers === 1 ? 'persona' : 'persones'})` : '';
+      const datesLabel = dataEntrada && dataSortida
+        ? ` · Del ${fmtDateShort(dataEntrada)} al ${fmtDateShort(dataSortida)}`
+        : '';
+      const desc = habitacioNom
+        ? `${habLabel}${personesLabel}${datesLabel}`
+        : (nitsSuggerides ? `Habitació (${nitsSuggerides} nits)` : 'Habitació');
+      setLinies([{ concepte: 'ALLOTJAMENT', descripcio: desc, import: preuSuggerit ? String(preuSuggerit) : '' }]);
       router.refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error creant la factura');

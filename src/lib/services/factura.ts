@@ -397,7 +397,7 @@ export async function addPagamentEstada(
   const cobrament = await prisma.cobrament.create({
     data: {
       estanciaId,
-      facturaId: null,
+      facturaId: input.facturaId ?? null,
       concepte: input.concepte,
       descripcio: input.descripcio ?? null,
       metode: input.metode,
@@ -405,12 +405,27 @@ export async function addPagamentEstada(
       data: input.data ?? new Date(),
     },
   });
+
+  if (input.facturaId) {
+    const factura = await prisma.factura.findUnique({
+      where: { id: input.facturaId },
+      include: { cobraments: true },
+    });
+    if (factura) {
+      const totalCobrat = factura.cobraments.reduce((a, c) => a + Number(c.import), 0) + input.import;
+      await prisma.factura.update({
+        where: { id: input.facturaId },
+        data: { estat: totalCobrat >= Number(factura.total) ? 'COBRADA' : 'PENDENT' },
+      });
+    }
+  }
+
   await audit({
     usuariId: actor?.id ?? null,
     accio: 'CREACIO',
     entitat: 'cobrament',
     entitatId: cobrament.id,
-    detall: { estanciaId, import: input.import, metode: input.metode, aCompte: true },
+    detall: { estanciaId, import: input.import, metode: input.metode, aCompte: !input.facturaId, facturaId: input.facturaId ?? null },
     ip,
   });
   return cobrament;

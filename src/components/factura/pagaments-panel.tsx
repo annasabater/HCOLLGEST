@@ -49,10 +49,14 @@ export function PagamentsPanel({
   estanciaId,
   pagaments,
   fiances,
+  numContracte,
+  facturesActuals,
 }: {
   estanciaId: string;
   pagaments: Pagament[];
   fiances: Fianca[];
+  numContracte?: string | null;
+  facturesActuals?: { id: string; numero: string }[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -63,6 +67,7 @@ export function PagamentsPanel({
   const [etapa, setEtapa] = useState<'A compte' | 'Cobro' | 'Altre'>('Cobro');
   const [altreText, setAltreText] = useState('');
   const [sel, setSel] = useState<Set<string>>(new Set());
+  const [facturaIdDest, setFacturaIdDest] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -110,10 +115,12 @@ export function PagamentsPanel({
           metode,
           concepte,
           descripcio: notesVal,
+          facturaId: facturaIdDest || undefined,
         });
       }
       setImport('');
       setAltreText('');
+      setFacturaIdDest('');
       setOpen(false);
       router.refresh();
     } catch (err) {
@@ -224,7 +231,7 @@ export function PagamentsPanel({
               </span>
               {p.facturaId && (
                 <Link href={`/factures/${p.facturaId}`}>
-                  <Badge tone="neutral">{p.facturaNumero ?? 'Factura'}</Badge>
+                  <Badge tone="neutral">{numContracte ? `Contracte ${numContracte}` : (p.facturaNumero ?? 'Factura')}</Badge>
                 </Link>
               )}
             </div>
@@ -355,6 +362,14 @@ export function PagamentsPanel({
                 onChange={(e) => setAltreText(e.target.value)}
                 className="col-span-2"
               />
+            )}
+            {tipus === 'PAGAMENT' && facturesActuals && facturesActuals.length > 0 && (
+              <Select value={facturaIdDest} onChange={(e) => setFacturaIdDest(e.target.value)} className="col-span-2">
+                <option value="">No afegir a cap factura</option>
+                {facturesActuals.map((f) => (
+                  <option key={f.id} value={f.id}>Afegir a la factura {f.numero}</option>
+                ))}
+              </Select>
             )}
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}

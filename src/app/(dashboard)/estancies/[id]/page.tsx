@@ -286,6 +286,8 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             >
               <PagamentsPanel
                 estanciaId={estancia.id}
+                numContracte={estancia.numContracte?.toString() ?? null}
+                facturesActuals={estancia.factures.map((f) => ({ id: f.id, numero: f.numero }))}
                 pagaments={estancia.cobraments.map((c) => ({
                   id: c.id,
                   import: Number(c.import),
@@ -320,6 +322,11 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 estanciaId={estancia.id}
                 preuSuggerit={suggerit?.preu}
                 nitsSuggerides={suggerit?.nits}
+                habitacioNom={estancia.habitacio?.nom ?? null}
+                numViatgers={estancia.numViatgers ?? null}
+                dataEntrada={estancia.dataEntrada?.toISOString() ?? null}
+                dataSortida={estancia.dataSortida?.toISOString() ?? null}
+                numContracte={estancia.numContracte?.toString() ?? null}
                 factures={estancia.factures.map((f) => ({
                   id: f.id,
                   numero: f.numero,

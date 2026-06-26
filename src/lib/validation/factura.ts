@@ -71,6 +71,7 @@ export const PagamentEstadaSchema = z.object({
   concepte: z.enum(concepteLiniaValues).default('ALLOTJAMENT'),
   descripcio: optStr,
   data: z.coerce.date().optional(),
+  facturaId: z.string().optional(),
 });
 
 // Crear una factura/rebut a partir de pagaments ja registrats de l'estada.
