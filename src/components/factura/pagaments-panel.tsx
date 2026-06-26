@@ -68,6 +68,7 @@ export function PagamentsPanel({
   const [altreText, setAltreText] = useState('');
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [facturaIdDest, setFacturaIdDest] = useState('');
+  const [incloureFianca, setIncloureFianca] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -144,9 +145,13 @@ export function PagamentsPanel({
     setBusy(true);
     setError(null);
     try {
-      await postJSON(`/api/estancies/${estanciaId}/factura-seleccio`, { pagamentIds: ids });
+      const res = await postJSON(`/api/estancies/${estanciaId}/factura-seleccio`, { pagamentIds: ids }) as { factura: { id: string } };
       setSel(new Set());
-      router.refresh();
+      if (incloureFianca && custodia > 0 && res?.factura?.id) {
+        router.push(`/imprimir/factura-simple/${res.factura.id}?custodia=true`);
+      } else {
+        router.refresh();
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error generant el rebut');
     } finally {
@@ -210,6 +215,17 @@ export function PagamentsPanel({
               </button>
             </label>
           ))}
+          {custodia > 0 && (
+            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={incloureFianca}
+                onChange={(e) => setIncloureFianca(e.target.checked)}
+                className="rounded"
+              />
+              Incloure fiança ({formatEur(custodia)}) al document
+            </label>
+          )}
           <Button type="button" size="sm" onClick={generarRebut} disabled={busy || selTotal <= 0}>
             <Receipt className="h-4 w-4" /> Fer rebut amb els marcats ({formatEur(selTotal)})
           </Button>
