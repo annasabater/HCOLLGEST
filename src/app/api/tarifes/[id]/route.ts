@@ -18,7 +18,9 @@ export async function PATCH(req: Request, ctx: Ctx) {
       where: { id },
       data: {
         ...(data.nom !== undefined ? { nom: data.nom } : {}),
+        ...(data.temporada !== undefined ? { temporada: data.temporada ?? null } : {}),
         ...(data.preuNit !== undefined ? { preuNit: data.preuNit } : {}),
+        ...(data.preuMensual !== undefined ? { preuMensual: data.preuMensual ?? null } : {}),
         ...(data.tipusHabitacio !== undefined ? { tipusHabitacio: data.tipusHabitacio ?? null } : {}),
         ...(data.habitacioId !== undefined ? { habitacioId: data.habitacioId ?? null } : {}),
         ...(data.dataInici !== undefined ? { dataInici: data.dataInici ?? null } : {}),

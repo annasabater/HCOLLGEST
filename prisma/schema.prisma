@@ -1015,15 +1015,17 @@ model Avis {
 // ----------------------------------------------------------------------------
 
 model Tarifa {
-  id          String     @id @default(cuid())
-  nom         String
-  preuNit     Decimal    @db.Decimal(10, 2) @map("preu_nit")
-  tipusHabitacio String? @map("tipus_habitacio") // aplica a totes les habitacions d'aquest tipus
-  habitacioId String?    @map("habitacio_id")
-  habitacio   Habitacio? @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
-  dataInici   DateTime?  @map("data_inici")
-  dataFi      DateTime?  @map("data_fi")
-  actiu       Boolean    @default(true)
+  id             String     @id @default(cuid())
+  nom            String
+  temporada      String?    @map("temporada")           // ALTA | MITJA | BAIXA
+  preuNit        Decimal    @db.Decimal(10, 2) @map("preu_nit")
+  preuMensual    Decimal?   @db.Decimal(10, 2) @map("preu_mensual")
+  tipusHabitacio String?    @map("tipus_habitacio")
+  habitacioId    String?    @map("habitacio_id")
+  habitacio      Habitacio? @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
+  dataInici      DateTime?  @map("data_inici")
+  dataFi         DateTime?  @map("data_fi")
+  actiu          Boolean    @default(true)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

@@ -30,7 +30,9 @@ export async function POST(req: Request) {
     const tarifa = await prisma.tarifa.create({
       data: {
         nom: data.nom,
+        temporada: data.temporada ?? null,
         preuNit: data.preuNit,
+        preuMensual: data.preuMensual ?? null,
         tipusHabitacio: data.tipusHabitacio ?? null,
         habitacioId: data.habitacioId ?? null,
         dataInici: data.dataInici ?? null,

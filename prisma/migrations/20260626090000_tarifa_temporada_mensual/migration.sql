@@ -1,0 +1,2 @@
+ALTER TABLE "tarifa" ADD COLUMN IF NOT EXISTS "temporada" TEXT;
+ALTER TABLE "tarifa" ADD COLUMN IF NOT EXISTS "preu_mensual" DECIMAL(10,2);
