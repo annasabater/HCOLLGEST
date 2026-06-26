@@ -231,14 +231,14 @@ export function PagamentsPanel({
             </label>
           ))}
           {custodia > 0 && (
-            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+            <label className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2 text-sm cursor-pointer">
               <input
                 type="checkbox"
                 checked={incloureFianca}
                 onChange={(e) => setIncloureFianca(e.target.checked)}
-                className="rounded"
               />
-              Incloure fiança ({formatEur(custodia)}) al document
+              <span className="font-medium text-slate-800">{formatEur(custodia)}</span>
+              <span className="text-slate-400"> · Fiança · En custòdia</span>
             </label>
           )}
           <Button type="button" size="sm" onClick={generarRebut} disabled={busy || selTotal <= 0}>
