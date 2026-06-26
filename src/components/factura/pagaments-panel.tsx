@@ -60,7 +60,8 @@ export function PagamentsPanel({
   const [importVal, setImport] = useState('');
   const [metode, setMetode] = useState('EFECTIU');
   const [concepte, setConcepte] = useState('ALLOTJAMENT');
-  const [descripcio, setDescripcio] = useState('');
+  const [etapa, setEtapa] = useState<'A compte' | 'Cobro' | 'Altre'>('Cobro');
+  const [altreText, setAltreText] = useState('');
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,23 +94,26 @@ export function PagamentsPanel({
     setBusy(true);
     setError(null);
     try {
+      const notesVal = tipus === 'FIANCA'
+        ? (altreText || undefined)
+        : (etapa === 'Altre' ? (altreText || undefined) : etapa);
       if (tipus === 'FIANCA') {
         await postJSON(`/api/estancies/${estanciaId}/diposits`, {
           import: Number(importVal),
           metode,
           destinacio: 'CUSTODIA',
-          notes: descripcio || undefined,
+          notes: notesVal,
         });
       } else {
         await postJSON(`/api/estancies/${estanciaId}/pagaments`, {
           import: Number(importVal),
           metode,
           concepte,
-          descripcio: descripcio || undefined,
+          descripcio: notesVal,
         });
       }
       setImport('');
-      setDescripcio('');
+      setAltreText('');
       setOpen(false);
       router.refresh();
     } catch (err) {
@@ -331,11 +335,27 @@ export function PagamentsPanel({
                 ))}
               </Select>
             )}
-            <Input
-              placeholder={tipus === 'FIANCA' ? 'Notes (opcional)' : 'Descripció (opcional)'}
-              value={descripcio}
-              onChange={(e) => setDescripcio(e.target.value)}
-            />
+            {tipus === 'PAGAMENT' ? (
+              <Select value={etapa} onChange={(e) => setEtapa(e.target.value as typeof etapa)}>
+                <option value="A compte">A compte (reserva anticipada)</option>
+                <option value="Cobro">Cobro (pagament a l'arribada)</option>
+                <option value="Altre">Altre…</option>
+              </Select>
+            ) : (
+              <Input
+                placeholder="Notes (opcional)"
+                value={altreText}
+                onChange={(e) => setAltreText(e.target.value)}
+              />
+            )}
+            {tipus === 'PAGAMENT' && etapa === 'Altre' && (
+              <Input
+                placeholder="Descripció"
+                value={altreText}
+                onChange={(e) => setAltreText(e.target.value)}
+                className="col-span-2"
+              />
+            )}
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-2">

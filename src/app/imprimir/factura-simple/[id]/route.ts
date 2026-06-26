@@ -60,9 +60,7 @@ export async function GET(
   const totalDiposits = diposits.reduce((a, d) => a + Number(d.import), 0);
   const totalAmbDiposits = total + totalDiposits;
 
-  const formaPagament = [...new Set(
-    factura.cobraments.filter((c) => Number(c.import) > 0).map((c) => c.metode),
-  )].map((m) => METODE_COBRAMENT_LABELS[m]).join(', ');
+  const habitacioNom = esc(factura.estancia.habitacio?.nom ?? '');
 
   const emNom = esc(establiment?.raoSocial || establiment?.nom || 'Hostal Coll');
   const emDescriptor = esc(establiment?.poblacio ? `Casa de Hostes · ${establiment.poblacio}` : 'Casa de Hostes · Calella');
@@ -78,6 +76,7 @@ export async function GET(
   const clientAdreca = esc(titular?.adreca ?? '');
   const clientCpPob = esc([titular?.codiPostal, titular?.municipi || titular?.localitat].filter(Boolean).join(' '));
 
+  // Línies de concepte (Hab doble, etc.) — sense import, ja que l'import va a les línies de cobrament
   const linesHtml = factura.linies.map((l) => `
     <tr class="item">
       <td class="c-qty"><input class="in qty" inputmode="decimal" aria-label="Quantitat" value="1"></td>
@@ -85,10 +84,24 @@ export async function GET(
         <input class="in concept" aria-label="Concepte" value="${esc(l.descripcio)}">
         <input class="in detail" aria-label="Detall" placeholder="">
       </td>
-      <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${esc(plain(Number(l.import)))}"></td>
-      <td class="c-amt"><input class="in amount" inputmode="decimal" aria-label="Import" value="${esc(plain(Number(l.import)))}"></td>
+      <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value=""></td>
+      <td class="c-amt"><input class="in amount" inputmode="decimal" aria-label="Import" value=""></td>
       <td class="it-del"><button class="del" type="button" aria-label="Eliminar línia">×</button></td>
     </tr>`).join('');
+
+  // Línies de cobrament (A compte / Cobro) — mostren l'etiqueta i l'import real
+  const cobramentsHtml = factura.cobraments.filter((c) => Number(c.import) > 0).map((c) => {
+    const label = esc(c.descripcio ?? METODE_COBRAMENT_LABELS[c.metode as keyof typeof METODE_COBRAMENT_LABELS] ?? 'Pagament');
+    const val = esc(plain(Number(c.import)));
+    return `
+    <tr class="item">
+      <td class="c-qty"><input class="in qty" inputmode="decimal" aria-label="Quantitat" value="1"></td>
+      <td><input class="in concept" aria-label="Concepte" value="${label}"></td>
+      <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${val}"></td>
+      <td class="c-amt"><input class="in amount" inputmode="decimal" aria-label="Import" value="${val}"></td>
+      <td class="it-del"><button class="del" type="button" aria-label="Eliminar línia">×</button></td>
+    </tr>`;
+  }).join('');
 
   const dipositsHtml = diposits.length > 0 ? `
     <div class="custodia-block">
@@ -257,7 +270,7 @@ export async function GET(
         <div class="brand-sub"><input class="in" aria-label="Descriptor" value="${emDescriptor}" style="width:280px"></div>
       </div>
       <div class="issuer">
-        <input class="in" aria-label="Titular" value="${esc(establiment?.raoSocial ?? establiment?.nom ?? 'Hostal Coll')}" style="color:var(--slate);font-weight:500"><br>
+        <input class="in" aria-label="Titular" value="Elisabet Nualart Coll" style="color:var(--slate);font-weight:500"><br>
         <input class="in" aria-label="NIF" value="${emNif}"><br>
         <input class="in" aria-label="Adreça" value="${emAdreca}"><br>
         <input class="in" aria-label="CP i Localitat" value="${emCpPob}"><br>
@@ -280,6 +293,7 @@ export async function GET(
         <div class="meta-badge">Simplificada</div>
         <div class="meta-row"><span class="k">Número</span><span class="v"><input class="in" aria-label="Número" value="${esc(factura.numero)}"></span></div>
         <div class="meta-row"><span class="k">Data</span><span class="v"><input class="in" aria-label="Data" value="${fmtDate(factura.data)}"></span></div>
+        ${habitacioNom ? `<div class="meta-row"><span class="k">Habitació</span><span class="v"><input class="in" aria-label="Habitació" value="${habitacioNom}"></span></div>` : ''}
       </div>
     </section>
 
@@ -295,7 +309,7 @@ export async function GET(
           </tr>
         </thead>
         <tbody>
-          ${linesHtml}
+          ${linesHtml}${cobramentsHtml}
         </tbody>
       </table>
     </div>
@@ -311,12 +325,6 @@ export async function GET(
     ${dipositsHtml}
 
     <footer class="footer">
-      <div class="pay">
-        <span class="pay-lab">Forma de pagament</span>
-        <input class="in" aria-label="Forma de pagament" value="${esc(formaPagament)}">
-        <span class="pay-lab">Data de cobrament</span>
-        <input class="in" aria-label="Data de cobrament" value="${fmtDate(factura.data)}">
-      </div>
       <div class="note">Gràcies per la seva estada</div>
     </footer>
 
