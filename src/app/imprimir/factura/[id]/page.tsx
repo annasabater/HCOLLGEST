@@ -6,7 +6,7 @@ import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { PrintButton } from '@/components/factura/print-button';
 import { formatDate, formatEur } from '@/lib/utils';
-import { CONCEPTE_LINIA_LABELS, METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
+import { CONCEPTE_LINIA_LABELS } from '@/lib/validation/enums';
 import { VERIFACTU_LLEGENDA } from '@/lib/verifactu/software';
 
 export const dynamic = 'force-dynamic';
@@ -60,12 +60,6 @@ export default async function ImprimirFacturaPage({
   const tassa = round2(total - base - iva);
   const ivaPercent = base > 0 ? round2((iva / base) * 100) : 0;
 
-  const formaPagament = [
-    ...new Set(factura.cobraments.filter((c) => Number(c.import) > 0).map((c) => c.metode)),
-  ]
-    .map((m) => METODE_COBRAMENT_LABELS[m])
-    .join(', ');
-
   const qrDataUrl = factura.verifactu
     ? await QRCode.toDataURL(factura.verifactu.qrUrl, { width: 150, margin: 1 })
     : null;
@@ -112,7 +106,7 @@ export default async function ImprimirFacturaPage({
               )}
             </div>
             <div className="min-w-52 text-right text-xs leading-relaxed text-slate-500">
-              {establiment?.cif && <div>NIF {establiment.cif}</div>}
+              {establiment?.cif && <div>Elisabet Nualart Coll · NIF {establiment.cif}</div>}
               {establiment?.adreca && <div>{establiment.adreca}</div>}
               {emCpPob && <div>{emCpPob}</div>}
               {establiment?.telefon && <div>Tel. {establiment.telefon}</div>}
@@ -242,12 +236,6 @@ export default async function ImprimirFacturaPage({
           {/* Peu */}
           <footer className="mt-10 flex items-end justify-between gap-8 border-t border-stone-200 pt-4">
             <div className="grid max-w-sm grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1 text-sm">
-              {formaPagament && (
-                <>
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400">Forma de pagament</span>
-                  <span className="text-slate-600">{formaPagament}</span>
-                </>
-              )}
               {establiment?.iban && (
                 <>
                   <span className="text-[10px] uppercase tracking-wider text-slate-400">IBAN</span>
