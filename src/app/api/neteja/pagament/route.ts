@@ -45,16 +45,24 @@ export async function POST(req: Request) {
     if (input.manteniments) parts.push(`${input.manteniments} manteniment${input.manteniments > 1 ? 's' : ''}`);
     if (input.zones) parts.push('zones comunes');
 
-    const jornada = await prisma.jornada.create({
-      data: {
+    const dayStart = new Date(input.data); dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(input.data); dayEnd.setHours(23, 59, 59, 999);
+    const notesTxt = `Neteja: ${parts.join(', ')}`;
+
+    // Si ja existeix una jornada de neteja aquell dia, actualitza-la (evita duplicats)
+    const existing = await prisma.jornada.findFirst({
+      where: {
         treballadorId: input.treballadorId,
-        data: input.data,
-        hores: 0,
-        preuHora: 0,
-        import: importTotal,
-        notes: `Neteja: ${parts.join(', ')}`,
+        data: { gte: dayStart, lte: dayEnd },
+        OR: [{ notes: { startsWith: '[auto]' } }, { notes: { startsWith: 'Neteja:' } }],
       },
     });
+
+    const jornada = existing
+      ? await prisma.jornada.update({ where: { id: existing.id }, data: { import: importTotal, notes: notesTxt } })
+      : await prisma.jornada.create({
+          data: { treballadorId: input.treballadorId, data: input.data, hores: 0, preuHora: 0, import: importTotal, notes: notesTxt },
+        });
 
     await audit({
       usuariId: auth.id,

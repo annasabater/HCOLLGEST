@@ -43,14 +43,26 @@ async function syncJornadaAuto(treballadorId: string, data: Date) {
   if (manteniments) parts.push(`${manteniments} manteniment${manteniments > 1 ? 's' : ''}`);
   const notes = `[auto] Neteja: ${parts.join(', ') || 'cap tasca'}`;
 
-  // Busca jornada auto existent per aquest treballador i dia
-  const existing = await prisma.jornada.findFirst({
+  // Busca QUALSEVOL jornada de neteja d'aquest treballador en aquest dia
+  // (tant les [auto] com les registrades manualment amb "Neteja: ...")
+  const allNeteja = await prisma.jornada.findMany({
     where: {
       treballadorId,
       data: { gte: dayStart, lte: dayEnd },
-      notes: { startsWith: '[auto]' },
+      OR: [
+        { notes: { startsWith: '[auto]' } },
+        { notes: { startsWith: 'Neteja:' } },
+      ],
     },
+    orderBy: { createdAt: 'asc' },
   });
+
+  // Queda una sola entrada; les duplicades s'eliminen
+  const existing = allNeteja[0] ?? null;
+  const duplicats = allNeteja.slice(1);
+  if (duplicats.length > 0) {
+    await prisma.jornada.deleteMany({ where: { id: { in: duplicats.map((d) => d.id) } } });
+  }
 
   if (importTotal > 0) {
     if (existing) {
@@ -70,11 +82,8 @@ async function syncJornadaAuto(treballadorId: string, data: Date) {
         },
       });
     }
-  } else if (existing) {
-    // Totes les tasques desmarcades → eliminar la jornada auto (si no pagada)
-    if (!existing.pagada) {
-      await prisma.jornada.delete({ where: { id: existing.id } });
-    }
+  } else if (existing && !existing.pagada) {
+    await prisma.jornada.delete({ where: { id: existing.id } });
   }
 }
 
