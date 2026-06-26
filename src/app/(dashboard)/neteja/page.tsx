@@ -488,11 +488,11 @@ export default function NetejaPage() {
                               title={t.notes ?? undefined}
                               className={`rounded px-1.5 py-0.5 text-xs ${
                                 t.estat === 'FETA'
-                                  ? 'bg-green-50 text-green-700 line-through'
+                                  ? 'bg-green-100 text-green-700'
                                   : 'bg-slate-100 text-slate-600'
                               }`}
                             >
-                              {t.habitacio?.nom ?? '?'}
+                              {t.estat === 'FETA' ? '✓ ' : ''}{t.habitacio?.nom ?? '?'}
                               {t.tipus === 'CANVI_COMPLET' ? ' ★' : ''}
                             </span>
                           ))}
