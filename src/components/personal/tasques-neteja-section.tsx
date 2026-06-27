@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Home, ChevronDown } from 'lucide-react';
+import { Home, ChevronDown, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
+import { EmptyState } from '@/components/ui/table';
 import { formatDate, formatEur } from '@/lib/utils';
 
 interface TascaRow {
@@ -15,27 +15,44 @@ interface TascaRow {
   importCalculat: number;
 }
 
-
 function mesLabel(ym: string) {
   return new Intl.DateTimeFormat('ca-ES', { month: 'long', year: 'numeric' }).format(
     new Date(`${ym}-01T00:00:00`),
   );
 }
 
+function tipusLabel(tipus: string) {
+  return tipus === 'CANVI_COMPLET' ? 'Sortida' : 'Manteniment';
+}
+
 export function TasquesNetejaSection({ tasques }: { tasques: TascaRow[] }) {
   const [mesSel, setMesSel] = useState<string>('');
+  const [open, setOpen] = useState(true);
+  // Dies expandits (per defecte tots oberts)
+  const [diesOberts, setDiesOberts] = useState<Set<string>>(new Set());
 
-  // Agrupar per mes
   const mesos = Array.from(new Set(tasques.map((t) => t.data.slice(0, 7)))).sort().reverse();
   const mesDef = mesos[0] ?? '';
   const mesActiu = mesSel || mesDef;
 
   const filtrades = mesActiu ? tasques.filter((t) => t.data.startsWith(mesActiu)) : tasques;
-  const totalMes = filtrades.reduce((a, t) => a + t.importCalculat, 0);
   const fetes = filtrades.filter((t) => t.estat === 'FETA');
   const totalFetes = fetes.reduce((a, t) => a + t.importCalculat, 0);
+  const totalMes = filtrades.reduce((a, t) => a + t.importCalculat, 0);
 
-  const [open, setOpen] = useState(true);
+  // Agrupem per dia
+  const diesUnics = Array.from(new Set(filtrades.map((t) => t.data.slice(0, 10)))).sort().reverse();
+
+  function toggleDia(d: string) {
+    setDiesOberts((prev) => {
+      const next = new Set(prev);
+      if (next.has(d)) next.delete(d); else next.add(d);
+      return next;
+    });
+  }
+
+  // Per defecte el dia és obert si NO és a diesOberts (invertit: obert per defecte)
+  function isDiaObert(d: string) { return !diesOberts.has(d); }
 
   return (
     <div>
@@ -70,45 +87,93 @@ export function TasquesNetejaSection({ tasques }: { tasques: TascaRow[] }) {
               <strong className="text-brand-700">{formatEur(totalFetes)}</strong>
             </span>
             {totalMes !== totalFetes && (
-              <span className="text-slate-500">
-                (total incl. pendents: {formatEur(totalMes)})
-              </span>
+              <span className="text-slate-500">(total incl. pendents: {formatEur(totalMes)})</span>
             )}
           </div>
 
           {filtrades.length === 0 ? (
             <EmptyState>Cap tasca en aquest mes.</EmptyState>
           ) : (
-            <Table>
-              <Thead>
-                <tr>
-                  <Th>Dia</Th>
-                  <Th>Habitació</Th>
-                  <Th>Tipus</Th>
-                  <Th>Estat</Th>
-                  <Th className="text-right">Import</Th>
-                </tr>
-              </Thead>
-              <tbody>
-                {filtrades.map((t) => (
-                  <Tr key={t.id}>
-                    <Td>{formatDate(t.data)}</Td>
-                    <Td>{t.habitacio ? `Hab. ${t.habitacio}` : '—'}</Td>
-                    <Td className="text-sm text-slate-600">
-                      {t.tipus === 'CANVI_COMPLET' ? 'Sortida' : 'Manteniment'}
-                    </Td>
-                    <Td>
-                      {t.estat === 'FETA'
-                        ? <Badge tone="success">Feta</Badge>
-                        : <Badge tone="neutral">Pendent</Badge>}
-                    </Td>
-                    <Td className="text-right font-medium">
-                      {t.importCalculat > 0 ? formatEur(t.importCalculat) : '—'}
-                    </Td>
-                  </Tr>
-                ))}
-              </tbody>
-            </Table>
+            <div className="space-y-1.5">
+              {diesUnics.map((dia) => {
+                const tasqDia = filtrades.filter((t) => t.data.slice(0, 10) === dia);
+                const fetsDia = tasqDia.filter((t) => t.estat === 'FETA');
+                const totalDia = tasqDia.reduce((a, t) => a + t.importCalculat, 0);
+                const totalFetesDia = fetsDia.reduce((a, t) => a + t.importCalculat, 0);
+                const totFet = fetsDia.length === tasqDia.length;
+                const parcial = fetsDia.length > 0 && !totFet;
+                const obert = isDiaObert(dia);
+
+                return (
+                  <div key={dia} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    {/* Capçalera del dia — clicar per plegar/desplegar */}
+                    <button
+                      type="button"
+                      onClick={() => toggleDia(dia)}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50"
+                    >
+                      <ChevronRight className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${obert ? 'rotate-90' : ''}`} />
+                      <span className="min-w-28 text-sm font-semibold text-slate-800">{formatDate(dia)}</span>
+                      <span className="text-xs text-slate-500">
+                        {tasqDia.length} tasca{tasqDia.length !== 1 ? 'es' : ''}
+                      </span>
+                      <div className="ml-auto flex items-center gap-3">
+                        {totFet
+                          ? <Badge tone="success">Tot fet</Badge>
+                          : parcial
+                            ? <Badge tone="warning">{fetsDia.length}/{tasqDia.length} fetes</Badge>
+                            : <Badge tone="neutral">Pendent</Badge>}
+                        <span className="text-sm font-semibold text-slate-700">
+                          {formatEur(totFet ? totalFetesDia : totalDia)}
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Detall de les tasques d'aquest dia */}
+                    {obert && (
+                      <div className="border-t border-slate-100">
+                        {tasqDia.map((t, i) => (
+                          <div
+                            key={t.id}
+                            className={`flex items-center gap-3 px-4 py-2.5 text-sm ${i > 0 ? 'border-t border-slate-50' : ''} ${t.estat === 'FETA' ? 'bg-white' : 'bg-slate-50/60'}`}
+                          >
+                            {/* Línia vertical de connexió (arbre) */}
+                            <div className="ml-1 mr-2 flex flex-col items-center self-stretch">
+                              <div className="w-px flex-1 bg-slate-200" />
+                              <div className="h-2 w-2 shrink-0 rounded-full border-2 border-slate-300 bg-white" />
+                              {i < tasqDia.length - 1 && <div className="w-px flex-1 bg-slate-200" />}
+                            </div>
+
+                            <span className={`min-w-24 text-xs font-medium ${t.tipus === 'CANVI_COMPLET' ? 'text-brand-700' : 'text-slate-600'}`}>
+                              {tipusLabel(t.tipus)}
+                            </span>
+                            <span className="flex-1 text-slate-700">
+                              {t.habitacio ? `Hab. ${t.habitacio}` : 'Zones comunes'}
+                            </span>
+                            <div className="flex items-center gap-3">
+                              {t.estat === 'FETA'
+                                ? <Badge tone="success">Feta</Badge>
+                                : <Badge tone="neutral">Pendent</Badge>}
+                              <span className={`w-16 text-right text-sm font-medium ${t.estat === 'FETA' ? 'text-slate-800' : 'text-slate-400'}`}>
+                                {t.importCalculat > 0 ? formatEur(t.importCalculat) : '—'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                        {/* Total del dia */}
+                        <div className="flex items-center justify-end gap-2 border-t border-slate-100 bg-slate-50 px-4 py-2 text-xs text-slate-500">
+                          <span>Total dia:</span>
+                          <span className="font-semibold text-slate-700">{formatEur(totalFetesDia)}</span>
+                          {totalFetesDia !== totalDia && (
+                            <span className="text-slate-400">(incl. pendents: {formatEur(totalDia)})</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
