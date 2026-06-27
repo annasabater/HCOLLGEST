@@ -9,7 +9,8 @@ import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getJSON, postJSON, putJSON, patchJSON, ApiError } from '@/lib/api';
+import { getJSON, postJSON, putJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { formatDate, formatEur } from '@/lib/utils';
 import { toISODate, addDays } from '@/lib/dates';
 import { tipusNetejaValues, TIPUS_NETEJA_LABELS } from '@/lib/validation/enums';
@@ -47,6 +48,8 @@ interface Row {
   estat?: 'PENDENT' | 'FETA';
   sortida: boolean;
   altraPersona?: string;
+  tascaLliureId?: string;   // tasca PENDENT no assignada a ningú
+  tascaLliureTipus?: 'CANVI_COMPLET' | 'REPAS';
 }
 
 export default function NetejaPage() {
@@ -64,6 +67,7 @@ export default function NetejaPage() {
   const [pagant, setPagant] = useState(false);
   const [pagMsg, setPagMsg] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
   const [jornades, setJornades] = useState<{ id: string; notes: string | null; import: number }[]>([]);
+  const [confirmElimJornada, setConfirmElimJornada] = useState<string | null>(null);
 
   const loadJornades = useCallback(async () => {
     if (!personId || !data) return;
@@ -78,9 +82,10 @@ export default function NetejaPage() {
   useEffect(() => { void loadJornades(); }, [loadJornades]);
 
   async function eliminarJornada(id: string) {
-    if (!confirm('Segur que vols eliminar aquest pagament?')) return;
-    await fetch(`/api/jornades/${id}`, { method: 'DELETE' });
+    await delJSON(`/api/jornades/${id}`);
     void loadJornades();
+    void loadDay();
+    void loadWeek();
   }
 
   // Si s'arriba des del calendari amb ?data=YYYY-MM-DD, obre aquell dia.
@@ -159,6 +164,8 @@ export default function NetejaPage() {
           estat: meva?.estat,
           sortida,
           altraPersona: altra?.treballador?.nom ?? undefined,
+          tascaLliureId: !meva && lliure?.estat === 'PENDENT' ? lliure.id : undefined,
+          tascaLliureTipus: !meva && lliure?.estat === 'PENDENT' ? lliure.tipus : undefined,
         };
       }),
     );
@@ -323,6 +330,16 @@ export default function NetejaPage() {
                       Sortida avui
                     </Badge>
                   )}
+                  {r.tascaLliureId && !r.checked && (
+                    <button
+                      type="button"
+                      onClick={() => setRow(r.habitacioId, { checked: true, tipus: r.tascaLliureTipus ?? r.tipus })}
+                      className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs text-amber-700 hover:bg-amber-100"
+                      title="Hi ha una tasca pendent no assignada al calendari — clica per agafar-la"
+                    >
+                      ⚠ Pendent al calendari · {r.tascaLliureTipus === 'CANVI_COMPLET' ? 'Sortida' : 'Manteniment'}
+                    </button>
+                  )}
                   {r.altraPersona && !r.checked && (
                     <span className="text-xs text-slate-400">la fa {r.altraPersona}</span>
                   )}
@@ -458,7 +475,7 @@ export default function NetejaPage() {
                       <button
                         type="button"
                         className="text-slate-400 hover:text-red-600"
-                        onClick={() => eliminarJornada(j.id)}
+                        onClick={() => setConfirmElimJornada(j.id)}
                         title="Eliminar pagament"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -534,6 +551,13 @@ export default function NetejaPage() {
           </CardBody>
         </Card>
       )}
+      <ConfirmDialog
+        open={!!confirmElimJornada}
+        title="Eliminar pagament de neteja"
+        message="Segur que vols eliminar aquest pagament? Les tasques de neteja associades també s'eliminaran."
+        onConfirm={() => { eliminarJornada(confirmElimJornada!); setConfirmElimJornada(null); }}
+        onCancel={() => setConfirmElimJornada(null)}
+      />
     </div>
   );
 }
