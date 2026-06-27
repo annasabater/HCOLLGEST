@@ -407,7 +407,7 @@ export function JornadesSection({
       <ConfirmDialog
         open={!!confirmEsborrar}
         title="Eliminar jornada"
-        message="Segur que vols eliminar aquesta jornada? Si prové de tasques de neteja, les tasques tornaran a PENDENT."
+        message="Segur que vols eliminar aquesta jornada? Si prové de tasques de neteja, les tasques també s'eliminaran."
         onConfirm={() => { esborrar(confirmEsborrar!); setConfirmEsborrar(null); }}
         onCancel={() => setConfirmEsborrar(null)}
       />

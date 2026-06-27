@@ -48,13 +48,11 @@ export async function DELETE(req: Request, ctx: Ctx) {
       if (esNeteja && j.treballadorId) {
         const dayStart = new Date(j.data); dayStart.setHours(0, 0, 0, 0);
         const dayEnd   = new Date(j.data); dayEnd.setHours(23, 59, 59, 999);
-        await tx.tascaNeteja.updateMany({
+        await tx.tascaNeteja.deleteMany({
           where: {
             assignadaA: j.treballadorId,
-            estat: 'FETA',
             data: { gte: dayStart, lte: dayEnd },
           },
-          data: { estat: 'PENDENT' },
         });
       }
     });
