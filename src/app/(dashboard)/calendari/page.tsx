@@ -89,7 +89,14 @@ export default function CalendariPage() {
   }, [load]);
 
   async function setEstatTasca(id: string, estat: 'PENDENT' | 'FETA') {
-    await patchJSON(`/api/tasques-neteja/${id}`, { estat });
+    // Si hi ha filtre de treballador actiu i marquem com a FETA, assignem la tasca
+    const workerId = filtreWorker
+      ? (treballadors.find((t) => t.nom === filtreWorker)?.id ?? null)
+      : null;
+    const patch: Record<string, unknown> = { estat };
+    if (estat === 'FETA' && workerId) patch.assignadaA = workerId;
+    if (estat === 'PENDENT') patch.assignadaA = null; // desassignar en revertir
+    await patchJSON(`/api/tasques-neteja/${id}`, patch);
     load();
   }
 
@@ -181,6 +188,14 @@ export default function CalendariPage() {
           </select>
         )}
       </div>
+
+      {/* Avís: selecciona persona per registrar hores */}
+      {filtres.has('neteja') && !filtreWorker && (
+        <p className="mb-3 flex items-center gap-1.5 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+          <span>⚠</span>
+          Selecciona un treballador al filtre per tal que les tasques marcades s&apos;assignin i es comptabilitzin al seu perfil de personal.
+        </p>
+      )}
 
       {/* Capçalera dies de la setmana */}
       <div className="mb-1 grid grid-cols-7 gap-2">
@@ -341,7 +356,8 @@ export default function CalendariPage() {
                   <Sparkles className="h-4 w-4 shrink-0" />
                   <Link href={`/neteja?data=${selected}`} className="flex-1 hover:underline" title="Veure a Neteja">
                     Neteja{t.habitacio ? ` · Hab. ${t.habitacio}` : ''} · {TIPUS_NETEJA_LABELS[t.tipus]}
-                    {t.estat === 'FETA' && <span className="ml-1 text-slate-400">(feta)</span>}
+                    {t.assignada && <span className="ml-1 text-slate-400">· {t.assignada}</span>}
+                    {t.estat === 'FETA' && <span className="ml-1 text-green-600">(feta)</span>}
                   </Link>
                   {t.estanciaId && (
                     <Link
