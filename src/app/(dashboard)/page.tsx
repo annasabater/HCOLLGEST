@@ -1,18 +1,9 @@
+import React from 'react';
 import Link from 'next/link';
 import {
-  AlertTriangle,
-  FileWarning,
-  PenLine,
-  Send,
-  LogIn,
-  LogOut,
-  Receipt,
-  Boxes,
-  Clock,
-  Wrench,
-  CalendarClock,
-  ShieldAlert,
-  Sparkles,
+  AlertTriangle, FileWarning, PenLine, Send, LogIn, LogOut,
+  Receipt, Boxes, Clock, Wrench, CalendarClock, ShieldAlert,
+  Sparkles, TrendingUp, ChevronRight,
 } from 'lucide-react';
 import { getResum } from '@/lib/services/dashboard';
 import { isFormatConfirmat } from '@/lib/mossos/fitxer';
@@ -20,7 +11,6 @@ import { getSessionUser } from '@/lib/auth/session';
 import { teVistaRestringida } from '@/lib/auth/restriccions';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { PageHeader } from '@/components/ui/page-header';
 import { BenvingudesPendents } from '@/components/dashboard/benvingudes-pendents';
 import { GlobalSearch } from '@/components/layout/global-search';
 import { DescartarAvisMossos } from '@/components/estancia/descartar-avis-mossos';
@@ -33,12 +23,30 @@ function titularNom(viatgers: { huesped: { nom: string; cognom1: string } }[]): 
   return t ? `${t.nom} ${t.cognom1}` : '—';
 }
 
+function Initials({ nom }: { nom: string }) {
+  const parts = nom.trim().split(' ');
+  const ini = (parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '');
+  return (
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700 uppercase">
+      {ini}
+    </span>
+  );
+}
+
+const colorMap = {
+  amber:   { bg: 'bg-amber-50',   icon: 'bg-amber-100 text-amber-700',   border: 'border-amber-200',   num: 'text-amber-800'   },
+  violet:  { bg: 'bg-violet-50',  icon: 'bg-violet-100 text-violet-700',  border: 'border-violet-200',  num: 'text-violet-800'  },
+  red:     { bg: 'bg-red-50',     icon: 'bg-red-100 text-red-700',        border: 'border-red-200',     num: 'text-red-800'     },
+  emerald: { bg: 'bg-emerald-50', icon: 'bg-emerald-100 text-emerald-700',border: 'border-emerald-200', num: 'text-emerald-800' },
+  orange:  { bg: 'bg-orange-50',  icon: 'bg-orange-100 text-orange-700',  border: 'border-orange-200',  num: 'text-orange-800'  },
+  sky:     { bg: 'bg-sky-50',     icon: 'bg-sky-100 text-sky-700',        border: 'border-sky-200',     num: 'text-sky-800'     },
+} as const;
+
 export default async function DashboardPage() {
   const user = await getSessionUser();
   const resum = await getResum({ excloureMetodeAltres: teVistaRestringida(user) });
   const isAdmin = user?.role === 'ADMIN';
 
-  // Termini legal: comunicar a Mossos en ≤ 24 h des de l'entrada (estades en curs).
   const araMs = Date.now();
   const DIA_MS = 86_400_000;
   const fmtDur = (ms: number) => {
@@ -56,58 +64,28 @@ export default async function DashboardPage() {
     .sort((a, b) => a.restMs - b.restMs);
   const vencuts24 = termini24.filter((t) => t.vencut);
 
-  const alertes = [
-    {
-      label: 'Pendents d’enviar a Mossos',
-      value: resum.pendentsEnviament.length,
-      icon: Send,
-      tone: resum.pendentsEnviament.length > 0 ? ('warning' as const) : ('success' as const),
-      href: '/estancies?estat=pendent',
-    },
-    {
-      label: 'Firmes pendents',
-      value: resum.pendentsFirmaCount,
-      icon: PenLine,
-      tone: resum.pendentsFirmaCount > 0 ? ('warning' as const) : ('success' as const),
-      href: '/estancies',
-    },
-    {
-      label: 'Enviaments amb error/rebuig',
-      value: resum.enviamentsError.length,
-      icon: FileWarning,
-      tone: resum.enviamentsError.length > 0 ? ('danger' as const) : ('success' as const),
-      href: '/estancies',
-    },
-    ...(isAdmin
-      ? [
-          {
-            label: 'Factures pendents de cobrament',
-            value: resum.alertes.facturesPendents,
-            icon: Receipt,
-            tone: resum.alertes.facturesPendents > 0 ? ('warning' as const) : ('success' as const),
-            href: '/factures',
-          },
-        ]
-      : []),
-    {
-      label: 'Actius amb alerta',
-      value: resum.alertes.actiusAlerta,
-      icon: Boxes,
-      tone: resum.alertes.actiusAlerta > 0 ? ('warning' as const) : ('success' as const),
-      href: '/actius',
-    },
-    {
-      label: 'Serveis/renovacions pròximes',
-      value: resum.alertes.serveisProxims,
-      icon: Wrench,
-      tone: resum.alertes.serveisProxims > 0 ? ('warning' as const) : ('success' as const),
-      href: '/serveis',
-    },
+  type ColorKey = keyof typeof colorMap;
+  const alertes: { label: string; value: number; icon: React.ElementType; ok: boolean; href: string; color: ColorKey }[] = [
+    { label: 'Pendents d\'enviar a Mossos', value: resum.pendentsEnviament.length,   icon: Send,        ok: resum.pendentsEnviament.length === 0,      href: '/estancies?estat=pendent', color: 'amber'   },
+    { label: 'Firmes pendents',             value: resum.pendentsFirmaCount,          icon: PenLine,     ok: resum.pendentsFirmaCount === 0,            href: '/estancies',               color: 'violet'  },
+    { label: 'Enviaments amb error',        value: resum.enviamentsError.length,      icon: FileWarning, ok: resum.enviamentsError.length === 0,        href: '/estancies',               color: 'red'     },
+    ...(isAdmin ? [
+      { label: 'Factures pendents',         value: resum.alertes.facturesPendents,    icon: Receipt,     ok: resum.alertes.facturesPendents === 0,      href: '/factures',                color: 'emerald' as ColorKey },
+    ] : []),
+    { label: 'Actius amb alerta',           value: resum.alertes.actiusAlerta,        icon: Boxes,       ok: resum.alertes.actiusAlerta === 0,          href: '/actius',                  color: 'orange'  },
+    { label: 'Serveis/renovacions pròximes',value: resum.alertes.serveisProxims,      icon: Wrench,      ok: resum.alertes.serveisProxims === 0,        href: '/serveis',                 color: 'sky'     },
   ];
 
   return (
-    <div>
-      <PageHeader title="Tauler" subtitle="Visió general de l’hostal" actions={<GlobalSearch />} />
+    <div className="space-y-6">
+      {/* Capçalera */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-3xl font-semibold text-slate-900">Tauler</h1>
+          <p className="mt-0.5 text-sm text-slate-500">Visió general de l&apos;Hostal Coll</p>
+        </div>
+        <GlobalSearch />
+      </div>
 
       <BenvingudesPendents
         pendents={resum.benvingudes.pendents}
@@ -115,63 +93,21 @@ export default async function DashboardPage() {
         tothom={resum.benvingudes.tothom}
       />
 
-      {/* Alerta de sortides avui: recordatori de marcar neteja */}
+      {/* Sortides avui */}
       {resum.sortidesToday.length > 0 && (
-        <div className="mb-6 flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-          <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
+        <div className="flex items-start gap-4 rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 px-5 py-4">
+          <div className="rounded-xl bg-blue-100 p-2.5"><Sparkles className="h-5 w-5 text-blue-600" /></div>
           <div className="flex-1">
-            <p className="font-medium">
-              {resum.sortidesToday.length === 1
-                ? 'Hi ha 1 sortida avui'
-                : `Hi ha ${resum.sortidesToday.length} sortides avui`}
-              {' — '}
-              <Link href="/neteja" className="underline underline-offset-2 hover:text-blue-900">
-                marca la neteja
-              </Link>
+            <p className="font-semibold text-blue-900">
+              {resum.sortidesToday.length === 1 ? '1 sortida avui' : `${resum.sortidesToday.length} sortides avui`}
+              {' · '}
+              <Link href="/neteja" className="underline underline-offset-2 hover:text-blue-700">marca la neteja</Link>
             </p>
-            <ul className="mt-1 space-y-0.5 text-blue-700">
+            <div className="mt-2 flex flex-wrap gap-2">
               {resum.sortidesToday.map((s) => (
-                <li key={s.id}>
-                  <Link href={`/estancies/${s.id}`} className="hover:underline">
-                    {s.titular}
-                    {s.habitacio ? ` · Hab. ${s.habitacio}` : ''}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
-
-      {/* Aviso §9: el formato del fitxer es PROVISIONAL hasta confirmarlo con el manual */}
-      {!isFormatConfirmat() && (
-        <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
-          <div>
-            <p className="font-medium">Fitxer de Mossos en format provisional</p>
-            <p className="mt-0.5 text-amber-700">
-              El generador del <em>fitxer massiu</em> ja funciona, però l’ordre de columnes i els
-              codis són una versió <strong>provisional</strong>. Verifica’ls amb el{' '}
-              <em>Manual d’instruccions</em> del portal i configura el <code>file_identifier</code> de
-              l’establiment abans d’usar-lo en real. Mentrestant, pots comunicar-ho manualment.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Termini legal Mossos: alerta vermella si alguna estada ha passat de 24 h */}
-      {vencuts24.length > 0 && (
-        <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
-          <div>
-            <p className="font-semibold">
-              {vencuts24.length} {vencuts24.length === 1 ? 'estada' : 'estades'} amb el termini de 24 h
-              VENÇUT — comunica-les a Mossos com abans millor.
-            </p>
-            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-red-700">
-              {vencuts24.slice(0, 6).map((t) => (
-                <Link key={t.e.id} href={`/estancies/${t.e.id}`} className="underline">
-                  {titularNom(t.e.viatgers)} (vençut fa {fmtDur(t.restMs)})
+                <Link key={s.id} href={`/estancies/${s.id}`}
+                  className="rounded-lg bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-800 hover:bg-blue-200">
+                  {s.titular}{s.habitacio ? ` · Hab. ${s.habitacio}` : ''}
                 </Link>
               ))}
             </div>
@@ -179,20 +115,47 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* Compte enrere del termini de 24 h (estades en curs no comunicades) */}
+      {/* Termini vençut */}
+      {vencuts24.length > 0 && (
+        <div className="flex items-start gap-4 rounded-2xl border border-red-300 bg-gradient-to-br from-red-50 to-rose-50 px-5 py-4">
+          <div className="rounded-xl bg-red-100 p-2.5"><AlertTriangle className="h-5 w-5 text-red-600" /></div>
+          <div>
+            <p className="font-semibold text-red-900">
+              {vencuts24.length} {vencuts24.length === 1 ? 'estada' : 'estades'} amb termini de 24 h VENÇUT
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {vencuts24.slice(0, 6).map((t) => (
+                <Link key={t.e.id} href={`/estancies/${t.e.id}`}
+                  className="rounded-lg bg-red-100 px-2.5 py-1 text-xs font-medium text-red-800 hover:bg-red-200">
+                  {titularNom(t.e.viatgers)} · fa {fmtDur(t.restMs)}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isFormatConfirmat() && (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+          <div>
+            <p className="font-semibold">Fitxer de Mossos en format provisional</p>
+            <p className="mt-0.5 text-amber-700">Verifica&apos;l amb el Manual i configura el <code>file_identifier</code> abans d&apos;usar-lo en real.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Termini 24h */}
       {termini24.length > 0 && (
-        <Card className="mb-6">
+        <Card>
           <CardHeader className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-brand-600" />
+            <div className="rounded-lg bg-brand-100 p-1.5"><Clock className="h-4 w-4 text-brand-700" /></div>
             <CardTitle>Termini Mossos (24 h)</CardTitle>
           </CardHeader>
-          <CardBody className="space-y-1">
+          <CardBody className="space-y-1 p-3">
             {termini24.map((t) => (
-              <div
-                key={t.e.id}
-                className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50"
-              >
-                <Link href={`/estancies/${t.e.id}`} className="font-medium text-slate-800 hover:underline">
+              <div key={t.e.id} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm hover:bg-slate-50">
+                <Link href={`/estancies/${t.e.id}`} className="font-medium text-slate-800 hover:text-brand-700 hover:underline">
                   {titularNom(t.e.viatgers)}
                 </Link>
                 <div className="flex items-center gap-2">
@@ -207,128 +170,121 @@ export default async function DashboardPage() {
         </Card>
       )}
 
-      {/* Vigències a punt de caducar (assegurances, contractes…) — avís especial */}
+      {/* Vigències */}
       {resum.vigenciesProximes.length > 0 && (
-        <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">
           <div className="mb-2 flex items-center gap-2 font-semibold">
-            <ShieldAlert className="h-5 w-5 shrink-0" />
-            Vigències a punt de caducar
+            <ShieldAlert className="h-5 w-5 shrink-0" /> Vigències a punt de caducar
           </div>
           <ul className="space-y-1.5">
             {resum.vigenciesProximes.map((v) => (
               <li key={v.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                <Link href="/serveis" className="font-medium underline">
-                  {v.activitat}
-                </Link>
+                <Link href="/serveis" className="font-medium underline">{v.activitat}</Link>
                 {v.proveidor && <span className="text-amber-700">· {v.proveidor}</span>}
                 <Badge tone={v.caducada ? 'danger' : 'warning'}>
-                  {v.caducada ? 'Caducada el ' : 'Caduca el '}
-                  {formatDate(v.vigenciaFi)}
+                  {v.caducada ? 'Caducada el ' : 'Caduca el '}{formatDate(v.vigenciaFi)}
                 </Badge>
-                {v.observacions && <span className="text-amber-700">— {v.observacions}</span>}
               </li>
             ))}
           </ul>
         </div>
       )}
 
-      {/* Tarjetas de alerta */}
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Cards d'alerta */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {alertes.map((a) => {
           const Icon = a.icon;
+          const c = colorMap[a.color];
           return (
-            <Link key={a.label} href={a.href}>
-              <Card className="transition-shadow hover:shadow-md">
-                <CardBody className="flex items-center gap-4">
-                  <div className="rounded-lg bg-slate-100 p-3">
-                    <Icon className="h-6 w-6 text-slate-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-slate-900">{a.value}</p>
-                    <p className="text-xs text-slate-500">{a.label}</p>
-                  </div>
-                  <Badge tone={a.tone} className="ml-auto">
-                    {a.value === 0 ? 'OK' : 'Atenció'}
-                  </Badge>
-                </CardBody>
-              </Card>
+            <Link key={a.label} href={a.href} className="group">
+              <div className={`flex items-center gap-4 rounded-2xl border p-4 transition-all hover:shadow-md ${a.ok ? 'border-slate-200 bg-white' : `${c.border} ${c.bg}`}`}>
+                <div className={`rounded-xl p-2.5 ${a.ok ? 'bg-slate-100 text-slate-400' : c.icon}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-2xl font-bold leading-none ${a.ok ? 'text-slate-700' : c.num}`}>{a.value}</p>
+                  <p className="mt-1 text-xs text-slate-500 leading-tight">{a.label}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  {a.ok
+                    ? <span className="text-xs font-semibold text-green-600">✓ OK</span>
+                    : <span className="flex items-center gap-0.5 text-xs font-semibold text-amber-600"><TrendingUp className="h-3 w-3" /> Atenció</span>}
+                  <ChevronRight className="h-4 w-4 text-slate-300 transition-colors group-hover:text-brand-500" />
+                </div>
+              </div>
             </Link>
           );
         })}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* Entrades / Sortides */}
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex items-center gap-2">
-            <LogIn className="h-4 w-4 text-green-600" />
-            <CardTitle>Properes entrades (7 dies)</CardTitle>
+            <div className="rounded-lg bg-green-100 p-1.5"><LogIn className="h-4 w-4 text-green-700" /></div>
+            <CardTitle>Properes entrades <span className="text-sm font-normal text-slate-400">(7 dies)</span></CardTitle>
           </CardHeader>
-          <CardBody className="space-y-2">
-            {resum.properesEntrades.length === 0 && (
-              <p className="text-sm text-slate-400">Cap entrada propera.</p>
-            )}
-            {resum.properesEntrades.map((e) => (
-              <Link
-                key={e.id}
-                href={`/estancies/${e.id}`}
-                className="flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50"
-              >
-                <span className="font-medium text-slate-800">{titularNom(e.viatgers)}</span>
-                <span className="text-slate-500">
-                  {e.habitacio ? `Hab. ${e.habitacio.nom} · ` : ''}
-                  {formatDate(e.dataEntrada)}
-                </span>
-              </Link>
-            ))}
+          <CardBody className="space-y-0.5 p-3">
+            {resum.properesEntrades.length === 0
+              ? <p className="py-4 text-center text-sm text-slate-400">Cap entrada propera.</p>
+              : resum.properesEntrades.map((e) => (
+                  <Link key={e.id} href={`/estancies/${e.id}`}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-slate-50">
+                    <Initials nom={titularNom(e.viatgers)} />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-800">{titularNom(e.viatgers)}</p>
+                      {e.habitacio && <p className="text-xs text-slate-400">Hab. {e.habitacio.nom}</p>}
+                    </div>
+                    <span className="shrink-0 rounded-lg bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 tabular-nums">
+                      {formatDate(e.dataEntrada)}
+                    </span>
+                  </Link>
+                ))}
           </CardBody>
         </Card>
 
         <Card>
           <CardHeader className="flex items-center gap-2">
-            <LogOut className="h-4 w-4 text-brand-600" />
-            <CardTitle>Properes sortides (7 dies)</CardTitle>
+            <div className="rounded-lg bg-brand-100 p-1.5"><LogOut className="h-4 w-4 text-brand-700" /></div>
+            <CardTitle>Properes sortides <span className="text-sm font-normal text-slate-400">(7 dies)</span></CardTitle>
           </CardHeader>
-          <CardBody className="space-y-2">
-            {resum.properesSortides.length === 0 && (
-              <p className="text-sm text-slate-400">Cap sortida propera.</p>
-            )}
-            {resum.properesSortides.map((e) => (
-              <Link
-                key={e.id}
-                href={`/estancies/${e.id}`}
-                className="flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50"
-              >
-                <span className="font-medium text-slate-800">{titularNom(e.viatgers)}</span>
-                <span className="text-slate-500">
-                  {e.habitacio ? `Hab. ${e.habitacio.nom} · ` : ''}
-                  {formatDate(e.dataSortida)}
-                </span>
-              </Link>
-            ))}
+          <CardBody className="space-y-0.5 p-3">
+            {resum.properesSortides.length === 0
+              ? <p className="py-4 text-center text-sm text-slate-400">Cap sortida propera.</p>
+              : resum.properesSortides.map((e) => (
+                  <Link key={e.id} href={`/estancies/${e.id}`}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-slate-50">
+                    <Initials nom={titularNom(e.viatgers)} />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-800">{titularNom(e.viatgers)}</p>
+                      {e.habitacio && <p className="text-xs text-slate-400">Hab. {e.habitacio.nom}</p>}
+                    </div>
+                    <span className="shrink-0 rounded-lg bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 tabular-nums">
+                      {formatDate(e.dataSortida)}
+                    </span>
+                  </Link>
+                ))}
           </CardBody>
         </Card>
       </div>
 
-      {/* Serveis i manteniments amb propera visita/renovació (30 dies) */}
+      {/* Serveis pròxims */}
       {resum.serveisProxims.length > 0 && (
-        <Card className="mt-6">
+        <Card>
           <CardHeader className="flex items-center gap-2">
-            <CalendarClock className="h-4 w-4 text-amber-600" />
-            <CardTitle>Serveis i renovacions pròximes (30 dies)</CardTitle>
+            <div className="rounded-lg bg-amber-100 p-1.5"><CalendarClock className="h-4 w-4 text-amber-700" /></div>
+            <CardTitle>Serveis i renovacions pròximes <span className="text-sm font-normal text-slate-400">(30 dies)</span></CardTitle>
           </CardHeader>
-          <CardBody className="space-y-2">
+          <CardBody className="space-y-0.5 p-3">
             {resum.serveisProxims.map((s) => (
-              <Link
-                key={s.id}
-                href="/serveis"
-                className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50"
-              >
+              <Link key={s.id} href="/serveis"
+                className="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm hover:bg-slate-50">
                 <span className="font-medium text-slate-800">
                   {s.activitat}
                   {s.proveidor ? <span className="text-slate-400"> · {s.proveidor}</span> : null}
                 </span>
-                <span className="flex items-center gap-2 text-slate-500">
-                  {s.import != null && <span>{formatEur(s.import)}</span>}
+                <span className="flex items-center gap-2">
+                  {s.import != null && <span className="font-medium text-slate-600">{formatEur(s.import)}</span>}
                   <Badge tone={s.vencut ? 'danger' : 'warning'}>{formatDate(s.properaData)}</Badge>
                 </span>
               </Link>
