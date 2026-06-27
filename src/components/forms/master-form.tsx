@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, UserCheck, Search, AlertTriangle, PawPrint } from 'lucide-react';
+import { Plus, Trash2, UserCheck, Search, AlertTriangle, PawPrint, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -32,6 +32,7 @@ import { formatWarnings } from '@/lib/validation/documents';
 import { PROVINCIES, PAISOS } from '@/lib/data/geo';
 import { DocumentScanner, type PendingDoc } from '@/components/ocr/document-scanner';
 import { HosteSearch, type HosteLite } from '@/components/forms/hoste-search';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import type { ViatgerOcr } from '@/lib/ocr/mrz';
 
 export type ViatgerState = {
@@ -231,6 +232,34 @@ export function MasterForm({
   function descartarDraft() {
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignorar */ }
     setDraftBanner(false);
+  }
+
+  const [confirmReset, setConfirmReset] = useState(false);
+  function resetForm() {
+    setTipusRegistre('CONTRACTE_EN_CURS');
+    setEstancia({
+      numContracte: '',
+      anyContracte: String(currentYear),
+      dataFormalitzacio: new Date().toISOString().slice(0, 10),
+      dataEntrada: '',
+      dataSortida: '',
+      tipusPagament: 'DESTINACIO',
+      habitacioId: '',
+      teInternet: true,
+      observacions: '',
+      idioma: 'ca',
+    });
+    setViatgers([emptyViatger(true)]);
+    setPortaMascota(false);
+    setMascotes([]);
+    setPagaments([]);
+    setFiances([]);
+    setErrors({});
+    setServerError(null);
+    setWarnings([]);
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignorar */ }
+    setDraftBanner(false);
+    setConfirmReset(false);
   }
 
   // Autodesat cada 800 ms de calma
@@ -589,6 +618,25 @@ export function MasterForm({
           </div>
         </div>
       )}
+      {!isEdit && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setConfirmReset(true)}
+            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-red-500"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Buidar tot el formulari
+          </button>
+        </div>
+      )}
+      <ConfirmDialog
+        open={confirmReset}
+        title="Buidar el formulari?"
+        message="Vols eliminar totes les dades introduïdes i tornar a començar de zero? Aquesta acció no es pot desfer."
+        confirmLabel="Buidar tot"
+        onConfirm={resetForm}
+        onCancel={() => setConfirmReset(false)}
+      />
       <datalist id="paisos">
         {PAISOS.map((pais) => (
           <option key={pais} value={pais} />

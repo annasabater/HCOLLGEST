@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { delJSON, ApiError } from '@/lib/api';
 
 export function EliminarEstada({
@@ -19,27 +20,25 @@ export function EliminarEstada({
   contracte: string;
   comunicada?: boolean;
   nFactures?: number;
-  /** On anar després d'eliminar. `null` = quedar-se i refrescar (p. ex. a la fitxa de l'hoste). */
   redirectTo?: string | null;
-  /** Mostra només la icona (per a files de taula). */
   iconOnly?: boolean;
-  /** Callback després d'eliminar (p. ex. recarregar una llista de client). */
   onDeleted?: () => void;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [obert, setObert] = useState(false);
 
-  async function eliminar() {
-    let msg = `Eliminar l'estada ${contracte}?\n\nDesapareixerà del llibre de registre, de les llistes i de la comptabilitat.`;
-    if (nFactures > 0) {
-      msg += `\nS'eliminaran també ${nFactures} ${nFactures === 1 ? 'factura/rebut' : 'factures/rebuts'} i els seus cobraments (deixaran de comptar com a ingrés).`;
-    }
-    if (comunicada) {
-      msg += `\n\n⚠ ATENCIÓ: aquesta estada JA s'ha comunicat a Mossos. Eliminar-la aquí NO la retira del portal de Mossos.`;
-    }
-    msg += `\n\nLes dades queden a l'històric d'auditoria.`;
-    if (!confirm(msg)) return;
+  let msg = `L'estada ${contracte} desapareixerà del llibre de registre, de les llistes i de la comptabilitat.`;
+  if (nFactures > 0) {
+    msg += ` S'eliminaran també ${nFactures} ${nFactures === 1 ? 'factura/rebut' : 'factures/rebuts'} i els seus cobraments.`;
+  }
+  if (comunicada) {
+    msg += ` ⚠ ATENCIÓ: ja s'ha comunicat a Mossos. Eliminar-la aquí NO la retira del portal.`;
+  }
+  msg += ' Les dades queden a l\'històric d\'auditoria.';
 
+  async function confirmar() {
+    setObert(false);
     setBusy(true);
     try {
       await delJSON(`/api/estancies/${id}`);
@@ -47,22 +46,31 @@ export function EliminarEstada({
       else if (redirectTo) router.push(redirectTo);
       router.refresh();
     } catch (e) {
-      alert(e instanceof ApiError ? e.message : 'No s’ha pogut eliminar l’estada');
+      alert(e instanceof ApiError ? e.message : 'No s\'ha pogut eliminar l\'estada');
       setBusy(false);
     }
   }
 
   return (
-    <Button
-      type="button"
-      variant={iconOnly ? 'ghost' : 'outline'}
-      size="sm"
-      onClick={eliminar}
-      disabled={busy}
-      title="Eliminar estada"
-    >
-      <Trash2 className="h-4 w-4 text-red-600" />
-      {!iconOnly && ' Eliminar'}
-    </Button>
+    <>
+      <Button
+        type="button"
+        variant={iconOnly ? 'ghost' : 'outline'}
+        size="sm"
+        onClick={() => setObert(true)}
+        disabled={busy}
+        title="Eliminar estada"
+      >
+        <Trash2 className="h-4 w-4 text-red-600" />
+        {!iconOnly && ' Eliminar'}
+      </Button>
+      <ConfirmDialog
+        open={obert}
+        title={`Eliminar l'estada ${contracte}?`}
+        message={msg}
+        onConfirm={confirmar}
+        onCancel={() => setObert(false)}
+      />
+    </>
   );
 }

@@ -25,7 +25,10 @@ interface Tasca {
   estat: 'PENDENT' | 'FETA';
   habitacio: string | null;
   estanciaId?: string | null;
+  assignada: string | null;
 }
+
+type TipusFiltre = 'entrades' | 'sortides' | 'neteja' | 'serveis';
 interface ServeiEv {
   id: string;
   data: string;
@@ -48,7 +51,10 @@ export default function CalendariPage() {
   const [anchor, setAnchor] = useState(() => new Date());
   const [data, setData] = useState<CalData | null>(null);
   const [habitacions, setHabitacions] = useState<{ id: string; nom: string }[]>([]);
+  const [treballadors, setTreballadors] = useState<{ id: string; nom: string }[]>([]);
   const [selected, setSelected] = useState<string | null>(null); // dia seleccionat (ISO)
+  const [filtres, setFiltres] = useState<Set<TipusFiltre>>(new Set(['entrades', 'sortides', 'neteja', 'serveis']));
+  const [filtreWorker, setFiltreWorker] = useState<string>(''); // '' = tots
 
   const days = mode === 'mes' ? monthGridDays(anchor) : weekDays(anchor);
 
@@ -57,7 +63,18 @@ export default function CalendariPage() {
     getJSON<{ habitacions: { id: string; nom: string }[] }>('/api/habitacions')
       .then((r) => setHabitacions(r.habitacions))
       .catch(() => {});
+    getJSON<{ treballadors: { id: string; nom: string }[] }>('/api/treballadors')
+      .then((r) => setTreballadors(r.treballadors))
+      .catch(() => {});
   }, []);
+
+  function toggleFiltre(t: TipusFiltre) {
+    setFiltres((prev) => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t); else next.add(t);
+      return next;
+    });
+  }
 
   const load = useCallback(async () => {
     const desde = toISODate(days[0]!);
@@ -85,10 +102,12 @@ export default function CalendariPage() {
 
   // Esdeveniments del dia seleccionat (per al panell de detall sota el calendari).
   const onSel = (iso: string) => selected != null && toISODate(new Date(iso)) === selected;
-  const selEnt = data && selected ? data.entrades.filter((e) => onSel(e.data)) : [];
-  const selSort = data && selected ? data.sortides.filter((e) => onSel(e.data)) : [];
-  const selTasq = data && selected ? data.tasques.filter((t) => onSel(t.data)) : [];
-  const selServ = data && selected ? data.serveis.filter((s) => onSel(s.data)) : [];
+  const selEnt  = data && selected && filtres.has('entrades') ? data.entrades.filter((e) => onSel(e.data)) : [];
+  const selSort = data && selected && filtres.has('sortides') ? data.sortides.filter((e) => onSel(e.data)) : [];
+  const selTasq = data && selected && filtres.has('neteja')
+    ? data.tasques.filter((t) => onSel(t.data) && (!filtreWorker || t.assignada === filtreWorker))
+    : [];
+  const selServ = data && selected && filtres.has('serveis') ? data.serveis.filter((s) => onSel(s.data)) : [];
   const selEmpty = !selEnt.length && !selSort.length && !selTasq.length && !selServ.length;
   const selLabel = selected
     ? new Intl.DateTimeFormat('ca-ES', { weekday: 'long', day: 'numeric', month: 'long' }).format(
@@ -129,7 +148,39 @@ export default function CalendariPage() {
           </div>
         }
       />
-      <p className="mb-4 text-sm font-medium capitalize text-slate-600">{monthLabel}</p>
+      <p className="mb-3 text-sm font-medium capitalize text-slate-600">{monthLabel}</p>
+
+      {/* Filtres */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {([ ['entrades', 'Entrades', 'bg-green-100 text-green-800 border-green-300'],
+            ['sortides', 'Sortides', 'bg-brand-100 text-brand-800 border-brand-300'],
+            ['neteja',  'Neteja',   'bg-amber-100 text-amber-800 border-amber-300'],
+            ['serveis', 'Serveis',  'bg-sky-100 text-sky-800 border-sky-300'],
+        ] as [TipusFiltre, string, string][]).map(([key, label, color]) => (
+          <button
+            key={key}
+            onClick={() => toggleFiltre(key)}
+            className={cn(
+              'rounded-full border px-3 py-1 text-xs font-medium transition-opacity',
+              filtres.has(key) ? color : 'border-slate-200 bg-white text-slate-400 opacity-50',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+        {filtres.has('neteja') && treballadors.length > 0 && (
+          <select
+            value={filtreWorker}
+            onChange={(e) => setFiltreWorker(e.target.value)}
+            className="h-7 rounded-full border border-amber-300 bg-amber-50 px-3 text-xs text-amber-900"
+          >
+            <option value="">Tots el personal</option>
+            {treballadors.map((t) => (
+              <option key={t.id} value={t.nom}>{t.nom}</option>
+            ))}
+          </select>
+        )}
+      </div>
 
       {/* Capçalera dies de la setmana */}
       <div className="mb-1 grid grid-cols-7 gap-2">
@@ -145,10 +196,12 @@ export default function CalendariPage() {
           const iso = toISODate(day);
           const isToday = iso === todayIso;
           const dim = mode === 'mes' && !sameMonth(day, anchor);
-          const entrades = data?.entrades.filter((e) => sameDay(e.data, day)) ?? [];
-          const sortides = data?.sortides.filter((e) => sameDay(e.data, day)) ?? [];
-          const tasques = data?.tasques.filter((t) => sameDay(t.data, day)) ?? [];
-          const serveisDia = data?.serveis.filter((s) => sameDay(s.data, day)) ?? [];
+          const entrades = filtres.has('entrades') ? (data?.entrades.filter((e) => sameDay(e.data, day)) ?? []) : [];
+          const sortides = filtres.has('sortides') ? (data?.sortides.filter((e) => sameDay(e.data, day)) ?? []) : [];
+          const tasques = filtres.has('neteja')
+            ? (data?.tasques.filter((t) => sameDay(t.data, day) && (!filtreWorker || t.assignada === filtreWorker)) ?? [])
+            : [];
+          const serveisDia = filtres.has('serveis') ? (data?.serveis.filter((s) => sameDay(s.data, day)) ?? []) : [];
           return (
             <div
               key={i}

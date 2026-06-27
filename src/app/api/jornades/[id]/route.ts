@@ -25,15 +25,40 @@ export async function PATCH(req: Request, ctx: Ctx) {
   }
 }
 
-// DELETE /api/jornades/:id — elimina una jornada registrada
+// DELETE /api/jornades/:id — elimina una jornada i reverteix les tasques associades a PENDENT
 export async function DELETE(req: Request, ctx: Ctx) {
   try {
     const auth = await authorize(ROLES_ADMIN);
     if (auth instanceof Response) return auth;
     const { id } = await ctx.params;
-    const j = await prisma.jornada.findUnique({ where: { id }, select: { id: true } });
+    const j = await prisma.jornada.findUnique({
+      where: { id },
+      select: { id: true, treballadorId: true, data: true, notes: true },
+    });
     if (!j) return notFound();
-    await prisma.jornada.delete({ where: { id } });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.jornada.delete({ where: { id } });
+
+      // Si la jornada era d'una tasca de neteja (auto o manual), revertim les tasques FETA d'aquell dia a PENDENT
+      const esNeteja =
+        j.notes?.startsWith('[auto]') ||
+        j.notes?.startsWith('Neteja:') ||
+        j.notes?.startsWith('[auto] Neteja');
+      if (esNeteja && j.treballadorId) {
+        const dayStart = new Date(j.data); dayStart.setHours(0, 0, 0, 0);
+        const dayEnd   = new Date(j.data); dayEnd.setHours(23, 59, 59, 999);
+        await tx.tascaNeteja.updateMany({
+          where: {
+            assignadaA: j.treballadorId,
+            estat: 'FETA',
+            data: { gte: dayStart, lte: dayEnd },
+          },
+          data: { estat: 'PENDENT' },
+        });
+      }
+    });
+
     await audit({
       usuariId: auth.id,
       accio: 'ELIMINACIO',

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Trash2, Check, Undo2, RefreshCw } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -188,6 +189,7 @@ export function JornadesSection({
     }
   }
 
+  const [confirmEsborrar, setConfirmEsborrar] = useState<string | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
   async function togglePagada(id: string, pagada: boolean) {
     setToggling(id);
@@ -200,7 +202,6 @@ export function JornadesSection({
   }
 
   async function esborrar(id: string) {
-    if (!confirm('Segur que vols eliminar aquesta jornada?')) return;
     await delJSON(`/api/jornades/${id}`);
     router.refresh();
   }
@@ -287,7 +288,7 @@ export function JornadesSection({
                   </button>
                 </Td>
                 <Td>
-                  <button className="text-slate-400 hover:text-red-600" onClick={() => esborrar(j.id)}>
+                  <button className="text-slate-400 hover:text-red-600" onClick={() => setConfirmEsborrar(j.id)}>
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </Td>
@@ -403,6 +404,13 @@ export function JornadesSection({
         </form>
       )}
       {error && <p className="text-sm text-red-600">{error}</p>}
+      <ConfirmDialog
+        open={!!confirmEsborrar}
+        title="Eliminar jornada"
+        message="Segur que vols eliminar aquesta jornada? Si prové de tasques de neteja, les tasques tornaran a PENDENT."
+        onConfirm={() => { esborrar(confirmEsborrar!); setConfirmEsborrar(null); }}
+        onCancel={() => setConfirmEsborrar(null)}
+      />
     </div>
   );
 }
