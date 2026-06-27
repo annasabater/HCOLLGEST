@@ -139,8 +139,8 @@ export function descriuTasques(
       const tip = x.tipus === 'CANVI_COMPLET' ? t.salida : t.repas;
       const nota = x.notes && x.notes.trim() ? ` (${x.notes.trim()})` : '';
       if (x.habitacio === null) {
-        // Zones comunes: "les zones comunes: repàs"
-        return `${t.zones}${t.sep}${tip}${nota}`;
+        // Zones comunes: només "les zones comunes" (sense tipus)
+        return `${t.zones}${nota}`;
       }
       const prefix = i === 0 ? t.first : t.rest;
       return `${prefix} ${x.habitacio}${t.sep}${tip}${nota}`;

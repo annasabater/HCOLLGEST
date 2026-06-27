@@ -165,11 +165,11 @@ export function TasquesNetejaSection({ tasques: initialTasques }: { tasques: Tas
                               {i < tasqDia.length - 1 && <div className="w-px flex-1 bg-slate-200" />}
                             </div>
 
-                            <span className={`min-w-24 text-xs font-medium ${t.tipus === 'CANVI_COMPLET' ? 'text-brand-700' : 'text-slate-600'}`}>
-                              {tipusLabel(t.tipus)}
+                            <span className={`min-w-24 text-xs font-medium ${t.habitacio ? (t.tipus === 'CANVI_COMPLET' ? 'text-brand-700' : 'text-slate-600') : 'text-slate-500'}`}>
+                              {t.habitacio ? tipusLabel(t.tipus) : 'Zones comunes'}
                             </span>
                             <span className="flex-1 text-slate-700">
-                              {t.habitacio ? `Hab. ${t.habitacio}` : 'Zones comunes'}
+                              {t.habitacio ? `Hab. ${t.habitacio}` : ''}
                             </span>
                             <div className="flex items-center gap-3">
                               <button
