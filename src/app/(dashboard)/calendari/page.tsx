@@ -95,7 +95,6 @@ export default function CalendariPage() {
       : null;
     const patch: Record<string, unknown> = { estat };
     if (estat === 'FETA' && workerId) patch.assignadaA = workerId;
-    if (estat === 'PENDENT') patch.assignadaA = null; // desassignar en revertir
     await patchJSON(`/api/tasques-neteja/${id}`, patch);
     load();
   }
