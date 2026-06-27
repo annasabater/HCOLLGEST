@@ -162,19 +162,7 @@ export async function createRegistre(
       }
     }
 
-    // 4) Generar automáticamente la tarea de limpieza de la salida (Fase 1.5):
-    //    canvi complet ("esbancar") el día de check-out, vinculada a la estancia.
-    if (estancia.habitacioId) {
-      await tx.tascaNeteja.create({
-        data: {
-          data: estancia.dataSortida,
-          habitacioId: estancia.habitacioId,
-          tipus: 'CANVI_COMPLET',
-          estat: 'PENDENT',
-          vinculadaSortidaId: est.id,
-        },
-      });
-    }
+    // Tasques de neteja: es creen manualment des de /neteja, no automàticament.
 
     await audit(
       {
@@ -393,17 +381,6 @@ export async function ampliarEstancia(
         }
       }
 
-      if (habId) {
-        await tx.tascaNeteja.create({
-          data: {
-            data: dates.dataSortida,
-            habitacioId: habId,
-            tipus: 'CANVI_COMPLET',
-            estat: 'PENDENT',
-            vinculadaSortidaId: nova.id,
-          },
-        });
-      }
 
       await audit(
         {

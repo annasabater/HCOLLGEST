@@ -48,8 +48,6 @@ interface Row {
   estat?: 'PENDENT' | 'FETA';
   sortida: boolean;
   altraPersona?: string;
-  tascaLliureId?: string;   // tasca PENDENT no assignada a ningú
-  tascaLliureTipus?: 'CANVI_COMPLET' | 'REPAS';
 }
 
 export default function NetejaPage() {
@@ -164,8 +162,6 @@ export default function NetejaPage() {
           estat: meva?.estat,
           sortida,
           altraPersona: altra?.treballador?.nom ?? undefined,
-          tascaLliureId: !meva && lliure?.estat === 'PENDENT' ? lliure.id : undefined,
-          tascaLliureTipus: !meva && lliure?.estat === 'PENDENT' ? lliure.tipus : undefined,
         };
       }),
     );
@@ -330,16 +326,7 @@ export default function NetejaPage() {
                       Sortida avui
                     </Badge>
                   )}
-                  {r.tascaLliureId && !r.checked && (
-                    <button
-                      type="button"
-                      onClick={() => setRow(r.habitacioId, { checked: true, tipus: r.tascaLliureTipus ?? r.tipus })}
-                      className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs text-amber-700 hover:bg-amber-100"
-                      title="Hi ha una tasca pendent no assignada al calendari — clica per agafar-la"
-                    >
-                      ⚠ Pendent al calendari · {r.tascaLliureTipus === 'CANVI_COMPLET' ? 'Sortida' : 'Manteniment'}
-                    </button>
-                  )}
+
                   {r.altraPersona && !r.checked && (
                     <span className="text-xs text-slate-400">la fa {r.altraPersona}</span>
                   )}
