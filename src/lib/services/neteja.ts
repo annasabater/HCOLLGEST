@@ -38,14 +38,15 @@ export async function desarFullDia(
       where: { data: { gte: day, lt: next } },
     });
 
-    const marcades = new Set(input.items.map((i) => i.habitacioId));
+    const habitacioItems = input.items.filter((i) => i.habitacioId !== null);
+    const zonesItem = input.items.find((i) => i.habitacioId === null);
+    const marcades = new Set(habitacioItems.map((i) => i.habitacioId));
 
     // 1) Habitacions marcades: crea o actualitza la tasca d'aquesta persona.
-    for (const item of input.items) {
+    for (const item of habitacioItems) {
       const meva = existing.find(
         (t) => t.habitacioId === item.habitacioId && t.assignadaA === personId,
       );
-      // Si no en té cap, adopta una tasca sense assignar (p. ex. sortida auto).
       const lliure = existing.find(
         (t) => t.habitacioId === item.habitacioId && t.assignadaA === null,
       );
@@ -60,7 +61,7 @@ export async function desarFullDia(
         await tx.tascaNeteja.create({
           data: {
             data: day,
-            habitacioId: item.habitacioId,
+            habitacioId: item.habitacioId ?? undefined,
             tipus: item.tipus,
             notes: item.notes ?? null,
             assignadaA: personId,
@@ -70,11 +71,34 @@ export async function desarFullDia(
       }
     }
 
-    // 2) Tasques que tenia assignades i ja no estan marcades.
+    // 2) Zones comunes (habitacioId = null): crea, actualitza o elimina.
+    const existingZones = existing.find((t) => t.habitacioId === null && t.assignadaA === personId);
+    if (zonesItem) {
+      if (existingZones) {
+        await tx.tascaNeteja.update({
+          where: { id: existingZones.id },
+          data: { tipus: zonesItem.tipus, notes: zonesItem.notes ?? null },
+        });
+      } else {
+        await tx.tascaNeteja.create({
+          data: {
+            data: day,
+            // habitacioId absent → Prisma l'assigna null (zones comunes)
+            tipus: zonesItem.tipus,
+            notes: zonesItem.notes ?? null,
+            assignadaA: personId,
+            estat: 'PENDENT',
+          },
+        });
+      }
+    } else if (existingZones) {
+      await tx.tascaNeteja.delete({ where: { id: existingZones.id } });
+    }
+
+    // 3) Habitacions que tenia assignades i ja no estan marcades.
     for (const t of existing) {
       if (t.assignadaA === personId && t.habitacioId && !marcades.has(t.habitacioId)) {
         if (t.vinculadaSortidaId) {
-          // Prové d'una sortida: segueix pendent, però sense assignar.
           await tx.tascaNeteja.update({ where: { id: t.id }, data: { assignadaA: null } });
         } else {
           await tx.tascaNeteja.delete({ where: { id: t.id } });

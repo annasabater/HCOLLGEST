@@ -62,6 +62,8 @@ export default function NetejaPage() {
   const [saved, setSaved] = useState(false);
   const [tarifes, setTarifes] = useState({ s: 0, m: 0, z: 0 });
   const [zonesComunes, setZonesComunes] = useState(false);
+  const [zonesTaskId, setZonesTaskId] = useState<string | null>(null);
+  const [zonesEstat, setZonesEstat] = useState<'PENDENT' | 'FETA' | null>(null);
   const [pagant, setPagant] = useState(false);
   const [pagMsg, setPagMsg] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
   const [jornades, setJornades] = useState<{ id: string; notes: string | null; import: number }[]>([]);
@@ -142,6 +144,14 @@ export default function NetejaPage() {
   // tasques del dia. Es refà en canviar dia / persona / habitacions / tasques
   // (descarta edicions no desades, que és el comportament esperat en canviar
   // de context).
+  // Carrega zones comunes des de les tasques existents del dia/persona
+  useEffect(() => {
+    const z = dayTasks.find((t) => t.habitacioId === null && t.assignadaA === personId);
+    setZonesComunes(!!z);
+    setZonesTaskId(z?.id ?? null);
+    setZonesEstat(z?.estat ?? null);
+  }, [dayTasks, personId]);
+
   useEffect(() => {
     setSaved(false);
     setRows(
@@ -176,13 +186,16 @@ export default function NetejaPage() {
     if (!personId) return;
     setSaving(true);
     try {
-      const items = rows
-        .filter((r) => r.checked)
-        .map((r) => ({
-          habitacioId: r.habitacioId,
-          tipus: r.tipus,
-          notes: r.notes.trim() || undefined,
-        }));
+      const items: { habitacioId: string | null; tipus: 'CANVI_COMPLET' | 'REPAS'; notes?: string }[] = [
+        ...rows
+          .filter((r) => r.checked)
+          .map((r) => ({
+            habitacioId: r.habitacioId,
+            tipus: r.tipus,
+            notes: r.notes.trim() || undefined,
+          })),
+        ...(zonesComunes ? [{ habitacioId: null, tipus: 'REPAS' as const }] : []),
+      ];
       const res = await putJSON<{ tasques: Tasca[] }>('/api/tasques-neteja/dia', {
         data,
         assignadaA: personId,
@@ -393,11 +406,27 @@ export default function NetejaPage() {
                       type="checkbox"
                       className="h-4 w-4 accent-brand-700"
                       checked={zonesComunes}
-                      onChange={(e) => setZonesComunes(e.target.checked)}
+                      onChange={(e) => { setZonesComunes(e.target.checked); setSaved(false); }}
                     />
                     Zones comunes
                   </label>
                   <span className="text-xs text-slate-500">passadís, vorera, pati · {tarifes.z.toFixed(2)} €</span>
+                  {zonesTaskId && zonesEstat && (
+                    <div className="ml-auto flex items-center gap-2">
+                      <Badge tone={zonesEstat === 'FETA' ? 'success' : 'warning'}>
+                        {zonesEstat === 'FETA' ? 'Feta' : 'Pendent'}
+                      </Badge>
+                      {zonesEstat === 'PENDENT' ? (
+                        <Button size="sm" variant="outline" onClick={async () => { await toggleFeta(zonesTaskId, 'FETA'); }}>
+                          <Check className="h-4 w-4" /> Feta
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="ghost" onClick={async () => { await toggleFeta(zonesTaskId, 'PENDENT'); }}>
+                          <Undo2 className="h-4 w-4" /> Desfer
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

@@ -110,12 +110,12 @@ export function enviaWhatsApp(phone: string | null | undefined, text: string, qu
 // "repas" = repàs lleuger. La distinció importa perquè la tarifa pot variar.
 const NETEJA_TXT: Record<
   Lang,
-  { first: string; rest: string; salida: string; repas: string; none: string; sep: string }
+  { first: string; rest: string; salida: string; repas: string; none: string; sep: string; zones: string }
 > = {
-  ca: { first: 'l’habitació', rest: 'la', salida: 'sortida (a fons)', repas: 'repàs', none: 'cap habitació assignada', sep: ': ' },
-  es: { first: 'la habitación', rest: 'la', salida: 'salida (a fondo)', repas: 'repaso', none: 'no hay habitaciones asignadas', sep: ': ' },
-  fr: { first: 'la chambre', rest: 'la', salida: 'départ (à fond)', repas: 'rafraîchissement', none: 'aucune chambre assignée', sep: ' : ' },
-  en: { first: 'room', rest: 'room', salida: 'checkout (deep clean)', repas: 'touch-up', none: 'no rooms assigned', sep: ': ' },
+  ca: { first: "l’habitació", rest: "la", salida: "sortida (a fons)", repas: "repàs", none: "cap habitació assignada", sep: ": ", zones: "les zones comunes" },
+  es: { first: "la habitación", rest: "la", salida: "salida (a fondo)", repas: "repaso", none: "no hay habitaciones asignadas", sep: ": ", zones: "las zonas comunes" },
+  fr: { first: "la chambre", rest: "la", salida: "départ (à fond)", repas: "rafraîchissement", none: "aucune chambre assignée", sep: " : ", zones: "les parties communes" },
+  en: { first: "room", rest: "room", salida: "checkout (deep clean)", repas: "touch-up", none: "no rooms assigned", sep: ": ", zones: "common areas" },
 };
 
 /** Etiqueta curta del tipus de neteja (per a selectors). */
@@ -137,9 +137,13 @@ export function descriuTasques(
   return tasques
     .map((x, i) => {
       const tip = x.tipus === 'CANVI_COMPLET' ? t.salida : t.repas;
-      const prefix = i === 0 ? t.first : t.rest;
       const nota = x.notes && x.notes.trim() ? ` (${x.notes.trim()})` : '';
-      return `${prefix} ${x.habitacio ?? '?'}${t.sep}${tip}${nota}`;
+      if (x.habitacio === null) {
+        // Zones comunes: "les zones comunes: repàs"
+        return `${t.zones}${t.sep}${tip}${nota}`;
+      }
+      const prefix = i === 0 ? t.first : t.rest;
+      return `${prefix} ${x.habitacio}${t.sep}${tip}${nota}`;
     })
     .join(', ');
 }

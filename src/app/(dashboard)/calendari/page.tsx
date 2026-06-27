@@ -287,7 +287,7 @@ export default function CalendariPage() {
                     )}
                   >
                     {t.estat === 'FETA' ? <Check className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}
-                    {t.habitacio ? `H${t.habitacio} ` : ''}
+                    {t.habitacio ? `H${t.habitacio} ` : 'ZC '}
                     {TIPUS_NETEJA_LABELS[t.tipus]}
                   </button>
                 ))}
@@ -354,7 +354,7 @@ export default function CalendariPage() {
                 >
                   <Sparkles className="h-4 w-4 shrink-0" />
                   <Link href={`/neteja?data=${selected}`} className="flex-1 hover:underline" title="Veure a Neteja">
-                    Neteja{t.habitacio ? ` · Hab. ${t.habitacio}` : ''} · {TIPUS_NETEJA_LABELS[t.tipus]}
+                    Neteja{t.habitacio ? ` · Hab. ${t.habitacio}` : ' · Zones comunes'} · {TIPUS_NETEJA_LABELS[t.tipus]}
                     {t.assignada && <span className="ml-1 text-slate-400">· {t.assignada}</span>}
                     {t.estat === 'FETA' && <span className="ml-1 text-green-600">(feta)</span>}
                   </Link>

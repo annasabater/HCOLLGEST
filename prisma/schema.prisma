@@ -559,8 +559,8 @@ model Habitacio {
 model TascaNeteja {
   id          String      @id @default(cuid())
   data        DateTime
-  habitacioId String      @map("habitacio_id")
-  habitacio   Habitacio   @relation(fields: [habitacioId], references: [id], onDelete: Cascade)
+  habitacioId String?     @map("habitacio_id")
+  habitacio   Habitacio?  @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
   tipus       TipusNeteja
   estat       EstatTasca  @default(PENDENT)
   assignadaA  String?     @map("assignada_a")

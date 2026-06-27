@@ -32,7 +32,8 @@ export const TascaNetejaDiaSchema = z.object({
   assignadaA: z.string().min(1, 'Cal una persona'),
   items: z.array(
     z.object({
-      habitacioId: z.string().min(1),
+      // null = zones comunes (sense habitació concreta)
+      habitacioId: z.string().nullable(),
       tipus: z.enum(tipusNetejaValues),
       notes: optStr,
     }),
