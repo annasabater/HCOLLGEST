@@ -14,6 +14,7 @@ const UpdateSchema = z
   .object({
     estat: z.enum(['RESERVA', 'EN_CURS', 'FINALITZADA', 'CANCELLADA']).optional(),
     tipusRegistre: z.enum(['RESERVA', 'CONTRACTE_EN_CURS']).optional(),
+    numContracte: z.string().trim().optional(),
     observacions: z.string().nullable().optional(),
     habitacioId: z.string().nullable().optional(),
     avisDadesParat: z.boolean().optional(),

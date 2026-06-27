@@ -125,7 +125,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
               </Button>
             </a>
             {canWrite && estancia.estat === 'RESERVA' && (
-              <ConvertirAEnCurs estanciaId={estancia.id} />
+              <ConvertirAEnCurs estanciaId={estancia.id} numContracteActual={estancia.numContracte} />
             )}
             <AmpliarEstada
               estanciaId={estancia.id}

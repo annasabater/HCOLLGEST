@@ -87,9 +87,10 @@ export const PagamentInputSchema = z.object({
   import: z.coerce.number().positive('L’import ha de ser positiu'),
 });
 
-export const EstanciaInputSchema = z.object({
+export const EstanciaInputSchema = z
+  .object({
   tipusRegistre: TipusRegistreEnum,
-  numContracte: z.string().trim().min(1, 'El número de contracte és obligatori'),
+  numContracte: z.string().trim().default(''),
   anyContracte: z.coerce.number().int().min(2000).max(2100),
   dataFormalitzacio: reqDate,
   dataEntrada: reqDate,
@@ -104,6 +105,15 @@ export const EstanciaInputSchema = z.object({
   teInternet: z.boolean().optional(),
   observacions: optStr,
   idioma: z.enum(['ca', 'es', 'en', 'fr']).optional(),
+})
+.superRefine((data, ctx) => {
+  if (data.tipusRegistre !== 'RESERVA' && !data.numContracte) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['numContracte'],
+      message: 'El número de contracte és obligatori per als contractes en curs',
+    });
+  }
 });
 
 /**

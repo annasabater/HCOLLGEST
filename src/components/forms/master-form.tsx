@@ -686,7 +686,12 @@ export function MasterForm({
           <CardTitle>Dades de l’estada</CardTitle>
         </CardHeader>
         <CardBody className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Número de contracte" required error={err('estancia.numContracte')}>
+          <Field
+            label="Número de contracte"
+            required={tipusRegistre !== 'RESERVA'}
+            error={err('estancia.numContracte')}
+            hint={tipusRegistre === 'RESERVA' ? 'Opcional per a reserves · es pot omplir al check-in' : undefined}
+          >
             <Input
               uppercase
               value={estancia.numContracte}
