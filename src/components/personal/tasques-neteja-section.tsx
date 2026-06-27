@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Home, ChevronDown, ChevronRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Home, ChevronDown, ChevronRight, Circle, CheckCircle2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/table';
 import { formatDate, formatEur } from '@/lib/utils';
+import { patchJSON } from '@/lib/api';
 
 interface TascaRow {
   id: string;
@@ -25,11 +27,30 @@ function tipusLabel(tipus: string) {
   return tipus === 'CANVI_COMPLET' ? 'Sortida' : 'Manteniment';
 }
 
-export function TasquesNetejaSection({ tasques }: { tasques: TascaRow[] }) {
+export function TasquesNetejaSection({ tasques: initialTasques }: { tasques: TascaRow[] }) {
+  const router = useRouter();
+  const [tasques, setTasques] = useState<TascaRow[]>(initialTasques);
+  const [toggling, setToggling] = useState<string | null>(null);
   const [mesSel, setMesSel] = useState<string>('');
   const [open, setOpen] = useState(true);
-  // Dies expandits (per defecte tots oberts)
   const [diesOberts, setDiesOberts] = useState<Set<string>>(new Set());
+
+  async function toggleEstat(t: TascaRow) {
+    if (toggling) return;
+    const nouEstat = t.estat === 'FETA' ? 'PENDENT' : 'FETA';
+    setToggling(t.id);
+    // Optimistic update
+    setTasques((prev) => prev.map((r) => r.id === t.id ? { ...r, estat: nouEstat } : r));
+    try {
+      await patchJSON(`/api/tasques-neteja/${t.id}`, { estat: nouEstat });
+      router.refresh();
+    } catch {
+      // Revert on error
+      setTasques((prev) => prev.map((r) => r.id === t.id ? { ...r, estat: t.estat } : r));
+    } finally {
+      setToggling(null);
+    }
+  }
 
   const mesos = Array.from(new Set(tasques.map((t) => t.data.slice(0, 7)))).sort().reverse();
   const mesDef = mesos[0] ?? '';
@@ -151,9 +172,22 @@ export function TasquesNetejaSection({ tasques }: { tasques: TascaRow[] }) {
                               {t.habitacio ? `Hab. ${t.habitacio}` : 'Zones comunes'}
                             </span>
                             <div className="flex items-center gap-3">
-                              {t.estat === 'FETA'
-                                ? <Badge tone="success">Feta</Badge>
-                                : <Badge tone="neutral">Pendent</Badge>}
+                              <button
+                                type="button"
+                                disabled={toggling === t.id}
+                                onClick={() => toggleEstat(t)}
+                                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                                  t.estat === 'FETA'
+                                    ? 'bg-emerald-50 text-emerald-700 hover:bg-red-50 hover:text-red-600'
+                                    : 'bg-slate-100 text-slate-500 hover:bg-emerald-50 hover:text-emerald-700'
+                                } disabled:opacity-50`}
+                                title={t.estat === 'FETA' ? 'Marcar com a pendent' : 'Marcar com a feta'}
+                              >
+                                {t.estat === 'FETA'
+                                  ? <CheckCircle2 className="h-3.5 w-3.5" />
+                                  : <Circle className="h-3.5 w-3.5" />}
+                                {t.estat === 'FETA' ? 'Feta' : 'Pendent'}
+                              </button>
                               <span className={`w-16 text-right text-sm font-medium ${t.estat === 'FETA' ? 'text-slate-800' : 'text-slate-400'}`}>
                                 {t.importCalculat > 0 ? formatEur(t.importCalculat) : '—'}
                               </span>
