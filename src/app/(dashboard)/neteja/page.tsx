@@ -299,7 +299,8 @@ export default function NetejaPage() {
           {rows.length === 0 ? (
             <p className="text-sm text-slate-500">No hi ha habitacions configurades.</p>
           ) : (
-            rows.map((r) => (
+            <>
+            {rows.map((r) => (
               <div
                 key={r.habitacioId}
                 className={`rounded-lg border px-3 py-2 ${
@@ -377,7 +378,26 @@ export default function NetejaPage() {
                   )}
                 </div>
               </div>
-            ))
+            ))}
+
+            {/* Zones comunes com a fila igual que les habitacions */}
+            {tarifes.z > 0 && (
+              <div className={`rounded-lg border px-3 py-2 ${zonesComunes ? 'border-brand-200 bg-brand-50/40' : 'border-slate-200'}`}>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="flex min-w-40 cursor-pointer items-center gap-2 text-sm font-medium text-slate-800">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-brand-700"
+                      checked={zonesComunes}
+                      onChange={(e) => setZonesComunes(e.target.checked)}
+                    />
+                    Zones comunes
+                  </label>
+                  <span className="text-xs text-slate-500">passadís, vorera, pati · {tarifes.z.toFixed(2)} €</span>
+                </div>
+              </div>
+            )}
+            </>
           )}
 
           <div className="flex items-center gap-3 border-t border-slate-100 pt-3">
@@ -393,15 +413,6 @@ export default function NetejaPage() {
 
           {/* Pagament a la dona de neteja segons les tarifes configurades */}
           <div className="space-y-2 rounded-lg bg-slate-50 px-3 py-3">
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                className="h-4 w-4 accent-brand-700"
-                checked={zonesComunes}
-                onChange={(e) => setZonesComunes(e.target.checked)}
-              />
-              Zones comunes (passadís, vorera, pati){tarifes.z ? ` · ${tarifes.z.toFixed(2)} €` : ''}
-            </label>
             <div className="flex flex-wrap items-center gap-3 text-sm">
               <span className="text-slate-600">
                 A pagar: <strong className="text-slate-900">{aPagar.toFixed(2)} €</strong>
