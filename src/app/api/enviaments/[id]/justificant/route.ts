@@ -3,6 +3,7 @@ import { authorize, clientIp } from '@/lib/auth/guard';
 import { audit } from '@/lib/audit';
 import { handleApiError, notFound } from '@/lib/http';
 import { buildReportPdf, type ReportSection } from '@/lib/pdf/report';
+import { readUpload } from '@/lib/storage';
 import { formatDate } from '@/lib/utils';
 import { ESTAT_ENVIAMENT_LABELS, TIPUS_DOCUMENT_LABELS } from '@/lib/validation/enums';
 
@@ -27,6 +28,24 @@ export async function GET(req: Request, ctx: Ctx) {
       },
     });
     if (!env) return notFound();
+
+    // Si tenim el comprovant OFICIAL descarregat del portal (pujada automàtica),
+    // el servim tal qual en lloc del resum generat.
+    if (env.justificantPath) {
+      try {
+        const pdf = await readUpload(env.justificantPath);
+        await audit({ usuariId: auth.id, accio: 'IMPRESSIO', entitat: 'enviament_mossos', entitatId: id, ip: clientIp(req) });
+        return new Response(new Uint8Array(pdf), {
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `inline; filename="comprovant-mossos-${env.fitxerNom.replace(/\.txt$/, '')}.pdf"`,
+          },
+        });
+      } catch {
+        /* si no es pot llegir, caiem al resum generat */
+      }
+    }
+
     const establiment = await prisma.establiment.findFirst();
 
     const sections: ReportSection[] = [

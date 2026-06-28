@@ -29,16 +29,17 @@ const prisma = new PrismaClient();
 const PORTAL = 'https://registreviatgers.mossos.gencat.cat/mossos_hotels/AppJava/login.do';
 const CAPTURES = join(process.cwd(), 'mossos-captures');
 
-// ───────────────────────── SELECTORS (best-effort) ─────────────────────────
-// Es proven en ordre fins que un funciona. Si cap funciona, captura + atura.
+// ───────────────────────── SELECTORS (capturats del portal real) ───────────
+// Confirmats amb playwright codegen (juny 2026). Es proven en ordre; els
+// fallbacks cobreixen un possible canvi d'idioma del portal.
 const SEL = {
-  usuari: ['input[name*="usuari" i]', 'input[name*="user" i]', '#usuari', '#username', 'input[type="text"]'],
-  contrasenya: ['input[type="password"]', 'input[name*="pass" i]', 'input[name*="contrasenya" i]'],
-  entrar: ['button[type="submit"]', 'input[type="submit"]', 'text=/entrar|accedir|inicia|login/i'],
-  anarMassius: ['text=/fitxers? massi/i', 'text=/càrrega de fitxers/i', 'a:has-text("massi")'],
+  usuari: ['input[name="j_username"]', 'input[name*="user" i]', '#username'],
+  contrasenya: ['input[name="j_password"]', 'input[type="password"]'],
+  entrar: ['button:has-text("Aceptar")', 'button:has-text("Acceptar")', 'input[type="submit"]', 'button[type="submit"]'],
+  anarMassius: ['a:has-text("Fitxers massius")', 'text=/fitxers? massi/i'],
   inputFitxer: ['input[type="file"]'],
-  enviarRegistres: ['text=/enviar registres/i', 'button:has-text("Enviar")', 'input[type="submit"]'],
-  confirmacio: ['text=/codi de validació|núm.? de registre|registre correcte|confirmaci/i'],
+  enviarRegistres: ['button:has-text("Acceptar")', 'button:has-text("Aceptar")', 'input[type="submit"]'],
+  comprovant: ['a:has-text("Descarregar comprovant")', 'text=/descarregar comprovant/i'],
 };
 
 type Page = import('playwright').Page;
@@ -187,18 +188,32 @@ async function main() {
       await clickFirst(page, SEL.anarMassius, 'menú fitxers massius');
       await page.waitForLoadState('networkidle').catch(() => {});
       await page.locator(SEL.inputFitxer[0]!).first().setInputFiles(path);
-      await clickFirst(page, SEL.enviarRegistres, 'botó enviar registres');
+      await clickFirst(page, SEL.enviarRegistres, 'botó Acceptar (pujar)');
       await page.waitForLoadState('networkidle').catch(() => {});
       await captura(page, `resultat-${fitxerNom}`);
+
+      // Descarrega i desa el comprovant d'enviament (PDF). No és el registre
+      // legal, però queda com a justificant a l'estada.
+      let justificantPath: string | null = null;
+      try {
+        const dl = page.waitForEvent('download', { timeout: 15000 });
+        await clickFirst(page, SEL.comprovant, 'enllaç del comprovant', 6000);
+        const download = await dl;
+        justificantPath = join(CAPTURES, `comprovant-${fitxerNom}.pdf`);
+        await download.saveAs(justificantPath);
+        console.log(`  ✔ Comprovant desat: ${justificantPath}`);
+      } catch {
+        console.log('  ⚠ No he pogut baixar el comprovant automàticament (mira la captura).');
+      }
 
       // Intenta llegir un codi de confirmació del text de la pàgina.
       const text = await page.textContent('body').catch(() => '');
       const codi = /([A-Z0-9]{6,})/.exec(text ?? '')?.[1] ?? null;
       await prisma.enviamentMossos.updateMany({
         where: { estanciaId: id, fitxerNom },
-        data: { estat: 'ENVIAT', dataEnviament: new Date(), codiValidacio: codi },
+        data: { estat: 'ENVIAT', dataEnviament: new Date(), codiValidacio: codi, justificantPath },
       });
-      console.log(`✔ Pujat ${fitxerNom}. Revisa ./mossos-captures/resultat-${fitxerNom}.png i confirma el codi a l’app.`);
+      console.log(`✔ Pujat ${fitxerNom}. Comprovant i captura a ./mossos-captures/`);
     }
   } finally {
     await browser.close();

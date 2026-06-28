@@ -6,6 +6,8 @@ import 'server-only';
 import type { Huesped as DbHuesped } from '@prisma/client';
 import { prisma } from '../db';
 import { audit } from '../audit';
+import { decryptString } from '../crypto';
+import { saveUpload } from '../storage';
 import {
   buildFileName,
   buildFitxerBuffer,
@@ -16,6 +18,7 @@ import {
   type TipusPagament,
 } from '../mossos/fitxer';
 import { buildParteFromDb } from '../mossos/build-parte';
+import { pujaFitxerAMossos, connectorAvailable } from '../mossos/connector';
 
 const ESTABLIMENT_ID = 'hostal-coll';
 
@@ -202,6 +205,104 @@ export async function generateFitxer(
   });
 
   return { buffer, fitxerNom, enviamentId: enviament.id, encoding, provisional: !isFormatConfirmat() };
+}
+
+export interface EnviamentAutomaticResult {
+  ok: boolean;
+  fitxerNom: string;
+  codiValidacio?: string;
+  errorMsg?: string;
+}
+
+type GenerateOpts = {
+  tipusPagamentMossos?: TipusPagament;
+  overrides?: Record<string, ViatgerOverride>;
+  persist?: Record<string, boolean>;
+};
+
+/**
+ * Genera el fitxer i el PUJA automàticament al portal de Mossos amb un navegador
+ * remot (Browserbase), desa el comprovant i marca l'enviament. Llança
+ * MossosConfigError si falta Browserbase o les credencials.
+ */
+export async function enviarFitxerMossos(
+  estanciaId: string,
+  actor: { id: string } | null,
+  ip: string | null,
+  opts: GenerateOpts = {},
+): Promise<EnviamentAutomaticResult> {
+  if (!connectorAvailable()) {
+    throw new MossosConfigError(
+      'La pujada automàtica no està configurada (falta Browserbase). Afegeix BROWSERBASE_API_KEY i ' +
+        'BROWSERBASE_PROJECT_ID a les variables d’entorn.',
+    );
+  }
+  const establiment = await prisma.establiment.findUniqueOrThrow({ where: { id: ESTABLIMENT_ID } });
+  if (!establiment.mossosUser || !establiment.mossosPassEnc) {
+    throw new MossosConfigError(
+      'Falten les credencials de Mossos (usuari/contrasenya). Configura-les a Configuració abans de pujar automàticament.',
+    );
+  }
+
+  // Genera el fitxer + crea l'enviament PENDENT (valida §2.3 i file_identifier).
+  const gen = await generateFitxer(estanciaId, actor, ip, opts);
+
+  const pass = decryptString(establiment.mossosPassEnc);
+  const result = await pujaFitxerAMossos({
+    fileBuffer: gen.buffer,
+    fitxerNom: gen.fitxerNom,
+    user: establiment.mossosUser,
+    pass,
+  });
+
+  if (!result.ok) {
+    await prisma.enviamentMossos.update({
+      where: { id: gen.enviamentId },
+      data: { estat: 'ERROR', errorMsg: result.errorMsg ?? 'Error desconegut' },
+    });
+    await audit({
+      usuariId: actor?.id ?? null,
+      accio: 'ENVIAMENT',
+      entitat: 'enviament_mossos',
+      entitatId: gen.enviamentId,
+      detall: { accio: 'puja_auto', ok: false },
+      ip,
+    });
+    return { ok: false, fitxerNom: gen.fitxerNom, errorMsg: result.errorMsg };
+  }
+
+  let justificantPath: string | null = null;
+  if (result.comprovant) {
+    try {
+      justificantPath = await saveUpload(
+        result.comprovant,
+        result.comprovantNom ?? `comprovant-${gen.fitxerNom}.pdf`,
+        'comprovants',
+      );
+    } catch {
+      /* el comprovant no és el registre legal; si no es desa, l'enviament val igual */
+    }
+  }
+
+  await prisma.enviamentMossos.update({
+    where: { id: gen.enviamentId },
+    data: {
+      estat: 'ACCEPTAT',
+      dataEnviament: new Date(),
+      codiValidacio: result.codiValidacio ?? null,
+      justificantPath,
+    },
+  });
+  await audit({
+    usuariId: actor?.id ?? null,
+    accio: 'ENVIAMENT',
+    entitat: 'enviament_mossos',
+    entitatId: gen.enviamentId,
+    detall: { accio: 'puja_auto', ok: true },
+    ip,
+  });
+
+  return { ok: true, fitxerNom: gen.fitxerNom, codiValidacio: result.codiValidacio };
 }
 
 export interface FitxerPreviewViatger extends ViatgerOverride {

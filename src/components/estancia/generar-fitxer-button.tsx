@@ -115,11 +115,13 @@ export function GenerarFitxerButton({
   const [rows, setRows] = useState<PreviewViatger[]>([]);
   const [persist, setPersist] = useState<Record<string, boolean>>({});
   const [tipusPagament, setTipusPagament] = useState<string>('DESTINACIO');
+  const [error, setError] = useState<string | null>(null);
 
   const obrir = useCallback(async () => {
     setOpen(true);
     setStep('review');
     setLoading(true);
+    setError(null);
     setPreview(null);
     try {
       const res = await fetch(`/api/estancies/${estanciaId}/fitxer/preview`);
@@ -147,6 +149,7 @@ export function GenerarFitxerButton({
   async function generar() {
     if (!preview) return;
     setBusy(true);
+    setError(null);
     try {
       // Només enviem els camps realment canviats com a override.
       const viatgers = rows.map((r) => {
@@ -166,7 +169,8 @@ export function GenerarFitxerButton({
       const ct = res.headers.get('Content-Type') ?? '';
       if (!res.ok || ct.includes('application/json')) {
         const data = await res.json().catch(() => ({}));
-        onResult?.({ tone: 'error', msg: data.error ?? 'No s’ha pogut generar el fitxer' });
+        // Es mostra DINS del modal perquè es vegi (abans quedava darrere).
+        setError(data.error ?? 'No s’ha pogut generar el fitxer.');
         return;
       }
       const blob = await res.blob();
@@ -182,7 +186,7 @@ export function GenerarFitxerButton({
       onDone?.();
       setOpen(false);
     } catch {
-      onResult?.({ tone: 'error', msg: 'Error generant el fitxer' });
+      setError('Error generant el fitxer.');
     } finally {
       setBusy(false);
     }
@@ -340,6 +344,14 @@ export function GenerarFitxerButton({
                     Mossos. Les edicions marcades amb «Desar també a la fitxa» actualitzaran la fitxa
                     de l’hoste; la resta només afecten aquest fitxer.
                   </p>
+                  {error && (
+                    <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+                      <p className="flex items-center gap-1.5 font-medium">
+                        <AlertTriangle className="h-4 w-4 shrink-0" /> No s’ha pogut generar el fitxer:
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap">{error}</p>
+                    </div>
+                  )}
                 </div>
                 <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-4">
                   <Button variant="ghost" size="sm" onClick={() => setStep('review')} disabled={busy}>

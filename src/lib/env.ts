@@ -89,4 +89,15 @@ export function getAeatCertConfig(): { pfxPath: string; passphrase: string } | n
   return { pfxPath, passphrase: process.env.AEAT_CERT_PASS ?? '' };
 }
 
+/**
+ * Browserbase (navegador remot per pujar a Mossos des de la web, ja que Vercel
+ * no pot executar un navegador). Retorna null si no està configurat.
+ */
+export function getBrowserbaseConfig(): { apiKey: string; projectId: string } | null {
+  const apiKey = process.env.BROWSERBASE_API_KEY;
+  const projectId = process.env.BROWSERBASE_PROJECT_ID;
+  if (!apiKey || apiKey.trim() === '' || !projectId || projectId.trim() === '') return null;
+  return { apiKey, projectId };
+}
+
 export const appName = process.env.NEXT_PUBLIC_APP_NAME || 'Hostal Coll';

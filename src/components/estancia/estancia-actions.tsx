@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Download, AlertTriangle, FileCheck } from 'lucide-react';
+import { Download, AlertTriangle, FileCheck, Send, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +35,35 @@ export function EstanciaActions({
 }) {
   const router = useRouter();
   const [notice, setNotice] = useState<FitxerNotice | null>(null);
+  const [enviant, setEnviant] = useState(false);
+  const [confirmaEnviar, setConfirmaEnviar] = useState(false);
+
+  async function enviarAuto() {
+    setEnviant(true);
+    setNotice(null);
+    try {
+      const res = await fetch(`/api/estancies/${estanciaId}/fitxer/enviar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        setNotice({
+          tone: 'info',
+          msg: `Pujat a Mossos correctament${data.codiValidacio ? ` (codi ${data.codiValidacio})` : ''}.`,
+        });
+        router.refresh();
+      } else {
+        setNotice({ tone: 'error', msg: data.error ?? data.errorMsg ?? 'No s’ha pogut pujar a Mossos.' });
+      }
+    } catch {
+      setNotice({ tone: 'error', msg: 'Error de connexió pujant a Mossos.' });
+    } finally {
+      setEnviant(false);
+      setConfirmaEnviar(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -50,15 +79,45 @@ export function EstanciaActions({
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={() => setConfirmaEnviar(true)} disabled={enviant}>
+          <Send className="h-4 w-4" /> {enviant ? 'Pujant a Mossos…' : 'Pujar a Mossos (automàtic)'}
+        </Button>
         <GenerarFitxerButton
           estanciaId={estanciaId}
+          label="Descarregar .txt (manual)"
+          variant="outline"
           onResult={(n) => setNotice(n)}
           onDone={() => router.refresh()}
         />
-        <p className="text-xs text-slate-500">
-          Genera el .txt i puja’l manualment al portal de Mossos.
-        </p>
       </div>
+      <p className="text-xs text-slate-500">
+        <strong>Automàtic</strong>: l’app puja el fitxer al portal de Mossos sola i desa el comprovant.
+        <strong> Manual</strong>: descarrega el .txt per pujar-lo tu.
+      </p>
+
+      {confirmaEnviar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+            <div className="mb-3 flex items-center gap-2 text-brand-800">
+              <ShieldAlert className="h-5 w-5 shrink-0" />
+              <h2 className="text-lg font-semibold">Pujar a Mossos automàticament</h2>
+            </div>
+            <p className="text-sm text-slate-600">
+              L’app obrirà el portal de Mossos en un navegador remot, farà login amb les teves
+              credencials i <strong>comunicarà oficialment</strong> les dades dels viatgers (com a
+              «Pagament a destinació»). Pot trigar uns segons. Vols continuar?
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setConfirmaEnviar(false)} disabled={enviant}>
+                Cancel·lar
+              </Button>
+              <Button variant="danger" size="sm" onClick={enviarAuto} disabled={enviant}>
+                {enviant ? 'Pujant…' : 'Sí, pujar ara'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {notice && (
         <div
