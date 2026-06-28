@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Download, AlertTriangle, FileCheck, Send, ShieldAlert } from 'lucide-react';
+import { Download, AlertTriangle, FileCheck, Send, ShieldAlert, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -167,6 +167,27 @@ function EnviamentRow({ enviament, onChanged }: { enviament: Enviament; onChange
   const [errorMsg, setErrorMsg] = useState(enviament.errorMsg ?? '');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // Eliminació amb doble confirmació (0 cap · 1 avís · 2 confirmació final).
+  const [delStep, setDelStep] = useState<0 | 1 | 2>(0);
+  const [deleting, setDeleting] = useState(false);
+
+  async function eliminar() {
+    setDeleting(true);
+    setErr(null);
+    try {
+      const res = await fetch(`/api/enviaments/${enviament.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error ?? 'No s’ha pogut eliminar');
+      }
+      onChanged();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Error eliminant');
+      setDelStep(0);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function save() {
     setSaving(true);
@@ -211,13 +232,50 @@ function EnviamentRow({ enviament, onChanged }: { enviament: Enviament; onChange
           {saving ? 'Desant…' : 'Actualitzar'}
         </Button>
       </div>
-      <div className="mt-2">
+      <div className="mt-2 flex flex-wrap items-center gap-2">
         <a href={`/api/enviaments/${enviament.id}/justificant`} target="_blank" rel="noreferrer">
           <Button type="button" variant="outline" size="sm">
             <FileCheck className="h-4 w-4" /> Justificant PDF
           </Button>
         </a>
+        {delStep === 0 && (
+          <Button type="button" variant="ghost" size="sm" onClick={() => setDelStep(1)}>
+            <Trash2 className="h-4 w-4" /> Eliminar
+          </Button>
+        )}
       </div>
+
+      {delStep === 1 && (
+        <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <p className="font-medium">Eliminar aquest comprovant de l’app?</p>
+          <p className="mt-0.5 text-amber-700">
+            Només s’esborra del teu sistema. <strong>NO es treu de Mossos</strong>: si ja s’havia
+            comunicat, allà hi continua (no es pot desfer).
+          </p>
+          <div className="mt-2 flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setDelStep(0)}>Cancel·lar</Button>
+            <Button size="sm" onClick={() => setDelStep(2)}>Continuar</Button>
+          </div>
+        </div>
+      )}
+      {delStep === 2 && (
+        <div className="mt-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+          <p className="flex items-center gap-1.5 font-medium">
+            <AlertTriangle className="h-4 w-4 shrink-0" /> Confirmació final
+          </p>
+          <p className="mt-0.5 text-red-700">
+            Segur que vols eliminar <strong>{enviament.fitxerNom}</strong> definitivament de l’app?
+          </p>
+          <div className="mt-2 flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setDelStep(0)} disabled={deleting}>
+              Enrere
+            </Button>
+            <Button variant="danger" size="sm" onClick={eliminar} disabled={deleting}>
+              {deleting ? 'Eliminant…' : 'Sí, eliminar'}
+            </Button>
+          </div>
+        </div>
+      )}
       {(estat === 'ERROR' || estat === 'REBUTJAT') && (
         <Input
           className="mt-2"
