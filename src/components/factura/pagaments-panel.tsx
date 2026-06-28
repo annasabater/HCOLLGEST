@@ -65,7 +65,7 @@ export function PagamentsPanel({
   const [importVal, setImport] = useState('');
   const [metode, setMetode] = useState('EFECTIU');
   const [dataCobrament, setDataCobrament] = useState(() => new Date().toISOString().slice(0, 10));
-  const [etapa, setEtapa] = useState<'A compte' | 'Cobro' | 'Altre'>('A compte');
+  const [etapa, setEtapa] = useState<'A compte' | 'Cobro' | 'Total' | 'Altre'>('A compte');
   const [altreText, setAltreText] = useState('');
   const [observacions, setObservacions] = useState('');
   const [facturaIdDest, setFacturaIdDest] = useState('');
@@ -539,6 +539,7 @@ export function PagamentsPanel({
             <Select value={etapa} onChange={(e) => setEtapa(e.target.value as typeof etapa)}>
               <option value="A compte">A compte (reserva anticipada)</option>
               <option value="Cobro">Cobro (pagament a l&apos;arribada)</option>
+              <option value="Total">Total (pagament complet)</option>
               <option value="Altre">Altre…</option>
             </Select>
             {etapa === 'Altre' && (
