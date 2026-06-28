@@ -8,6 +8,7 @@ import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { SilenciarAvis } from '@/components/estancia/silenciar-avis';
 import { EliminarComprovant } from '@/components/estancia/eliminar-comprovant';
+import { EnviarCorreuButton } from '@/components/justificants/enviar-correu-button';
 import { buildParteFromDb } from '@/lib/mossos/build-parte';
 import { validaParteErrors } from '@/lib/mossos/fitxer';
 import { ESTAT_ENVIAMENT_LABELS } from '@/lib/validation/enums';
@@ -115,11 +116,17 @@ export default async function JustificantsPage() {
                         )}
                       </Td>
                       <Td>
-                        <a href={`/api/estancies/${e.id}/fitxa-pdf`} target="_blank" rel="noreferrer">
-                          <Button variant="outline" size="sm">
-                            <FileSignature className="h-4 w-4" /> Fitxa PDF
-                          </Button>
-                        </a>
+                        <div className="flex items-center gap-2">
+                          <a href={`/api/estancies/${e.id}/fitxa-pdf`} target="_blank" rel="noreferrer">
+                            <Button variant="outline" size="sm">
+                              <FileSignature className="h-4 w-4" /> Fitxa PDF
+                            </Button>
+                          </a>
+                          <EnviarCorreuButton
+                            apiUrl={`/api/estancies/${e.id}/fitxa-email`}
+                            defaultEmail={titular?.email ?? ''}
+                          />
+                        </div>
                       </Td>
                       <Td>{pendents && <SilenciarAvis estanciaId={e.id} parat={e.avisDadesParat} />}</Td>
                     </Tr>
@@ -171,6 +178,10 @@ export default async function JustificantsPage() {
                             <FileCheck className="h-4 w-4" /> PDF
                           </Button>
                         </a>
+                        <EnviarCorreuButton
+                          apiUrl={`/api/enviaments/${env.id}/email`}
+                          defaultEmail={titular?.email ?? ''}
+                        />
                         <EliminarComprovant id={env.id} fitxerNom={env.fitxerNom} />
                       </div>
                     </Td>
