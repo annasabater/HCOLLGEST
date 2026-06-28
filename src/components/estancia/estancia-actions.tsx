@@ -38,6 +38,9 @@ export function EstanciaActions({
   const [enviant, setEnviant] = useState(false);
   const [confirmaEnviar, setConfirmaEnviar] = useState(false);
 
+  // Si ja s'ha comunicat correctament, avisem abans de tornar-ho a enviar (duplicat).
+  const jaComunicada = enviaments.find((e) => e.estat === 'ENVIAT' || e.estat === 'ACCEPTAT');
+
   async function enviarAuto() {
     setEnviant(true);
     setNotice(null);
@@ -102,6 +105,19 @@ export function EstanciaActions({
               <ShieldAlert className="h-5 w-5 shrink-0" />
               <h2 className="text-lg font-semibold">Pujar a Mossos automàticament</h2>
             </div>
+            {jaComunicada && (
+              <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                <p className="flex items-center gap-1.5 font-medium">
+                  <AlertTriangle className="h-4 w-4 shrink-0" /> Aquesta estada ja s’ha comunicat a Mossos
+                  {jaComunicada.dataEnviament ? ` el ${formatDate(jaComunicada.dataEnviament)}` : ''}
+                  {jaComunicada.codiValidacio ? ` (codi ${jaComunicada.codiValidacio})` : ''}.
+                </p>
+                <p className="mt-0.5 text-amber-700">
+                  Tornar-ho a enviar comunicarà els hostes <strong>per duplicat</strong> (el manual diu
+                  que no cal reenviar els ja informats). Fes-ho només si realment cal.
+                </p>
+              </div>
+            )}
             <p className="text-sm text-slate-600">
               L’app obrirà el portal de Mossos en un navegador remot, farà login amb les teves
               credencials i <strong>comunicarà oficialment</strong> les dades dels viatgers (com a
