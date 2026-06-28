@@ -15,9 +15,11 @@ export async function sendEmail(opts: {
   html: string;
   attachments?: Attachment[];
 }): Promise<{ ok: boolean; error?: string }> {
-  const key = process.env.RESEND_API_KEY;
+  // Eliminem el BOM (U+FEFF) que alguns editors/gestors afegeixen a les variables
+  const stripBom = (s: string) => s.replace(/^﻿/, '').trim();
+  const key = stripBom(process.env.RESEND_API_KEY ?? '');
   if (!key) return { ok: false, error: 'RESEND_API_KEY no configurat' };
-  const from = process.env.BACKUP_EMAIL_FROM || 'Hostal Coll <onboarding@resend.dev>';
+  const from = stripBom(process.env.BACKUP_EMAIL_FROM || 'Hostal Coll <onboarding@resend.dev>');
 
   try {
     // Passem el body com a Buffer (bytes UTF-8) per evitar l'error
