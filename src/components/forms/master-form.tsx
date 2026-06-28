@@ -521,7 +521,7 @@ export function MasterForm({
       setWarnings([]);
       setServerError(
         borrany
-          ? 'Per desar com a esborrany calen, com a mínim, nom i cognom del titular i les dates.'
+          ? 'Per desar com a esborrany cal, com a mínim, nom i primer cognom del titular.'
           : 'Falten dades obligatòries. Completa-les, o desa com a esborrany i acaba-ho més tard.',
       );
       return;

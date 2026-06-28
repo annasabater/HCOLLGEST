@@ -43,8 +43,8 @@ export async function GET(req: Request) {
         id: e.id,
         habitacioId: e.habitacioId!,
         titular: h ? `${h.nom} ${h.cognom1}` : '—',
-        dataEntrada: e.dataEntrada.toISOString().slice(0, 10),
-        dataSortida: e.dataSortida.toISOString().slice(0, 10),
+        dataEntrada: e.dataEntrada?.toISOString().slice(0, 10) ?? null,
+        dataSortida: e.dataSortida?.toISOString().slice(0, 10) ?? null,
         estat: e.estat,
       };
     }),

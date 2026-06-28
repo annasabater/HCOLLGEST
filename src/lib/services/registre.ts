@@ -118,8 +118,8 @@ export async function createRegistre(
         numContracte: estancia.numContracte,
         anyContracte: estancia.anyContracte,
         dataFormalitzacio: estancia.dataFormalitzacio,
-        dataEntrada: estancia.dataEntrada,
-        dataSortida: estancia.dataSortida,
+        dataEntrada: estancia.dataEntrada ?? undefined,
+        dataSortida: estancia.dataSortida ?? undefined,
         numViatgers: estancia.numViatgers,
         tipusPagament: estancia.tipusPagament,
         numHabitacions: estancia.numHabitacions ?? null,
@@ -140,7 +140,7 @@ export async function createRegistre(
           huespedId,
           esTitular: v.esTitular,
           parentesc: v.parentesc ?? null,
-          esMenor: v.esMenor || isMenor(v.dataNaixement, estancia.dataEntrada),
+          esMenor: v.esMenor || isMenor(v.dataNaixement, estancia.dataEntrada ?? new Date()),
         },
       });
     }
@@ -250,7 +250,7 @@ export async function updateRegistre(
       const data = {
         esTitular: v.esTitular,
         parentesc: v.parentesc ?? null,
-        esMenor: v.esMenor || isMenor(v.dataNaixement, estancia.dataEntrada),
+        esMenor: v.esMenor || isMenor(v.dataNaixement, estancia.dataEntrada ?? new Date()),
       };
       if (link) {
         await tx.estanciaViatger.update({ where: { id: link.id }, data });
@@ -267,8 +267,8 @@ export async function updateRegistre(
         numContracte: estancia.numContracte,
         anyContracte: estancia.anyContracte,
         dataFormalitzacio: estancia.dataFormalitzacio,
-        dataEntrada: estancia.dataEntrada,
-        dataSortida: estancia.dataSortida,
+        dataEntrada: estancia.dataEntrada ?? undefined,
+        dataSortida: estancia.dataSortida ?? undefined,
         numViatgers: viatgers.length,
         tipusPagament: estancia.tipusPagament,
         numHabitacions: estancia.numHabitacions ?? null,

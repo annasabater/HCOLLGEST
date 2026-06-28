@@ -19,8 +19,8 @@ interface Viatger {
 interface Pendent {
   id: string;
   habitacio: string | null;
-  dataEntrada: string;
-  dataSortida: string;
+  dataEntrada: string | null;
+  dataSortida: string | null;
   viatgers: Viatger[];
 }
 

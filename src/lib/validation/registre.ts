@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Esquema maestro del registro (estancia + viajeros) con la LÓGICA CONDICIONAL
  * oficial (§2.3 / §4 del modelo de datos). Compartido cliente/servidor.
  *
@@ -70,7 +70,7 @@ export const ViatgerInputSchema = z.object({
 /** Mascota opcional vinculada a l'estada (s'associa al titular). */
 export const MascotaInputSchema = z.object({
   nom: z.string().trim().min(1, 'Cal un nom'),
-  especie: z.string().trim().min(1, 'Cal l’espècie'),
+  especie: z.string().trim().min(1, "Cal l'especie"),
   mida: z.preprocess(
     (v) => (v === '' || v === null ? undefined : v),
     z.enum(midaAnimalValues).optional(),
@@ -84,7 +84,7 @@ export const MascotaInputSchema = z.object({
  */
 export const PagamentInputSchema = z.object({
   metode: z.enum(metodeCobramentValues),
-  import: z.coerce.number().positive('L’import ha de ser positiu'),
+  import: z.coerce.number().positive("L'import ha de ser positiu"),
 });
 
 export const EstanciaInputSchema = z
@@ -106,14 +106,15 @@ export const EstanciaInputSchema = z
   observacions: optStr,
   idioma: z.enum(['ca', 'es', 'en', 'fr']).optional(),
 })
-.superRefine((data, ctx) => {
-  if (data.tipusRegistre !== 'RESERVA' && !data.numContracte) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['numContracte'],
-      message: 'El número de contracte és obligatori per als contractes en curs',
-    });
-  }
+;
+
+/**
+ * Versió laxa de EstanciaInputSchema per a esborranys: les dates d'entrada i
+ * sortida són opcionals (l'usuari les pot deixar buides i omplir-les més tard).
+ */
+const EstanciaEsborranyInputSchema = EstanciaInputSchema.extend({
+  dataEntrada: optDate,
+  dataSortida: optDate,
 });
 
 /**
@@ -128,7 +129,7 @@ export const EstanciaInputSchema = z
 function buildRegistreSchema(borrany: boolean) {
   return z
     .object({
-      estancia: EstanciaInputSchema,
+      estancia: borrany ? EstanciaEsborranyInputSchema : EstanciaInputSchema,
       viatgers: z.array(ViatgerInputSchema).min(1, 'Cal almenys un viatger'),
       mascotes: z.array(MascotaInputSchema).optional(),
       pagaments: z.array(PagamentInputSchema).optional(),
@@ -139,7 +140,16 @@ function buildRegistreSchema(borrany: boolean) {
       const { estancia, viatgers } = data;
       const today = endOfToday();
 
-      // --- Fechas de la estancia (sanity, siempre) ---
+      // --- Número de contracte (obligatori en contracte en curs, no en esborrany) ---
+      if (!borrany && estancia.tipusRegistre !== 'RESERVA' && !estancia.numContracte) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['estancia', 'numContracte'],
+          message: "El numero de contracte es obligatori per als contractes en curs",
+        });
+      }
+
+      // --- Fechas de la estancia (sanity, només quan s'han introduït) ---
       if (estancia.dataFormalitzacio > today) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -147,11 +157,11 @@ function buildRegistreSchema(borrany: boolean) {
           message: 'La data de formalització no pot ser futura',
         });
       }
-      if (estancia.dataSortida <= estancia.dataEntrada) {
+      if (estancia.dataEntrada && estancia.dataSortida && estancia.dataSortida <= estancia.dataEntrada) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['estancia', 'dataSortida'],
-          message: 'La data de sortida ha de ser posterior a l’entrada',
+          message: "La data de sortida ha de ser posterior a l'entrada",
         });
       }
 
@@ -183,7 +193,7 @@ function buildRegistreSchema(borrany: boolean) {
         }
 
         // CONTRACTE EN CURS
-        const menor = v.esMenor || isMenor(v.dataNaixement, estancia.dataEntrada);
+        const menor = v.esMenor || isMenor(v.dataNaixement, estancia.dataEntrada ?? new Date());
 
         if (!menor) {
           if (!v.tipusDocument) at('tipusDocument', 'Tipus de document obligatori');
@@ -202,7 +212,7 @@ function buildRegistreSchema(borrany: boolean) {
           at('dataNaixement', 'La data de naixement no pot ser futura');
         }
         if (v.dataExpedicio && v.dataExpedicio > today) {
-          at('dataExpedicio', 'La data d’expedició no pot ser futura');
+          at('dataExpedicio', "La data d'expedicio no pot ser futura");
         }
         if (!v.adreca) at('adreca', 'Adreça obligatòria (contracte en curs)');
         if (!v.codiPostal) at('codiPostal', 'Codi postal obligatori');
@@ -241,7 +251,7 @@ export const AmpliacioSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['dataSortida'],
-        message: 'La data de sortida ha de ser posterior a l’entrada',
+        message: "La data de sortida ha de ser posterior a l'entrada",
       });
     }
   });

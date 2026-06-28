@@ -60,8 +60,8 @@ export default async function HuespedDetailPage({ params }: { params: Promise<{ 
         orderBy: { createdAt: 'desc' },
       })
     : [];
-  const nitsAcumulades = estancies.reduce((a, e) => a + nights(e.dataEntrada, e.dataSortida), 0);
-  const dates = estancies.map((e) => e.dataEntrada).sort((a, b) => a.getTime() - b.getTime());
+  const nitsAcumulades = estancies.reduce((a, e) => a + (e.dataEntrada && e.dataSortida ? nights(e.dataEntrada, e.dataSortida) : 0), 0);
+  const dates = estancies.map((e) => e.dataEntrada).filter(Boolean).sort((a, b) => a!.getTime() - b!.getTime());
   const noAcollir = huesped.anotacions.some((a) => a.noAcollir);
 
   const stats = [
@@ -202,7 +202,7 @@ export default async function HuespedDetailPage({ params }: { params: Promise<{ 
                         </Td>
                         <Td>{formatDate(e.dataEntrada)}</Td>
                         <Td>{formatDate(e.dataSortida)}</Td>
-                        <Td>{nights(e.dataEntrada, e.dataSortida)}</Td>
+                        <Td>{e.dataEntrada && e.dataSortida ? nights(e.dataEntrada, e.dataSortida) : '—'}</Td>
                         {canEdit && (
                           <Td>
                             <EliminarEstada

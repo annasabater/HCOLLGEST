@@ -55,8 +55,8 @@ export async function GET(req: Request, ctx: Ctx) {
     const firstFutureByRoom = new Map<string, Date>();
     for (const o of ocupacions) {
       if (!o.habitacioId) continue;
-      if (o.dataEntrada <= desde) occupatRoom.add(o.habitacioId);
-      else if (!firstFutureByRoom.has(o.habitacioId)) firstFutureByRoom.set(o.habitacioId, o.dataEntrada);
+      if (o.dataEntrada && o.dataEntrada <= desde) occupatRoom.add(o.habitacioId);
+      else if (o.dataEntrada && !firstFutureByRoom.has(o.habitacioId)) firstFutureByRoom.set(o.habitacioId, o.dataEntrada);
     }
 
     const rooms = habitacions.map((h) => {

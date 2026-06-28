@@ -58,7 +58,7 @@ export default async function DashboardPage() {
   const termini24 = resum.pendentsEnviament
     .filter((e) => e.estat === 'EN_CURS')
     .map((e) => {
-      const restMs = new Date(e.dataEntrada).getTime() + DIA_MS - araMs;
+      const restMs = (e.dataEntrada ? new Date(e.dataEntrada).getTime() : araMs) + DIA_MS - araMs;
       return { e, restMs, vencut: restMs < 0 };
     })
     .sort((a, b) => a.restMs - b.restMs);

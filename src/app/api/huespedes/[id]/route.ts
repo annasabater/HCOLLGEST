@@ -32,13 +32,13 @@ export async function GET(_req: Request, ctx: Ctx) {
 
   const estancies = huesped.estancies.map((ev) => ev.estancia);
   const nitsAcumulades = estancies.reduce(
-    (acc, e) => acc + nights(e.dataEntrada, e.dataSortida),
+    (acc, e) => acc + (e.dataEntrada && e.dataSortida ? nights(e.dataEntrada, e.dataSortida) : 0),
     0,
   );
   const gastoTotal = estancies
     .flatMap((e) => e.factures)
     .reduce((acc, f) => acc + Number(f.total), 0);
-  const dates = estancies.map((e) => e.dataEntrada).sort((a, b) => a.getTime() - b.getTime());
+  const dates = estancies.map((e) => e.dataEntrada).filter(Boolean).sort((a, b) => a!.getTime() - b!.getTime());
 
   return ok({
     huesped,

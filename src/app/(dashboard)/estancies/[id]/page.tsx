@@ -79,7 +79,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
   const canWrite = user ? hasRole(user.role, ROLES_WRITE) : false;
   const titular = estancia.viatgers[0]?.huesped;
   const suggerit = isAdmin
-    ? await preuSuggeritAllotjament(estancia.habitacioId, estancia.dataEntrada, estancia.dataSortida)
+    ? await preuSuggeritAllotjament(estancia.habitacioId, estancia.dataEntrada ?? new Date(), estancia.dataSortida ?? new Date())
     : null;
 
   // Estat REAL de l'estada (per dates) — més clar que el tipus de registre Mossos.
@@ -89,9 +89,9 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
       ? { label: 'Esborrany', tone: 'warning' }
       : estancia.estat === 'CANCELLADA'
         ? { label: 'Cancel·lada', tone: 'neutral' }
-        : avuiIso < toISODate(estancia.dataEntrada)
+        : estancia.dataEntrada && avuiIso < toISODate(estancia.dataEntrada)
           ? { label: 'Reserva', tone: 'info' }
-          : avuiIso < toISODate(estancia.dataSortida)
+          : estancia.dataSortida && avuiIso < toISODate(estancia.dataSortida)
             ? { label: 'Allotjat ara', tone: 'success' }
             : { label: 'Estada acabada', tone: 'neutral' };
 
@@ -129,7 +129,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             )}
             <AmpliarEstada
               estanciaId={estancia.id}
-              defaultEntrada={toISODate(estancia.dataSortida)}
+              defaultEntrada={estancia.dataSortida ? toISODate(estancia.dataSortida) : ''}
               habitacions={habitacions}
               actualHabitacioId={estancia.habitacioId}
             />
@@ -387,8 +387,8 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 titularEmail={titular?.email ?? null}
                 titularTelefon={titular?.telefon ?? null}
                 habitacioNom={estancia.habitacio?.nom ?? null}
-                dataEntrada={estancia.dataEntrada.toISOString()}
-                dataSortida={estancia.dataSortida.toISOString()}
+                dataEntrada={estancia.dataEntrada?.toISOString() ?? ''}
+                dataSortida={estancia.dataSortida?.toISOString() ?? ''}
                 idioma={estancia.idioma ?? 'ca'}
               />
             </CardBody>

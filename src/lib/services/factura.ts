@@ -36,7 +36,7 @@ export async function createFactura(
     const establiment = await tx.establiment.findUniqueOrThrow({ where: { id: ESTABLIMENT_ID } });
 
     // Tasa turística (IEET): nits × persones × import/persona·nit.
-    const nits = nights(estancia.dataEntrada, estancia.dataSortida);
+    const nits = nights(estancia.dataEntrada!, estancia.dataSortida!);
     const ieet = establiment.ieetImportPersonaNit ? Number(establiment.ieetImportPersonaNit) : 0;
     const { base, iva, tasaTotal, total } = computeFacturaTotals({
       linies: input.linies,

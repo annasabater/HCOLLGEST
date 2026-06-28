@@ -52,7 +52,7 @@ export async function buildHostesXlsx(): Promise<Buffer> {
     const visites = estades.length;
     const ultima = estades.reduce<Date | null>((max, e) => {
       const d = e.dataEntrada;
-      return !max || d > max ? d : max;
+      return !max || (d && d > max) ? d : max;
     }, null);
     const doc = h.numDocument
       ? `${TIPUS_DOC[h.tipusDocument ?? ''] ?? ''} ${h.numDocument}`.trim()

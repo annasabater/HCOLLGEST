@@ -231,8 +231,8 @@ export async function getResum(opts?: FinanceOpts) {
   const benvingudesPendents = benvingudesPendentsRaw.map((e) => ({
     id: e.id,
     habitacio: e.habitacio?.nom ?? null,
-    dataEntrada: e.dataEntrada.toISOString(),
-    dataSortida: e.dataSortida.toISOString(),
+    dataEntrada: e.dataEntrada?.toISOString() ?? null,
+    dataSortida: e.dataSortida?.toISOString() ?? null,
     viatgers: e.viatgers.map((v) => ({
       nom: v.huesped.nom,
       cognom1: v.huesped.cognom1,
@@ -417,6 +417,7 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
   const nitsDisponibles = habCount * dies;
   let nitsOcupades = 0;
   for (const e of estades) {
+    if (!e.dataEntrada || !e.dataSortida) continue;
     const s = e.dataEntrada > start ? e.dataEntrada : start;
     const f = e.dataSortida < endExcl ? e.dataSortida : endExcl;
     const n = Math.round((f.getTime() - s.getTime()) / 86_400_000);
