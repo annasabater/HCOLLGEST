@@ -36,7 +36,8 @@ const SEL = {
   usuari: ['input[name="j_username"]', 'input[name*="user" i]', '#username'],
   contrasenya: ['input[name="j_password"]', 'input[type="password"]'],
   entrar: ['button:has-text("Aceptar")', 'button:has-text("Acceptar")', 'input[type="submit"]', 'button[type="submit"]'],
-  anarMassius: ['a:has-text("Fitxers massius")', 'text=/fitxers? massi/i'],
+  menuEnviament: ['a:has-text("Enviament informació viatgers")', 'text=/enviament informaci/i'],
+  anarMassius: ['a:has-text("Fitxers massius de viatgers")', 'a:has-text("Fitxers massius")', 'text=/fitxers? massi/i'],
   inputFitxer: ['input[type="file"]'],
   enviarRegistres: ['button:has-text("Acceptar")', 'button:has-text("Aceptar")', 'input[type="submit"]'],
   comprovant: ['a:has-text("Descarregar comprovant")', 'text=/descarregar comprovant/i'],
@@ -185,6 +186,9 @@ async function main() {
     for (const id of ids) {
       const { path, fitxerNom } = await generaFitxer(id);
       console.log(`→ ${fitxerNom}`);
+      // Obre el submenú pare abans (el fill està amagat fins a expandir-lo).
+      try { await clickFirst(page, SEL.menuEnviament, 'menú enviament', 6000); } catch { /* potser ja obert */ }
+      await page.waitForLoadState('networkidle').catch(() => {});
       await clickFirst(page, SEL.anarMassius, 'menú fitxers massius');
       await page.waitForLoadState('networkidle').catch(() => {});
       await page.locator(SEL.inputFitxer[0]!).first().setInputFiles(path);

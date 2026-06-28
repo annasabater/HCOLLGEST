@@ -44,7 +44,9 @@ const SEL = {
   usuari: ['input[name="j_username"]', 'input[name*="user" i]', '#username'],
   contrasenya: ['input[name="j_password"]', 'input[type="password"]'],
   entrar: ['button:has-text("Aceptar")', 'button:has-text("Acceptar")', 'input[type="submit"]', 'button[type="submit"]'],
-  anarMassius: ['a:has-text("Fitxers massius")', 'text=/fitxers? massi/i'],
+  // El submenú "Enviament informació viatgers" s'ha d'obrir abans de veure el fill.
+  menuEnviament: ['a:has-text("Enviament informació viatgers")', 'text=/enviament informaci/i'],
+  anarMassius: ['a:has-text("Fitxers massius de viatgers")', 'a:has-text("Fitxers massius")', 'text=/fitxers? massi/i'],
   inputFitxer: ['input[type="file"]'],
   enviar: ['button:has-text("Acceptar")', 'button:has-text("Aceptar")', 'input[type="submit"]', 'button[type="submit"]'],
   comprovant: ['a:has-text("Descarregar comprovant")', 'text=/descarregar comprovant/i'],
@@ -121,9 +123,16 @@ export async function pujaFitxerAMossos(input: ConnectorInput): Promise<Connecto
       return { ok: false, errorMsg: 'Login a Mossos incorrecte (revisa usuari/contrasenya a Configuració).' };
     }
 
-    // 2) Anar a "Fitxers massius de viatgers"
-    if (!(await clickFirst(page, SEL.anarMassius)))
-      return { ok: false, errorMsg: 'No s’ha trobat el menú "Fitxers massius de viatgers".' };
+    // 2) Anar a "Fitxers massius de viatgers". El menú pare cal obrir-lo primer
+    //    (el fill està amagat fins que s'expandeix "Enviament informació viatgers").
+    await clickFirst(page, SEL.menuEnviament, 8000); // best-effort (potser ja és obert)
+    await page.waitForLoadState('networkidle').catch(() => {});
+    if (!(await clickFirst(page, SEL.anarMassius))) {
+      // Segon intent: torna-ho a obrir per si la primera navegació l'ha replegat.
+      await clickFirst(page, SEL.menuEnviament, 5000);
+      if (!(await clickFirst(page, SEL.anarMassius)))
+        return { ok: false, errorMsg: 'No s’ha trobat el menú "Fitxers massius de viatgers".' };
+    }
     await page.waitForLoadState('networkidle').catch(() => {});
 
     // 3) Pujar el fitxer (des de buffer en memòria)
