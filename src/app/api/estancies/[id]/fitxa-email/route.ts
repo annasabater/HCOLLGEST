@@ -4,12 +4,10 @@ import { audit } from '@/lib/audit';
 import { handleApiError, notFound, ok } from '@/lib/http';
 import { buildFitxaPdf } from '@/lib/pdf/fitxa';
 import { sendEmail } from '@/lib/email';
-import { z } from 'zod';
-
 const ESTABLIMENT_ID = 'hostal-coll';
 type Ctx = { params: Promise<{ id: string }> };
 
-const BodySchema = z.object({ to: z.string().email() });
+const HOSTAL_EMAIL = process.env.BACKUP_EMAIL_TO ?? 'hostalcoll@gmail.com';
 
 // POST /api/estancies/:id/fitxa-email — envia la fitxa PDF de registre per correu
 export async function POST(req: Request, ctx: Ctx) {
@@ -18,8 +16,7 @@ export async function POST(req: Request, ctx: Ctx) {
     if (auth instanceof Response) return auth;
     const { id } = await ctx.params;
 
-    const body = await req.json().catch(() => null);
-    const { to } = BodySchema.parse(body);
+    const to = HOSTAL_EMAIL;
 
     const estancia = await prisma.estancia.findFirst({ where: { id, deletedAt: null } });
     if (!estancia) return notFound();

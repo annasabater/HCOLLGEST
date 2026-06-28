@@ -122,10 +122,7 @@ export default async function JustificantsPage() {
                               <FileSignature className="h-4 w-4" /> Fitxa PDF
                             </Button>
                           </a>
-                          <EnviarCorreuButton
-                            apiUrl={`/api/estancies/${e.id}/fitxa-email`}
-                            defaultEmail={titular?.email ?? ''}
-                          />
+                          <EnviarCorreuButton apiUrl={`/api/estancies/${e.id}/fitxa-email`} />
                         </div>
                       </Td>
                       <Td>{pendents && <SilenciarAvis estanciaId={e.id} parat={e.avisDadesParat} />}</Td>
@@ -178,10 +175,7 @@ export default async function JustificantsPage() {
                             <FileCheck className="h-4 w-4" /> PDF
                           </Button>
                         </a>
-                        <EnviarCorreuButton
-                          apiUrl={`/api/enviaments/${env.id}/email`}
-                          defaultEmail={titular?.email ?? ''}
-                        />
+                        <EnviarCorreuButton apiUrl={`/api/enviaments/${env.id}/email`} />
                         <EliminarComprovant id={env.id} fitxerNom={env.fitxerNom} />
                       </div>
                     </Td>

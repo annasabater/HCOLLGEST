@@ -7,11 +7,9 @@ import { readUpload } from '@/lib/storage';
 import { sendEmail } from '@/lib/email';
 import { formatDate } from '@/lib/utils';
 import { ESTAT_ENVIAMENT_LABELS, TIPUS_DOCUMENT_LABELS } from '@/lib/validation/enums';
-import { z } from 'zod';
-
 type Ctx = { params: Promise<{ id: string }> };
 
-const BodySchema = z.object({ to: z.string().email() });
+const HOSTAL_EMAIL = process.env.BACKUP_EMAIL_TO ?? 'hostalcoll@gmail.com';
 
 // POST /api/enviaments/:id/email — envia el comprovant PDF de Mossos per correu
 export async function POST(req: Request, ctx: Ctx) {
@@ -20,8 +18,7 @@ export async function POST(req: Request, ctx: Ctx) {
     if (auth instanceof Response) return auth;
     const { id } = await ctx.params;
 
-    const body = await req.json().catch(() => null);
-    const { to } = BodySchema.parse(body);
+    const to = HOSTAL_EMAIL;
 
     const env = await prisma.enviamentMossos.findUnique({
       where: { id },
