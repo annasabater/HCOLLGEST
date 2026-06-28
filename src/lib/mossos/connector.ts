@@ -13,12 +13,11 @@
  */
 import 'server-only';
 import { chromium, type Page } from 'playwright-core';
-import { mkdtemp, readFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { getBrowserbaseConfig } from '../env';
 
 const PORTAL = 'https://registreviatgers.mossos.gencat.cat/mossos_hotels/AppJava/login.do';
+const COMPROVANT_URL =
+  'https://registreviatgers.mossos.gencat.cat/mossos_hotels/AppJava/report.do?reqCode=report&report=COMPROVANTENVIAMENT';
 
 export interface ConnectorInput {
   fileBuffer: Buffer;
@@ -158,25 +157,37 @@ export async function pujaFitxerAMossos(input: ConnectorInput): Promise<Connecto
       return { ok: false, errorMsg: `El portal no ha acceptat el fitxer: ${msg || 'error desconegut'}` };
     }
 
-    // 5) Descarregar el comprovant (best-effort; no és el registre legal).
+    // 5) Comprovant oficial: el descarreguem DINS de la sessió (l'URL del report
+    //    és lligada a la sessió; fora d'ella torna un PDF buit). Fem un fetch al
+    //    navegador remot amb les cookies de sessió i recuperem els bytes.
     let comprovant: Buffer | undefined;
     let comprovantNom: string | undefined;
     try {
-      const dlPromise = page.waitForEvent('download', { timeout: 15000 });
-      await clickFirst(page, SEL.comprovant, 8000);
-      const download = await dlPromise;
-      const dir = await mkdtemp(join(tmpdir(), 'mossos-'));
-      const base = `comprovant-${input.fitxerNom.replace(/\.txt$/, '')}.pdf`;
-      const dest = join(dir, base);
-      await download.saveAs(dest);
-      comprovant = await readFile(dest);
-      comprovantNom = base;
+      const b64 = await page.evaluate(async (u) => {
+        const r = await fetch(u, { credentials: 'include' });
+        if (!r.ok) return null;
+        const ab = await r.arrayBuffer();
+        const a = new Uint8Array(ab);
+        let s = '';
+        const chunk = 0x8000;
+        for (let i = 0; i < a.length; i += chunk) {
+          s += String.fromCharCode.apply(null, Array.from(a.subarray(i, i + chunk)));
+        }
+        return btoa(s);
+      }, COMPROVANT_URL);
+      if (b64) {
+        const buf = Buffer.from(b64, 'base64');
+        // Només el desem si és un PDF de debò (no una pàgina d'error).
+        if (buf.subarray(0, 4).toString('latin1') === '%PDF') {
+          comprovant = buf;
+          comprovantNom = `comprovant-${input.fitxerNom.replace(/\.txt$/, '')}.pdf`;
+        }
+      }
     } catch {
-      /* si no es baixa el comprovant, seguim: l'enviament s'ha fet igual */
+      /* el comprovant no és el registre legal; si no es baixa, l'enviament val igual */
     }
 
-    const codiValidacio = /([A-Z0-9]{6,})/.exec(text)?.[1];
-    return { ok: true, codiValidacio, comprovant, comprovantNom };
+    return { ok: true, comprovant, comprovantNom };
   } catch (err) {
     return { ok: false, errorMsg: err instanceof Error ? err.message : 'Error pujant a Mossos' };
   } finally {
