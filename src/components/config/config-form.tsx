@@ -223,9 +223,10 @@ export function ConfigForm() {
               onChange={(ev) => setE({ ...e, benvingudaAutomatica: ev.target.checked })}
             />
             <span>
-              <span className="font-medium">Benvinguda automàtica</span> — després de la primera nit,
-              el tauler proposa la benvinguda al destinatari triat (sense escollir cada cop). Si es
-              desactiva, el tauler només t’avisa que està pendent i tries a qui enviar-la.
+              <span className="font-medium">Benvinguda automàtica</span> — el correu de benvinguda
+              s&apos;envia sol el matí del segon dia de l&apos;estada (cap a les 10:00 h), sense
+              que hagis de fer res. Si es desactiva, el tauler t&apos;avisa que toca enviar-la i
+              ho fas tu manualment quan vulguis.
             </span>
           </label>
           <label className="flex items-start gap-2 text-sm text-slate-700">
@@ -237,9 +238,9 @@ export function ConfigForm() {
               onChange={(ev) => setE({ ...e, benvingudaTothom: ev.target.checked })}
             />
             <span>
-              <span className="font-medium">Enviar a tots els hostes</span> (només si és automàtica).
-              Si es desactiva, en mode automàtic s’envia només al titular. Els menors no reben mai la
-              benvinguda.
+              <span className="font-medium">Enviar a tots els hostes adults</span> — en mode
+              automàtic, envia el correu a cadascun dels hostes adults. Si es desactiva,
+              s&apos;envia només al titular de la reserva. Els menors no reben mai la benvinguda.
             </span>
           </label>
         </CardBody>
