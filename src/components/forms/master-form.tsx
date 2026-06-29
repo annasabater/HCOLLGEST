@@ -615,15 +615,6 @@ export function MasterForm({
       }}
       className="space-y-6"
     >
-      {draftBanner && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <span>S&apos;ha trobat un esborrany. Vols continuar des d&apos;on ho vas deixar?</span>
-          <div className="flex shrink-0 gap-2">
-            <button type="button" onClick={restaurarDraft} className="font-medium underline">Continuar</button>
-            <button type="button" onClick={descartarDraft} className="text-amber-600 underline">Descartar</button>
-          </div>
-        </div>
-      )}
       {!isEdit && (
         <div className="flex justify-end">
           <button
