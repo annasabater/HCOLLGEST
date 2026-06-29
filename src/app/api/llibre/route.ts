@@ -27,7 +27,7 @@ export async function GET(req: Request) {
 
   const estancies = await prisma.estancia.findMany({
     where,
-    orderBy: { dataEntrada: 'asc' },
+    orderBy: { dataEntrada: 'desc' },
     include: {
       viatgers: {
         include: { huesped: { include: { animals: { where: { deletedAt: null } } } } },

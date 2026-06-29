@@ -10,7 +10,6 @@ import { Field } from '@/components/ui/field';
 import { Card, CardBody } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
-import { GenerarFitxerButton, type FitxerNotice } from '@/components/estancia/generar-fitxer-button';
 import { EliminarEstada } from '@/components/estancia/eliminar-estada';
 import { ESTAT_ENVIAMENT_LABELS } from '@/lib/validation/enums';
 import { getJSON } from '@/lib/api';
@@ -49,7 +48,6 @@ export default function LlibrePage() {
   const [fins, setFins] = useState('');
   const [rows, setRows] = useState<Row[] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [notice, setNotice] = useState<FitxerNotice | null>(null);
   const [nomesMascota, setNomesMascota] = useState(false);
 
   const query = () => {
@@ -132,16 +130,6 @@ export default function LlibrePage() {
         </CardBody>
       </Card>
 
-      {notice && (
-        <div
-          className={`mb-4 flex items-start gap-2 rounded-lg px-3 py-2 text-sm ${
-            notice.tone === 'error' ? 'bg-red-50 text-red-700' : 'bg-brand-50 text-brand-800'
-          }`}
-        >
-          {notice.tone === 'error' && <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />}
-          <span>{notice.msg}</span>
-        </div>
-      )}
 
       {rows === null ? (
         <EmptyState>Carregant…</EmptyState>
@@ -181,27 +169,19 @@ export default function LlibrePage() {
                   <Td>{isFirst ? estatBadge(r.enviamentEstat) : null}</Td>
                   <Td>
                     {isFirst && (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Link href={`/estancies/${r.estanciaId}`}>
-                          <Button variant="outline" size="sm">
-                            <Pencil className="h-4 w-4" /> Editar
+                      <div className="flex items-center gap-1">
+                        <Link href={`/estancies/${r.estanciaId}`} title="Editar">
+                          <Button variant="ghost" size="sm">
+                            <Pencil className="h-4 w-4" />
                           </Button>
                         </Link>
-                        <GenerarFitxerButton
-                          estanciaId={r.estanciaId}
-                          label="Enviar a Mossos"
-                          size="sm"
-                          variant="outline"
-                          contracteLabel={r.numContracte}
-                          onResult={(n) => setNotice(n)}
-                          onDone={() => veure()}
-                        />
                         <EliminarEstada
                           id={r.estanciaId}
                           contracte={r.numContracte}
                           comunicada={r.enviamentEstat === 'ENVIAT' || r.enviamentEstat === 'ACCEPTAT'}
                           redirectTo={null}
                           onDeleted={() => veure()}
+                          iconOnly
                         />
                       </div>
                     )}
