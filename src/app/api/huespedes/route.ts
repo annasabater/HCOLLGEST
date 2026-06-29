@@ -28,7 +28,7 @@ export async function GET(req: Request) {
 
   const huespedes = await prisma.huesped.findMany({
     where,
-    orderBy: [{ cognom1: 'asc' }, { nom: 'asc' }],
+    orderBy: [{ createdAt: 'desc' }],
     take: 100,
   });
   return ok({ huespedes });
