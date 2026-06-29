@@ -78,8 +78,6 @@ export function PagamentsPanel({
 
   // Expanded fiances section
   const [fiancaOberta, setFiancaOberta] = useState(false);
-  const [pucTornar, setPucTornar] = useState<Set<string>>(new Set());
-
   // Edit pagament inline
   const [editPagId, setEditPagId] = useState<string | null>(null);
   const [editPagImport, setEditPagImport] = useState('');
@@ -102,16 +100,12 @@ export function PagamentsPanel({
   const selFiancaTotal = fiances.filter((f) => selFiances.has(f.id)).reduce((a, f) => a + f.import, 0);
   const selTotal = selPagTotal + selFiancaTotal;
 
-  const fiancesActives = fiances.filter((f) => f.estat !== 'TORNAT');
   const fiancesCustodia = fiances.filter((f) => f.estat === 'EN_CUSTODIA');
-  const custodia = fiancesCustodia.reduce((a, f) => a + f.import, 0);
 
   const toggle = (id: string) =>
     setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const toggleFianca = (id: string) =>
     setSelFiances((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  const togglePucTornar = (id: string) =>
-    setPucTornar((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   function obrir(t: 'PAGAMENT' | 'FIANCA') {
     setTipus(t);
@@ -271,7 +265,7 @@ export function PagamentsPanel({
     }
   }
 
-  const teBres = aCompte.length > 0 || facturats.length > 0 || fiancesActives.length > 0;
+  const teBres = aCompte.length > 0 || facturats.length > 0 || fiancesCustodia.length > 0 || fiances.some((f) => f.estat !== 'EN_CUSTODIA');
 
   return (
     <div className="space-y-4">
