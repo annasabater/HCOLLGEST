@@ -65,7 +65,7 @@ export function FacturaPanel({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [tipusDocument, setTipusDocument] = useState('RECIBO');
+  const [tipusDocument, setTipusDocument] = useState('FACTURA_SIMPLIFICADA');
 
   // Import suggerit: suma de pagaments a compte + fiances en custòdia (si n'hi ha),
   // o bé el preu suggerit per les nits, o buit.
@@ -195,7 +195,7 @@ export function FacturaPanel({
           {/* Tipus de document */}
           <div className="flex items-center gap-3">
             <span className="text-xs font-medium text-slate-500">Tipus:</span>
-            {(['RECIBO', 'FACTURA_SIMPLIFICADA', 'FACTURA'] as const).map((t) => (
+            {(['FACTURA_SIMPLIFICADA', 'FACTURA'] as const).map((t) => (
               <label key={t} className="flex items-center gap-1.5 text-sm cursor-pointer">
                 <input
                   type="radio"
