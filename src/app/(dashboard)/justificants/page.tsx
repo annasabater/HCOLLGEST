@@ -8,6 +8,7 @@ import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { SilenciarAvis } from '@/components/estancia/silenciar-avis';
 import { EliminarComprovant } from '@/components/estancia/eliminar-comprovant';
+import { EliminarEstada } from '@/components/estancia/eliminar-estada';
 import { EnviarCorreuButton } from '@/components/justificants/enviar-correu-button';
 import { buildParteFromDb } from '@/lib/mossos/build-parte';
 import { validaParteErrors } from '@/lib/mossos/fitxer';
@@ -123,6 +124,13 @@ export default async function JustificantsPage() {
                             </Button>
                           </a>
                           <EnviarCorreuButton apiUrl={`/api/estancies/${e.id}/fitxa-email`} />
+                          <EliminarEstada
+                            id={e.id}
+                            contracte={`${e.numContracte}/${e.anyContracte}`}
+                            comunicada={e.enviaments.length > 0}
+                            redirectTo={null}
+                            iconOnly
+                          />
                         </div>
                       </Td>
                       <Td>{pendents && <SilenciarAvis estanciaId={e.id} parat={e.avisDadesParat} />}</Td>

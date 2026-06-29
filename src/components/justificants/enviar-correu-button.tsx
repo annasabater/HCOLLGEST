@@ -24,10 +24,18 @@ export function EnviarCorreuButton({ apiUrl }: { apiUrl: string }) {
   }
 
   if (estat === 'ok') {
-    return <span className="flex items-center gap-1 text-xs text-green-600"><Check className="h-3.5 w-3.5" /> Enviat</span>;
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border border-green-300 bg-green-50 px-2.5 py-1.5 text-xs font-medium text-green-700">
+        <Check className="h-3.5 w-3.5" /> Enviat
+      </span>
+    );
   }
   if (estat === 'error') {
-    return <span className="text-xs text-red-600">{errorMsg}</span>;
+    return (
+      <span className="inline-flex max-w-[200px] truncate rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-600" title={errorMsg}>
+        {errorMsg}
+      </span>
+    );
   }
 
   return (
@@ -36,9 +44,9 @@ export function EnviarCorreuButton({ apiUrl }: { apiUrl: string }) {
       onClick={enviar}
       disabled={estat === 'busy'}
       title="Enviar per correu a hostalcoll@gmail.com"
-      className="text-slate-400 hover:text-brand-600 transition-colors disabled:opacity-40"
+      className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:border-brand-400 hover:text-brand-700 disabled:opacity-40"
     >
-      <Mail className="h-4 w-4" />
+      <Mail className="h-3.5 w-3.5" />
     </button>
   );
 }
