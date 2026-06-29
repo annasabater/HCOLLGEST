@@ -97,7 +97,9 @@ export function FacturaPanel({
     { concepte: 'ALLOTJAMENT', descripcio: buildDesc(), import: calcImportSuggerit() },
   ]);
   const [ivaPercent, setIvaPercent] = useState('10');
-  const [aplicarTasa, setAplicarTasa] = useState(true);
+  // Desactivada per defecte: la tassa turística (IEET) ja s'inclou al preu de
+  // l'habitació, no es factura a part. Es pot activar puntualment si cal.
+  const [aplicarTasa, setAplicarTasa] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -269,7 +271,8 @@ export function FacturaPanel({
                 checked={aplicarTasa}
                 onChange={(e) => setAplicarTasa(e.target.checked)}
               />
-              Aplicar tassa turística (IEET)
+              Aplicar tassa turística (IEET) a part
+              <span className="text-xs text-slate-400">— normalment ja va inclosa al preu</span>
             </label>
           </div>
 
