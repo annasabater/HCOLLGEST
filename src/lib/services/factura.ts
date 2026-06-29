@@ -24,6 +24,26 @@ const ESTABLIMENT_ID = 'hostal-coll';
 
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
+/**
+ * Següent número de factura de l'any (format `AAAA-NNNN`). Es calcula a partir
+ * del número MÉS ALT existent + 1 (no per recompte), perquè factures esborrades
+ * o buits no provoquin xocs de número. Inclou també les esborrades (soft-delete)
+ * perquè els números no es reutilitzin mai.
+ */
+export async function proximNumeroFactura(
+  client: Prisma.TransactionClient,
+  year: number,
+): Promise<string> {
+  const prefix = `${year}-`;
+  const last = await client.factura.findFirst({
+    where: { numero: { startsWith: prefix } },
+    orderBy: { numero: 'desc' },
+    select: { numero: true },
+  });
+  const seq = last ? (parseInt(last.numero.slice(prefix.length), 10) || 0) + 1 : 1;
+  return `${prefix}${String(seq).padStart(4, '0')}`;
+}
+
 export async function createFactura(
   raw: FacturaCreateInput,
   actor: { id: string } | null,
@@ -52,11 +72,14 @@ export async function createFactura(
     let numero: string;
     if (input.numero?.trim()) {
       const exist = await tx.factura.findFirst({ where: { numero: input.numero.trim() } });
-      if (exist) throw new Error(`El número de factura "${input.numero.trim()}" ja existeix`);
+      if (exist) {
+        throw new Error(
+          `Validación fallida: el número de factura "${input.numero.trim()}" ja existeix. Canvia'l o deixa'l buit per generar-ne un de nou.`,
+        );
+      }
       numero = input.numero.trim();
     } else {
-      const count = await tx.factura.count({ where: { numero: { startsWith: `${year}-` } } });
-      numero = `${year}-${String(count + 1).padStart(4, '0')}`;
+      numero = await proximNumeroFactura(tx, year);
     }
 
     const data = input.data ?? new Date();
@@ -471,9 +494,7 @@ export async function createFacturaSeleccio(
     // es vinculen a la factura (per referència) i es mostren a part —una sola
     // vegada— al document "amb fiança".
     const total = round2(pagaments.reduce((a, p) => a + Number(p.import), 0));
-    const year = new Date().getFullYear();
-    const count = await tx.factura.count({ where: { numero: { startsWith: `${year}-` } } });
-    const numero = `${year}-${String(count + 1).padStart(4, '0')}`;
+    const numero = await proximNumeroFactura(tx, new Date().getFullYear());
 
     const factura = await tx.factura.create({
       data: {

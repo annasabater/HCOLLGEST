@@ -82,7 +82,7 @@ export default async function JustificantsPage({
           <p>
             Hi ha <strong>{nPendents}</strong>{' '}
             {nPendents === 1 ? 'fitxa amb dades pendents' : 'fitxes amb dades pendents'} (camps
-            obligatoris *). Completa-les o silencia l'avís si no pots obtenir aquelles dades.
+            obligatoris *). Completa-les o silencia l&apos;avís si no pots obtenir aquelles dades.
           </p>
         </div>
       )}
@@ -181,7 +181,7 @@ export default async function JustificantsPage({
         </CardHeader>
         <CardBody>
           {enviaments.length === 0 ? (
-            <EmptyState>Encara no s'ha comunicat cap estada a Mossos.</EmptyState>
+            <EmptyState>Encara no s&apos;ha comunicat cap estada a Mossos.</EmptyState>
           ) : (
             <Table>
               <Thead>
