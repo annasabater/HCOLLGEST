@@ -34,9 +34,12 @@ export default async function JustificantsPage() {
     }),
   ]);
 
-  // Per cada estada: titular, dades que falten (camps obligatoris *, §2.3).
+  // Per cada estada: titular + tots els viatgers, dades que falten (camps obligatoris *, §2.3).
   const fitxes = estancies.map((e) => {
-    const titular = e.viatgers[0]?.huesped ?? null;
+    const titular = e.viatgers.find(v => v.esTitular)?.huesped ?? e.viatgers[0]?.huesped ?? null;
+    const altresViatgers = e.viatgers
+      .filter(v => !v.esTitular && v.huesped)
+      .map(v => v.huesped!);
     let faltes: string[] = [];
     if (establiment) {
       try {
@@ -45,7 +48,7 @@ export default async function JustificantsPage() {
         faltes = [];
       }
     }
-    return { e, titular, faltes };
+    return { e, titular, altresViatgers, faltes };
   });
   const nPendents = fitxes.filter((f) => f.faltes.length > 0 && !f.e.avisDadesParat).length;
 
@@ -89,7 +92,7 @@ export default async function JustificantsPage() {
                 </tr>
               </Thead>
               <tbody>
-                {fitxes.map(({ e, titular, faltes }) => {
+                {fitxes.map(({ e, titular, altresViatgers, faltes }) => {
                   const pendents = faltes.length > 0;
                   const mostraAvis = pendents && !e.avisDadesParat;
                   return (
@@ -98,6 +101,11 @@ export default async function JustificantsPage() {
                         <Link href={`/estancies/${e.id}`} className="font-medium text-slate-900">
                           {titular ? `${titular.nom} ${titular.cognom1}` : '—'}
                         </Link>
+                        {altresViatgers.map(h => (
+                          <div key={h.id} className="text-xs text-slate-500">
+                            {h.nom} {h.cognom1}
+                          </div>
+                        ))}
                         <div className="text-xs text-slate-400">
                           {e.numContracte}/{e.anyContracte}
                         </div>

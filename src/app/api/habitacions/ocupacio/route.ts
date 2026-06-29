@@ -28,21 +28,21 @@ export async function GET(req: Request) {
       dataEntrada: { lte: new Date(fins) },
       dataSortida: { gte: new Date(desde) },
     },
-    include: { viatgers: { where: { esTitular: true }, include: { huesped: true }, take: 1 } },
+    include: { viatgers: { include: { huesped: true }, orderBy: { esTitular: 'desc' } } },
     orderBy: { dataEntrada: 'asc' },
   });
 
   return ok({
-    estades: estades.map((e) => {
-      const h = e.viatgers[0]?.huesped;
-      return {
-        id: e.id,
-        titular: h ? `${h.nom} ${h.cognom1}` : 'Sense titular',
-        dataEntrada: e.dataEntrada,
-        dataSortida: e.dataSortida,
-        estat: e.estat,
-      };
-    }),
+    estades: estades.map((e) => ({
+      id: e.id,
+      titular: (() => { const h = e.viatgers.find(v => v.esTitular)?.huesped ?? e.viatgers[0]?.huesped; return h ? `${h.nom} ${h.cognom1}` : 'Sense titular'; })(),
+      viatgers: e.viatgers
+        .filter(v => v.huesped)
+        .map(v => `${v.huesped!.nom} ${v.huesped!.cognom1}`),
+      dataEntrada: e.dataEntrada,
+      dataSortida: e.dataSortida,
+      estat: e.estat,
+    })),
   });
 }
 

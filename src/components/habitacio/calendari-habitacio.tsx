@@ -14,6 +14,7 @@ type Estat = 'RESERVA' | 'EN_CURS' | 'FINALITZADA' | 'CANCELLADA';
 interface Estada {
   id: string;
   titular: string;
+  viatgers: string[];
   dataEntrada: string;
   dataSortida: string;
   estat: Estat;
@@ -24,7 +25,7 @@ const DOW = ['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'];
 // Colors de cada cel·la segons l'estat de l'estada que ocupa la nit.
 const ESTAT_CELL: Record<Estat, string> = {
   RESERVA: 'bg-amber-100 text-amber-900 hover:bg-amber-200',
-  EN_CURS: 'bg-brand-100 text-brand-900 hover:bg-brand-200',
+  EN_CURS: 'bg-brand-700 text-white hover:bg-brand-800',
   FINALITZADA: 'bg-slate-100 text-slate-500 hover:bg-slate-200',
   CANCELLADA: '',
 };
@@ -105,7 +106,7 @@ export function CalendariHabitacio({ habitacions }: { habitacions: { id: string;
       {/* Llegenda */}
       <div className="mb-3 flex flex-wrap gap-3 text-xs text-slate-500">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-sm bg-brand-200" /> Ocupada
+          <span className="inline-block h-3 w-3 rounded-sm bg-brand-700" /> Ocupada
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-3 w-3 rounded-sm bg-amber-200" /> Reservada
@@ -145,11 +146,11 @@ export function CalendariHabitacio({ habitacions }: { habitacions: { id: string;
                   {day.getDate()}
                 </span>
               </div>
-              {e && (
-                <span className="mt-1 block truncate text-[11px] font-medium leading-tight">
-                  {e.titular}
+              {e && (e.viatgers.length > 0 ? e.viatgers : [e.titular]).map((nom, idx) => (
+                <span key={idx} className="mt-0.5 block truncate text-[10px] font-medium leading-tight">
+                  {nom}
                 </span>
-              )}
+              ))}
             </>
           );
           const base = cn(

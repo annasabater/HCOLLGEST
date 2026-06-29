@@ -171,7 +171,7 @@ export function MasterForm({
       habitacioId: '',
       teInternet: true,
       observacions: '',
-      idioma: 'ca',
+      idioma: 'es',
     },
   );
   const [viatgers, setViatgers] = useState<ViatgerState[]>(() =>
@@ -247,7 +247,7 @@ export function MasterForm({
       habitacioId: '',
       teInternet: true,
       observacions: '',
-      idioma: 'ca',
+      idioma: 'es',
     });
     setViatgers([emptyViatger(true)]);
     setPortaMascota(false);
