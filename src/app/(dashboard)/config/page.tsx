@@ -1,4 +1,4 @@
-import { Download, ShieldCheck, BookOpen, Mail, CloudUpload, Settings } from 'lucide-react';
+import { Download, ShieldCheck, BookOpen, Mail, CloudUpload } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { PageHeader } from '@/components/ui/page-header';
@@ -40,12 +40,7 @@ export default async function ConfigPage({
     <div className="space-y-4">
       <PageHeader title="Configuració" subtitle="Establiment, Mossos, facturació i RGPD" />
 
-      <CollapsibleCard
-        title="Dades de l'establiment"
-        icon={<Settings className="h-4 w-4 text-brand-600" />}
-      >
-        <ConfigForm />
-      </CollapsibleCard>
+      <ConfigForm />
 
       <CollapsibleCard
         title="Còpia automàtica a Google Drive"
