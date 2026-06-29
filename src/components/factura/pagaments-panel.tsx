@@ -39,7 +39,7 @@ export interface Fianca {
 }
 
 const FIANCA_ESTAT_LABEL: Record<Fianca['estat'], string> = {
-  EN_CUSTODIA: 'En custòdia',
+  EN_CUSTODIA: 'Fiança',
   TORNAT: 'Tornada',
   RETINGUT: 'Retinguda (ingrés)',
 };
@@ -72,8 +72,9 @@ export function PagamentsPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Selecció per crear factura
+  // Selecció per crear factura (pagaments + fiances)
   const [sel, setSel] = useState<Set<string>>(new Set());
+  const [selFiances, setSelFiances] = useState<Set<string>>(new Set());
 
   // Expanded fiances section
   const [fiancaOberta, setFiancaOberta] = useState(false);
@@ -97,7 +98,9 @@ export function PagamentsPanel({
   const aCompte = pagaments.filter((p) => !p.facturaId);
   const facturats = pagaments.filter((p) => p.facturaId);
   const totalACompte = aCompte.reduce((a, p) => a + p.import, 0);
-  const selTotal = aCompte.filter((p) => sel.has(p.id)).reduce((a, p) => a + p.import, 0);
+  const selPagTotal = aCompte.filter((p) => sel.has(p.id)).reduce((a, p) => a + p.import, 0);
+  const selFiancaTotal = fiances.filter((f) => selFiances.has(f.id)).reduce((a, f) => a + f.import, 0);
+  const selTotal = selPagTotal + selFiancaTotal;
 
   const fiancesActives = fiances.filter((f) => f.estat !== 'TORNAT');
   const fiancesCustodia = fiances.filter((f) => f.estat === 'EN_CUSTODIA');
@@ -105,6 +108,8 @@ export function PagamentsPanel({
 
   const toggle = (id: string) =>
     setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const toggleFianca = (id: string) =>
+    setSelFiances((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const togglePucTornar = (id: string) =>
     setPucTornar((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
@@ -224,15 +229,18 @@ export function PagamentsPanel({
 
   async function crearFactura(tipusDocument: 'FACTURA_SIMPLIFICADA' | 'FACTURA') {
     const ids = aCompte.filter((p) => sel.has(p.id)).map((p) => p.id);
-    if (!ids.length) return;
+    const fIds = fiances.filter((f) => selFiances.has(f.id)).map((f) => f.id);
+    if (!ids.length && !fIds.length) return;
     setBusy(true);
     setError(null);
     try {
       const res = await postJSON(`/api/estancies/${estanciaId}/factura-seleccio`, {
         pagamentIds: ids,
+        fiancaIds: fIds,
         tipusDocument,
       }) as { factura: { id: string } };
       setSel(new Set());
+      setSelFiances(new Set());
       window.open(`/imprimir/factura-simple/${res.factura.id}`, '_blank');
       router.refresh();
     } catch (err) {
@@ -341,18 +349,18 @@ export function PagamentsPanel({
             )
           )}
 
-          {/* Fiances en custòdia — visualització ràpida (no seleccionables aquí) */}
+          {/* Fiances en custòdia — seleccionables per incloure a la factura */}
           {fiancesCustodia.map((f) => (
-            <div
+            <label
               key={f.id}
-              className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2 text-sm"
+              className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2 text-sm cursor-pointer"
             >
-              <ShieldCheck className="h-4 w-4 text-amber-500 shrink-0" />
+              <input type="checkbox" checked={selFiances.has(f.id)} onChange={() => toggleFianca(f.id)} />
               <span className="font-medium text-slate-800">{formatEur(f.import)}</span>
               <span className="text-slate-400">
                 · {f.notes ?? 'Fiança'} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
               </span>
-            </div>
+            </label>
           ))}
 
           {selTotal > 0 && (
@@ -403,7 +411,7 @@ export function PagamentsPanel({
               <ShieldCheck className="h-3.5 w-3.5" /> Fiances (garantia retornable)
             </p>
             <span className="flex items-center gap-2 text-xs text-slate-500">
-              En custòdia: <strong>{formatEur(custodia)}</strong>
+              Fiança: <strong>{formatEur(custodia)}</strong>
               <ChevronDown className={`h-3.5 w-3.5 transition-transform ${fiancaOberta ? 'rotate-180' : ''}`} />
             </span>
           </button>

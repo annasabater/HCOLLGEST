@@ -67,9 +67,13 @@ export const PagamentEstadaSchema = z.object({
 });
 
 export const FacturaSeleccioSchema = z.object({
-  pagamentIds: z.array(z.string().min(1)).min(1, 'Selecciona almenys un pagament'),
+  pagamentIds: z.array(z.string().min(1)).default([]),
+  fiancaIds: z.array(z.string().min(1)).default([]),
   tipusDocument: z.enum(['RECIBO', 'FACTURA', 'FACTURA_SIMPLIFICADA']).default('RECIBO'),
-});
+}).refine(
+  (d) => d.pagamentIds.length + d.fiancaIds.length > 0,
+  { message: 'Selecciona almenys un pagament o fiança' },
+);
 
 export type FacturaCreateInput = z.input<typeof FacturaCreateSchema>;
 export type LiniaInput = z.input<typeof LiniaInputSchema>;
