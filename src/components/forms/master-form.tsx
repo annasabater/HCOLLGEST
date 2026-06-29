@@ -182,8 +182,8 @@ export function MasterForm({
   const [mascotes, setMascotes] = useState<{ nom: string; especie: string; mida: string }[]>([]);
   // Municipis (INE) per província, carregats sota demanda per al selector.
   const [municipisCache, setMunicipisCache] = useState<Record<string, string[]>>({});
-  const [pagaments, setPagaments] = useState<{ import: string; metode: string }[]>([]);
-  const [fiances, setFiances] = useState<{ import: string; metode: string }[]>([]);
+  const [pagaments, setPagaments] = useState<{ import: string; metode: string; data: string; etapa: string; observacions: string }[]>([]);
+  const [fiances, setFiances] = useState<{ import: string; metode: string; data: string; observacions: string }[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -337,15 +337,16 @@ export function MasterForm({
   const removeMascota = (i: number) => setMascotes((prev) => prev.filter((_, idx) => idx !== i));
 
   // --- Cobrament (opcional): import + mètode, repetible (X efectiu, Y transferència…) ---
-  const addPagament = () => setPagaments((prev) => [...prev, { import: '', metode: 'EFECTIU' }]);
-  const setPag = (i: number, patch: Partial<{ import: string; metode: string }>) =>
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const addPagament = () => setPagaments((prev) => [...prev, { import: '', metode: 'EFECTIU', data: todayStr, etapa: 'A compte', observacions: '' }]);
+  const setPag = (i: number, patch: Partial<{ import: string; metode: string; data: string; etapa: string; observacions: string }>) =>
     setPagaments((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
   const removePagament = (i: number) => setPagaments((prev) => prev.filter((_, idx) => idx !== i));
   const totalPagaments = pagaments.reduce((a, p) => a + (Number(p.import) || 0), 0);
 
   // --- Fiança (opcional): garantia retornable, va a custòdia (no és ingrés) ---
-  const addFianca = () => setFiances((prev) => [...prev, { import: '', metode: 'EFECTIU' }]);
-  const setFia = (i: number, patch: Partial<{ import: string; metode: string }>) =>
+  const addFianca = () => setFiances((prev) => [...prev, { import: '', metode: 'EFECTIU', data: todayStr, observacions: '' }]);
+  const setFia = (i: number, patch: Partial<{ import: string; metode: string; data: string; observacions: string }>) =>
     setFiances((prev) => prev.map((f, idx) => (idx === i ? { ...f, ...patch } : f)));
   const removeFianca = (i: number) => setFiances((prev) => prev.filter((_, idx) => idx !== i));
   const totalFiances = fiances.reduce((a, f) => a + (Number(f.import) || 0), 0);
@@ -436,6 +437,9 @@ export function MasterForm({
         .map((p) => ({
           metode: p.metode as (typeof metodeCobramentValues)[number],
           import: Number(p.import),
+          data: p.data || undefined,
+          descripcio: p.etapa !== 'Altre' ? p.etapa : undefined,
+          observacions: p.observacions || undefined,
         })),
       // Fiances opcionals: garantia retornable (custòdia, no és ingrés).
       fiances: fiances
@@ -443,6 +447,8 @@ export function MasterForm({
         .map((f) => ({
           metode: f.metode as (typeof metodeCobramentValues)[number],
           import: Number(f.import),
+          data: f.data || undefined,
+          observacions: f.observacions || undefined,
         })),
     };
   }
@@ -784,41 +790,47 @@ export function MasterForm({
             en efectiu i una altra per transferència). En desar es crearà un rebut amb aquests
             cobraments. Si no, ho pots fer després des de la fitxa de l’estada.
           </p>
+          {pagaments.length === 0 && (
+            <p className="text-sm italic text-slate-400">Sense pagaments ni fiances registrats.</p>
+          )}
           {pagaments.map((p, i) => (
-            <div key={i} className="flex flex-wrap items-center gap-2">
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="Import €"
-                className="w-32"
-                value={p.import}
-                onChange={(e) => setPag(i, { import: e.target.value })}
-              />
-              <Select
-                className="w-48"
-                value={p.metode}
-                onChange={(e) => setPag(i, { metode: e.target.value })}
-              >
-                {optionsFrom(metodeCobramentValues, METODE_COBRAMENT_LABELS).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-              <button
-                type="button"
-                className="text-slate-400 hover:text-red-600"
-                onClick={() => removePagament(i)}
-                aria-label="Treure cobrament"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+            <div key={i} className="space-y-2 rounded-lg border border-slate-200 p-3">
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  type="number" step="0.01" min="0" placeholder="Import €"
+                  value={p.import} onChange={(e) => setPag(i, { import: e.target.value })}
+                />
+                <Select value={p.metode} onChange={(e) => setPag(i, { metode: e.target.value })}>
+                  {optionsFrom(metodeCobramentValues, METODE_COBRAMENT_LABELS).map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </Select>
+                <Input
+                  type="date" value={p.data}
+                  onChange={(e) => setPag(i, { data: e.target.value })}
+                />
+                <Select value={p.etapa} onChange={(e) => setPag(i, { etapa: e.target.value })}>
+                  <option value="A compte">A compte (reserva anticipada)</option>
+                  <option value="Cobro">Cobro (pagament a l&apos;arribada)</option>
+                  <option value="Total">Total (pagament complet)</option>
+                  <option value="Altre">Altre…</option>
+                </Select>
+                <Input
+                  placeholder="Observacions internes (no apareix a la factura)"
+                  value={p.observacions} onChange={(e) => setPag(i, { observacions: e.target.value })}
+                  className="col-span-2"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" size="sm" variant="ghost" onClick={() => removePagament(i)}>
+                  Cancel·lar
+                </Button>
+              </div>
             </div>
           ))}
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" size="sm" variant="ghost" onClick={addPagament}>
-              <Plus className="h-4 w-4" /> Afegir cobrament
+            <Button type="button" size="sm" variant="outline" onClick={addPagament}>
+              <Plus className="h-4 w-4" /> Afegir pagament
             </Button>
             {pagaments.length > 0 && (
               <span className="text-sm text-slate-600">
@@ -835,39 +847,37 @@ export function MasterForm({
             </p>
             <div className="mt-2 space-y-3">
               {fiances.map((f, i) => (
-                <div key={i} className="flex flex-wrap items-center gap-2">
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="Import €"
-                    className="w-32"
-                    value={f.import}
-                    onChange={(e) => setFia(i, { import: e.target.value })}
-                  />
-                  <Select
-                    className="w-48"
-                    value={f.metode}
-                    onChange={(e) => setFia(i, { metode: e.target.value })}
-                  >
-                    {optionsFrom(metodeCobramentValues, METODE_COBRAMENT_LABELS).map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </Select>
-                  <button
-                    type="button"
-                    className="text-slate-400 hover:text-red-600"
-                    onClick={() => removeFianca(i)}
-                    aria-label="Treure fiança"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                <div key={i} className="space-y-2 rounded-lg border border-slate-200 p-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      type="number" step="0.01" min="0" placeholder="Import €"
+                      value={f.import} onChange={(e) => setFia(i, { import: e.target.value })}
+                    />
+                    <Select value={f.metode} onChange={(e) => setFia(i, { metode: e.target.value })}>
+                      {optionsFrom(metodeCobramentValues, METODE_COBRAMENT_LABELS).map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </Select>
+                    <Input
+                      type="date" value={f.data}
+                      onChange={(e) => setFia(i, { data: e.target.value })}
+                      className="col-span-2"
+                    />
+                    <Input
+                      placeholder="Observacions internes"
+                      value={f.observacions} onChange={(e) => setFia(i, { observacions: e.target.value })}
+                      className="col-span-2"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="button" size="sm" variant="ghost" onClick={() => removeFianca(i)}>
+                      Cancel·lar
+                    </Button>
+                  </div>
                 </div>
               ))}
               <div className="flex flex-wrap items-center gap-3">
-                <Button type="button" size="sm" variant="ghost" onClick={addFianca}>
+                <Button type="button" size="sm" variant="outline" onClick={addFianca}>
                   <Plus className="h-4 w-4" /> Afegir fiança
                 </Button>
                 {fiances.length > 0 && (
