@@ -304,9 +304,10 @@ export async function GET(
       </div>
       <div class="meta">
         <div class="meta-title">Factura</div>
-        <div class="meta-badge">${esc(factura.tipusDocument === 'FACTURA_SIMPLIFICADA' ? 'Simplificada' : '')}${ambFianca ? '<span style="font-size:10px;color:#7A6868"> · Amb fiança</span>' : ''}</div>
-        <div class="meta-row"><span class="k">Número</span><span class="v"><input class="in" aria-label="Número" value="${esc(String(factura.estancia.numContracte ?? factura.numero))}"></span></div>
+        <div class="meta-badge">${ambFianca ? '<span style="font-size:10px;color:#7A6868">Amb fiança</span>' : ''}</div>
+        <div class="meta-row"><span class="k">Número</span><span class="v"><input class="in" aria-label="Número" value="${esc(factura.numero)}"></span></div>
         <div class="meta-row"><span class="k">Data</span><span class="v"><input class="in" aria-label="Data" value="${fmtDate(factura.data)}"></span></div>
+        ${factura.estancia.habitacio ? `<div class="meta-row"><span class="k">Habitació</span><span class="v"><input class="in" aria-label="Habitació" value="${esc(factura.estancia.habitacio.nom)}"></span></div>` : ''}
       </div>
     </section>
 
