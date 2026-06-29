@@ -25,9 +25,21 @@ interface Row {
   nom: string;
   cognom1: string;
   cognom2: string;
+  sexe: string;
+  dataNaixement: string;
+  nacionalitat: string;
   tipusDocument: string;
   numDocument: string;
+  dataExpedicio: string;
+  paisEmissor: string;
+  adreca: string;
   municipi: string;
+  codiPostal: string;
+  pais: string;
+  telefon: string;
+  email: string;
+  numPersones: number;
+  parentesc: string;
   mascotes: string;
 }
 
@@ -52,6 +64,7 @@ export default function LlibrePage() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [nomesMascota, setNomesMascota] = useState(false);
+  const [complet, setComplet] = useState(false);
   const [pagina, setPagina] = useState(1);
   const [perPagina, setPerPagina] = useState(25);
 
@@ -72,9 +85,9 @@ export default function LlibrePage() {
     }
   }
 
-  function exportCsv() {
+  function exportXlsx() {
     const p = new URLSearchParams(query());
-    p.set('format', 'csv');
+    p.set('format', 'xlsx');
     window.open(`/api/llibre?${p.toString()}`, '_blank');
   }
 
@@ -134,12 +147,20 @@ export default function LlibrePage() {
             />
             Només amb mascota
           </label>
+          <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={complet}
+              onChange={(e) => setComplet(e.target.checked)}
+            />
+            Llibre complet
+          </label>
           <Button onClick={veure} disabled={loading} variant="outline">
             <Eye className="h-4 w-4" /> {loading ? 'Carregant…' : 'Veure'}
           </Button>
 
-          <Button onClick={exportCsv}>
-            <Download className="h-4 w-4" /> Exportar CSV
+          <Button onClick={exportXlsx}>
+            <Download className="h-4 w-4" /> Exportar Excel
           </Button>
         </CardBody>
       </Card>
@@ -153,13 +174,24 @@ export default function LlibrePage() {
         <Table>
           <Thead>
             <tr>
-              <Th>Contracte</Th>
               <Th>Entrada</Th>
               <Th>Sortida</Th>
               <Th>Nom</Th>
               <Th>Cognoms</Th>
+              {complet && <Th>Sexe</Th>}
+              {complet && <Th>Naixement</Th>}
+              {complet && <Th>Nacionalitat</Th>}
               <Th>Document</Th>
+              {complet && <Th>Data exped.</Th>}
+              {complet && <Th>País emissor</Th>}
+              {complet && <Th>Adreça</Th>}
               <Th>Municipi</Th>
+              {complet && <Th>CP</Th>}
+              {complet && <Th>País</Th>}
+              {complet && <Th>Telèfon</Th>}
+              {complet && <Th>Email</Th>}
+              {complet && <Th>Persones</Th>}
+              {complet && <Th>Parentesc</Th>}
               <Th>Mossos</Th>
               <Th>Accions</Th>
             </tr>
@@ -172,17 +204,28 @@ export default function LlibrePage() {
               const isEven = gIdx % 2 === 0;
               return (
                 <Tr key={i} className={isFirst && i > 0 ? 'border-t-2 border-slate-200' : isFirst ? '' : 'border-t-0'} style={{ backgroundColor: isEven ? 'white' : '#f8f8f8' }}>
-                  <Td>{r.numContracte}</Td>
                   <Td>{r.dataEntrada}</Td>
                   <Td>{r.dataSortida}</Td>
                   <Td>{r.nom}</Td>
                   <Td>
                     {r.cognom1} {r.cognom2}
                   </Td>
+                  {complet && <Td>{r.sexe}</Td>}
+                  {complet && <Td>{r.dataNaixement}</Td>}
+                  {complet && <Td>{r.nacionalitat}</Td>}
                   <Td>
                     {r.tipusDocument} {r.numDocument}
                   </Td>
+                  {complet && <Td>{r.dataExpedicio}</Td>}
+                  {complet && <Td>{r.paisEmissor}</Td>}
+                  {complet && <Td>{r.adreca}</Td>}
                   <Td>{r.municipi}</Td>
+                  {complet && <Td>{r.codiPostal}</Td>}
+                  {complet && <Td>{r.pais}</Td>}
+                  {complet && <Td>{r.telefon}</Td>}
+                  {complet && <Td>{r.email}</Td>}
+                  {complet && <Td>{r.numPersones}</Td>}
+                  {complet && <Td>{r.parentesc}</Td>}
                   <Td>{isFirst ? estatBadge(r.enviamentEstat) : null}</Td>
                   <Td>
                     {isFirst && (

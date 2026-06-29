@@ -13,6 +13,7 @@ import {
   PDF_MIME,
 } from '@/lib/drive';
 import { buildHostesXlsx } from '@/lib/exports/hostes-xlsx';
+import { buildLlibreXlsxMes } from '@/lib/exports/llibre-xlsx';
 import { buildIngressosDespesesXlsx } from '@/lib/exports/ingressos-despeses-xlsx';
 import { buildPersonalXlsx } from '@/lib/exports/personal-xlsx';
 import {
@@ -90,6 +91,10 @@ export async function GET(req: Request) {
     // Acumulatius a l'arrel (es van actualitzant cada mes).
     await fer('Hostes.xlsx', rootId, () => buildHostesXlsx());
     // Del mes, dins la carpeta del mes.
+    // Llibre de registre del mes (tots els camps del registre legal).
+    await fer('Llibre de registre.xlsx', monthFolderId, () =>
+      buildLlibreXlsxMes(monthStart, monthEnd),
+    );
     await fer('Ingressos i despeses.xlsx', monthFolderId, () =>
       buildIngressosDespesesXlsx(monthStart, monthEnd),
     );

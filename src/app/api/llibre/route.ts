@@ -4,9 +4,10 @@ import { authorize, clientIp } from '@/lib/auth/guard';
 import { audit } from '@/lib/audit';
 import { ok } from '@/lib/http';
 import { formatDate } from '@/lib/utils';
-import { PARENTESC_LABELS, TIPUS_DOCUMENT_LABELS, TIPUS_REGISTRE_LABELS, MIDA_ANIMAL_LABELS } from '@/lib/validation/enums';
+import { PARENTESC_LABELS, TIPUS_DOCUMENT_LABELS, TIPUS_REGISTRE_LABELS, MIDA_ANIMAL_LABELS, SEXE_LABELS } from '@/lib/validation/enums';
 import { teVistaRestringida, ocultaDelLlibre } from '@/lib/auth/restriccions';
 import { viatgerEfectiu } from '@/lib/registre-snapshot';
+import { buildLlibreXlsx } from '@/lib/exports/llibre-xlsx';
 
 // GET /api/llibre?desde=&fins=&format=csv — libro de registro (conservar 3 años §2.4)
 export async function GET(req: Request) {
@@ -61,14 +62,21 @@ export async function GET(req: Request) {
         nom: h.nom,
         cognom1: h.cognom1,
         cognom2: h.cognom2 ?? '',
+        sexe: h.sexe ? SEXE_LABELS[h.sexe] : '',
         tipusDocument: h.tipusDocument ? TIPUS_DOCUMENT_LABELS[h.tipusDocument] : '',
         numDocument: h.numDocument ?? '',
         numSuport: h.numSuport ?? '',
+        dataExpedicio: formatDate(h.dataExpedicio),
+        paisEmissor: h.paisEmissor ?? '',
         dataNaixement: formatDate(h.dataNaixement),
         nacionalitat: h.nacionalitat ?? '',
         adreca: h.adreca ?? '',
         municipi: h.municipi ?? h.localitat ?? '',
         codiPostal: h.codiPostal ?? '',
+        pais: h.pais ?? '',
+        telefon: h.telefon ?? '',
+        email: h.email ?? '',
+        numPersones: e.numViatgers,
         esTitular: ev.esTitular ? 'Sí' : '',
         parentesc: ev.parentesc ? PARENTESC_LABELS[ev.parentesc] : '',
         mascotes,
@@ -83,6 +91,17 @@ export async function GET(req: Request) {
     detall: { desde, fins, files: rows.length },
     ip: clientIp(req),
   });
+
+  if (format === 'xlsx') {
+    // Llibre de registre COMPLET en Excel (tots els camps del registre legal).
+    const data = await buildLlibreXlsx(visibles);
+    return new NextResponse(new Uint8Array(data), {
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': `attachment; filename="llibre-registre.xlsx"`,
+      },
+    });
+  }
 
   if (format === 'csv') {
     // El CSV és el registre legal: només els camps del registre, sense metadades d'UI.
@@ -112,7 +131,7 @@ export async function GET(req: Request) {
     const escape = (s: string) => `"${String(s).replace(/"/g, '""')}"`;
     const csv = [
       headers.join(';'),
-      ...rows.map((r) => headers.map((k) => escape((r as Record<string, string>)[k] ?? '')).join(';')),
+      ...rows.map((r) => headers.map((k) => escape(String((r as Record<string, unknown>)[k] ?? ''))).join(';')),
     ].join('\r\n');
     return new NextResponse('﻿' + csv, {
       headers: {
