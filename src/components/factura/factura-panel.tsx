@@ -136,11 +136,13 @@ export function FacturaPanel({
         import: Number(l.import || 0),
       }));
       // Una factura per cada tipus seleccionat (p. ex. simplificada + fiscal).
-      for (const tipusDocument of tipusDocs) {
+      // El número triat només s'aplica a la primera; les altres s'autonumeren
+      // (si no, totes farien servir el mateix número i xocarien).
+      for (let i = 0; i < tipusDocs.length; i++) {
         await postJSON('/api/factures', {
           estanciaId,
-          numero: numero.trim() || undefined,
-          tipusDocument,
+          numero: i === 0 ? numero.trim() || undefined : undefined,
+          tipusDocument: tipusDocs[i],
           ivaPercent: Number(ivaPercent),
           aplicarTasa,
           linies: liniesPayload,
