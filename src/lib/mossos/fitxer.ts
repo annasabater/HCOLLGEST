@@ -287,6 +287,11 @@ export function validaParteErrors(parte: ParteViatgers): string[] {
       if (!v.tipusDocument) errs.push(`${p}: falta el tipus de document`);
       if (!v.numDocument?.trim()) errs.push(`${p}: falta el número de document`);
     }
+    // El número de document té un màxim de 14 caràcters al fitxer de Mossos.
+    if (v.numDocument && v.numDocument.trim().length > 14)
+      errs.push(
+        `${p}: el número de document "${v.numDocument.trim()}" supera els 14 caràcters (màxim de Mossos). Corregeix-lo.`,
+      );
     if (v.tipusDocument === 'DNI_NIF' || v.tipusDocument === 'NIE') {
       if (!v.numSuport?.trim()) errs.push(`${p}: falta el número de suport (DNI/NIE)`);
       else if (v.numSuport.trim().length !== 9)
