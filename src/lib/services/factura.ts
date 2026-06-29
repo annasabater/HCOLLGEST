@@ -82,6 +82,11 @@ export async function createFactura(
 
     // VERI*FACTU — DESACTIVAT: no es generen registres fins que es configuri
     // el certificat AEAT i s'activi explícitament. Tornar a activar quan calgui.
+    // En reactivar-lo, generar registre NOMÉS quan tipusDocument === 'FACTURA'
+    // (factura fiscal F1): ni la simplificada ni el recibo entren a Veri*Factu.
+    // L'import (base/total) ja NO inclou la fiança: el dipòsit és un Diposit a
+    // part (custòdia), mai una línia de factura.
+    // if (input.tipusDocument === 'FACTURA') { /* crear RegistreVerifactu */ }
 
     await audit(
       {

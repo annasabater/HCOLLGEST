@@ -39,8 +39,8 @@ type Linia = { concepte: string; descripcio: string; import: string };
 
 const DOC_OPTIONS = [
   { value: 'RECIBO', label: 'Recibo (sense Veri*Factu)' },
-  { value: 'FACTURA', label: 'Factura fiscal' },
-  { value: 'FACTURA_SIMPLIFICADA', label: 'Factura simplificada (F2)' },
+  { value: 'FACTURA', label: 'Factura fiscal (Veri*Factu)' },
+  { value: 'FACTURA_SIMPLIFICADA', label: 'Factura simplificada (sense Veri*Factu)' },
 ];
 
 export default function VerifactuPage() {
@@ -151,9 +151,11 @@ export default function VerifactuPage() {
         })),
       });
       setInfo(
-        tipusDocument === 'RECIBO'
-          ? 'Recibo creat.'
-          : 'Factura creada i registre Veri*Factu generat (huella encadenada + QR).',
+        tipusDocument === 'FACTURA'
+          ? 'Factura fiscal creada i registre Veri*Factu generat (huella encadenada + QR).'
+          : tipusDocument === 'FACTURA_SIMPLIFICADA'
+            ? 'Factura simplificada creada (no entra a Veri*Factu).'
+            : 'Recibo creat.',
       );
       setLinies([{ concepte: 'ALLOTJAMENT', descripcio: 'Allotjament', import: '' }]);
       loadChain();
@@ -179,10 +181,12 @@ export default function VerifactuPage() {
       <div className="mb-6 flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800">
         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
         <div>
-          Cada <strong>factura</strong> genera un registre d’alta amb <strong>huella SHA-256
-          encadenada</strong> i <strong>QR de cotejo</strong>. Els <strong>recibos</strong> no són
-          factura fiscal i no entren a Veri*Factu. Configura sèrie, mode de proves i dades del
-          software a <Link href="/config" className="underline">Configuració</Link>.
+          Només la <strong>factura fiscal (F1)</strong> genera un registre d’alta amb
+          <strong> huella SHA-256 encadenada</strong> i <strong>QR de cotejo</strong>. Les{' '}
+          <strong>factures simplificades</strong> i els <strong>recibos</strong> no entren a
+          Veri*Factu. L’import de la factura no inclou la <strong>fiança</strong> (és un dipòsit en
+          custòdia, no un ingrés). Configura sèrie, mode de proves i dades del software a{' '}
+          <Link href="/config" className="underline">Configuració</Link>.
         </div>
       </div>
 
@@ -267,7 +271,13 @@ export default function VerifactuPage() {
 
             <div className="flex items-center gap-3 border-t border-slate-100 pt-4">
               <Button type="submit" disabled={saving}>
-                {saving ? 'Emetent…' : esFiscal ? 'Emetre factura (Veri*Factu)' : 'Emetre recibo'}
+                {saving
+                  ? 'Emetent…'
+                  : esF1
+                    ? 'Emetre factura (Veri*Factu)'
+                    : tipusDocument === 'FACTURA_SIMPLIFICADA'
+                      ? 'Emetre factura simplificada'
+                      : 'Emetre recibo'}
               </Button>
               {error && <span className="text-sm text-red-600">{error}</span>}
               {info && <span className="text-sm text-green-600">{info}</span>}
