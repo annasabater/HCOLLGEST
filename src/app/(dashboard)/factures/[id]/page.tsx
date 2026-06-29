@@ -12,11 +12,6 @@ import { formatEur } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
-const DOC_LABEL: Record<string, string> = {
-  RECIBO: 'Rebut',
-  FACTURA: 'Factura fiscal',
-  FACTURA_SIMPLIFICADA: 'Factura simplificada',
-};
 
 function fmtDate(d: Date) {
   return d.toLocaleDateString('ca-ES', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -67,14 +62,12 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
               </p>
             )}
             <div className="flex items-center gap-3 text-sm text-slate-400">
-              <span>{DOC_LABEL[factura.tipusDocument] ?? factura.tipusDocument}</span>
               {factura.estancia.habitacio && (
                 <>
-                  <span>·</span>
                   <span>Hab. {factura.estancia.habitacio.nom}</span>
+                  <span>·</span>
                 </>
               )}
-              <span>·</span>
               <span>{fmtDate(factura.data)}</span>
             </div>
           </div>
@@ -95,6 +88,16 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
             tasaTotal={tasaTotal}
             editable={editable}
           />
+
+          {/* Eliminar */}
+          <div className="pt-2">
+            <EliminarFactura
+              id={factura.id}
+              numero={factura.numero}
+              redirectTo={`/estancies/${factura.estanciaId}`}
+              teVerifactu={!!factura.verifactu}
+            />
+          </div>
         </div>
 
         {/* ── Barra lateral ─────────────────────────────────────────────── */}
@@ -187,15 +190,6 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
             </CardBody>
           </Card>
 
-          {/* Eliminar */}
-          <div className="border-t border-slate-100 pt-2">
-            <EliminarFactura
-              id={factura.id}
-              numero={factura.numero}
-              redirectTo={`/estancies/${factura.estanciaId}`}
-              teVerifactu={!!factura.verifactu}
-            />
-          </div>
         </div>
       </div>
     </div>

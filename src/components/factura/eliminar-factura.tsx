@@ -44,7 +44,7 @@ export function EliminarFactura({
   return (
     <>
       <Button type="button" variant="outline" size="sm" onClick={() => setObert(true)} disabled={busy} title="Eliminar factura">
-        <Trash2 className="h-4 w-4 text-red-600" /> Eliminar
+        <Trash2 className="h-4 w-4 text-red-600" /> Eliminar factura
       </Button>
       <ConfirmDialog
         open={obert}

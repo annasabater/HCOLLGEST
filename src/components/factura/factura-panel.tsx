@@ -50,7 +50,6 @@ export function FacturaPanel({
   dataSortida,
   numContracte: _numContracte,
   pagaments,
-  fiances,
 }: {
   estanciaId: string;
   factures: FacturaLite[];
@@ -62,24 +61,19 @@ export function FacturaPanel({
   dataSortida?: string | null;
   numContracte?: string | null;
   pagaments?: { import: number; facturaId: string | null }[];
-  fiances?: { import: number; estat: string }[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   // Es poden triar els dos tipus alhora: es crea una factura de cada tipus.
   const [tipusDocs, setTipusDocs] = useState<string[]>(['FACTURA_SIMPLIFICADA']);
 
-  // Import suggerit: suma de pagaments a compte + fiances en custòdia (si n'hi ha),
-  // o bé el preu suggerit per les nits, o buit.
+  // Import suggerit: NOMÉS els pagaments a compte (ingrés). La fiança és un dipòsit
+  // en custòdia i NO entra a la factura; s'afegeix a part al document "amb fiança".
   function calcImportSuggerit(): string {
     const totalPagaments = (pagaments ?? [])
       .filter((p) => !p.facturaId)
       .reduce((a, p) => a + p.import, 0);
-    const totalFiances = (fiances ?? [])
-      .filter((f) => f.estat === 'EN_CUSTODIA')
-      .reduce((a, f) => a + f.import, 0);
-    const total = totalPagaments + totalFiances;
-    if (total > 0) return String(total);
+    if (totalPagaments > 0) return String(totalPagaments);
     if (preuSuggerit) return String(preuSuggerit);
     return '';
   }

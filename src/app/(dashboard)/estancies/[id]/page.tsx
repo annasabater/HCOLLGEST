@@ -336,11 +336,6 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   import: Number(c.import),
                   facturaId: c.facturaId,
                 }))}
-                fiances={estancia.diposits.map((d) => ({
-                  import: Number(d.import),
-                  estat: d.estat,
-                  facturaId: d.facturaId ?? null,
-                }))}
                 factures={estancia.factures.map((f) => ({
                   id: f.id,
                   numero: f.numero,
