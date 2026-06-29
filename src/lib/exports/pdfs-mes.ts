@@ -7,6 +7,7 @@ import 'server-only';
 import { prisma } from './../db';
 import { buildFitxaPdf } from '../pdf/fitxa';
 import { buildReportPdf, type ReportSection } from '../pdf/report';
+import { readUpload } from '../storage';
 import { formatDate } from '../utils';
 import {
   METODE_COBRAMENT_LABELS,
@@ -66,6 +67,17 @@ export async function buildComprovantsPdfs(monthStart: Date, monthEnd: Date): Pr
 
   const out: PdfFitxer[] = [];
   for (const env of enviaments) {
+    // Si tenim el comprovant oficial descarregat del portal, l'usem directament.
+    if (env.justificantPath) {
+      try {
+        const pdf = await readUpload(env.justificantPath);
+        out.push({ name: `Comprovant ${safe(env.fitxerNom.replace(/\.txt$/, ''))}.pdf`, data: Buffer.from(pdf) });
+        continue;
+      } catch {
+        // Si no es pot llegir, generem el resum
+      }
+    }
+
     const sections: ReportSection[] = [
       {
         heading: 'Dades de la comunicació',
