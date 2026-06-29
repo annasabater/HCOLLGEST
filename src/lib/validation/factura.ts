@@ -98,4 +98,5 @@ export const DipositEditSchema = z.object({
   metode: z.enum(metodeCobramentValues).optional(),
   notes: optStr,
   data: z.coerce.date().optional(),
+  facturaId: z.string().min(1).nullable().optional(),
 });

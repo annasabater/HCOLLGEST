@@ -37,7 +37,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       return ok({ diposit });
     }
 
-    // Edició de camps (import/mètode/notes) — permesa en qualsevol estat.
+    // Edició de camps (import/mètode/notes/facturaId) — permesa en qualsevol estat.
     const data = DipositEditSchema.parse(body);
     const diposit = await prisma.diposit.update({
       where: { id },
@@ -46,6 +46,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
         ...(data.metode ? { metode: data.metode } : {}),
         ...(data.notes !== undefined ? { notes: data.notes ?? null } : {}),
         ...(data.data ? { data: data.data } : {}),
+        ...('facturaId' in data ? { facturaId: data.facturaId ?? null } : {}),
       },
     });
     await audit({ usuariId: auth.id, accio: 'MODIFICACIO', entitat: 'diposit', entitatId: id, detall: { camps: Object.keys(data) }, ip: clientIp(req) });

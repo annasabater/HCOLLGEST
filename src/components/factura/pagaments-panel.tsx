@@ -93,6 +93,7 @@ export function PagamentsPanel({
   const [editFiancaMetode, setEditFiancaMetode] = useState('EFECTIU');
   const [editFiancaData, setEditFiancaData] = useState('');
   const [editFiancaNotes, setEditFiancaNotes] = useState('');
+  const [editFiancaFacturaId, setEditFiancaFacturaId] = useState<string>('');
   const [editFiancaBusy, setEditFiancaBusy] = useState(false);
 
   const aCompte = pagaments.filter((p) => !p.facturaId);
@@ -152,6 +153,7 @@ export function PagamentsPanel({
     setEditFiancaMetode(f.metode);
     setEditFiancaData(f.data.slice(0, 10));
     setEditFiancaNotes(f.notes ?? '');
+    setEditFiancaFacturaId(f.facturaId ?? '');
   }
 
   async function desarFianca(id: string) {
@@ -162,6 +164,7 @@ export function PagamentsPanel({
         metode: editFiancaMetode,
         data: editFiancaData || undefined,
         notes: editFiancaNotes || undefined,
+        facturaId: editFiancaFacturaId || null,
       });
       setEditFiancaId(null);
       router.refresh();
@@ -371,6 +374,17 @@ export function PagamentsPanel({
                     <label className="mb-1 block text-xs text-slate-500">Etiqueta</label>
                     <Input placeholder="Cobro, A compte…" value={editFiancaNotes} onChange={(e) => setEditFiancaNotes(e.target.value)} />
                   </div>
+                  {(facturesActuals ?? []).length > 0 && (
+                    <div className="w-44">
+                      <label className="mb-1 block text-xs text-slate-500">Vincular a factura</label>
+                      <Select value={editFiancaFacturaId} onChange={(e) => setEditFiancaFacturaId(e.target.value)}>
+                        <option value="">— Sense factura —</option>
+                        {(facturesActuals ?? []).map((fac) => (
+                          <option key={fac.id} value={fac.id}>{fac.numero}</option>
+                        ))}
+                      </Select>
+                    </div>
+                  )}
                   <Button type="button" size="sm" onClick={() => desarFianca(f.id)} disabled={editFiancaBusy}>
                     <Check className="h-4 w-4" /> Desar
                   </Button>
