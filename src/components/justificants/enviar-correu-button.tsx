@@ -1,13 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Mail, Check, RotateCcw } from 'lucide-react';
 import { postJSON, ApiError } from '@/lib/api';
+
+const STORAGE_KEY = (apiUrl: string) => `correu_enviat:${apiUrl}`;
 
 export function EnviarCorreuButton({ apiUrl }: { apiUrl: string }) {
   const [estat, setEstat] = useState<'idle' | 'busy' | 'ok' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [hora, setHora] = useState<string | null>(null);
+
+  // Recupera l'hora d'enviament persistent del localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY(apiUrl));
+      if (saved) {
+        setHora(saved);
+        setEstat('ok');
+      }
+    } catch {}
+  }, [apiUrl]);
 
   async function enviar() {
     if (estat === 'busy') return;
@@ -16,7 +29,9 @@ export function EnviarCorreuButton({ apiUrl }: { apiUrl: string }) {
     try {
       await postJSON(apiUrl, {});
       const ara = new Date();
-      setHora(`${String(ara.getHours()).padStart(2, '0')}:${String(ara.getMinutes()).padStart(2, '0')}`);
+      const horaStr = `${String(ara.getHours()).padStart(2, '0')}:${String(ara.getMinutes()).padStart(2, '0')} ${ara.getDate().toString().padStart(2, '0')}/${(ara.getMonth() + 1).toString().padStart(2, '0')}`;
+      try { localStorage.setItem(STORAGE_KEY(apiUrl), horaStr); } catch {}
+      setHora(horaStr);
       setEstat('ok');
     } catch (err) {
       setErrorMsg(err instanceof ApiError ? err.message : 'Error enviant');
