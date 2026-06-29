@@ -223,10 +223,10 @@ export function ConfigForm() {
               onChange={(ev) => setE({ ...e, benvingudaAutomatica: ev.target.checked })}
             />
             <span>
-              <span className="font-medium">Benvinguda automàtica</span> — el correu de benvinguda
-              s&apos;envia sol el matí del segon dia de l&apos;estada (cap a les 10:00 h), sense
-              que hagis de fer res. Si es desactiva, el tauler t&apos;avisa que toca enviar-la i
-              ho fas tu manualment quan vulguis.
+              <span className="font-medium">Mostrar només el titular</span> — quan el tauler avisa
+              que toca enviar la benvinguda per WhatsApp, mostra directament el botó del titular
+              sense llistar tots els hostes. Si es desactiva, apareixen tots els adults per triar
+              a qui enviar.
             </span>
           </label>
           <label className="flex items-start gap-2 text-sm text-slate-700">
@@ -238,9 +238,9 @@ export function ConfigForm() {
               onChange={(ev) => setE({ ...e, benvingudaTothom: ev.target.checked })}
             />
             <span>
-              <span className="font-medium">Enviar a tots els hostes adults</span> — en mode
-              automàtic, envia el correu a cadascun dels hostes adults. Si es desactiva,
-              s&apos;envia només al titular de la reserva. Els menors no reben mai la benvinguda.
+              <span className="font-medium">Mostrar tots els hostes adults</span> — si s&apos;activa
+              l&apos;opció anterior, aquesta permet tornar a veure tots els adults al tauler.
+              Els menors no hi apareixen mai.
             </span>
           </label>
         </CardBody>
