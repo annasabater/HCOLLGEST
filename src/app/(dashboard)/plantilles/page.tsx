@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MessageCircle, Copy, Sparkles, Users, Phone, Hand, Mail, CheckCircle } from 'lucide-react';
+import { MessageCircle, Copy, Sparkles, Users, Phone, Hand, Mail, CheckCircle, RotateCcw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input, Select, Textarea } from '@/components/ui/input';
@@ -190,6 +190,12 @@ function NetejaCard() {
     window.localStorage.setItem(`plantilla_neteja_${editLang}`, v);
   }
 
+  // Torna a la plantilla per defecte (esborra la versió guardada al navegador).
+  function restaurar() {
+    window.localStorage.removeItem(`plantilla_neteja_${editLang}`);
+    setTpls((prev) => ({ ...prev, [editLang]: PLANTILLA_NETEJA[editLang] }));
+  }
+
   return (
     <Card>
       <CardHeader className="flex items-center gap-2">
@@ -293,10 +299,15 @@ function NetejaCard() {
             <LangSelect value={editLang} onChange={setEditLang} className="max-w-40" />
           </div>
           <Textarea className="mt-2" rows={2} value={tpls[editLang]} onChange={(e) => saveTpl(e.target.value)} />
-          <p className="mt-1 text-xs text-slate-400">
-            Variables: {'{nom}'} {'{data}'} {'{habitacions}'} {'{pasillo}'} {'{pati}'} {'{vorera}'}{' '}
-            {'{hora}'}. Es desa al navegador.
-          </p>
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <p className="text-xs text-slate-400">
+              Variables: {'{nom}'} {'{data}'} {'{habitacions}'} {'{pasillo}'} {'{pati}'} {'{vorera}'}{' '}
+              {'{hora}'}. Es desa al navegador.
+            </p>
+            <Button type="button" variant="ghost" size="sm" onClick={restaurar}>
+              <RotateCcw className="h-3.5 w-3.5" /> Restaurar per defecte
+            </Button>
+          </div>
         </details>
       </CardBody>
     </Card>
