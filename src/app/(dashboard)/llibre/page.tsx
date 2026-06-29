@@ -86,8 +86,13 @@ export default function LlibrePage() {
     (r) => !nomesMascota || (!!r.mascotes && r.mascotes.trim() !== '' && r.mascotes !== '—'),
   );
   const firstRowOf = new Map<string, number>();
+  const groupOf = new Map<string, number>();
+  let groupIdx = 0;
   visibles.forEach((r, i) => {
-    if (!firstRowOf.has(r.estanciaId)) firstRowOf.set(r.estanciaId, i);
+    if (!firstRowOf.has(r.estanciaId)) {
+      firstRowOf.set(r.estanciaId, i);
+      groupOf.set(r.estanciaId, groupIdx++);
+    }
   });
 
   return (
@@ -153,8 +158,10 @@ export default function LlibrePage() {
           <tbody>
             {visibles.map((r, i) => {
               const isFirst = firstRowOf.get(r.estanciaId) === i;
+              const gIdx = groupOf.get(r.estanciaId) ?? 0;
+              const isEven = gIdx % 2 === 0;
               return (
-                <Tr key={i}>
+                <Tr key={i} className={isFirst && i > 0 ? 'border-t-2 border-slate-200' : isFirst ? '' : 'border-t-0'} style={{ backgroundColor: isEven ? 'white' : '#f8f8f8' }}>
                   <Td>{r.numContracte}</Td>
                   <Td>{r.dataEntrada}</Td>
                   <Td>{r.dataSortida}</Td>
