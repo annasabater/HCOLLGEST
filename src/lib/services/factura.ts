@@ -47,10 +47,17 @@ export async function createFactura(
       aplicarTasa: input.aplicarTasa,
     });
 
-    // Numeración: {any}-{seq 4 dígitos}, secuencia POR AÑO (no global).
+    // Numeració: usa el número proporcionat (si és únic) o genera el següent.
     const year = (input.data ?? new Date()).getFullYear();
-    const count = await tx.factura.count({ where: { numero: { startsWith: `${year}-` } } });
-    const numero = `${year}-${String(count + 1).padStart(4, '0')}`;
+    let numero: string;
+    if (input.numero?.trim()) {
+      const exist = await tx.factura.findFirst({ where: { numero: input.numero.trim() } });
+      if (exist) throw new Error(`El número de factura "${input.numero.trim()}" ja existeix`);
+      numero = input.numero.trim();
+    } else {
+      const count = await tx.factura.count({ where: { numero: { startsWith: `${year}-` } } });
+      numero = `${year}-${String(count + 1).padStart(4, '0')}`;
+    }
 
     const data = input.data ?? new Date();
     const factura = await tx.factura.create({

@@ -16,6 +16,7 @@ const optStr = z.preprocess(
 export const FacturaCreateSchema = z
   .object({
     estanciaId: z.string().min(1),
+    numero: optStr,
     data: z.coerce.date().optional(),
     ivaPercent: z.coerce.number().min(0).max(100).default(10),
     aplicarTasa: z.boolean().default(true),

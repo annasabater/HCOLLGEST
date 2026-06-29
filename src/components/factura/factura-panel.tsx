@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { getJSON } from '@/lib/api';
 import { Plus, Trash2, Receipt, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
@@ -100,15 +101,23 @@ export function FacturaPanel({
   // IVA 0% (hostal no aplica IVA d'allotjament).
   const [ivaPercent] = useState('0');
   const [aplicarTasa] = useState(false);
+  const [numero, setNumero] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const setLinia = (i: number, patch: Partial<Linia>) =>
     setLinies((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
-  function obrir() {
+  async function obrir() {
     // Re-calcula l'import cada vegada que s'obre (pagaments poden haver canviat)
     setLinies([{ concepte: 'ALLOTJAMENT', descripcio: buildDesc(), import: calcImportSuggerit() }]);
+    setError(null);
+    try {
+      const res = await getJSON<{ numero: string }>('/api/factures/seguent-numero');
+      setNumero(res.numero);
+    } catch {
+      setNumero('');
+    }
     setOpen(true);
   }
 
@@ -130,6 +139,7 @@ export function FacturaPanel({
       for (const tipusDocument of tipusDocs) {
         await postJSON('/api/factures', {
           estanciaId,
+          numero: numero.trim() || undefined,
           tipusDocument,
           ivaPercent: Number(ivaPercent),
           aplicarTasa,
@@ -217,6 +227,17 @@ export function FacturaPanel({
                 {TIPUS_LABEL[t]}
               </label>
             ))}
+          </div>
+
+          {/* Número de factura */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-slate-500 whitespace-nowrap">Núm. factura:</label>
+            <Input
+              className="h-8 w-40 text-sm"
+              value={numero}
+              onChange={(e) => setNumero(e.target.value)}
+              placeholder="2026-0001"
+            />
           </div>
 
           {/* Línies */}
