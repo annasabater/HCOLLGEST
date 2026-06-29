@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { FileSignature, FileCheck, AlertTriangle } from 'lucide-react';
 import { Paginacio } from '@/components/ui/paginacio';
 import { prisma } from '@/lib/db';
@@ -11,6 +10,7 @@ import { SilenciarAvis } from '@/components/estancia/silenciar-avis';
 import { EliminarComprovant } from '@/components/estancia/eliminar-comprovant';
 import { EliminarEstada } from '@/components/estancia/eliminar-estada';
 import { EnviarCorreuButton } from '@/components/justificants/enviar-correu-button';
+import { FitxaExpandible } from '@/components/justificants/fitxa-expandible';
 import { buildParteFromDb } from '@/lib/mossos/build-parte';
 import { validaParteErrors } from '@/lib/mossos/fitxer';
 import { ESTAT_ENVIAMENT_LABELS } from '@/lib/validation/enums';
@@ -18,54 +18,59 @@ import { formatDate } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
+const PER_PAGINA = 10;
+
 export default async function JustificantsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ pagina?: string; perPagina?: string }>;
+  searchParams: Promise<{ pagina?: string; paginaMossos?: string }>;
 }) {
-  const { pagina: paginaStr, perPagina: perPaginaStr } = await searchParams;
-  const perPagina = [10, 25, 50].includes(Number(perPaginaStr)) ? Number(perPaginaStr) : 25;
+  const { pagina: paginaStr, paginaMossos: paginaMossosStr } = await searchParams;
   const pagina = Math.max(1, Number(paginaStr) || 1);
-  const totalFitxes = await prisma.estancia.count({ where: { deletedAt: null } });
+  const paginaMossos = Math.max(1, Number(paginaMossosStr) || 1);
 
-  const [establiment, estancies] = await Promise.all([
+  const [establiment, totalFitxes, totalMossos, estancies, enviaments] = await Promise.all([
     prisma.establiment.findFirst(),
+    prisma.estancia.count({ where: { deletedAt: null } }),
+    prisma.enviamentMossos.count({ where: { estat: { in: ['ENVIAT', 'ACCEPTAT'] } } }),
     prisma.estancia.findMany({
       where: { deletedAt: null },
-      orderBy: { dataEntrada: 'desc' },
-      skip: (pagina - 1) * perPagina,
-      take: perPagina,
+      orderBy: { dataFormalitzacio: 'desc' },
+      skip: (pagina - 1) * PER_PAGINA,
+      take: PER_PAGINA,
       include: {
         viatgers: { include: { huesped: true }, orderBy: { esTitular: 'desc' } },
         enviaments: {
           where: { estat: { in: ['ENVIAT', 'ACCEPTAT'] } },
           orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    }),
+    prisma.enviamentMossos.findMany({
+      where: { estat: { in: ['ENVIAT', 'ACCEPTAT'] } },
+      orderBy: { createdAt: 'desc' },
+      skip: (paginaMossos - 1) * PER_PAGINA,
+      take: PER_PAGINA,
+      include: {
+        estancia: {
+          include: {
+            viatgers: { where: { esTitular: true }, include: { huesped: true } },
+          },
         },
       },
     }),
   ]);
 
-  // Per cada estada: titular + tots els viatgers, dades que falten (camps obligatoris *, §2.3).
   const fitxes = estancies.map((e) => {
-    const titular = e.viatgers.find(v => v.esTitular)?.huesped ?? e.viatgers[0]?.huesped ?? null;
-    const altresViatgers = e.viatgers
-      .filter(v => !v.esTitular && v.huesped)
-      .map(v => v.huesped!);
+    const titular = e.viatgers.find((v) => v.esTitular)?.huesped ?? e.viatgers[0]?.huesped ?? null;
     let faltes: string[] = [];
     if (establiment) {
-      try {
-        faltes = validaParteErrors(buildParteFromDb(establiment, e, e.viatgers));
-      } catch {
-        faltes = [];
-      }
+      try { faltes = validaParteErrors(buildParteFromDb(establiment, e, e.viatgers)); } catch { faltes = []; }
     }
-    return { e, titular, altresViatgers, faltes };
+    return { e, titular, faltes };
   });
   const nPendents = fitxes.filter((f) => f.faltes.length > 0 && !f.e.avisDadesParat).length;
-
-  const comprovants = estancies.flatMap((e) =>
-    e.enviaments.map((env) => ({ env, titular: e.viatgers[0]?.huesped ?? null })),
-  );
 
   return (
     <div className="space-y-8">
@@ -77,12 +82,12 @@ export default async function JustificantsPage({
           <p>
             Hi ha <strong>{nPendents}</strong>{' '}
             {nPendents === 1 ? 'fitxa amb dades pendents' : 'fitxes amb dades pendents'} (camps
-            obligatoris *). Completa-les o silencia l’avís si no pots obtenir aquelles dades.
+            obligatoris *). Completa-les o silencia l'avís si no pots obtenir aquelles dades.
           </p>
         </div>
       )}
 
-      {/* Fitxes de registre */}
+      {/* ── Fitxes de registre ─────────────────────────────────────────── */}
       <Card>
         <CardHeader className="flex items-center gap-2">
           <FileSignature className="h-4 w-4 text-brand-600" />
@@ -97,31 +102,32 @@ export default async function JustificantsPage({
                 <tr>
                   <Th>Titular / contracte</Th>
                   <Th>Dates</Th>
-                  <Th>Estat de les dades</Th>
-                  <Th>Fitxa</Th>
-                  <Th></Th>
+                  <Th>Estat</Th>
+                  <Th className="text-right">Fitxa</Th>
                 </tr>
               </Thead>
               <tbody>
-                {fitxes.map(({ e, titular, altresViatgers, faltes }) => {
+                {fitxes.map(({ e, titular, faltes }) => {
                   const pendents = faltes.length > 0;
                   const mostraAvis = pendents && !e.avisDadesParat;
                   return (
                     <Tr key={e.id}>
                       <Td>
-                        <Link href={`/estancies/${e.id}`} className="font-medium text-slate-900">
-                          {titular ? `${titular.nom} ${titular.cognom1}` : '—'}
-                        </Link>
-                        {altresViatgers.map(h => (
-                          <div key={h.id} className="text-xs text-slate-500">
-                            {h.nom} {h.cognom1}
-                          </div>
-                        ))}
-                        <div className="text-xs text-slate-400">
-                          {e.numContracte}/{e.anyContracte}
-                        </div>
+                        <FitxaExpandible
+                          estanciaId={e.id}
+                          titular={titular ? `${titular.nom} ${titular.cognom1}` : '—'}
+                          numContracte={e.numContracte}
+                          anyContracte={e.anyContracte}
+                          viatgers={e.viatgers.filter(v => v.huesped).map(v => ({
+                            id: v.huesped!.id,
+                            nom: v.huesped!.nom,
+                            cognom1: v.huesped!.cognom1,
+                            cognom2: v.huesped?.cognom2 ?? null,
+                            esTitular: v.esTitular,
+                          }))}
+                        />
                       </Td>
-                      <Td className="text-sm text-slate-600">
+                      <Td className="text-sm text-slate-600 whitespace-nowrap">
                         {formatDate(e.dataEntrada)} – {formatDate(e.dataSortida)}
                       </Td>
                       <Td>
@@ -129,14 +135,19 @@ export default async function JustificantsPage({
                           <Badge tone="success">Completa</Badge>
                         ) : mostraAvis ? (
                           <Badge tone="warning" title={faltes.join('\n')}>
-                            Dades pendents ({faltes.length})
+                            Pendents ({faltes.length})
                           </Badge>
                         ) : (
                           <Badge tone="neutral">Avís silenciat</Badge>
                         )}
+                        {pendents && (
+                          <span className="ml-1">
+                            <SilenciarAvis estanciaId={e.id} parat={e.avisDadesParat} />
+                          </span>
+                        )}
                       </Td>
-                      <Td>
-                        <div className="flex items-center gap-2">
+                      <Td className="text-right">
+                        <div className="flex items-center justify-end gap-2">
                           <a href={`/api/estancies/${e.id}/fitxa-pdf`} target="_blank" rel="noreferrer">
                             <Button variant="outline" size="sm">
                               <FileSignature className="h-4 w-4" /> Fitxa PDF
@@ -152,26 +163,25 @@ export default async function JustificantsPage({
                           />
                         </div>
                       </Td>
-                      <Td>{pendents && <SilenciarAvis estanciaId={e.id} parat={e.avisDadesParat} />}</Td>
                     </Tr>
                   );
                 })}
               </tbody>
             </Table>
           )}
-          <Paginacio total={totalFitxes} pagina={pagina} perPagina={perPagina} className="px-1 pb-1" />
+          <Paginacio total={totalFitxes} pagina={pagina} perPagina={PER_PAGINA} className="px-1 pb-1" />
         </CardBody>
       </Card>
 
-      {/* Comprovants de Mossos */}
+      {/* ── Comprovants de Mossos ──────────────────────────────────────── */}
       <Card>
         <CardHeader className="flex items-center gap-2">
           <FileCheck className="h-4 w-4 text-brand-600" />
           <CardTitle>Comprovants de Mossos</CardTitle>
         </CardHeader>
         <CardBody>
-          {comprovants.length === 0 ? (
-            <EmptyState>Encara no s’ha comunicat cap estada a Mossos.</EmptyState>
+          {enviaments.length === 0 ? (
+            <EmptyState>Encara no s'ha comunicat cap estada a Mossos.</EmptyState>
           ) : (
             <Table>
               <Thead>
@@ -180,36 +190,47 @@ export default async function JustificantsPage({
                   <Th>Titular</Th>
                   <Th>Estat</Th>
                   <Th>Data</Th>
-                  <Th>Comprovant</Th>
+                  <Th className="text-right">Comprovant</Th>
                 </tr>
               </Thead>
               <tbody>
-                {comprovants.map(({ env, titular }) => (
-                  <Tr key={env.id}>
-                    <Td className="font-medium text-slate-800">{env.fitxerNom}</Td>
-                    <Td>{titular ? `${titular.nom} ${titular.cognom1}` : '—'}</Td>
-                    <Td>
-                      <Badge tone={env.estat === 'ACCEPTAT' ? 'success' : 'info'}>
-                        {ESTAT_ENVIAMENT_LABELS[env.estat]}
-                      </Badge>
-                    </Td>
-                    <Td>{env.dataEnviament ? formatDate(env.dataEnviament) : '—'}</Td>
-                    <Td>
-                      <div className="flex items-center gap-2">
-                        <a href={`/api/enviaments/${env.id}/justificant`} target="_blank" rel="noreferrer">
-                          <Button variant="outline" size="sm">
-                            <FileCheck className="h-4 w-4" /> PDF
-                          </Button>
-                        </a>
-                        <EnviarCorreuButton apiUrl={`/api/enviaments/${env.id}/email`} />
-                        <EliminarComprovant id={env.id} fitxerNom={env.fitxerNom} />
-                      </div>
-                    </Td>
-                  </Tr>
-                ))}
+                {enviaments.map((env) => {
+                  const titular = env.estancia.viatgers[0]?.huesped ?? null;
+                  const estatLabel = ESTAT_ENVIAMENT_LABELS[env.estat as keyof typeof ESTAT_ENVIAMENT_LABELS] ?? env.estat;
+                  return (
+                    <Tr key={env.id}>
+                      <Td className="font-medium text-slate-800">{env.fitxerNom}</Td>
+                      <Td>{titular ? `${titular.nom} ${titular.cognom1}` : '—'}</Td>
+                      <Td>
+                        <Badge tone={env.estat === 'ACCEPTAT' ? 'success' : 'info'}>
+                          {estatLabel}
+                        </Badge>
+                      </Td>
+                      <Td className="whitespace-nowrap">{env.dataEnviament ? formatDate(env.dataEnviament) : '—'}</Td>
+                      <Td className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <a href={`/api/enviaments/${env.id}/justificant`} target="_blank" rel="noreferrer">
+                            <Button variant="outline" size="sm">
+                              <FileCheck className="h-4 w-4" /> PDF
+                            </Button>
+                          </a>
+                          <EnviarCorreuButton apiUrl={`/api/enviaments/${env.id}/email`} />
+                          <EliminarComprovant id={env.id} fitxerNom={env.fitxerNom} />
+                        </div>
+                      </Td>
+                    </Tr>
+                  );
+                })}
               </tbody>
             </Table>
           )}
+          <Paginacio
+            total={totalMossos}
+            pagina={paginaMossos}
+            perPagina={PER_PAGINA}
+            paramName="paginaMossos"
+            className="px-1 pb-1"
+          />
         </CardBody>
       </Card>
     </div>

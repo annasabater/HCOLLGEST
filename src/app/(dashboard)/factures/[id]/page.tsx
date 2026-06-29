@@ -1,9 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Printer, FileText, ShieldCheck, Trash2, CheckCircle, Clock, ExternalLink } from 'lucide-react';
+import { Printer, FileText, ShieldCheck, CheckCircle, Clock, ExternalLink } from 'lucide-react';
 import { BackLink } from '@/components/ui/back-link';
 import { prisma } from '@/lib/db';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardBody } from '@/components/ui/card';
 import { ToggleEstatFactura } from '@/components/factura/toggle-estat-factura';
 import { LiniesCard } from '@/components/factura/linies-card';

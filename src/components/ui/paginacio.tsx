@@ -8,12 +8,13 @@ interface Props {
   total: number;
   pagina: number;
   perPagina: number;
+  paramName?: string;
   className?: string;
 }
 
 const OPCIONS = [10, 25, 50];
 
-export function Paginacio({ total, pagina, perPagina, className }: Props) {
+export function Paginacio({ total, pagina, perPagina, paramName = 'pagina', className }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -23,8 +24,8 @@ export function Paginacio({ total, pagina, perPagina, className }: Props) {
 
   function nav(newPagina: number, newPer?: number) {
     const params = new URLSearchParams(searchParams.toString());
-    params.set('pagina', String(newPagina));
-    params.set('perPagina', String(newPer ?? perPagina));
+    params.set(paramName, String(newPagina));
+    if (paramName === 'pagina') params.set('perPagina', String(newPer ?? perPagina));
     router.push(`${pathname}?${params.toString()}`);
   }
 
