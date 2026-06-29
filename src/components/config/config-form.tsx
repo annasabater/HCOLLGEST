@@ -1,10 +1,11 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
+import { Building2, FileStack, Receipt, Scale, Bell, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
-import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { CollapsibleCard } from '@/components/ui/collapsible-card';
 import { getJSON, patchJSON, ApiError } from '@/lib/api';
 
 interface Establiment {
@@ -78,12 +79,9 @@ export function ConfigForm() {
   }
 
   return (
-    <form onSubmit={save} className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Dades de l’establiment</CardTitle>
-        </CardHeader>
-        <CardBody className="grid gap-4 sm:grid-cols-3">
+    <form onSubmit={save} className="space-y-4">
+      <CollapsibleCard title="Dades de l'establiment" icon={<Building2 className="h-4 w-4 text-brand-600" />}>
+        <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Nom">
             <Input value={e.nom} disabled />
           </Field>
@@ -93,17 +91,14 @@ export function ConfigForm() {
           <Field label="CIF">
             <Input value={e.cif} disabled />
           </Field>
-        </CardBody>
-      </Card>
+        </div>
+      </CollapsibleCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Fitxer massiu de Mossos</CardTitle>
-        </CardHeader>
-        <CardBody className="grid gap-4 sm:grid-cols-2">
+      <CollapsibleCard title="Fitxer massiu de Mossos" icon={<FileStack className="h-4 w-4 text-brand-600" />}>
+        <div className="grid gap-4 sm:grid-cols-2">
           <Field
             label="File identifier"
-            hint="9-10 car. alfanumèrics de «Dades de l’establiment» del portal. NO és l’Id policial."
+            hint="9-10 car. alfanumèrics de «Dades de l'establiment» del portal. NO és l'Id policial."
           >
             <Input
               value={e.fileIdentifier ?? ''}
@@ -134,15 +129,12 @@ export function ConfigForm() {
               placeholder="••••••••"
             />
           </Field>
-        </CardBody>
-      </Card>
+        </div>
+      </CollapsibleCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Dades per a la factura</CardTitle>
-        </CardHeader>
-        <CardBody className="grid gap-4 sm:grid-cols-3">
-          <Field label="Titular / raó social" hint="Si es deixa buit, s’usa el nom de l’establiment.">
+      <CollapsibleCard title="Dades per a la factura" icon={<Receipt className="h-4 w-4 text-brand-600" />}>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Titular / raó social" hint="Si es deixa buit, s'usa el nom de l'establiment.">
             <Input
               value={e.raoSocial ?? ''}
               onChange={(ev) => setE({ ...e, raoSocial: ev.target.value })}
@@ -179,14 +171,11 @@ export function ConfigForm() {
               placeholder="ES00 0000 0000 0000 0000 0000"
             />
           </Field>
-        </CardBody>
-      </Card>
+        </div>
+      </CollapsibleCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Facturació i RGPD</CardTitle>
-        </CardHeader>
-        <CardBody className="grid gap-4 sm:grid-cols-3">
+      <CollapsibleCard title="Facturació i RGPD" icon={<Scale className="h-4 w-4 text-brand-600" />}>
+        <div className="grid gap-4 sm:grid-cols-3">
           <Field label="IEET (€/persona·nit)">
             <Input
               type="number"
@@ -209,14 +198,11 @@ export function ConfigForm() {
               onChange={(ev) => setE({ ...e, retencioCrmAnys: ev.target.value ? Number(ev.target.value) : null })}
             />
           </Field>
-        </CardBody>
-      </Card>
+        </div>
+      </CollapsibleCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Benvinguda als hostes</CardTitle>
-        </CardHeader>
-        <CardBody className="space-y-3">
+      <CollapsibleCard title="Benvinguda als hostes" icon={<Bell className="h-4 w-4 text-brand-600" />}>
+        <div className="space-y-3">
           <label className="flex items-start gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
@@ -245,14 +231,11 @@ export function ConfigForm() {
               Els menors no hi apareixen mai.
             </span>
           </label>
-        </CardBody>
-      </Card>
+        </div>
+      </CollapsibleCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Balanç de situació</CardTitle>
-        </CardHeader>
-        <CardBody className="grid gap-4 sm:grid-cols-2">
+      <CollapsibleCard title="Balanç de situació" icon={<TrendingUp className="h-4 w-4 text-brand-600" />}>
+        <div className="grid gap-4 sm:grid-cols-2">
           <Field
             label="Saldo inicial de tresoreria (€)"
             hint="Efectiu al compte/caixa en el moment d'activar el PMS. Serveix per calcular la tresoreria actual al balanç de situació."
@@ -266,10 +249,10 @@ export function ConfigForm() {
               placeholder="0.00"
             />
           </Field>
-        </CardBody>
-      </Card>
+        </div>
+      </CollapsibleCard>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 pt-2">
         <Button type="submit" disabled={saving}>
           {saving ? 'Desant…' : 'Desar configuració'}
         </Button>
