@@ -456,36 +456,6 @@ export default function BalancPage() {
                 )}
               </div>
 
-              {!restringit && mes.custodiaDetall.length > 0 && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4">
-                  <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-amber-800">
-                    <Coins className="h-4 w-4" /> Dipòsits en custòdia — de qui són
-                  </p>
-                  <ul className="space-y-1 text-sm">
-                    {mes.custodiaDetall.map((d) => (
-                      <li key={d.id} className="flex items-center justify-between gap-2">
-                        <span className="text-slate-700">
-                          {d.estanciaId ? (
-                            <a href={`/estancies/${d.estanciaId}`} className="font-medium text-brand-700 hover:underline">
-                              {d.titular}
-                            </a>
-                          ) : (
-                            <span className="font-medium">{d.titular}</span>
-                          )}
-                          {d.motiu ? <span className="text-slate-400"> · {d.motiu}</span> : ''}
-                        </span>
-                        <span className="font-medium text-amber-700">
-                          <Eur value={d.import} />
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="mt-2 text-xs text-slate-500">
-                    Són diners que guardes i has de tornar (no són ingrés). Resol-los des de la fitxa de
-                    l’estada (Pagaments i fiances).
-                  </p>
-                </div>
-              )}
 
               <BreakdownsSection data={ambPersonal(mes, mes.personal)} />
             </>
