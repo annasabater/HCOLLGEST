@@ -97,9 +97,8 @@ export function FacturaPanel({
   const [linies, setLinies] = useState<Linia[]>(() => [
     { concepte: 'ALLOTJAMENT', descripcio: buildDesc(), import: calcImportSuggerit() },
   ]);
-  // IVA fix (10% allotjament) i tassa turística NO a part (ja inclosa al preu).
-  // No es mostren al formulari; es passen a l'API amb aquests valors per defecte.
-  const [ivaPercent] = useState('10');
+  // IVA 0% (hostal no aplica IVA d'allotjament).
+  const [ivaPercent] = useState('0');
   const [aplicarTasa] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);

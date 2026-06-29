@@ -134,14 +134,18 @@ export function LiniesCard({
               </tbody>
             </Table>
             <dl className="mt-4 space-y-1 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-slate-500">Base imposable</dt>
-                <dd>{formatEur(base)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-slate-500">IVA</dt>
-                <dd>{formatEur(iva)}</dd>
-              </div>
+              {iva > 0 && (
+                <>
+                  <div className="flex justify-between">
+                    <dt className="text-slate-500">Base imposable</dt>
+                    <dd>{formatEur(base)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-slate-500">IVA</dt>
+                    <dd>{formatEur(iva)}</dd>
+                  </div>
+                </>
+              )}
               {tasaTotal > 0 && (
                 <div className="flex justify-between">
                   <dt className="text-slate-500">Tassa turística</dt>
@@ -208,14 +212,18 @@ export function LiniesCard({
             </Button>
 
             <dl className="space-y-1 border-t border-slate-200 pt-3 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-slate-500">Base imposable</dt>
-                <dd>{formatEur(previewBase)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-slate-500">IVA ({round2(ivaPercent)}%)</dt>
-                <dd>{formatEur(previewIva)}</dd>
-              </div>
+              {previewIva > 0 && (
+                <>
+                  <div className="flex justify-between">
+                    <dt className="text-slate-500">Base imposable</dt>
+                    <dd>{formatEur(previewBase)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-slate-500">IVA ({round2(ivaPercent)}%)</dt>
+                    <dd>{formatEur(previewIva)}</dd>
+                  </div>
+                </>
+              )}
               {tasaTotal > 0 && (
                 <div className="flex justify-between">
                   <dt className="text-slate-500">Tassa turística</dt>
