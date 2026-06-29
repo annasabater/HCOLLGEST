@@ -167,7 +167,6 @@ export default async function JustificantsPage() {
                   <Th>Fitxer</Th>
                   <Th>Titular</Th>
                   <Th>Estat</Th>
-                  <Th>Codi validació</Th>
                   <Th>Data</Th>
                   <Th>Comprovant</Th>
                 </tr>
@@ -182,7 +181,6 @@ export default async function JustificantsPage() {
                         {ESTAT_ENVIAMENT_LABELS[env.estat]}
                       </Badge>
                     </Td>
-                    <Td>{env.codiValidacio ?? '—'}</Td>
                     <Td>{env.dataEnviament ? formatDate(env.dataEnviament) : '—'}</Td>
                     <Td>
                       <div className="flex items-center gap-2">
