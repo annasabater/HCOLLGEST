@@ -36,10 +36,10 @@ export const PLANTILLA_BENVINGUDA: Record<Lang, string> = {
 
 /** Plantilla per a la neteja (variables {nom} {data} {habitacions} {pasillo} {pati} {vorera} {hora}). */
 export const PLANTILLA_NETEJA: Record<Lang, string> = {
-  ca: 'Bones {nom}, demà ({data}) tens: {habitacions}.{pasillo}{pati}{vorera}{hora} Gràcies!',
-  es: 'Buenas {nom}, mañana ({data}) tienes: {habitacions}.{pasillo}{pati}{vorera}{hora} ¡Gracias!',
-  fr: 'Bonjour {nom}, demain ({data}) tu as : {habitacions}.{pasillo}{pati}{vorera}{hora} Merci !',
-  en: 'Hi {nom}, tomorrow ({data}) you have: {habitacions}.{pasillo}{pati}{vorera}{hora} Thanks!',
+  ca: 'Hola {nom}! 😊 Per a demà ({data}) tindríem: {habitacions}.{pasillo}{pati}{vorera}{hora} Moltíssimes gràcies per la teva feina! 🙏',
+  es: '¡Hola {nom}! 😊 Para mañana ({data}) tendríamos: {habitacions}.{pasillo}{pati}{vorera}{hora} ¡Muchísimas gracias por tu trabajo! 🙏',
+  fr: 'Bonjour {nom} ! 😊 Pour demain ({data}) il y aurait : {habitacions}.{pasillo}{pati}{vorera}{hora} Merci beaucoup pour ton travail ! 🙏',
+  en: 'Hi {nom}! 😊 For tomorrow ({data}) we’d have: {habitacions}.{pasillo}{pati}{vorera}{hora} Thank you so much for your work! 🙏',
 };
 
 /** Text del passadís segons idioma (valor de la variable {pasillo}). */
@@ -112,10 +112,10 @@ const NETEJA_TXT: Record<
   Lang,
   { first: string; rest: string; salida: string; repas: string; none: string; sep: string; zones: string }
 > = {
-  ca: { first: "l’habitació", rest: "la", salida: "sortida (a fons)", repas: "repàs", none: "cap habitació assignada", sep: ": ", zones: "les zones comunes" },
-  es: { first: "la habitación", rest: "la", salida: "salida (a fondo)", repas: "repaso", none: "no hay habitaciones asignadas", sep: ": ", zones: "las zonas comunes" },
-  fr: { first: "la chambre", rest: "la", salida: "départ (à fond)", repas: "rafraîchissement", none: "aucune chambre assignée", sep: " : ", zones: "les parties communes" },
-  en: { first: "room", rest: "room", salida: "checkout (deep clean)", repas: "touch-up", none: "no rooms assigned", sep: ": ", zones: "common areas" },
+  ca: { first: "l’habitació", rest: "la", salida: "sortida (a fons)", repas: "repàs", none: "cap habitació assignada", sep: ": ", zones: "les zones comunes (passadís, vorera i pati)" },
+  es: { first: "la habitación", rest: "la", salida: "salida (a fondo)", repas: "repaso", none: "no hay habitaciones asignadas", sep: ": ", zones: "las zonas comunes (pasillo, acera y patio)" },
+  fr: { first: "la chambre", rest: "la", salida: "départ (à fond)", repas: "rafraîchissement", none: "aucune chambre assignée", sep: " : ", zones: "les parties communes (couloir, trottoir et cour)" },
+  en: { first: "room", rest: "room", salida: "checkout (deep clean)", repas: "touch-up", none: "no rooms assigned", sep: ": ", zones: "common areas (hallway, sidewalk and patio)" },
 };
 
 /** Etiqueta curta del tipus de neteja (per a selectors). */

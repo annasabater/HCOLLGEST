@@ -69,7 +69,7 @@ describe('plantilla de neteja (passadís, pati i hora)', () => {
       hora: fillTemplate(HORA_NETEJA_TXT.es, { hora: '11:00' }),
     });
     expect(msg).toBe(
-      'Buenas Tania, mañana (24/06/2026) tienes: la habitación 1: salida (a fondo). También el pasillo. También el patio. Puedes venir sobre las 11:00. ¡Gracias!',
+      '¡Hola Tania! 😊 Para mañana (24/06/2026) tendríamos: la habitación 1: salida (a fondo). También el pasillo. También el patio. Puedes venir sobre las 11:00. ¡Muchísimas gracias por tu trabajo! 🙏',
     );
   });
 
@@ -82,6 +82,6 @@ describe('plantilla de neteja (passadís, pati i hora)', () => {
       pati: '',
       hora: '',
     });
-    expect(msg).toBe('Buenas Tania, mañana (24/06/2026) tienes: la habitación 1: salida (a fondo). ¡Gracias!');
+    expect(msg).toBe('¡Hola Tania! 😊 Para mañana (24/06/2026) tendríamos: la habitación 1: salida (a fondo). ¡Muchísimas gracias por tu trabajo! 🙏');
   });
 });
