@@ -443,10 +443,10 @@ export default function BalancPage() {
                 <Kpi label="Benefici" value={<Eur value={mes.benefici} />} icon={Wallet} color={mes.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big />
                 {!restringit && (
                   <>
-                    <Kpi label="Ingressos + custòdia" value={<Eur value={mes.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
+                    <Kpi label="Ingressos + fiança" value={<Eur value={mes.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
                     <Kpi label="Despeses (amb personal)" value={<Eur value={mes.despeses + mes.personal} />} icon={TrendingDown} color="text-red-600" />
                     <Kpi
-                      label="Benefici + custòdia"
+                      label="Benefici + fiança"
                       value={<Eur value={mes.benefici + mes.retencions} />}
                       icon={Wallet}
                       color={mes.benefici + mes.retencions >= 0 ? 'text-green-600' : 'text-red-600'}
