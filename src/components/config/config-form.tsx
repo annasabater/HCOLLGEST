@@ -78,6 +78,19 @@ export function ConfigForm() {
     }
   }
 
+  const SaveRow = () => (
+    <div className="flex items-center gap-3 border-t border-slate-100 pt-4 mt-2">
+      <Button type="submit" size="sm" disabled={saving}>
+        {saving ? 'Desant…' : 'Desar configuració'}
+      </Button>
+      {msg && (
+        <span className={msg.tone === 'ok' ? 'text-sm text-green-600' : 'text-sm text-red-600'}>
+          {msg.text}
+        </span>
+      )}
+    </div>
+  );
+
   return (
     <form onSubmit={save} className="space-y-4">
       <CollapsibleCard title="Dades de l'establiment" icon={<Building2 className="h-4 w-4 text-brand-600" />}>
@@ -130,6 +143,7 @@ export function ConfigForm() {
             />
           </Field>
         </div>
+        <SaveRow />
       </CollapsibleCard>
 
       <CollapsibleCard title="Dades per a la factura" icon={<Receipt className="h-4 w-4 text-brand-600" />}>
@@ -172,6 +186,7 @@ export function ConfigForm() {
             />
           </Field>
         </div>
+        <SaveRow />
       </CollapsibleCard>
 
       <CollapsibleCard title="Facturació i RGPD" icon={<Scale className="h-4 w-4 text-brand-600" />}>
@@ -199,6 +214,7 @@ export function ConfigForm() {
             />
           </Field>
         </div>
+        <SaveRow />
       </CollapsibleCard>
 
       <CollapsibleCard title="Benvinguda als hostes" icon={<Bell className="h-4 w-4 text-brand-600" />}>
@@ -232,6 +248,7 @@ export function ConfigForm() {
             </span>
           </label>
         </div>
+        <SaveRow />
       </CollapsibleCard>
 
       <CollapsibleCard title="Balanç de situació" icon={<TrendingUp className="h-4 w-4 text-brand-600" />}>
@@ -250,18 +267,8 @@ export function ConfigForm() {
             />
           </Field>
         </div>
+        <SaveRow />
       </CollapsibleCard>
-
-      <div className="flex items-center gap-3 pt-2">
-        <Button type="submit" disabled={saving}>
-          {saving ? 'Desant…' : 'Desar configuració'}
-        </Button>
-        {msg && (
-          <span className={msg.tone === 'ok' ? 'text-sm text-green-600' : 'text-sm text-red-600'}>
-            {msg.text}
-          </span>
-        )}
-      </div>
     </form>
   );
 }
