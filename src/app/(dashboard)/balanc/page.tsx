@@ -370,17 +370,23 @@ export default function BalancPage() {
         actions={
           <div className="flex items-center gap-2">
             <HideAmountsButton />
-            <div className="flex overflow-hidden rounded-lg border border-slate-300">
-              <button onClick={() => setMode('mes')} className={cn('px-3 py-1.5 text-sm', mode === 'mes' ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>
-                Mes
-              </button>
-              <button onClick={() => setMode('any')} className={cn('px-3 py-1.5 text-sm', mode === 'any' ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>
-                Any
-              </button>
-              <button onClick={() => setMode('situacio')} className={cn('px-3 py-1.5 text-sm', mode === 'situacio' ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>
-                Situació
-              </button>
-            </div>
+            {mode !== 'situacio' && (
+              <div className="flex overflow-hidden rounded-lg border border-slate-300">
+                <button onClick={() => setMode('mes')} className={cn('px-3 py-1.5 text-sm', mode === 'mes' ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>
+                  Mes
+                </button>
+                <button onClick={() => setMode('any')} className={cn('px-3 py-1.5 text-sm', mode === 'any' ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>
+                  Any
+                </button>
+              </div>
+            )}
+            <button
+              onClick={() => setMode(mode === 'situacio' ? 'mes' : 'situacio')}
+              className={cn('rounded-lg border px-3 py-1.5 text-sm', mode === 'situacio' ? 'border-brand-700 bg-brand-700 text-white' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50')}
+            >
+              <Scale className="mr-1 inline h-3.5 w-3.5" />
+              Situació
+            </button>
             <Button variant="outline" size="sm" onClick={exporta}>
               <Download className="h-4 w-4" /> CSV
             </Button>
