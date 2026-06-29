@@ -162,8 +162,6 @@ export function EstanciaActions({
 
 function EnviamentRow({ enviament, onChanged }: { enviament: Enviament; onChanged: () => void }) {
   const [estat, setEstat] = useState<EstatEnviament>(enviament.estat);
-  const [codiValidacio, setCodi] = useState(enviament.codiValidacio ?? '');
-  const [numRegistre, setNum] = useState(enviament.numRegistre ?? '');
   const [errorMsg, setErrorMsg] = useState(enviament.errorMsg ?? '');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -195,8 +193,6 @@ function EnviamentRow({ enviament, onChanged }: { enviament: Enviament; onChange
     try {
       await patchJSON(`/api/enviaments/${enviament.id}`, {
         estat,
-        codiValidacio: codiValidacio || undefined,
-        numRegistre: numRegistre || undefined,
         errorMsg: errorMsg || undefined,
       });
       onChanged();
@@ -218,7 +214,7 @@ function EnviamentRow({ enviament, onChanged }: { enviament: Enviament; onChange
           {ESTAT_ENVIAMENT_LABELS[estat]}
         </Badge>
       </div>
-      <div className="grid gap-2 sm:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-2">
         <Select value={estat} onChange={(e) => setEstat(e.target.value as EstatEnviament)}>
           {estatEnviamentValues.map((v) => (
             <option key={v} value={v}>
@@ -226,8 +222,6 @@ function EnviamentRow({ enviament, onChanged }: { enviament: Enviament; onChange
             </option>
           ))}
         </Select>
-        <Input placeholder="Codi validació" value={codiValidacio} onChange={(e) => setCodi(e.target.value)} />
-        <Input placeholder="Núm. registre" value={numRegistre} onChange={(e) => setNum(e.target.value)} />
         <Button size="md" onClick={save} disabled={saving}>
           {saving ? 'Desant…' : 'Actualitzar'}
         </Button>
