@@ -200,9 +200,24 @@ export async function editFactura(
       include: { verifactu: { select: { id: true } } },
     });
     if (!factura) throw new Error('Validación fallida: factura no trobada');
-    if (factura.tipusDocument !== 'RECIBO' || factura.verifactu) {
-      throw new Error('Validación fallida: una factura fiscal no es pot editar');
+    if (factura.verifactu) throw new Error('Validación fallida: una factura amb Veri*Factu no es pot editar');
+
+    // Canvi de número: validar unicitat.
+    let numero = factura.numero;
+    if (input.numero && input.numero.trim() !== factura.numero) {
+      const exist = await tx.factura.findFirst({ where: { numero: input.numero.trim(), id: { not: facturaId } } });
+      if (exist) throw new Error(`El número "${input.numero.trim()}" ja existeix`);
+      numero = input.numero.trim();
     }
+
+    // Canvi d'estat directe (sense recalcular per cobraments).
+    if (input.estat && !input.linies) {
+      await tx.factura.update({ where: { id: facturaId }, data: { estat: input.estat, numero } });
+      await audit({ usuariId: actor?.id ?? null, accio: 'MODIFICACIO', entitat: 'factura', entitatId: facturaId, detall: { estat: input.estat, numero }, ip }, tx);
+      return { id: facturaId, estat: input.estat };
+    }
+
+    if (!input.linies) throw new Error('Cal almenys una línia');
 
     // Conserva el % d'IVA i la tassa (no editables aquí): només canvien les línies.
     const oldBase = Number(factura.base);
@@ -218,6 +233,7 @@ export async function editFactura(
     await tx.factura.update({
       where: { id: facturaId },
       data: {
+        numero,
         base,
         iva,
         total,
@@ -239,7 +255,7 @@ export async function editFactura(
         accio: 'MODIFICACIO',
         entitat: 'factura',
         entitatId: facturaId,
-        detall: { base, iva, total, linies: input.linies.length, editada: true },
+        detall: { base, iva, total, linies: input.linies.length, numero, editada: true },
         ip,
       },
       tx,
