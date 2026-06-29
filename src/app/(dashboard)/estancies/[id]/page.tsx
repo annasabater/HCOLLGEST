@@ -374,16 +374,16 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             </CardBody>
           </Card>
 
-          {/* Emails programats (benvinguda / gràcies + ressenya) */}
+          {/* Missatges a l'hoste (benvinguda WhatsApp / gràcies + ressenya) */}
           <Card>
             <CardHeader className="flex items-center gap-2">
               <Mail className="h-4 w-4 text-brand-600" />
-              <CardTitle>Emails programats</CardTitle>
+              <CardTitle>Missatges a l’hoste</CardTitle>
             </CardHeader>
             <CardBody>
               <EmailsPanel
                 estanciaId={estancia.id}
-                titularNom={titular ? `${titular.nom} ${titular.cognom1}` : ''}
+                titularNom={titular ? titular.nom : ''}
                 titularEmail={titular?.email ?? null}
                 titularTelefon={titular?.telefon ?? null}
                 habitacioNom={estancia.habitacio?.nom ?? null}
