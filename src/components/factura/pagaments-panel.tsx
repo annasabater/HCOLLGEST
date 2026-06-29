@@ -349,19 +349,78 @@ export function PagamentsPanel({
             )
           )}
 
-          {/* Fiances en custòdia — seleccionables per incloure a la factura */}
-          {fiancesCustodia.map((f) => (
-            <label
-              key={f.id}
-              className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2 text-sm cursor-pointer"
-            >
-              <input type="checkbox" checked={selFiances.has(f.id)} onChange={() => toggleFianca(f.id)} />
-              <span className="font-medium text-slate-800">{formatEur(f.import)}</span>
-              <span className="text-slate-400">
-                · {f.notes ?? 'Fiança'} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
-              </span>
-            </label>
-          ))}
+          {/* Fiances en custòdia — estil igual que pagaments */}
+          {fiancesCustodia.map((f) =>
+            editFiancaId === f.id ? (
+              <div key={f.id} className="rounded-lg border border-amber-300 bg-amber-50/30 px-3 py-2">
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="w-28">
+                    <label className="mb-1 block text-xs text-slate-500">Import</label>
+                    <Input type="number" step="0.01" value={editFiancaImport} onChange={(e) => setEditFiancaImport(e.target.value)} />
+                  </div>
+                  <div className="w-32">
+                    <label className="mb-1 block text-xs text-slate-500">Mètode</label>
+                    <Select value={editFiancaMetode} onChange={(e) => setEditFiancaMetode(e.target.value)}>
+                      {optionsFrom(metodeCobramentValues, METODE_COBRAMENT_LABELS).map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div className="w-36">
+                    <label className="mb-1 block text-xs text-slate-500">Data</label>
+                    <Input type="date" value={editFiancaData} onChange={(e) => setEditFiancaData(e.target.value)} />
+                  </div>
+                  <div className="w-40">
+                    <label className="mb-1 block text-xs text-slate-500">Etiqueta</label>
+                    <Input placeholder="Cobro, A compte…" value={editFiancaNotes} onChange={(e) => setEditFiancaNotes(e.target.value)} />
+                  </div>
+                  <Button type="button" size="sm" onClick={() => desarFianca(f.id)} disabled={editFiancaBusy}>
+                    <Check className="h-4 w-4" /> Desar
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setEditFiancaId(null)}>
+                    <X className="h-4 w-4" /> Cancel·lar
+                  </Button>
+                  <div className="ml-auto flex gap-2">
+                    <Button type="button" size="sm" variant="outline" onClick={() => { setEditFiancaId(null); resoldreFianca(f.id, 'TORNAT'); }}>
+                      <Undo2 className="h-4 w-4" /> Tornar
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => { setEditFiancaId(null); resoldreFianca(f.id, 'RETINGUT'); }}>
+                      Retenir
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <label
+                key={f.id}
+                className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2 text-sm"
+              >
+                <input type="checkbox" checked={selFiances.has(f.id)} onChange={() => toggleFianca(f.id)} />
+                <span className="font-medium text-slate-800">{formatEur(f.import)}</span>
+                <span className="text-slate-400">
+                  · {f.notes ?? 'Fiança'} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
+                </span>
+                <div className="ml-auto flex items-center gap-1">
+                  <button
+                    type="button"
+                    className="text-slate-400 hover:text-brand-600"
+                    onClick={(e) => { e.preventDefault(); startEditFianca(f); }}
+                    title="Editar"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    className="text-slate-400 hover:text-red-600"
+                    onClick={(e) => { e.preventDefault(); eliminarFianca(f.id); }}
+                    title="Eliminar"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </label>
+            )
+          )}
 
           {selTotal > 0 && (
             <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -399,8 +458,8 @@ export function PagamentsPanel({
         </div>
       )}
 
-      {/* ── Fiances (gestió / resolució) ───────────────────────────────── */}
-      {fiancesActives.length > 0 && (
+      {/* ── Fiances resoltes (TORNAT / RETINGUT) — historial col·lapsable ── */}
+      {fiances.filter((f) => f.estat !== 'EN_CUSTODIA').length > 0 && (
         <div className="border-t border-slate-100 pt-3">
           <button
             type="button"
@@ -408,115 +467,22 @@ export function PagamentsPanel({
             onClick={() => setFiancaOberta((o) => !o)}
           >
             <p className="flex items-center gap-1 text-xs font-medium text-slate-500">
-              <ShieldCheck className="h-3.5 w-3.5" /> Fiances (garantia retornable)
+              <ShieldCheck className="h-3.5 w-3.5" /> Fiances resoltes
             </p>
-            <span className="flex items-center gap-2 text-xs text-slate-500">
-              Fiança: <strong>{formatEur(custodia)}</strong>
-              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${fiancaOberta ? 'rotate-180' : ''}`} />
-            </span>
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform text-slate-400 ${fiancaOberta ? 'rotate-180' : ''}`} />
           </button>
-
           {fiancaOberta && (
-            <div className="mt-2 space-y-2">
-              {fiancesActives.map((f) =>
-                editFiancaId === f.id ? (
-                  <div key={f.id} className="rounded-lg border border-amber-300 bg-amber-50/40 px-3 py-2">
-                    <div className="flex flex-wrap items-end gap-2">
-                      <div className="w-28">
-                        <label className="mb-1 block text-xs text-slate-500">Import</label>
-                        <Input type="number" step="0.01" value={editFiancaImport} onChange={(e) => setEditFiancaImport(e.target.value)} />
-                      </div>
-                      <div className="w-32">
-                        <label className="mb-1 block text-xs text-slate-500">Mètode</label>
-                        <Select value={editFiancaMetode} onChange={(e) => setEditFiancaMetode(e.target.value)}>
-                          {optionsFrom(metodeCobramentValues, METODE_COBRAMENT_LABELS).map((o) => (
-                            <option key={o.value} value={o.value}>{o.label}</option>
-                          ))}
-                        </Select>
-                      </div>
-                      <div className="w-36">
-                        <label className="mb-1 block text-xs text-slate-500">Data</label>
-                        <Input type="date" value={editFiancaData} onChange={(e) => setEditFiancaData(e.target.value)} />
-                      </div>
-                      <div className="w-40">
-                        <label className="mb-1 block text-xs text-slate-500">Etiqueta</label>
-                        <Input placeholder="Cobro, A compte…" value={editFiancaNotes} onChange={(e) => setEditFiancaNotes(e.target.value)} />
-                      </div>
-                      <Button type="button" size="sm" onClick={() => desarFianca(f.id)} disabled={editFiancaBusy}>
-                        <Check className="h-4 w-4" /> Desar
-                      </Button>
-                      <Button type="button" size="sm" variant="ghost" onClick={() => setEditFiancaId(null)}>
-                        <X className="h-4 w-4" /> Cancel·lar
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div key={f.id} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-slate-800">
-                        {formatEur(f.import)}
-                        <span className="text-slate-400 font-normal">
-                          {f.notes ? ` · ${f.notes}` : ''} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
-                        </span>
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <Badge tone={f.estat === 'RETINGUT' ? 'success' : 'neutral'}>
-                          {FIANCA_ESTAT_LABEL[f.estat]}
-                        </Badge>
-                        <button
-                          type="button"
-                          className="text-slate-400 hover:text-brand-600"
-                          onClick={() => startEditFianca(f)}
-                          title="Editar"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          className="text-slate-400 hover:text-red-600"
-                          onClick={() => eliminarFianca(f.id)}
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                    {f.observacions && (
-                      <p className="mt-1 text-xs text-slate-400 italic">{f.observacions}</p>
-                    )}
-                    {f.motiu && <p className="mt-0.5 text-xs text-slate-500">{f.motiu}</p>}
-
-                    {f.estat === 'EN_CUSTODIA' && (
-                      <label className="mt-2 flex items-center gap-2 cursor-pointer text-xs text-slate-500">
-                        <input
-                          type="checkbox"
-                          checked={pucTornar.has(f.id)}
-                          onChange={() => togglePucTornar(f.id)}
-                          className="rounded"
-                        />
-                        Es pot tornar / gestionar
-                      </label>
-                    )}
-                    {pucTornar.has(f.id) && f.estat === 'EN_CUSTODIA' && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <Button type="button" size="sm" variant="outline" onClick={() => resoldreFianca(f.id, 'TORNAT')}>
-                          <Undo2 className="h-4 w-4" /> Tornar a l&apos;hoste
-                        </Button>
-                        <Button type="button" size="sm" variant="outline" onClick={() => resoldreFianca(f.id, 'RETINGUT')}>
-                          Retenir (ingrés)
-                        </Button>
-                      </div>
-                    )}
-                    {f.estat === 'RETINGUT' && (
-                      <div className="mt-2">
-                        <Button type="button" size="sm" variant="outline" onClick={() => resoldreFianca(f.id, 'TORNAT')}>
-                          <Undo2 className="h-4 w-4" /> Tornar (reemborsar)
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )
-              )}
+            <div className="mt-2 space-y-1">
+              {fiances.filter((f) => f.estat !== 'EN_CUSTODIA').map((f) => (
+                <div key={f.id} className="flex items-center justify-between rounded-lg px-3 py-1.5 text-sm text-slate-500">
+                  <span>
+                    {formatEur(f.import)}{f.notes ? ` · ${f.notes}` : ''} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
+                  </span>
+                  <Badge tone={f.estat === 'RETINGUT' ? 'success' : 'neutral'}>
+                    {FIANCA_ESTAT_LABEL[f.estat]}
+                  </Badge>
+                </div>
+              ))}
             </div>
           )}
         </div>
