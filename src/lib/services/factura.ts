@@ -450,10 +450,11 @@ export async function createFacturaSeleccio(
 
     if (pagaments.length + fiances.length === 0) throw new Error('Cap element seleccionat');
 
-    const total = round2(
-      pagaments.reduce((a, p) => a + Number(p.import), 0) +
-      fiances.reduce((a, f) => a + Number(f.import), 0),
-    );
+    // La fiança és un dipòsit en CUSTÒDIA, no un ingrés: NO entra a la base/total
+    // ni com a línia de factura. Només compten els pagaments. Les fiances només
+    // es vinculen a la factura (per referència) i es mostren a part —una sola
+    // vegada— al document "amb fiança".
+    const total = round2(pagaments.reduce((a, p) => a + Number(p.import), 0));
     const year = new Date().getFullYear();
     const count = await tx.factura.count({ where: { numero: { startsWith: `${year}-` } } });
     const numero = `${year}-${String(count + 1).padStart(4, '0')}`;
@@ -469,18 +470,11 @@ export async function createFacturaSeleccio(
         estat: 'COBRADA',
         tipusDocument: input.tipusDocument ?? 'RECIBO',
         linies: {
-          create: [
-            ...pagaments.map((p) => ({
-              concepte: p.concepte,
-              descripcio: p.descripcio ?? CONCEPTE_LINIA_LABELS[p.concepte],
-              import: p.import,
-            })),
-            ...fiances.map((f) => ({
-              concepte: 'ALLOTJAMENT' as const,
-              descripcio: f.notes ?? 'Fiança',
-              import: f.import,
-            })),
-          ],
+          create: pagaments.map((p) => ({
+            concepte: p.concepte,
+            descripcio: p.descripcio ?? CONCEPTE_LINIA_LABELS[p.concepte],
+            import: p.import,
+          })),
         },
       },
     });

@@ -297,8 +297,6 @@ export async function GET(
       <div class="sum-row grand"><span class="lab">Total</span><span class="val" id="total">${money(totalCobraments)}</span></div>
     </div>
 
-    ${dipositsHtml}
-
     <footer class="footer">
       <div></div>
     </footer>
