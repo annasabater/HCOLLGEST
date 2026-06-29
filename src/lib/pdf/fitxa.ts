@@ -143,9 +143,11 @@ export async function buildFitxaPdf(
 
     // --- Firma + Localidad y fecha ---
     await drawSignatura(page, v);
-    const llocData = [v?.signatura?.llocSignatura, v?.signatura ? formatDate(v.signatura.data) : null]
-      .filter(Boolean)
-      .join(', ');
+    // Si encara no s'ha signat digitalment, hi posem el poble de l'establiment i
+    // la data d'entrada perquè ja surtin impresos (després signen a mà).
+    const lloc = v?.signatura?.llocSignatura || establiment.poblacio || '';
+    const dataSign = v?.signatura?.data ?? estancia.dataEntrada;
+    const llocData = [lloc, dataSign ? formatDate(dataSign) : null].filter(Boolean).join(', ');
     put(page, 299.5, 362, llocData, 240);
   }
 
