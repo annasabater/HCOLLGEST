@@ -512,48 +512,76 @@ export async function getBalancSituacio(dataTall: Date, opts?: { incloureCustodi
   const r2 = (n: number) => Math.round(n * 100) / 100;
   const incloureCustodia = opts?.incloureCustodia ?? true;
 
-  const [immobAgg, immobCount, deutorsAgg, deutorsCount, fiancesAgg, fiancesCount] =
-    await Promise.all([
-      prisma.actiu.aggregate({
-        _sum: { cost: true },
-        where: { deletedAt: null, dataCompra: { lte: dataTall } },
-      }),
-      prisma.actiu.count({ where: { deletedAt: null, dataCompra: { lte: dataTall } } }),
-      prisma.factura.aggregate({
-        _sum: { total: true },
-        where: { deletedAt: null, estat: 'PENDENT', data: { lte: dataTall } },
-      }),
-      prisma.factura.count({ where: { deletedAt: null, estat: 'PENDENT', data: { lte: dataTall } } }),
-      // Dipòsits en custòdia A LA DATA DE TALL: creats abans i no resolts (o
-      // resolts després). Així funciona també per a una data passada.
-      prisma.diposit.aggregate({
-        _sum: { import: true },
-        where: {
-          data: { lte: dataTall },
-          OR: [{ dataResolucio: null }, { dataResolucio: { gt: dataTall } }],
-          estancia: { deletedAt: null },
-        },
-      }),
-      prisma.diposit.count({
-        where: {
-          data: { lte: dataTall },
-          OR: [{ dataResolucio: null }, { dataResolucio: { gt: dataTall } }],
-          estancia: { deletedAt: null },
-        },
-      }),
-    ]);
+  const [
+    establiment,
+    immobAgg, immobCount,
+    deutorsAgg, deutorsCount,
+    fiancesAgg, fiancesCount,
+    cobraAgg, gastoAgg, jornadaAgg,
+  ] = await Promise.all([
+    prisma.establiment.findFirst({ select: { saldoInicialTresoreria: true } }),
+    prisma.actiu.aggregate({
+      _sum: { cost: true },
+      where: { deletedAt: null, dataCompra: { lte: dataTall } },
+    }),
+    prisma.actiu.count({ where: { deletedAt: null, dataCompra: { lte: dataTall } } }),
+    prisma.factura.aggregate({
+      _sum: { total: true },
+      where: { deletedAt: null, estat: 'PENDENT', data: { lte: dataTall } },
+    }),
+    prisma.factura.count({ where: { deletedAt: null, estat: 'PENDENT', data: { lte: dataTall } } }),
+    // Dipòsits en custòdia A LA DATA DE TALL: creats abans i no resolts (o
+    // resolts després). Així funciona també per a una data passada.
+    prisma.diposit.aggregate({
+      _sum: { import: true },
+      where: {
+        data: { lte: dataTall },
+        OR: [{ dataResolucio: null }, { dataResolucio: { gt: dataTall } }],
+        estancia: { deletedAt: null },
+      },
+    }),
+    prisma.diposit.count({
+      where: {
+        data: { lte: dataTall },
+        OR: [{ dataResolucio: null }, { dataResolucio: { gt: dataTall } }],
+        estancia: { deletedAt: null },
+      },
+    }),
+    // Tresoreria operativa: ingressos cobrats fins la data.
+    prisma.cobrament.aggregate({
+      _sum: { import: true },
+      where: { data: { lte: dataTall }, estancia: { deletedAt: null } },
+    }),
+    // Tresoreria operativa: despeses pagades fins la data.
+    prisma.gasto.aggregate({
+      _sum: { import: true },
+      where: { data: { lte: dataTall } },
+    }),
+    // Tresoreria operativa: cost de personal fins la data.
+    prisma.jornada.aggregate({
+      _sum: { import: true },
+      where: { data: { lte: dataTall } },
+    }),
+  ]);
 
   const immobilitzatBrut = r2(num(immobAgg, 'cost'));
   const deutors = r2(num(deutorsAgg, 'total'));
   const fiances = incloureCustodia ? r2(num(fiancesAgg, 'import')) : 0;
-  // L'efectiu de fiances (asset) és la contrapartida exacta del passiu de fiances.
   const tresoreriaFiances = fiances;
 
-  const totalActiu = r2(immobilitzatBrut + deutors + tresoreriaFiances);
+  const saldoInicial = r2(Number(establiment?.saldoInicialTresoreria ?? 0));
+  const totalCobraments = r2(num(cobraAgg, 'import'));
+  const totalGastos = r2(num(gastoAgg, 'import'));
+  const totalJornades = r2(num(jornadaAgg, 'import'));
+  // Tresoreria operativa = saldo inicial + ingressos cobrats − despeses − personal.
+  // Les fiances en custòdia ja s'inclouen en cobraments (si es van cobrar), però
+  // com que van a una línia separada, les restem per no duplicar.
+  const tresoreriaOperativa = r2(saldoInicial + totalCobraments - totalGastos - totalJornades - tresoreriaFiances);
+
+  const totalActiu = r2(immobilitzatBrut + deutors + tresoreriaOperativa + tresoreriaFiances);
   const passiuNoCorrent = 0;
   const passiuCorrent = fiances;
   const totalPassiu = r2(passiuNoCorrent + passiuCorrent);
-  // Patrimoni net = figura de quadre. Per construcció, totalActiu == PN + passiu.
   const patrimoniNet = r2(totalActiu - totalPassiu);
 
   return {
@@ -561,7 +589,7 @@ export async function getBalancSituacio(dataTall: Date, opts?: { incloureCustodi
     inclouCustodia: incloureCustodia,
     actiu: {
       noCorrent: { immobilitzatBrut },
-      corrent: { deutors, tresoreriaFiances },
+      corrent: { deutors, tresoreriaOperativa, tresoreriaFiances },
       total: totalActiu,
     },
     patrimoniIPassiu: {
@@ -570,13 +598,18 @@ export async function getBalancSituacio(dataTall: Date, opts?: { incloureCustodi
       passiuCorrent: { fiances },
       total: r2(patrimoniNet + totalPassiu),
     },
-    detall: { nActius: immobCount, nFacturesPendents: deutorsCount, nDiposits: incloureCustodia ? fiancesCount : 0 },
-    // Quadra sempre per construcció; ho exposem per transparència a la UI.
+    detall: {
+      nActius: immobCount,
+      nFacturesPendents: deutorsCount,
+      nDiposits: incloureCustodia ? fiancesCount : 0,
+      saldoInicial,
+      totalCobraments,
+      totalGastos,
+      totalJornades,
+    },
     quadra: true,
-    // Partides que un balanç fiscal exacte necessitaria i que el PMS NO té.
     mancances: [
       "Amortització acumulada de l'immobilitzat (es mostra el valor brut d'adquisició)",
-      'Tresoreria operativa real (saldos de banc i caixa); només es comptabilitza l\'efectiu retingut en fiances',
       'Existències',
       'Creditors comercials: despeses pendents de pagar (el model de despeses no registra l\'estat de pagament)',
       'IVA pendent de liquidar amb Hisenda',

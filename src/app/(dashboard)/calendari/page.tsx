@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, LogIn, LogOut, Sparkles, Check, Wrench, X, Undo2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LogIn, LogOut, Sparkles, Check, Wrench, X, Undo2, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { CalendariHabitacio } from '@/components/habitacio/calendari-habitacio';
 import { CalendariOcupacioTotal } from '@/components/habitacio/calendari-ocupacio-total';
-import { getJSON, patchJSON } from '@/lib/api';
+import { delJSON, getJSON, patchJSON } from '@/lib/api';
 import { addDays, addMonths, monthGridDays, sameMonth, toISODate, weekDays } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { TIPUS_NETEJA_LABELS } from '@/lib/validation/enums';
@@ -55,6 +55,7 @@ export default function CalendariPage() {
   const [selected, setSelected] = useState<string | null>(null); // dia seleccionat (ISO)
   const [filtres, setFiltres] = useState<Set<TipusFiltre>>(new Set(['entrades', 'sortides', 'neteja', 'serveis']));
   const [filtreWorker, setFiltreWorker] = useState<string>(''); // '' = tots
+  const [ocultarFetes, setOcultarFetes] = useState(false);
 
   const days = mode === 'mes' ? monthGridDays(anchor) : weekDays(anchor);
 
@@ -88,6 +89,11 @@ export default function CalendariPage() {
     load();
   }, [load]);
 
+  async function deleteTasca(id: string) {
+    await delJSON(`/api/tasques-neteja/${id}`);
+    load();
+  }
+
   async function setEstatTasca(id: string, estat: 'PENDENT' | 'FETA') {
     // Si hi ha filtre de treballador actiu i marquem com a FETA, assignem la tasca
     const workerId = filtreWorker
@@ -111,7 +117,7 @@ export default function CalendariPage() {
   const selEnt  = data && selected && filtres.has('entrades') ? data.entrades.filter((e) => onSel(e.data)) : [];
   const selSort = data && selected && filtres.has('sortides') ? data.sortides.filter((e) => onSel(e.data)) : [];
   const selTasq = data && selected && filtres.has('neteja')
-    ? data.tasques.filter((t) => onSel(t.data) && (!filtreWorker || t.assignada === filtreWorker))
+    ? data.tasques.filter((t) => onSel(t.data) && (!filtreWorker || t.assignada === filtreWorker) && (!ocultarFetes || t.estat === 'PENDENT'))
     : [];
   const selServ = data && selected && filtres.has('serveis') ? data.serveis.filter((s) => onSel(s.data)) : [];
   const selEmpty = !selEnt.length && !selSort.length && !selTasq.length && !selServ.length;
@@ -186,6 +192,19 @@ export default function CalendariPage() {
             ))}
           </select>
         )}
+        {filtres.has('neteja') && (
+          <button
+            onClick={() => setOcultarFetes((v) => !v)}
+            className={cn(
+              'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+              ocultarFetes
+                ? 'border-slate-400 bg-slate-700 text-white'
+                : 'border-slate-300 bg-white text-slate-500 hover:bg-slate-50',
+            )}
+          >
+            {ocultarFetes ? 'Mostrar fetes' : 'Ocultar fetes'}
+          </button>
+        )}
       </div>
 
       {/* Avís: selecciona persona per registrar hores */}
@@ -213,7 +232,7 @@ export default function CalendariPage() {
           const entrades = filtres.has('entrades') ? (data?.entrades.filter((e) => sameDay(e.data, day)) ?? []) : [];
           const sortides = filtres.has('sortides') ? (data?.sortides.filter((e) => sameDay(e.data, day)) ?? []) : [];
           const tasques = filtres.has('neteja')
-            ? (data?.tasques.filter((t) => sameDay(t.data, day) && (!filtreWorker || t.assignada === filtreWorker)) ?? [])
+            ? (data?.tasques.filter((t) => sameDay(t.data, day) && (!filtreWorker || t.assignada === filtreWorker) && (!ocultarFetes || t.estat === 'PENDENT')) ?? [])
             : [];
           const serveisDia = filtres.has('serveis') ? (data?.serveis.filter((s) => sameDay(s.data, day)) ?? []) : [];
           return (
@@ -378,6 +397,13 @@ export default function CalendariPage() {
                         <Check className="h-3 w-3" /> Feta
                       </>
                     )}
+                  </button>
+                  <button
+                    onClick={() => deleteTasca(t.id)}
+                    title="Eliminar tasca"
+                    className="rounded p-0.5 text-slate-300 hover:bg-red-50 hover:text-red-500"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
               ))}

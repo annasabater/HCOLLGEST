@@ -10,11 +10,11 @@ import { cn } from '@/lib/utils';
 
 // Colors per a les primeres 6 habitacions (en ordre per nom).
 const ROOM_COLORS = [
-  { bg: 'bg-pink-400', light: 'bg-pink-100', text: 'text-pink-900', label: 'Rosa' },
-  { bg: 'bg-blue-400', light: 'bg-blue-100', text: 'text-blue-900', label: 'Blava' },
-  { bg: 'bg-green-500', light: 'bg-green-100', text: 'text-green-900', label: 'Verda' },
-  { bg: 'bg-purple-400', light: 'bg-purple-100', text: 'text-purple-900', label: 'Lila' },
-  { bg: 'bg-yellow-400', light: 'bg-yellow-100', text: 'text-yellow-900', label: 'Groc' },
+  { bg: 'bg-slate-800',  light: 'bg-slate-200',  text: 'text-slate-900',  label: 'Negre' },
+  { bg: 'bg-blue-500',   light: 'bg-blue-100',   text: 'text-blue-900',   label: 'Blava' },
+  { bg: 'bg-slate-400',  light: 'bg-slate-100',  text: 'text-slate-700',  label: 'Grisa' },
+  { bg: 'bg-red-500',    light: 'bg-red-100',    text: 'text-red-900',    label: 'Vermell' },
+  { bg: 'bg-purple-500', light: 'bg-purple-100', text: 'text-purple-900', label: 'Lila' },
   { bg: 'bg-orange-400', light: 'bg-orange-100', text: 'text-orange-900', label: 'Taronja' },
 ];
 

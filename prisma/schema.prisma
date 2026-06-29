@@ -262,6 +262,9 @@ model Establiment {
   benvingudaAutomatica Boolean @default(false) @map("benvinguda_automatica")
   benvingudaTothom     Boolean @default(false) @map("benvinguda_tothom")
 
+  // Saldo inicial de tresoreria (efectiu al compte en el moment d'activar el PMS).
+  saldoInicialTresoreria Decimal @default(0) @map("saldo_inicial_tresoreria") @db.Decimal(10, 2)
+
   // Tarifes de neteja (per registrar el pagament a la dona de neteja).
   preuNetejaSortida     Decimal? @map("preu_neteja_sortida") @db.Decimal(10, 2)
   preuNetejaManteniment Decimal? @map("preu_neteja_manteniment") @db.Decimal(10, 2)

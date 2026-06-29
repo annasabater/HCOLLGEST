@@ -76,7 +76,7 @@ interface BalancSituacio {
   inclouCustodia: boolean;
   actiu: {
     noCorrent: { immobilitzatBrut: number };
-    corrent: { deutors: number; tresoreriaFiances: number };
+    corrent: { deutors: number; tresoreriaOperativa: number; tresoreriaFiances: number };
     total: number;
   };
   patrimoniIPassiu: {
@@ -85,7 +85,15 @@ interface BalancSituacio {
     passiuCorrent: { fiances: number };
     total: number;
   };
-  detall: { nActius: number; nFacturesPendents: number; nDiposits: number };
+  detall: {
+    nActius: number;
+    nFacturesPendents: number;
+    nDiposits: number;
+    saldoInicial: number;
+    totalCobraments: number;
+    totalGastos: number;
+    totalJornades: number;
+  };
   quadra: boolean;
   mancances: string[];
 }
@@ -174,6 +182,7 @@ function BsRow({ label, value, level = 0, strong, total }: { label: string; valu
 }
 
 function SituacioView({ data }: { data: BalancSituacio }) {
+  const activCorrent = data.actiu.corrent.deutors + data.actiu.corrent.tresoreriaOperativa + data.actiu.corrent.tresoreriaFiances;
   return (
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">
@@ -184,8 +193,9 @@ function SituacioView({ data }: { data: BalancSituacio }) {
           <CardBody>
             <BsRow label="Actiu no corrent" value={data.actiu.noCorrent.immobilitzatBrut} strong />
             <BsRow label={`Immobilitzat material (valor brut) · ${data.detall.nActius} actius`} value={data.actiu.noCorrent.immobilitzatBrut} level={1} />
-            <BsRow label="Actiu corrent" value={data.actiu.corrent.deutors + data.actiu.corrent.tresoreriaFiances} strong />
+            <BsRow label="Actiu corrent" value={activCorrent} strong />
             <BsRow label={`Deutors comercials · ${data.detall.nFacturesPendents} factures pendents`} value={data.actiu.corrent.deutors} level={1} />
+            <BsRow label="Tresoreria general (caixa/banc)" value={data.actiu.corrent.tresoreriaOperativa} level={1} />
             <BsRow label="Tresoreria — efectiu de fiances en dipòsit" value={data.actiu.corrent.tresoreriaFiances} level={1} />
             <BsRow label="TOTAL ACTIU" value={data.actiu.total} total />
           </CardBody>
@@ -346,6 +356,7 @@ export default function BalancPage() {
         ['  Immobilitzat material (valor brut)', s.actiu.noCorrent.immobilitzatBrut.toFixed(2)],
         ['Actiu corrent', ''],
         ['  Deutors comercials', s.actiu.corrent.deutors.toFixed(2)],
+        ['  Tresoreria general (caixa/banc)', s.actiu.corrent.tresoreriaOperativa.toFixed(2)],
         ['  Tresoreria - efectiu de fiances en dipòsit', s.actiu.corrent.tresoreriaFiances.toFixed(2)],
         ['TOTAL ACTIU', s.actiu.total.toFixed(2)],
         [''],

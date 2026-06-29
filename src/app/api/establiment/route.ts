@@ -56,6 +56,8 @@ const PatchSchema = z.object({
   preuNetejaSortida: z.coerce.number().min(0).optional(),
   preuNetejaManteniment: z.coerce.number().min(0).optional(),
   preuNetejaZones: z.coerce.number().min(0).optional(),
+  // Saldo inicial de tresoreria (balanç de situació).
+  saldoInicialTresoreria: z.coerce.number().min(0).optional(),
 });
 
 // Camps de text de la factura que, si arriben buits, es desen com a null.

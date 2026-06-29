@@ -28,6 +28,7 @@ interface Establiment {
   descriptor: string | null;
   benvingudaAutomatica: boolean;
   benvingudaTothom: boolean;
+  saldoInicialTresoreria: string;
 }
 
 export function ConfigForm() {
@@ -65,6 +66,7 @@ export function ConfigForm() {
         descriptor: e.descriptor ?? '',
         benvingudaAutomatica: e.benvingudaAutomatica,
         benvingudaTothom: e.benvingudaTothom,
+        saldoInicialTresoreria: e.saldoInicialTresoreria ? Number(e.saldoInicialTresoreria) : 0,
       });
       setMossosPass('');
       setMsg({ tone: 'ok', text: 'Configuració desada.' });
@@ -243,6 +245,27 @@ export function ConfigForm() {
               Els menors no hi apareixen mai.
             </span>
           </label>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Balanç de situació</CardTitle>
+        </CardHeader>
+        <CardBody className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Saldo inicial de tresoreria (€)"
+            hint="Efectiu al compte/caixa en el moment d'activar el PMS. Serveix per calcular la tresoreria actual al balanç de situació."
+          >
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={e.saldoInicialTresoreria ?? '0'}
+              onChange={(ev) => setE({ ...e, saldoInicialTresoreria: ev.target.value })}
+              placeholder="0.00"
+            />
+          </Field>
         </CardBody>
       </Card>
 
