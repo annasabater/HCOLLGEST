@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { getJSON, postJSON, delJSON, ApiError } from '@/lib/api';
-import { fillTemplate, enviaWhatsApp, PLANTILLA_BENVINGUDA, LANGS as WA_LANGS, type Lang } from '@/lib/plantilles';
+import { fillTemplate, enviaWhatsApp, PLANTILLA_BENVINGUDA, type Lang } from '@/lib/plantilles';
 
 type LangEmail = 'ca' | 'es' | 'en' | 'fr';
 const LANGS = [
@@ -62,7 +62,6 @@ export function EmailsPanel({
   titularEmail,
   titularTelefon,
   habitacioNom,
-  dataEntrada,
   dataSortida,
   idioma,
 }: {
@@ -71,7 +70,6 @@ export function EmailsPanel({
   titularEmail: string | null;
   titularTelefon: string | null;
   habitacioNom: string | null;
-  dataEntrada: string;
   dataSortida: string;
   idioma: string;
 }) {
@@ -82,7 +80,7 @@ export function EmailsPanel({
 
   const defaultLang = (['ca', 'es', 'en', 'fr'].includes(idioma) ? idioma : 'ca') as LangEmail;
   const [a, setA] = useState(titularEmail ?? '');
-  const [telefon, setTelefon] = useState(titularTelefon ?? '');
+  const telefon = titularTelefon ?? '';
   const [nom, setNom] = useState(titularNom);
   const [lang, setLang] = useState<LangEmail>(defaultLang);
   const [programatPer, setProgramatPer] = useState('');

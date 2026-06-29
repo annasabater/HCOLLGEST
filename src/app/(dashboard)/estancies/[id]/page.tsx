@@ -387,7 +387,6 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 titularEmail={titular?.email ?? null}
                 titularTelefon={titular?.telefon ?? null}
                 habitacioNom={estancia.habitacio?.nom ?? null}
-                dataEntrada={estancia.dataEntrada?.toISOString() ?? ''}
                 dataSortida={estancia.dataSortida?.toISOString() ?? ''}
                 idioma={estancia.idioma ?? 'ca'}
               />
