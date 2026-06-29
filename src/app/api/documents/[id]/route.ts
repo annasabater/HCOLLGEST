@@ -12,26 +12,23 @@ async function addWatermark(buf: Buffer, mime: string): Promise<Buffer> {
   try {
     const img = sharp(buf);
     const { width = 800, height = 600 } = await img.metadata();
-    const targetH = Math.max(40, Math.round(Math.min(width, height) / 8));
+    const fontSize = Math.max(28, Math.round(Math.min(width, height) / 7));
+    const cx = Math.round(width / 2);
+    const cy = Math.round(height / 2);
 
-    // Text natiu de sharp (Pango/libvips) — no depèn de fonts del sistema ni librsvg
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const textImg = await (sharp as any)({ text: { text: 'HOSTAL COLL', rgba: true, dpi: 144 } })
-      .resize(null, targetH, { fit: 'inside' })
-      .png()
-      .toBuffer() as Buffer;
-
-    // Reduïm l'opacitat manipulant el canal alpha directament
-    const { data, info } = await sharp(textImg).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-    for (let i = 3; i < data.length; i += 4) data[i] = Math.round((data[i] ?? 255) * 0.45);
-    const dimmed = await sharp(data, { raw: { width: info.width!, height: info.height!, channels: 4 } })
-      .rotate(-30, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
-      .png()
-      .toBuffer();
+    // SVG watermark — funciona a totes les plataformes sense Pango ni librsvg addicional
+    const svg = Buffer.from(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+        <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle"
+          font-family="Arial,Helvetica,sans-serif" font-size="${fontSize}"
+          font-weight="bold" fill="rgba(0,0,0,0.40)"
+          transform="rotate(-30,${cx},${cy})">HOSTAL COLL</text>
+      </svg>`
+    );
 
     return await img
       .grayscale()
-      .composite([{ input: dimmed, gravity: 'center' }])
+      .composite([{ input: svg, gravity: 'center' }])
       .jpeg({ quality: 90 })
       .toBuffer();
   } catch (err) {
