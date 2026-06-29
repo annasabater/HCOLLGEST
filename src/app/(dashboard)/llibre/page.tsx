@@ -117,10 +117,7 @@ export default function LlibrePage() {
           <Button onClick={veure} disabled={loading} variant="outline">
             <Eye className="h-4 w-4" /> {loading ? 'Carregant…' : 'Veure'}
           </Button>
-          <label className="flex items-center gap-1.5 pb-2 text-sm text-slate-600">
-            <input type="checkbox" checked={nomesMascota} onChange={(e) => setNomesMascota(e.target.checked)} />
-            Només amb mascota
-          </label>
+
           <Button onClick={exportCsv}>
             <Download className="h-4 w-4" /> Exportar CSV
           </Button>
@@ -153,7 +150,6 @@ export default function LlibrePage() {
               <Th>Cognoms</Th>
               <Th>Document</Th>
               <Th>Municipi</Th>
-              <Th>Mascota</Th>
               <Th>Mossos</Th>
               <Th>Accions</Th>
             </tr>
@@ -174,7 +170,6 @@ export default function LlibrePage() {
                     {r.tipusDocument} {r.numDocument}
                   </Td>
                   <Td>{r.municipi}</Td>
-                  <Td>{r.mascotes || '—'}</Td>
                   <Td>{isFirst ? estatBadge(r.enviamentEstat) : null}</Td>
                   <Td>
                     {isFirst && (
