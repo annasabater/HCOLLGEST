@@ -96,10 +96,10 @@ export function FacturaPanel({
   const [linies, setLinies] = useState<Linia[]>(() => [
     { concepte: 'ALLOTJAMENT', descripcio: buildDesc(), import: calcImportSuggerit() },
   ]);
-  const [ivaPercent, setIvaPercent] = useState('10');
-  // Desactivada per defecte: la tassa turística (IEET) ja s'inclou al preu de
-  // l'habitació, no es factura a part. Es pot activar puntualment si cal.
-  const [aplicarTasa, setAplicarTasa] = useState(false);
+  // IVA fix (10% allotjament) i tassa turística NO a part (ja inclosa al preu).
+  // No es mostren al formulari; es passen a l'API amb aquests valors per defecte.
+  const [ivaPercent] = useState('10');
+  const [aplicarTasa] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -254,27 +254,6 @@ export function FacturaPanel({
           >
             <Plus className="h-4 w-4" /> Línia
           </Button>
-
-          <div className="flex flex-wrap items-center gap-4 border-t border-slate-100 pt-3">
-            <label className="flex items-center gap-2 text-sm">
-              IVA %
-              <Input
-                className="h-9 w-20"
-                type="number"
-                value={ivaPercent}
-                onChange={(e) => setIvaPercent(e.target.value)}
-              />
-            </label>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={aplicarTasa}
-                onChange={(e) => setAplicarTasa(e.target.checked)}
-              />
-              Aplicar tassa turística (IEET) a part
-              <span className="text-xs text-slate-400">— normalment ja va inclosa al preu</span>
-            </label>
-          </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-2">
