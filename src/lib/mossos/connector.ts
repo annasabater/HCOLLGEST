@@ -81,8 +81,11 @@ async function fillFirst(page: Page, sels: string[], value: string): Promise<boo
   return false;
 }
 
-/** Crea una sessió de Browserbase i retorna la URL de connexió CDP. */
-async function createBrowserbaseSession(apiKey: string, projectId: string): Promise<string> {
+/** Crea una sessió de Browserbase i retorna la URL de connexió CDP + l'id. */
+async function createBrowserbaseSession(
+  apiKey: string,
+  projectId: string,
+): Promise<{ connectUrl: string; sessionId: string }> {
   const res = await fetch('https://api.browserbase.com/v1/sessions', {
     method: 'POST',
     headers: { 'X-BB-API-Key': apiKey, 'Content-Type': 'application/json' },
@@ -92,7 +95,10 @@ async function createBrowserbaseSession(apiKey: string, projectId: string): Prom
     throw new Error(`Browserbase: no s'ha pogut crear la sessió (HTTP ${res.status})`);
   }
   const s = (await res.json()) as { id: string; connectUrl?: string };
-  return s.connectUrl || `wss://connect.browserbase.com?apiKey=${apiKey}&sessionId=${s.id}`;
+  return {
+    connectUrl: s.connectUrl || `wss://connect.browserbase.com?apiKey=${apiKey}&sessionId=${s.id}`,
+    sessionId: s.id,
+  };
 }
 
 export async function pujaFitxerAMossos(input: ConnectorInput): Promise<ConnectorResult> {
@@ -103,7 +109,8 @@ export async function pujaFitxerAMossos(input: ConnectorInput): Promise<Connecto
 
   let browser: Awaited<ReturnType<typeof chromium.connectOverCDP>> | null = null;
   try {
-    const connectUrl = await createBrowserbaseSession(cfg.apiKey, cfg.projectId);
+    const { connectUrl, sessionId } = await createBrowserbaseSession(cfg.apiKey, cfg.projectId);
+    const replay = `https://browserbase.com/sessions/${sessionId}`;
     browser = await chromium.connectOverCDP(connectUrl);
     const ctx = browser.contexts()[0] ?? (await browser.newContext());
     const page = ctx.pages()[0] ?? (await ctx.newPage());
@@ -145,17 +152,23 @@ export async function pujaFitxerAMossos(input: ConnectorInput): Promise<Connecto
     });
     await clickFirst(page, SEL.enviar);
     await page.waitForLoadState('networkidle').catch(() => {});
+    // Espera el resultat: o apareix l'enllaç del comprovant (èxit), o un text
+    // d'èxit/error. Així no llegim la pàgina abans que carregui el resultat.
+    await Promise.race([
+      page.locator(SEL.comprovant[0]!).first().waitFor({ state: 'visible', timeout: 20000 }),
+      page.getByText(/èxit|correctament|realitzad|error|no és vàlid|incorrecte/i).first().waitFor({ state: 'visible', timeout: 20000 }),
+    ]).catch(() => {});
 
-    // 4) Resultat: el portal valida automàticament. L'enllaç del comprovant
-    //    només apareix si l'operació ha estat correcta.
-    // innerText = només text VISIBLE (sense <script>), així el missatge és el real.
+    // 4) Resultat. innerText = només text VISIBLE (sense <script>).
     const text = (await page.innerText('body').catch(() => '')) ?? '';
     const teComprovant = (await page.locator(SEL.comprovant[0]!).count().catch(() => 0)) > 0;
     const exit = teComprovant || /èxit|correctament|realitzad/i.test(text);
 
     if (!exit) {
-      const msg = text.replace(/\s+/g, ' ').trim().slice(0, 400);
-      return { ok: false, errorMsg: `El portal no ha acceptat el fitxer: ${msg || 'sense missatge visible al portal'}` };
+      const net = text.replace(/\s+/g, ' ').trim();
+      // El menú ocupa el principi; mostrem un tros ampli per veure el missatge real.
+      const msg = net.slice(0, 800) || 'sense missatge visible al portal';
+      return { ok: false, errorMsg: `El portal no ha acceptat el fitxer. Mira la gravació: ${replay} — Resposta: ${msg}` };
     }
 
     // 5) Comprovant oficial: el descarreguem DINS de la sessió (l'URL del report
