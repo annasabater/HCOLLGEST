@@ -65,7 +65,8 @@ export function FacturaPanel({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [tipusDocument, setTipusDocument] = useState('FACTURA_SIMPLIFICADA');
+  // Es poden triar els dos tipus alhora: es crea una factura de cada tipus.
+  const [tipusDocs, setTipusDocs] = useState<string[]>(['FACTURA_SIMPLIFICADA']);
 
   // Import suggerit: suma de pagaments a compte + fiances en custòdia (si n'hi ha),
   // o bé el preu suggerit per les nits, o buit.
@@ -114,20 +115,28 @@ export function FacturaPanel({
 
   async function crear(e: React.FormEvent) {
     e.preventDefault();
+    if (tipusDocs.length === 0) {
+      setError('Tria almenys un tipus de factura.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      await postJSON('/api/factures', {
-        estanciaId,
-        tipusDocument,
-        ivaPercent: Number(ivaPercent),
-        aplicarTasa,
-        linies: linies.map((l) => ({
-          concepte: l.concepte,
-          descripcio: l.descripcio,
-          import: Number(l.import || 0),
-        })),
-      });
+      const liniesPayload = linies.map((l) => ({
+        concepte: l.concepte,
+        descripcio: l.descripcio,
+        import: Number(l.import || 0),
+      }));
+      // Una factura per cada tipus seleccionat (p. ex. simplificada + fiscal).
+      for (const tipusDocument of tipusDocs) {
+        await postJSON('/api/factures', {
+          estanciaId,
+          tipusDocument,
+          ivaPercent: Number(ivaPercent),
+          aplicarTasa,
+          linies: liniesPayload,
+        });
+      }
       setOpen(false);
       router.refresh();
     } catch (err) {
@@ -198,11 +207,13 @@ export function FacturaPanel({
             {(['FACTURA_SIMPLIFICADA', 'FACTURA'] as const).map((t) => (
               <label key={t} className="flex items-center gap-1.5 text-sm cursor-pointer">
                 <input
-                  type="radio"
-                  name="tipusDocument"
-                  value={t}
-                  checked={tipusDocument === t}
-                  onChange={() => setTipusDocument(t)}
+                  type="checkbox"
+                  checked={tipusDocs.includes(t)}
+                  onChange={(e) =>
+                    setTipusDocs((prev) =>
+                      e.target.checked ? [...prev, t] : prev.filter((x) => x !== t),
+                    )
+                  }
                 />
                 {TIPUS_LABEL[t]}
               </label>
