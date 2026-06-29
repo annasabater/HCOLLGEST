@@ -148,13 +148,14 @@ export async function pujaFitxerAMossos(input: ConnectorInput): Promise<Connecto
 
     // 4) Resultat: el portal valida automàticament. L'enllaç del comprovant
     //    només apareix si l'operació ha estat correcta.
-    const text = (await page.textContent('body').catch(() => '')) ?? '';
+    // innerText = només text VISIBLE (sense <script>), així el missatge és el real.
+    const text = (await page.innerText('body').catch(() => '')) ?? '';
     const teComprovant = (await page.locator(SEL.comprovant[0]!).count().catch(() => 0)) > 0;
-    const exit = teComprovant || /èxit|exit|correctament/i.test(text);
+    const exit = teComprovant || /èxit|correctament|realitzad/i.test(text);
 
     if (!exit) {
-      const msg = text.replace(/\s+/g, ' ').trim().slice(0, 500);
-      return { ok: false, errorMsg: `El portal no ha acceptat el fitxer: ${msg || 'error desconegut'}` };
+      const msg = text.replace(/\s+/g, ' ').trim().slice(0, 400);
+      return { ok: false, errorMsg: `El portal no ha acceptat el fitxer: ${msg || 'sense missatge visible al portal'}` };
     }
 
     // 5) Comprovant oficial: el descarreguem DINS de la sessió (l'URL del report
