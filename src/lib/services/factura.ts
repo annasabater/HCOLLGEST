@@ -494,8 +494,22 @@ export async function createFacturaSeleccio(
     // es vinculen a la factura (per referència) i es mostren a part —una sola
     // vegada— al document "amb fiança".
     const total = round2(pagaments.reduce((a, p) => a + Number(p.import), 0));
-    const numero = await proximNumeroFactura(tx, new Date().getFullYear());
 
+    let numero: string;
+    if (input.numero?.trim()) {
+      const exist = await tx.factura.findFirst({ where: { numero: input.numero.trim() } });
+      if (exist) {
+        throw new Error(
+          `Validación fallida: el número de factura "${input.numero.trim()}" ja existeix. Canvia'l o deixa'l buit per generar-ne un de nou.`,
+        );
+      }
+      numero = input.numero.trim();
+    } else {
+      numero = await proximNumeroFactura(tx, new Date().getFullYear());
+    }
+
+    // Una sola línia d'allotjament (l'ingrés) amb una descripció llegible per al
+    // client. La fiança NO és línia (és dipòsit en custòdia, va a part).
     const factura = await tx.factura.create({
       data: {
         estanciaId,
@@ -506,13 +520,18 @@ export async function createFacturaSeleccio(
         total,
         estat: 'COBRADA',
         tipusDocument: input.tipusDocument ?? 'RECIBO',
-        linies: {
-          create: pagaments.map((p) => ({
-            concepte: p.concepte,
-            descripcio: p.descripcio ?? CONCEPTE_LINIA_LABELS[p.concepte],
-            import: p.import,
-          })),
-        },
+        linies:
+          total > 0
+            ? {
+                create: [
+                  {
+                    concepte: 'ALLOTJAMENT',
+                    descripcio: input.descripcioAllotjament?.trim() || CONCEPTE_LINIA_LABELS.ALLOTJAMENT,
+                    import: total,
+                  },
+                ],
+              }
+            : undefined,
       },
     });
 

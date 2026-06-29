@@ -21,7 +21,6 @@ import { ConvertirAEnCurs } from '@/components/estancia/convertir-a-en-curs';
 import { EmailsPanel } from '@/components/estancia/emails-panel';
 import { FacturaPanel } from '@/components/factura/factura-panel';
 import { PagamentsPanel } from '@/components/factura/pagaments-panel';
-import { preuSuggeritAllotjament } from '@/lib/services/tarifes';
 import { formatDate } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
 import {
@@ -78,9 +77,6 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
   const isAdmin = user?.role === 'ADMIN';
   const canWrite = user ? hasRole(user.role, ROLES_WRITE) : false;
   const titular = estancia.viatgers[0]?.huesped;
-  const suggerit = isAdmin
-    ? await preuSuggeritAllotjament(estancia.habitacioId, estancia.dataEntrada ?? new Date(), estancia.dataSortida ?? new Date())
-    : null;
 
   // Estat REAL de l'estada (per dates) — més clar que el tipus de registre Mossos.
   const avuiIso = toISODate(new Date());
@@ -325,16 +321,26 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             >
               <FacturaPanel
                 estanciaId={estancia.id}
-                preuSuggerit={suggerit?.preu}
-                nitsSuggerides={suggerit?.nits}
                 habitacioNom={estancia.habitacio?.nom ?? null}
                 numViatgers={estancia.numViatgers ?? null}
                 dataEntrada={estancia.dataEntrada?.toISOString() ?? null}
                 dataSortida={estancia.dataSortida?.toISOString() ?? null}
-                numContracte={estancia.numContracte?.toString() ?? null}
                 pagaments={estancia.cobraments.map((c) => ({
+                  id: c.id,
                   import: Number(c.import),
+                  descripcio: c.descripcio,
+                  metode: c.metode,
+                  data: c.data.toISOString(),
                   facturaId: c.facturaId,
+                }))}
+                fiances={estancia.diposits.map((d) => ({
+                  id: d.id,
+                  import: Number(d.import),
+                  notes: d.notes ?? null,
+                  metode: d.metode,
+                  data: d.data.toISOString(),
+                  estat: d.estat,
+                  facturaId: d.facturaId ?? null,
                 }))}
                 factures={estancia.factures.map((f) => ({
                   id: f.id,

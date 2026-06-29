@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Trash2, FileText, Undo2, ShieldCheck, ChevronDown, Pencil, Check, X } from 'lucide-react';
+import { Plus, Trash2, Undo2, ShieldCheck, ChevronDown, Pencil, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -74,10 +74,6 @@ export function PagamentsPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Selecció per crear factura (pagaments + fiances)
-  const [sel, setSel] = useState<Set<string>>(new Set());
-  const [selFiances, setSelFiances] = useState<Set<string>>(new Set());
-
   // Expanded fiances section
   const [fiancaOberta, setFiancaOberta] = useState(false);
   // Edit pagament inline
@@ -99,17 +95,9 @@ export function PagamentsPanel({
   const aCompte = pagaments.filter((p) => !p.facturaId);
   const facturats = pagaments.filter((p) => p.facturaId);
   const totalACompte = aCompte.reduce((a, p) => a + p.import, 0);
-  const selPagTotal = aCompte.filter((p) => sel.has(p.id)).reduce((a, p) => a + p.import, 0);
-  const selFiancaTotal = fiances.filter((f) => selFiances.has(f.id)).reduce((a, f) => a + f.import, 0);
-  const selTotal = selPagTotal + selFiancaTotal;
 
   const fiancesCustodia = fiances.filter((f) => f.estat === 'EN_CUSTODIA' && !f.facturaId);
   const fiancesFacturades = fiances.filter((f) => f.facturaId);
-
-  const toggle = (id: string) =>
-    setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  const toggleFianca = (id: string) =>
-    setSelFiances((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   function obrir(t: 'PAGAMENT' | 'FIANCA') {
     setTipus(t);
@@ -227,29 +215,6 @@ export function PagamentsPanel({
     }
   }
 
-  async function crearFactura(tipusDocument: 'FACTURA_SIMPLIFICADA' | 'FACTURA') {
-    const ids = aCompte.filter((p) => sel.has(p.id)).map((p) => p.id);
-    const fIds = fiances.filter((f) => selFiances.has(f.id)).map((f) => f.id);
-    if (!ids.length && !fIds.length) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await postJSON(`/api/estancies/${estanciaId}/factura-seleccio`, {
-        pagamentIds: ids,
-        fiancaIds: fIds,
-        tipusDocument,
-      }) as { factura: { id: string } };
-      setSel(new Set());
-      setSelFiances(new Set());
-      window.open(`/imprimir/factura-simple/${res.factura.id}`, '_blank');
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Error creant la factura');
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function resoldreFianca(id: string, estat: 'TORNAT' | 'RETINGUT') {
     const motiu =
       estat === 'RETINGUT' ? (window.prompt('Motiu de la retenció (opcional):') ?? undefined) : undefined;
@@ -317,11 +282,10 @@ export function PagamentsPanel({
                 </div>
               </div>
             ) : (
-              <label
+              <div
                 key={p.id}
                 className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm"
               >
-                <input type="checkbox" checked={sel.has(p.id)} onChange={() => toggle(p.id)} />
                 <span className="font-medium text-slate-800">{formatEur(p.import)}</span>
                 <span className="text-slate-400">
                   {p.descripcio ? ` · ${p.descripcio}` : ''} · {METODE_COBRAMENT_LABELS[p.metode]} ·{' '}
@@ -345,7 +309,7 @@ export function PagamentsPanel({
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-              </label>
+              </div>
             )
           )}
 
@@ -402,11 +366,10 @@ export function PagamentsPanel({
                 </div>
               </div>
             ) : (
-              <label
+              <div
                 key={f.id}
                 className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2 text-sm"
               >
-                <input type="checkbox" checked={selFiances.has(f.id)} onChange={() => toggleFianca(f.id)} />
                 <span className="font-medium text-slate-800">{formatEur(f.import)}</span>
                 <span className="text-slate-400">
                   · {f.notes ?? 'Fiança'} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
@@ -429,20 +392,8 @@ export function PagamentsPanel({
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-              </label>
+              </div>
             )
-          )}
-
-          {selTotal > 0 && (
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <span className="text-xs text-slate-500">Crear factura amb {formatEur(selTotal)}:</span>
-              <Button type="button" size="sm" variant="outline" onClick={() => crearFactura('FACTURA_SIMPLIFICADA')} disabled={busy}>
-                <FileText className="h-4 w-4" /> Factura simplificada
-              </Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => crearFactura('FACTURA')} disabled={busy}>
-                <FileText className="h-4 w-4" /> Factura fiscal
-              </Button>
-            </div>
           )}
         </div>
       )}

@@ -3,14 +3,13 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getJSON } from '@/lib/api';
-import { Plus, Trash2, Receipt, FileText } from 'lucide-react';
+import { getJSON, postJSON, ApiError } from '@/lib/api';
+import { Receipt, FileText, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input, Select } from '@/components/ui/input';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { postJSON, ApiError } from '@/lib/api';
-import { formatEur } from '@/lib/utils';
-import { optionsFrom, concepteLiniaValues, CONCEPTE_LINIA_LABELS } from '@/lib/validation/enums';
+import { formatEur, formatDate } from '@/lib/utils';
+import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 
 function tipusHabitacio(nom: string | null | undefined): string {
   if (!nom) return 'Habitació';
@@ -31,7 +30,23 @@ interface FacturaLite {
   estat: 'PENDENT' | 'COBRADA';
   tipusDocument?: string;
 }
-type Linia = { concepte: string; descripcio: string; import: string };
+interface PagamentLite {
+  id: string;
+  import: number;
+  descripcio: string | null;
+  metode: keyof typeof METODE_COBRAMENT_LABELS;
+  data: string;
+  facturaId: string | null;
+}
+interface FiancaLite {
+  id: string;
+  import: number;
+  notes: string | null;
+  metode: keyof typeof METODE_COBRAMENT_LABELS;
+  data: string;
+  estat: string;
+  facturaId: string | null;
+}
 
 const TIPUS_LABEL: Record<string, string> = {
   RECIBO: 'Rebut',
@@ -42,70 +57,56 @@ const TIPUS_LABEL: Record<string, string> = {
 export function FacturaPanel({
   estanciaId,
   factures,
-  preuSuggerit,
-  nitsSuggerides,
   habitacioNom,
   numViatgers,
   dataEntrada,
   dataSortida,
-  numContracte: _numContracte,
-  pagaments,
+  pagaments = [],
+  fiances = [],
 }: {
   estanciaId: string;
   factures: FacturaLite[];
-  preuSuggerit?: number;
-  nitsSuggerides?: number;
   habitacioNom?: string | null;
   numViatgers?: number | null;
   dataEntrada?: string | null;
   dataSortida?: string | null;
-  numContracte?: string | null;
-  pagaments?: { import: number; facturaId: string | null }[];
+  pagaments?: PagamentLite[];
+  fiances?: FiancaLite[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  // Es poden triar els dos tipus alhora: es crea una factura de cada tipus.
-  const [tipusDocs, setTipusDocs] = useState<string[]>(['FACTURA_SIMPLIFICADA']);
+  const [tipus, setTipus] = useState<'FACTURA_SIMPLIFICADA' | 'FACTURA'>('FACTURA_SIMPLIFICADA');
+  const [numero, setNumero] = useState('');
+  const [selPag, setSelPag] = useState<Set<string>>(new Set());
+  const [selFi, setSelFi] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Import suggerit: NOMÉS els pagaments a compte (ingrés). La fiança és un dipòsit
-  // en custòdia i NO entra a la factura; s'afegeix a part al document "amb fiança".
-  function calcImportSuggerit(): string {
-    const totalPagaments = (pagaments ?? [])
-      .filter((p) => !p.facturaId)
-      .reduce((a, p) => a + p.import, 0);
-    if (totalPagaments > 0) return String(totalPagaments);
-    if (preuSuggerit) return String(preuSuggerit);
-    return '';
-  }
+  // Pendents de facturar: pagaments sense factura i fiances en custòdia sense factura.
+  const pagamentsLliures = pagaments.filter((p) => !p.facturaId);
+  const fiancesLliures = fiances.filter((f) => f.estat === 'EN_CUSTODIA' && !f.facturaId);
+
+  const totalPag = pagamentsLliures.filter((p) => selPag.has(p.id)).reduce((a, p) => a + p.import, 0);
+  const totalFi = fiancesLliures.filter((f) => selFi.has(f.id)).reduce((a, f) => a + f.import, 0);
 
   function buildDesc(): string {
     const habLabel = tipusHabitacio(habitacioNom);
     const personesLabel = numViatgers ? ` (${numViatgers} ${numViatgers === 1 ? 'persona' : 'persones'})` : '';
-    const datesLabel = dataEntrada && dataSortida
-      ? ` · Del ${fmtDateShort(dataEntrada)} al ${fmtDateShort(dataSortida)}`
-      : '';
-    return habitacioNom
-      ? `${habLabel}${personesLabel}${datesLabel}`
-      : (nitsSuggerides ? `Habitació (${nitsSuggerides} nits)` : 'Habitació');
+    const datesLabel =
+      dataEntrada && dataSortida ? ` · Del ${fmtDateShort(dataEntrada)} al ${fmtDateShort(dataSortida)}` : '';
+    return habitacioNom ? `${habLabel}${personesLabel}${datesLabel}` : 'Allotjament';
   }
 
-  const [linies, setLinies] = useState<Linia[]>(() => [
-    { concepte: 'ALLOTJAMENT', descripcio: buildDesc(), import: calcImportSuggerit() },
-  ]);
-  // IVA 0% (hostal no aplica IVA d'allotjament).
-  const [ivaPercent] = useState('0');
-  const [aplicarTasa] = useState(false);
-  const [numero, setNumero] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const setLinia = (i: number, patch: Partial<Linia>) =>
-    setLinies((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
+  const togglePag = (id: string) =>
+    setSelPag((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const toggleFi = (id: string) =>
+    setSelFi((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   async function obrir() {
-    // Re-calcula l'import cada vegada que s'obre (pagaments poden haver canviat)
-    setLinies([{ concepte: 'ALLOTJAMENT', descripcio: buildDesc(), import: calcImportSuggerit() }]);
     setError(null);
+    // Preselecciona tots els pendents (el cas habitual: facturar-ho tot).
+    setSelPag(new Set(pagamentsLliures.map((p) => p.id)));
+    setSelFi(new Set(fiancesLliures.map((f) => f.id)));
     try {
       const res = await getJSON<{ numero: string }>('/api/factures/seguent-numero');
       setNumero(res.numero);
@@ -117,31 +118,20 @@ export function FacturaPanel({
 
   async function crear(e: React.FormEvent) {
     e.preventDefault();
-    if (tipusDocs.length === 0) {
-      setError('Tria almenys un tipus de factura.');
+    if (selPag.size === 0 && selFi.size === 0) {
+      setError('Selecciona almenys un pagament o una fiança.');
       return;
     }
     setSaving(true);
     setError(null);
     try {
-      const liniesPayload = linies.map((l) => ({
-        concepte: l.concepte,
-        descripcio: l.descripcio,
-        import: Number(l.import || 0),
-      }));
-      // Una factura per cada tipus seleccionat (p. ex. simplificada + fiscal).
-      // El número triat només s'aplica a la primera; les altres s'autonumeren
-      // (si no, totes farien servir el mateix número i xocarien).
-      for (let i = 0; i < tipusDocs.length; i++) {
-        await postJSON('/api/factures', {
-          estanciaId,
-          numero: i === 0 ? numero.trim() || undefined : undefined,
-          tipusDocument: tipusDocs[i],
-          ivaPercent: Number(ivaPercent),
-          aplicarTasa,
-          linies: liniesPayload,
-        });
-      }
+      await postJSON(`/api/estancies/${estanciaId}/factura-seleccio`, {
+        pagamentIds: [...selPag],
+        fiancaIds: [...selFi],
+        tipusDocument: tipus,
+        numero: numero.trim() || undefined,
+        descripcioAllotjament: buildDesc(),
+      });
       setOpen(false);
       router.refresh();
     } catch (err) {
@@ -207,94 +197,94 @@ export function FacturaPanel({
       {open ? (
         <form onSubmit={crear} className="space-y-3 rounded-lg border border-slate-200 p-3">
           {/* Tipus de document */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <span className="text-xs font-medium text-slate-500">Tipus:</span>
             {(['FACTURA_SIMPLIFICADA', 'FACTURA'] as const).map((t) => (
               <label key={t} className="flex items-center gap-1.5 text-sm cursor-pointer">
                 <input
-                  type="checkbox"
-                  checked={tipusDocs.includes(t)}
-                  onChange={(e) =>
-                    setTipusDocs((prev) =>
-                      e.target.checked ? [...prev, t] : prev.filter((x) => x !== t),
-                    )
-                  }
+                  type="radio"
+                  name="tipusFactura"
+                  checked={tipus === t}
+                  onChange={() => setTipus(t)}
                 />
                 {TIPUS_LABEL[t]}
               </label>
             ))}
           </div>
 
-          {/* Número de factura */}
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-slate-500 whitespace-nowrap">Núm. factura:</label>
-            <Input
-              className="h-8 w-40 text-sm"
-              value={numero}
-              onChange={(e) => setNumero(e.target.value)}
-              placeholder="2026-0001"
-            />
+          {/* Número */}
+          <label className="flex items-center gap-2 text-sm">
+            <span className="text-xs font-medium text-slate-500">Núm. factura:</span>
+            <Input className="h-9 w-40" value={numero} onChange={(e) => setNumero(e.target.value)} />
+          </label>
+
+          {/* Pagaments (ingrés) */}
+          <div>
+            <p className="mb-1 text-xs font-medium text-slate-500">Pagaments (ingrés)</p>
+            {pagamentsLliures.length === 0 ? (
+              <p className="text-xs italic text-slate-400">Cap pagament pendent de facturar.</p>
+            ) : (
+              <div className="space-y-1">
+                {pagamentsLliures.map((p) => (
+                  <label
+                    key={p.id}
+                    className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-sm"
+                  >
+                    <input type="checkbox" checked={selPag.has(p.id)} onChange={() => togglePag(p.id)} />
+                    <span className="font-medium text-slate-800">{formatEur(p.import)}</span>
+                    <span className="text-slate-400">
+                      {p.descripcio ? `· ${p.descripcio} ` : ''}· {METODE_COBRAMENT_LABELS[p.metode]} · {formatDate(p.data)}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Línies */}
-          {linies.map((l, i) => (
-            <div key={i} className="grid grid-cols-12 gap-2">
-              <Select
-                className="col-span-3 h-9"
-                value={l.concepte}
-                onChange={(e) => setLinia(i, { concepte: e.target.value })}
-              >
-                {optionsFrom(concepteLiniaValues, CONCEPTE_LINIA_LABELS).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
+          {/* Fiança (a part) */}
+          {fiancesLliures.length > 0 && (
+            <div>
+              <p className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-500">
+                <ShieldCheck className="h-3.5 w-3.5" /> Fiança (a part — surt al document «amb fiança»)
+              </p>
+              <div className="space-y-1">
+                {fiancesLliures.map((f) => (
+                  <label
+                    key={f.id}
+                    className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-1.5 text-sm"
+                  >
+                    <input type="checkbox" checked={selFi.has(f.id)} onChange={() => toggleFi(f.id)} />
+                    <span className="font-medium text-slate-800">{formatEur(f.import)}</span>
+                    <span className="text-slate-400">
+                      · {f.notes ?? 'Fiança'} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
+                    </span>
+                  </label>
                 ))}
-              </Select>
-              <Input
-                className="col-span-5 h-9"
-                placeholder="Descripció"
-                value={l.descripcio}
-                onChange={(e) => setLinia(i, { descripcio: e.target.value })}
-              />
-              <Input
-                className="col-span-3 h-9"
-                type="number"
-                step="0.01"
-                placeholder="Import €"
-                value={l.import}
-                onChange={(e) => setLinia(i, { import: e.target.value })}
-              />
-              <button
-                type="button"
-                className="col-span-1 text-slate-400 hover:text-red-600"
-                onClick={() => setLinies((p) => p.filter((_, idx) => idx !== i))}
-              >
-                <Trash2 className="mx-auto h-4 w-4" />
-              </button>
+              </div>
             </div>
-          ))}
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={() => setLinies((p) => [...p, { concepte: 'EXTRA', descripcio: '', import: '' }])}
-          >
-            <Plus className="h-4 w-4" /> Línia
-          </Button>
+          )}
+
+          {/* Resum */}
+          <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+            Factura: <strong>{formatEur(totalPag)}</strong>
+            {totalFi > 0 && (
+              <span className="text-slate-500"> · amb fiança: <strong>{formatEur(totalPag + totalFi)}</strong></span>
+            )}
+          </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <div className="flex gap-2">
-            <Button type="submit" size="sm" disabled={saving}>
+          <div className="flex items-center gap-3">
+            <Button type="submit" disabled={saving || (selPag.size === 0 && selFi.size === 0)}>
               {saving ? 'Creant…' : 'Crear factura'}
             </Button>
-            <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
+            <button type="button" className="text-sm text-slate-500 hover:underline" onClick={() => setOpen(false)}>
               Cancel·lar
-            </Button>
+            </button>
           </div>
         </form>
       ) : (
-        <Button size="sm" variant="outline" onClick={obrir}>
-          <Plus className="h-4 w-4" /> Nova factura
+        <Button variant="outline" size="sm" onClick={obrir}>
+          <Receipt className="h-4 w-4" /> Nova factura
         </Button>
       )}
     </div>
