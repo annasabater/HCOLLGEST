@@ -114,6 +114,14 @@ export default function LlibrePage() {
           <Field label="Fins a">
             <Input type="date" value={fins} onChange={(e) => setFins(e.target.value)} />
           </Field>
+          <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={nomesMascota}
+              onChange={(e) => setNomesMascota(e.target.checked)}
+            />
+            Només amb mascota
+          </label>
           <Button onClick={veure} disabled={loading} variant="outline">
             <Eye className="h-4 w-4" /> {loading ? 'Carregant…' : 'Veure'}
           </Button>

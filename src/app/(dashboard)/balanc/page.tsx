@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   ChevronRight,
   TrendingUp,
-  Coins,
   Wallet,
   TrendingDown,
   PiggyBank,
