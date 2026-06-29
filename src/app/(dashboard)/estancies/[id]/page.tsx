@@ -57,7 +57,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
       habitacio: true,
       factures: { where: { deletedAt: null }, orderBy: { data: 'desc' } },
       cobraments: { include: { factura: { select: { numero: true } } }, orderBy: { data: 'asc' } },
-      diposits: { orderBy: { createdAt: 'desc' } },
+      diposits: { include: { factura: { select: { numero: true } } }, orderBy: { createdAt: 'desc' } },
       origen: { select: { id: true, numContracte: true, anyContracte: true } },
       ampliacions: {
         where: { deletedAt: null },
@@ -308,6 +308,8 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   motiu: d.motiu,
                   notes: d.notes ?? null,
                   observacions: d.observacions ?? null,
+                  facturaId: d.facturaId ?? null,
+                  facturaNumero: d.factura?.numero ?? null,
                 }))}
               />
             </CollapsibleCard>
@@ -337,6 +339,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 fiances={estancia.diposits.map((d) => ({
                   import: Number(d.import),
                   estat: d.estat,
+                  facturaId: d.facturaId ?? null,
                 }))}
                 factures={estancia.factures.map((f) => ({
                   id: f.id,

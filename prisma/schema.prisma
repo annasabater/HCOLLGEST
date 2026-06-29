@@ -625,6 +625,7 @@ model Factura {
 
   linies     LiniaFactura[]
   cobraments Cobrament[]
+  diposits   Diposit[]
   verifactu  RegistreVerifactu?
 
   createdAt DateTime  @default(now()) @map("created_at")
@@ -693,6 +694,8 @@ model Diposit {
   id            String       @id @default(cuid())
   estanciaId    String       @map("estancia_id")
   estancia      Estancia     @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+  facturaId     String?      @map("factura_id")
+  factura       Factura?     @relation(fields: [facturaId], references: [id], onDelete: SetNull)
   import        Decimal      @db.Decimal(10, 2)
   data          DateTime
   metode        MetodeCobrament
@@ -707,6 +710,7 @@ model Diposit {
 
   @@index([estanciaId])
   @@index([estat])
+  @@index([facturaId])
   @@map("diposit")
 }
 

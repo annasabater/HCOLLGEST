@@ -36,6 +36,8 @@ export interface Fianca {
   motiu: string | null;
   notes: string | null;
   observacions: string | null;
+  facturaId: string | null;
+  facturaNumero: string | null;
 }
 
 const FIANCA_ESTAT_LABEL: Record<Fianca['estat'], string> = {
@@ -100,7 +102,8 @@ export function PagamentsPanel({
   const selFiancaTotal = fiances.filter((f) => selFiances.has(f.id)).reduce((a, f) => a + f.import, 0);
   const selTotal = selPagTotal + selFiancaTotal;
 
-  const fiancesCustodia = fiances.filter((f) => f.estat === 'EN_CUSTODIA');
+  const fiancesCustodia = fiances.filter((f) => f.estat === 'EN_CUSTODIA' && !f.facturaId);
+  const fiancesFacturades = fiances.filter((f) => f.facturaId);
 
   const toggle = (id: string) =>
     setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
@@ -430,8 +433,8 @@ export function PagamentsPanel({
         </div>
       )}
 
-      {/* ── Facturats ─────────────────────────────────────────────────── */}
-      {facturats.length > 0 && (
+      {/* ── Facturats (pagaments + fiances) ───────────────────────────── */}
+      {(facturats.length > 0 || fiancesFacturades.length > 0) && (
         <div className="space-y-1 border-t border-slate-100 pt-2">
           <p className="text-xs font-medium text-slate-500">Ja en una factura</p>
           {facturats.map((p) => (
@@ -445,6 +448,21 @@ export function PagamentsPanel({
               {p.facturaId && (
                 <Link href={`/factures/${p.facturaId}`}>
                   <Badge tone="neutral">{numContracte ? `Contracte ${numContracte}` : (p.facturaNumero ?? 'Factura')}</Badge>
+                </Link>
+              )}
+            </div>
+          ))}
+          {fiancesFacturades.map((f) => (
+            <div
+              key={f.id}
+              className="flex items-center justify-between rounded-lg px-3 py-1.5 text-sm text-slate-500"
+            >
+              <span>
+                {formatEur(f.import)} · {f.notes ?? 'Fiança'} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
+              </span>
+              {f.facturaId && (
+                <Link href={`/factures/${f.facturaId}`}>
+                  <Badge tone="neutral">{numContracte ? `Contracte ${numContracte}` : (f.facturaNumero ?? 'Factura')}</Badge>
                 </Link>
               )}
             </div>

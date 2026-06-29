@@ -490,6 +490,13 @@ export async function createFacturaSeleccio(
       data: { facturaId: factura.id },
     });
 
+    if (fiances.length > 0) {
+      await tx.diposit.updateMany({
+        where: { id: { in: fiances.map((f) => f.id) } },
+        data: { facturaId: factura.id },
+      });
+    }
+
     await audit(
       {
         usuariId: actor?.id ?? null,
