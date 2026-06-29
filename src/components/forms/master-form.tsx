@@ -189,50 +189,9 @@ export function MasterForm({
   const [serverError, setServerError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
 
-  // ── Esborrany (localStorage) — només en mode creació ──────────────────────
+  // ── Esborrany (localStorage) — autodesat en mode creació ──────────────────
   const DRAFT_KEY = 'estancia-nou-draft';
-  const [draftBanner, setDraftBanner] = useState(false);
   const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Comprova si hi ha un esborrany en muntar (mode create i sense initial)
-  useEffect(() => {
-    if (mode !== 'create' || initial) return;
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (raw) setDraftBanner(true);
-    } catch { /* ignorar */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Restaura l'esborrany
-  function restaurarDraft() {
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (!raw) return;
-      const d = JSON.parse(raw) as {
-        tipusRegistre: typeof tipusRegistre;
-        estancia: typeof estancia;
-        viatgers: ViatgerState[];
-        portaMascota: boolean;
-        mascotes: typeof mascotes;
-        pagaments: typeof pagaments;
-        fiances: typeof fiances;
-      };
-      setTipusRegistre(d.tipusRegistre ?? 'CONTRACTE_EN_CURS');
-      setEstancia(d.estancia ?? estancia);
-      setViatgers(d.viatgers?.length ? d.viatgers : viatgers);
-      setPortaMascota(d.portaMascota ?? false);
-      setMascotes(d.mascotes ?? []);
-      setPagaments(d.pagaments ?? []);
-      setFiances(d.fiances ?? []);
-    } catch { /* ignorar */ }
-    setDraftBanner(false);
-  }
-
-  function descartarDraft() {
-    try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignorar */ }
-    setDraftBanner(false);
-  }
 
   const [confirmReset, setConfirmReset] = useState(false);
   function resetForm() {
@@ -258,7 +217,6 @@ export function MasterForm({
     setServerError(null);
     setWarnings([]);
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignorar */ }
-    setDraftBanner(false);
     setConfirmReset(false);
   }
 
