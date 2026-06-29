@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Download, Eye, AlertTriangle, Pencil } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
@@ -10,6 +10,7 @@ import { Field } from '@/components/ui/field';
 import { Card, CardBody } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { EliminarEstada } from '@/components/estancia/eliminar-estada';
 import { ESTAT_ENVIAMENT_LABELS } from '@/lib/validation/enums';
 import { getJSON } from '@/lib/api';
@@ -43,12 +44,16 @@ function estatBadge(estat: string) {
   return <Badge tone={tone}>{ESTAT_ENVIAMENT_LABELS[estat as EstatEnviament] ?? estat}</Badge>;
 }
 
+const PER_PAGINA_OPTS = [10, 25, 50];
+
 export default function LlibrePage() {
   const [desde, setDesde] = useState('');
   const [fins, setFins] = useState('');
   const [rows, setRows] = useState<Row[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [nomesMascota, setNomesMascota] = useState(false);
+  const [pagina, setPagina] = useState(1);
+  const [perPagina, setPerPagina] = useState(25);
 
   const query = () => {
     const p = new URLSearchParams();
@@ -82,9 +87,13 @@ export default function LlibrePage() {
 
   // Les accions (editar / enviar a Mossos) són per estada: només es mostren al
   // primer viatger de cada contracte per no duplicar-les ni generar fitxers repetits.
-  const visibles = (rows ?? []).filter(
+  const visibles = useMemo(() => (rows ?? []).filter(
     (r) => !nomesMascota || (!!r.mascotes && r.mascotes.trim() !== '' && r.mascotes !== '—'),
-  );
+  ), [rows, nomesMascota]);
+
+  const totalPagines = Math.ceil(visibles.length / perPagina);
+  const paginats = visibles.slice((pagina - 1) * perPagina, pagina * perPagina);
+
   const firstRowOf = new Map<string, number>();
   const groupOf = new Map<string, number>();
   let groupIdx = 0;
@@ -156,8 +165,9 @@ export default function LlibrePage() {
             </tr>
           </Thead>
           <tbody>
-            {visibles.map((r, i) => {
-              const isFirst = firstRowOf.get(r.estanciaId) === i;
+            {paginats.map((r, i) => {
+              const globalIdx = (pagina - 1) * perPagina + i;
+              const isFirst = firstRowOf.get(r.estanciaId) === globalIdx;
               const gIdx = groupOf.get(r.estanciaId) ?? 0;
               const isEven = gIdx % 2 === 0;
               return (
@@ -198,6 +208,31 @@ export default function LlibrePage() {
             })}
           </tbody>
         </Table>
+      )}
+
+      {visibles.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 text-sm text-slate-500">
+            <span>Files per pàgina:</span>
+            {PER_PAGINA_OPTS.map((o) => (
+              <button key={o} type="button" onClick={() => { setPerPagina(o); setPagina(1); }}
+                className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${o === perPagina ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-500 hover:border-brand-300 hover:text-brand-700'}`}>
+                {o}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 text-sm text-slate-600">
+            <button type="button" disabled={pagina <= 1} onClick={() => setPagina(p => p - 1)}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white disabled:opacity-40 hover:border-brand-300">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span>Pàgina <strong>{pagina}</strong> de <strong>{totalPagines}</strong> <span className="text-slate-400">({visibles.length} registres)</span></span>
+            <button type="button" disabled={pagina >= totalPagines} onClick={() => setPagina(p => p + 1)}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white disabled:opacity-40 hover:border-brand-300">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

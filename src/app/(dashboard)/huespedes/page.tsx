@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Paginacio } from '@/components/ui/paginacio';
 import { AvisosPanel } from '@/components/huesped/avisos-panel';
 import { TIPUS_DOCUMENT_LABELS } from '@/lib/validation/enums';
 
@@ -38,9 +39,9 @@ function Inicials({ nom, cognom }: { nom: string; cognom: string }) {
 export default async function HuespedesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; mascota?: string }>;
+  searchParams: Promise<{ q?: string; mascota?: string; pagina?: string; perPagina?: string }>;
 }) {
-  const { q, mascota } = await searchParams;
+  const { q, mascota, pagina: paginaStr, perPagina: perPaginaStr } = await searchParams;
   const nomesMascota = mascota === '1';
   const where: Prisma.HuespedWhereInput = { deletedAt: null };
   if (nomesMascota) where.animals = { some: { deletedAt: null } };
@@ -55,10 +56,15 @@ export default async function HuespedesPage({
     ];
   }
 
+  const perPagina = [10, 25, 50].includes(Number(perPaginaStr)) ? Number(perPaginaStr) : 25;
+  const pagina = Math.max(1, Number(paginaStr) || 1);
+  const total = await prisma.huesped.count({ where });
+
   const huespedes = await prisma.huesped.findMany({
     where,
-    orderBy: [{ cognom1: 'asc' }, { nom: 'asc' }],
-    take: 100,
+    orderBy: [{ createdAt: 'desc' }],
+    skip: (pagina - 1) * perPagina,
+    take: perPagina,
     include: {
       _count: { select: { estancies: { where: { estancia: { deletedAt: null } } } } },
       anotacions: { where: { noAcollir: true, deletedAt: null }, select: { id: true }, take: 1 },
@@ -70,7 +76,7 @@ export default async function HuespedesPage({
     <div>
       <PageHeader
         title="Clients"
-        subtitle={`${huespedes.length} persones registrades`}
+        subtitle={`${total} persones registrades`}
         actions={
           <Link href="/avisos">
             <Button variant="outline" size="sm">
@@ -133,6 +139,7 @@ export default async function HuespedesPage({
           ))}
         </div>
       )}
+      <Paginacio total={total} pagina={pagina} perPagina={perPagina} />
     </div>
   );
 }

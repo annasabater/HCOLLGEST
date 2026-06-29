@@ -32,11 +32,11 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-function Dl({ label, value }: { label: string; value: React.ReactNode }) {
+function Dl({ label, value, wide }: { label: string; value: React.ReactNode; wide?: boolean }) {
   return (
-    <div>
+    <div className={wide ? 'col-span-2' : ''}>
       <dt className="text-xs uppercase text-slate-400">{label}</dt>
-      <dd className="text-sm text-slate-800">{value || '—'}</dd>
+      <dd className="break-all text-sm text-slate-800">{value || '—'}</dd>
     </div>
   );
 }
@@ -252,11 +252,12 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                       <Dl label="Suport" value={h.numSuport} />
                       <Dl label="Naixement" value={formatDate(h.dataNaixement)} />
                       <Dl label="Nacionalitat" value={h.nacionalitat} />
-                      <Dl label="Email" value={h.email} />
+                      <Dl label="Email" value={h.email} wide />
                       <Dl label="Telèfon" value={h.telefon} />
                       <Dl
                         label="Adreça"
                         value={[h.adreca, h.codiPostal, h.municipi ?? h.localitat].filter(Boolean).join(', ')}
+                        wide
                       />
                       <Dl label="Parentesc" value={ev.parentesc ? PARENTESC_LABELS[ev.parentesc] : '—'} />
                     </dl>

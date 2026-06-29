@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Paginacio } from '@/components/ui/paginacio';
 import { formatDate } from '@/lib/utils';
 import { TIPUS_REGISTRE_LABELS, ESTAT_ENVIAMENT_LABELS } from '@/lib/validation/enums';
 import type { EstatEnviament, EstatEstancia } from '@prisma/client';
@@ -41,18 +42,24 @@ function Initials({ nom }: { nom: string }) {
 export default async function EstanciesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ estat?: string }>;
+  searchParams: Promise<{ estat?: string; pagina?: string; perPagina?: string }>;
 }) {
-  const { estat } = await searchParams;
+  const { estat, pagina: paginaStr, perPagina: perPaginaStr } = await searchParams;
 
   const estatFilter = estat && ['RESERVA', 'EN_CURS', 'FINALITZADA', 'CANCELLADA'].includes(estat)
     ? (estat as EstatEstancia)
     : undefined;
 
+  const perPagina = [10, 25, 50].includes(Number(perPaginaStr)) ? Number(perPaginaStr) : 25;
+  const pagina = Math.max(1, Number(paginaStr) || 1);
+  const where = { deletedAt: null as null, ...(estatFilter ? { estat: estatFilter } : {}) };
+  const total = await prisma.estancia.count({ where });
+
   const estancies = await prisma.estancia.findMany({
-    where: { deletedAt: null, ...(estatFilter ? { estat: estatFilter } : {}) },
+    where,
     orderBy: { dataEntrada: 'desc' },
-    take: 100,
+    skip: (pagina - 1) * perPagina,
+    take: perPagina,
     include: {
       viatgers: { where: { esTitular: true }, include: { huesped: true } },
       enviaments: { orderBy: { createdAt: 'desc' }, take: 1 },
@@ -79,7 +86,7 @@ export default async function EstanciesPage({
     <div>
       <PageHeader
         title="Estades"
-        subtitle={`${estancies.length} estades`}
+        subtitle={`${total} estades`}
         actions={
           <Link href="/estancies/nou">
             <Button><Plus className="h-4 w-4" /> Nova estada</Button>
@@ -172,6 +179,7 @@ export default async function EstanciesPage({
           })}
         </div>
       )}
+      <Paginacio total={total} pagina={pagina} perPagina={perPagina} />
     </div>
   );
 }

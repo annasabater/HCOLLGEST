@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { FileSignature, FileCheck, AlertTriangle } from 'lucide-react';
+import { Paginacio } from '@/components/ui/paginacio';
 import { prisma } from '@/lib/db';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,13 +18,23 @@ import { formatDate } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
-export default async function JustificantsPage() {
+export default async function JustificantsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ pagina?: string; perPagina?: string }>;
+}) {
+  const { pagina: paginaStr, perPagina: perPaginaStr } = await searchParams;
+  const perPagina = [10, 25, 50].includes(Number(perPaginaStr)) ? Number(perPaginaStr) : 25;
+  const pagina = Math.max(1, Number(paginaStr) || 1);
+  const totalFitxes = await prisma.estancia.count({ where: { deletedAt: null } });
+
   const [establiment, estancies] = await Promise.all([
     prisma.establiment.findFirst(),
     prisma.estancia.findMany({
       where: { deletedAt: null },
       orderBy: { dataEntrada: 'desc' },
-      take: 300,
+      skip: (pagina - 1) * perPagina,
+      take: perPagina,
       include: {
         viatgers: { include: { huesped: true }, orderBy: { esTitular: 'desc' } },
         enviaments: {
@@ -148,6 +159,7 @@ export default async function JustificantsPage() {
               </tbody>
             </Table>
           )}
+          <Paginacio total={totalFitxes} pagina={pagina} perPagina={perPagina} className="px-1 pb-1" />
         </CardBody>
       </Card>
 
