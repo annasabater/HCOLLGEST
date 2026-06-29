@@ -47,6 +47,7 @@ export const FacturaEditSchema = z.object({
   linies: z.array(LiniaInputSchema).min(1, 'Cal almenys una línia').optional(),
   numero: z.string().min(1).optional(),
   estat: z.enum(['COBRADA', 'PENDENT']).optional(),
+  fiancaInclosa: z.boolean().nullable().optional(),
 });
 
 export const CobramentEditSchema = z

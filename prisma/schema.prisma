@@ -622,6 +622,7 @@ model Factura {
   total         Decimal             @db.Decimal(10, 2)
   estat         EstatFactura        @default(PENDENT)
   tipusDocument TipusDocumentFiscal @default(RECIBO) @map("tipus_document")
+  fiancaInclosa Boolean?            @map("fianca_inclosa")
 
   linies     LiniaFactura[]
   cobraments Cobrament[]

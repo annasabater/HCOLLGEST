@@ -55,10 +55,19 @@ export async function PATCH(req: Request, ctx: Ctx) {
       return ok({ estat: updated.estat });
     }
 
-    // Edició de línies — només rebuts sense Veri*Factu.
-    if (existing.tipusDocument !== 'RECIBO' || existing.verifactu) {
+    // Preferència de fiança inclosa — permès per a qualsevol tipus de factura.
+    if (body && 'fiancaInclosa' in body) {
+      const fiancaInclosa = body.fiancaInclosa === true ? true : body.fiancaInclosa === false ? false : null;
+      await prisma.factura.update({ where: { id }, data: { fiancaInclosa } });
+      await audit({ usuariId: auth.id, accio: 'MODIFICACIO', entitat: 'factura', entitatId: id,
+        detall: { fiancaInclosa }, ip: clientIp(req) });
+      return ok({ fiancaInclosa });
+    }
+
+    // Edició de número o línies — permès si no té Veri*Factu.
+    if (existing.verifactu) {
       return badRequest(
-        'Una factura fiscal (amb registre Veri*Factu) no es pot editar; cal emetre una factura rectificativa.',
+        'Una factura amb registre Veri*Factu no es pot editar; cal emetre una factura rectificativa.',
       );
     }
     const result = await editFactura(id, body, { id: auth.id }, clientIp(req));

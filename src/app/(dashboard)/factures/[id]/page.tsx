@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Printer, FileText, ShieldCheck, CheckCircle, Clock, ExternalLink } from 'lucide-react';
+import { CheckCircle, Clock, ExternalLink } from 'lucide-react';
 import { BackLink } from '@/components/ui/back-link';
 import { prisma } from '@/lib/db';
 import { Card, CardBody } from '@/components/ui/card';
@@ -8,10 +8,10 @@ import { ToggleEstatFactura } from '@/components/factura/toggle-estat-factura';
 import { LiniesCard } from '@/components/factura/linies-card';
 import { EliminarFactura } from '@/components/factura/eliminar-factura';
 import { EditarNumeroFactura } from '@/components/factura/editar-numero-factura';
+import { FiancaTogglePrint } from '@/components/factura/fianca-toggle-print';
 import { formatEur } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
-
 
 function fmtDate(d: Date) {
   return d.toLocaleDateString('ca-ES', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -43,7 +43,6 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
   const ivaPercent = base > 0 ? round2((iva / base) * 100) : 0;
   const tasaTotal = round2(total - base - iva);
   const editable = !factura.verifactu;
-
   const cobrada = factura.estat === 'COBRADA';
 
   return (
@@ -53,7 +52,7 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* ── Columna principal ─────────────────────────────────────────── */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Capçalera de la factura */}
+          {/* Capçalera */}
           <div className="space-y-1">
             <EditarNumeroFactura facturaId={factura.id} numero={factura.numero} />
             {titular && (
@@ -122,58 +121,13 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
             </CardBody>
           </Card>
 
-          {/* Imprimir */}
+          {/* Imprimir amb toggle fiança */}
           <Card>
-            <CardBody className="space-y-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Imprimir</p>
-
-              {/* Amb fiança */}
-              <div className="space-y-1.5">
-                <p className="flex items-center gap-1 text-xs text-slate-500">
-                  <ShieldCheck className="h-3.5 w-3.5 text-amber-500" /> Amb fiança inclosa
-                </p>
-                <div className="flex gap-2">
-                  <Link
-                    href={`/imprimir/factura-simple/${factura.id}?custodia=true`}
-                    target="_blank"
-                    className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-2 text-xs font-medium text-amber-800 hover:bg-amber-100"
-                  >
-                    <FileText className="h-3.5 w-3.5" /> Simple
-                    <ExternalLink className="h-3 w-3 opacity-50" />
-                  </Link>
-                  <Link
-                    href={`/imprimir/factura/${factura.id}?fianca=true`}
-                    target="_blank"
-                    className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-2 text-xs font-medium text-amber-800 hover:bg-amber-100"
-                  >
-                    <Printer className="h-3.5 w-3.5" /> Fiscal
-                    <ExternalLink className="h-3 w-3 opacity-50" />
-                  </Link>
-                </div>
-              </div>
-
-              {/* Sense fiança */}
-              <div className="space-y-1.5 border-t border-slate-100 pt-3">
-                <p className="text-xs text-slate-400">Sense fiança</p>
-                <div className="flex gap-2">
-                  <Link
-                    href={`/imprimir/factura-simple/${factura.id}`}
-                    target="_blank"
-                    className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                  >
-                    <FileText className="h-3.5 w-3.5" /> Simple
-                    <ExternalLink className="h-3 w-3 opacity-50" />
-                  </Link>
-                  <Link
-                    href={`/imprimir/factura/${factura.id}`}
-                    target="_blank"
-                    className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                  >
-                    <Printer className="h-3.5 w-3.5" /> Fiscal
-                    <ExternalLink className="h-3 w-3 opacity-50" />
-                  </Link>
-                </div>
-              </div>
+            <CardBody>
+              <FiancaTogglePrint
+                facturaId={factura.id}
+                fiancaInclosa={factura.fiancaInclosa}
+              />
             </CardBody>
           </Card>
 

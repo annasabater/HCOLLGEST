@@ -72,6 +72,16 @@ export default async function FacturesPage() {
                     <Link href={`/factures/${f.id}`} className="font-medium text-brand-700">
                       {f.numero}
                     </Link>
+                    {f.fiancaInclosa === true && (
+                      <span className="ml-1 inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200">
+                        Fiança
+                      </span>
+                    )}
+                    {f.fiancaInclosa === false && (
+                      <span className="ml-1 inline-flex items-center rounded-full bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200">
+                        Sense fiança
+                      </span>
+                    )}
                   </Td>
                   <Td>{t ? `${t.nom} ${t.cognom1}` : '—'}</Td>
                   <Td>{formatDate(f.data)}</Td>
