@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
-import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,42 +49,20 @@ export async function GET(
   const establiment = await prisma.establiment.findFirst();
   const titular = factura.estancia.viatgers[0]?.huesped ?? null;
 
-  // Total real: suma dels cobraments + dipòsits inclosos (no la base de la factura, que pot estar desfasada)
-  const totalCobraments = round2(
-    factura.cobraments.filter((c) => Number(c.import) > 0).reduce((a, c) => a + Number(c.import), 0) +
-    (ambCustodia ? factura.estancia.diposits : []).reduce((a, d) => a + Number(d.import), 0),
-  );
-
   const diposits = ambCustodia ? factura.estancia.diposits : [];
-
-  const habitacioNom = esc(factura.estancia.habitacio?.nom ?? '');
 
   const emNom = esc(establiment?.raoSocial || establiment?.nom || 'Hostal Coll');
   const emDescriptor = esc(establiment?.poblacio ? `Casa de Hostes · ${establiment.poblacio}` : 'Casa de Hostes · Calella');
   const emTelefon = esc(establiment?.telefon ? `Tel. ${establiment.telefon}` : '');
 
-  // Número: usem el número de contracte de l'estada (no el número intern de factura)
-  const numeroDisplay = esc(String(factura.estancia.numContracte ?? factura.numero));
+  // Número: usem el número de factura
+  const numeroDisplay = esc(factura.numero);
 
-  // Descripció de la línia de concepte: habitació + persones + dates de l'estada
-  function tipusHab(nom: string | null | undefined): string {
-    if (!nom) return 'Habitació';
-    const n = parseInt(nom.replace(/\D/g, ''), 10);
-    if (!isNaN(n) && n >= 1 && n <= 4) return 'Habitació doble';
-    if (!isNaN(n) && n >= 5 && n <= 6) return 'Habitació individual';
-    return nom;
-  }
-  const numV = factura.estancia.numViatgers;
-  const habTipus = tipusHab(factura.estancia.habitacio?.nom);
-  const habConcept = esc(habTipus + (numV ? ` (${numV} ${numV === 1 ? 'persona' : 'persones'})` : ''));
   const habDates = esc(
     factura.estancia.dataEntrada && factura.estancia.dataSortida
       ? `Del ${fmtDate(factura.estancia.dataEntrada)} al ${fmtDate(factura.estancia.dataSortida)}`
       : '',
   );
-
-  // Data opcional per a cobraments i dipòsits
-  const fmtDataOpc = (d: Date | null | undefined) => (d ? ' ' + fmtDate(d) : '');
 
   const clientNom = titular
     ? esc([titular.nom, titular.cognom1, titular.cognom2].filter(Boolean).join(' '))
@@ -94,42 +71,37 @@ export async function GET(
   const clientAdreca = esc(titular?.adreca ?? '');
   const clientCpPob = esc([titular?.codiPostal, titular?.municipi || titular?.localitat].filter(Boolean).join(' '));
 
-  // Línia de concepte: sempre mostra habitació + dates (ignorem l.descripcio que pot ser "A compte")
-  const linesHtml = `
+  // Línies des de la base de dades (font de veritat de l'import facturat)
+  const linesHtml = factura.linies.map((l) => {
+    const label = esc(l.descripcio ?? l.concepte);
+    // Per a línies d'allotjament sense dates a la descripció, afegim-les com a detall
+    const needsDates = l.concepte === 'ALLOTJAMENT' && habDates && !label.includes('Del ');
+    return `
     <tr class="item">
       <td class="c-qty"><input class="in qty" inputmode="decimal" aria-label="Quantitat" value="1"></td>
       <td>
-        <input class="in concept" aria-label="Concepte" value="${habConcept}">
-        <input class="in detail" aria-label="Detall" value="${habDates}" placeholder="">
+        <input class="in concept" aria-label="Concepte" value="${label}">
+        ${needsDates ? `<input class="in detail" aria-label="Detall" value="${habDates}" placeholder="">` : ''}
       </td>
-      <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value=""></td>
-      <td class="c-amt"><input class="in amount" inputmode="decimal" aria-label="Import" value=""></td>
+      <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${plain(Number(l.import))}"></td>
+      <td class="c-amt"><input class="in amount" inputmode="decimal" aria-label="Import" value="${plain(Number(l.import))}"></td>
       <td class="it-del"><button class="del" type="button" aria-label="Eliminar línia">×</button></td>
     </tr>`;
+  }).join('');
 
-  // Línies de cobrament (A compte / Cobro) + fiança (si s'inclou) — amb data a l'etiqueta
-  const cobramentsHtml = [
-    ...factura.cobraments.filter((c) => Number(c.import) > 0).map((c) => ({
-      label: (c.descripcio ?? METODE_COBRAMENT_LABELS[c.metode as keyof typeof METODE_COBRAMENT_LABELS] ?? 'Pagament') + fmtDataOpc(c.data),
-      val: Number(c.import),
-    })),
-    ...diposits.map((d) => ({
-      label: (d.notes ?? 'Fiança') + fmtDataOpc(d.data),
-      val: Number(d.import),
-    })),
-  ].map(({ label, val }) => `
+  // Total: suma de línies + dipòsits inclosos
+  const totalLinies = round2(factura.linies.reduce((a, l) => a + Number(l.import), 0));
+  const totalCobraments = round2(totalLinies + diposits.reduce((a, d) => a + Number(d.import), 0));
+
+  // Línies de dipòsit (fiança) addicionals si s'inclou (amb custodia)
+  const dipositsHtml = diposits.length > 0 ? diposits.map((d) => `
     <tr class="item">
       <td class="c-qty"><input class="in qty" inputmode="decimal" aria-label="Quantitat" value="1"></td>
-      <td><input class="in concept" aria-label="Concepte" value="${esc(label)}"></td>
-      <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${esc(plain(val))}"></td>
-      <td class="c-amt"><input class="in amount" inputmode="decimal" aria-label="Import" value="${esc(plain(val))}"></td>
+      <td><input class="in concept" aria-label="Concepte" value="${esc((d.notes ?? 'Fiança') + ' ' + fmtDate(d.data))}"></td>
+      <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${esc(plain(Number(d.import)))}"></td>
+      <td class="c-amt"><input class="in amount" inputmode="decimal" aria-label="Import" value="${esc(plain(Number(d.import)))}"></td>
       <td class="it-del"><button class="del" type="button" aria-label="Eliminar línia">×</button></td>
-    </tr>`).join('');
-
-  const dipositsHtml = diposits.length > 0 ? `
-    <div style="display:none" id="__custodia_compat__">
-      <!-- fiança inclosa a les línies -->
-    </div>` : '';
+    </tr>`).join('') : '';
 
   const html = `<!doctype html>
 <html lang="ca">
@@ -300,7 +272,7 @@ export async function GET(
         <div class="meta-badge">Simplificada</div>
         <div class="meta-row"><span class="k">Número</span><span class="v"><input class="in" aria-label="Número" value="${numeroDisplay}"></span></div>
         <div class="meta-row"><span class="k">Data</span><span class="v"><input class="in" aria-label="Data" value="${fmtDate(factura.data)}"></span></div>
-        ${habitacioNom ? `<div class="meta-row"><span class="k">Habitació</span><span class="v"><input class="in" aria-label="Habitació" value="${habitacioNom}"></span></div>` : ''}
+        ${factura.estancia.habitacio?.nom ? `<div class="meta-row"><span class="k">Habitació</span><span class="v"><input class="in" aria-label="Habitació" value="${esc(factura.estancia.habitacio.nom)}"></span></div>` : ''}
       </div>
     </section>
 
@@ -316,7 +288,7 @@ export async function GET(
           </tr>
         </thead>
         <tbody>
-          ${linesHtml}${cobramentsHtml}
+          ${linesHtml}${dipositsHtml}
         </tbody>
       </table>
     </div>
