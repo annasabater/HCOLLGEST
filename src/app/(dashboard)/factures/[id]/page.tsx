@@ -9,6 +9,7 @@ import { LiniesCard } from '@/components/factura/linies-card';
 import { EliminarFactura } from '@/components/factura/eliminar-factura';
 import { EditarNumeroFactura } from '@/components/factura/editar-numero-factura';
 import { FiancaTogglePrint } from '@/components/factura/fianca-toggle-print';
+import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 import { formatEur } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -23,7 +24,8 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
     where: { id, deletedAt: null },
     include: {
       linies: true,
-      diposits: { select: { id: true } },
+      cobraments: { select: { id: true, import: true, metode: true } },
+      diposits: { select: { id: true, import: true, metode: true, notes: true } },
       estancia: {
         include: {
           viatgers: { where: { esTitular: true }, include: { huesped: true } },
@@ -36,6 +38,16 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
   if (!factura) notFound();
 
   const teFianca = factura.diposits.length > 0;
+  const paymentsVinculats = factura.cobraments.map((c) => ({
+    id: c.id,
+    import: Number(c.import),
+    label: METODE_COBRAMENT_LABELS[c.metode],
+  }));
+  const fiancesVinculades = factura.diposits.map((d) => ({
+    id: d.id,
+    import: Number(d.import),
+    label: d.notes ?? METODE_COBRAMENT_LABELS[d.metode],
+  }));
 
   const titular = factura.estancia.viatgers[0]?.huesped;
   const base = Number(factura.base);
@@ -89,6 +101,8 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
             ivaPercent={ivaPercent}
             tasaTotal={tasaTotal}
             editable={editable}
+            payments={paymentsVinculats}
+            fiances={fiancesVinculades}
           />
 
           {/* Eliminar */}

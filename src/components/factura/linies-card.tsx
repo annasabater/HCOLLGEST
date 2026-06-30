@@ -14,6 +14,7 @@ import {
   concepteLiniaValues,
   optionsFrom,
 } from '@/lib/validation/enums';
+import { SincronitzarVinculats, type VinculatItem } from './sincronitzar-vinculats';
 
 type Linia = { id: string; concepte: string; descripcio: string; import: number };
 type EditLinia = { concepte: string; descripcio: string; import: string };
@@ -36,6 +37,8 @@ export function LiniesCard({
   ivaPercent,
   tasaTotal,
   editable,
+  payments = [],
+  fiances = [],
 }: {
   facturaId: string;
   linies: Linia[];
@@ -45,12 +48,15 @@ export function LiniesCard({
   ivaPercent: number;
   tasaTotal: number;
   editable: boolean;
+  payments?: VinculatItem[];
+  fiances?: VinculatItem[];
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [rows, setRows] = useState<EditLinia[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [syncTotal, setSyncTotal] = useState<number | null>(null);
 
   function obrir() {
     setRows(
@@ -91,7 +97,13 @@ export function LiniesCard({
         })),
       });
       setEditing(false);
-      router.refresh();
+      // Si el total ha canviat i hi ha pagaments/fiances vinculats, ofereix
+      // actualitzar-los; si no, refresca directament.
+      if (previewTotal !== total && (payments.length > 0 || fiances.length > 0)) {
+        setSyncTotal(previewTotal);
+      } else {
+        router.refresh();
+      }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'No s’ha pogut desar la factura');
     } finally {
@@ -255,6 +267,15 @@ export function LiniesCard({
           </div>
         )}
       </CardBody>
+
+      {syncTotal !== null && (
+        <SincronitzarVinculats
+          nouTotal={syncTotal}
+          payments={payments}
+          fiances={fiances}
+          onClose={() => setSyncTotal(null)}
+        />
+      )}
     </Card>
   );
 }
