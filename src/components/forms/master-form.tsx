@@ -32,6 +32,7 @@ import { formatWarnings } from '@/lib/validation/documents';
 import { PROVINCIES, PAISOS } from '@/lib/data/geo';
 import { DocumentScanner, type PendingDoc } from '@/components/ocr/document-scanner';
 import { HosteSearch, type HosteLite } from '@/components/forms/hoste-search';
+import { AvisSolapament } from '@/components/estancia/avis-solapament';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import type { ViatgerOcr } from '@/lib/ocr/mrz';
 
@@ -706,6 +707,16 @@ export function MasterForm({
               ))}
             </Select>
           </Field>
+          {estancia.habitacioId && estancia.dataEntrada && estancia.dataSortida && (
+            <div className="sm:col-span-2 lg:col-span-3">
+              <AvisSolapament
+                habitacioId={estancia.habitacioId}
+                dataEntrada={estancia.dataEntrada}
+                dataSortida={estancia.dataSortida}
+                exclouEstanciaId={estanciaId}
+              />
+            </div>
+          )}
           <Field label="Idioma de comunicació">
             <Select
               value={estancia.idioma}
