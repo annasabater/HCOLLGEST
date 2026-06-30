@@ -583,12 +583,32 @@ function GraciesCard() {
         )}
 
         <details className="text-sm">
-          <summary className="cursor-pointer text-slate-500">Previsualitzar plantilla (per idioma)</summary>
+          <summary className="cursor-pointer text-slate-500">Previsualitzar plantilles (per idioma)</summary>
           <div className="mt-2 flex items-center gap-2">
             <span className="text-xs text-slate-500">Idioma:</span>
             <LangSelect value={editLang} onChange={setEditLang} className="max-w-40" />
           </div>
-          <div className="mt-2 overflow-hidden rounded-lg border border-slate-200">
+
+          {/* Missatge de WhatsApp de gràcies (amb l'enllaç de ressenya) */}
+          <div className="mt-3">
+            <p className="mb-1 text-xs font-medium text-slate-500">WhatsApp de gràcies</p>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 whitespace-pre-wrap">
+              {fillTemplate(PLANTILLA_GRACIES[editLang], { nom: 'Anna', enllac: enlacRessenya })}
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="mt-2"
+              onClick={() => copia(fillTemplate(PLANTILLA_GRACIES[editLang], { nom: 'Anna', enllac: enlacRessenya }))}
+            >
+              <Copy className="h-4 w-4" /> Copiar WhatsApp
+            </Button>
+          </div>
+
+          {/* Previsualització del correu */}
+          <p className="mb-1 mt-3 text-xs font-medium text-slate-500">Correu de gràcies</p>
+          <div className="overflow-hidden rounded-lg border border-slate-200">
             <iframe
               srcDoc={buildGraciesEmail(editLang, { nom: 'Anna', enlacRessenya }).html}
               className="h-72 w-full"
