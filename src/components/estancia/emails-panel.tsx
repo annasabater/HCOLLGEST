@@ -5,7 +5,7 @@ import { Trash2, Send, Clock, CheckCircle, XCircle, Plus, MessageCircle } from '
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
-import { getJSON, postJSON, delJSON, ApiError } from '@/lib/api';
+import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { fillTemplate, enviaWhatsApp, PLANTILLA_BENVINGUDA, type Lang } from '@/lib/plantilles';
 
 type LangEmail = 'ca' | 'es' | 'en' | 'fr';
@@ -114,6 +114,8 @@ export function EmailsPanel({
       enllac: benvLink(waLang, nom || titularNom, habitacioNom, estanciaId),
     });
     enviaWhatsApp(telefon, text, nom || titularNom);
+    // Marca la benvinguda com a enviada perquè deixi de sortir a Plantilles.
+    patchJSON(`/api/estancies/${estanciaId}`, { benvingudaEnviada: true }).catch(() => {});
   }
 
   async function submit() {

@@ -6,7 +6,8 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input, Select, Textarea } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
-import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardBody } from '@/components/ui/card';
+import { CollapsibleCard } from '@/components/ui/collapsible-card';
 import { getJSON, patchJSON, postJSON, ApiError } from '@/lib/api';
 import { buildGraciesEmail } from '@/lib/email-templates';
 import { useRestringit } from '@/components/layout/restringit-context';
@@ -45,6 +46,7 @@ interface Estancia {
   dataEntrada: string;
   dataSortida: string;
   idioma: string | null;
+  benvingudaEnviada?: boolean;
   habitacio: { nom: string } | null;
   viatgers: { esTitular: boolean; huesped: { nom: string; cognom1: string; telefon: string | null; email: string | null } }[];
 }
@@ -197,12 +199,8 @@ function NetejaCard() {
   }
 
   return (
-    <Card>
-      <CardHeader className="flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-brand-600" />
-        <CardTitle>Avís a la dona de neteja</CardTitle>
-      </CardHeader>
-      <CardBody className="space-y-4">
+    <CollapsibleCard title="Avís a la dona de neteja" icon={<Sparkles className="h-4 w-4 text-brand-600" />}>
+      <div className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Dia a netejar">
             <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
@@ -309,8 +307,8 @@ function NetejaCard() {
             </Button>
           </div>
         </details>
-      </CardBody>
-    </Card>
+      </div>
+    </CollapsibleCard>
   );
 }
 
@@ -376,12 +374,8 @@ function HostesCard() {
   }
 
   return (
-    <Card>
-      <CardHeader className="flex items-center gap-2">
-        <Users className="h-4 w-4 text-brand-600" />
-        <CardTitle>Avís als hostes (neteja)</CardTitle>
-      </CardHeader>
-      <CardBody className="space-y-4">
+    <CollapsibleCard title="Avís als hostes (neteja)" icon={<Users className="h-4 w-4 text-brand-600" />}>
+      <div className="space-y-4">
         <div className="grid max-w-md gap-3 sm:grid-cols-2">
           <Field label="Dia a netejar">
             <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
@@ -464,8 +458,8 @@ function HostesCard() {
             Variables: {'{nom}'} {'{hora}'} {'{habitacio}'}. Es desa al navegador.
           </p>
         </details>
-      </CardBody>
-    </Card>
+      </div>
+    </CollapsibleCard>
   );
 }
 
@@ -520,12 +514,8 @@ function GraciesCard() {
   }
 
   return (
-    <Card>
-      <CardHeader className="flex items-center gap-2">
-        <Mail className="h-4 w-4 text-brand-600" />
-        <CardTitle>Email de gràcies + ressenya Google</CardTitle>
-      </CardHeader>
-      <CardBody className="space-y-4">
+    <CollapsibleCard title="Email de gràcies + ressenya Google" icon={<Mail className="h-4 w-4 text-brand-600" />}>
+      <div className="space-y-4">
         <Field label="Enllaç ressenya Google" hint="Es desa al navegador.">
           <Input value={enlacRessenya} onChange={(e) => setLink(e.target.value)} />
         </Field>
@@ -587,8 +577,8 @@ function GraciesCard() {
             />
           </div>
         </details>
-      </CardBody>
-    </Card>
+      </div>
+    </CollapsibleCard>
   );
 }
 
@@ -617,10 +607,29 @@ function BenvingudaCard() {
   }, []);
 
   const avui = toISODate(new Date());
-  // Hostes que ja han passat la PRIMERA NIT i encara hi són (entrada < avui ≤ sortida).
-  const elegibles = estancies.filter(
-    (e) => toISODate(new Date(e.dataEntrada)) < avui && avui <= toISODate(new Date(e.dataSortida)),
-  );
+  // Hostes que ja han passat la PRIMERA NIT i encara hi són, que NO tenen la
+  // benvinguda marcada com a enviada i que no fa més de 3 dies que van entrar.
+  const elegibles = estancies.filter((e) => {
+    const entrada = toISODate(new Date(e.dataEntrada));
+    const sortida = toISODate(new Date(e.dataSortida));
+    const limit3dies = toISODate(addDays(new Date(e.dataEntrada), 3));
+    return (
+      !e.benvingudaEnviada &&
+      entrada < avui &&
+      avui <= sortida &&
+      avui <= limit3dies
+    );
+  });
+
+  // Marca la benvinguda com a enviada perquè l'estada deixi de sortir a la llista.
+  async function marcarEnviada(id: string) {
+    setEstancies((prev) => prev.map((e) => (e.id === id ? { ...e, benvingudaEnviada: true } : e)));
+    try {
+      await patchJSON(`/api/estancies/${id}`, { benvingudaEnviada: true });
+    } catch {
+      /* el canvi visual ja s'ha aplicat */
+    }
+  }
 
   function saveTpl(v: string) {
     setTpls((prev) => ({ ...prev, [editLang]: v }));
@@ -640,12 +649,8 @@ function BenvingudaCard() {
   }
 
   return (
-    <Card>
-      <CardHeader className="flex items-center gap-2">
-        <Hand className="h-4 w-4 text-brand-600" />
-        <CardTitle>Benvinguda i valoració</CardTitle>
-      </CardHeader>
-      <CardBody className="space-y-4">
+    <CollapsibleCard title="Benvinguda i valoració" icon={<Hand className="h-4 w-4 text-brand-600" />}>
+      <div className="space-y-4">
         <Field label="Enllaç de benvinguda" hint="La pàgina que reben els hostes. Es desa al navegador.">
           <Input value={enllac} onChange={(e) => setLink(e.target.value)} />
         </Field>
@@ -661,8 +666,17 @@ function BenvingudaCard() {
                   <span className="text-xs font-normal text-slate-400">
                     {formatDate(e.dataEntrada)} – {formatDate(e.dataSortida)}
                   </span>
-                  <span className="ml-auto">
+                  <span className="ml-auto flex items-center gap-2">
                     <LangSelect value={langs[e.id] ?? 'ca'} onChange={(l) => setLangs({ ...langs, [e.id]: l })} />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      title="Marcar la benvinguda com a enviada (deixarà de sortir)"
+                      onClick={() => marcarEnviada(e.id)}
+                    >
+                      <CheckCircle className="h-4 w-4" /> Ja enviada
+                    </Button>
                   </span>
                 </div>
                 <div className="space-y-1.5">
@@ -687,7 +701,7 @@ function BenvingudaCard() {
                             size="sm"
                             disabled={!phone}
                             title={phone ? undefined : 'Aquest hoste no té telèfon'}
-                            onClick={() => enviaWhatsApp(phone, msgFor(e, nom), nom)}
+                            onClick={() => { enviaWhatsApp(phone, msgFor(e, nom), nom); marcarEnviada(e.id); }}
                           >
                             <MessageCircle className="h-4 w-4" /> WhatsApp
                           </Button>
@@ -715,7 +729,7 @@ function BenvingudaCard() {
             Variables: {'{nom}'} {'{enllac}'}. Es desa al navegador.
           </p>
         </details>
-      </CardBody>
-    </Card>
+      </div>
+    </CollapsibleCard>
   );
 }
