@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, X } from 'lucide-react';
+import { LogOut, X, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -15,16 +15,19 @@ export function FinalitzarAnticipada({
   dataEntrada,
   dataSortidaActual,
   habitacioNom,
+  jaAnticipada = false,
 }: {
   estanciaId: string;
   dataEntrada: string | null; // ISO YYYY-MM-DD
   dataSortidaActual: string | null; // ISO YYYY-MM-DD
   habitacioNom: string | null;
+  jaAnticipada?: boolean;
 }) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
   const [dataSortida, setDataSortida] = useState('');
+  const [horaSortida, setHoraSortida] = useState('');
   const [retorn, setRetorn] = useState(false);
   const [retornImport, setRetornImport] = useState('');
   const [retornMetode, setRetornMetode] = useState<string>('EFECTIU');
@@ -40,6 +43,7 @@ export function FinalitzarAnticipada({
 
   function obre() {
     setDataSortida(toISODate(new Date()));
+    setHoraSortida('');
     setRetorn(false);
     setRetornImport('');
     setRetornMetode('EFECTIU');
@@ -51,8 +55,10 @@ export function FinalitzarAnticipada({
     setSaving(true);
     setError(null);
     try {
+      // Combina dia + hora opcional en un ISO datetime (sense hora → mitjanit).
+      const dataIso = horaSortida ? `${dataSortida}T${horaSortida}` : dataSortida;
       await postJSON(`/api/estancies/${estanciaId}/finalitzar-anticipada`, {
-        dataSortida,
+        dataSortida: dataIso,
         retorn,
         ...(retorn ? { retornImport: Number(retornImport), retornMetode } : {}),
       });
@@ -65,10 +71,32 @@ export function FinalitzarAnticipada({
     }
   }
 
+  async function reactivar() {
+    setSaving(true);
+    setError(null);
+    try {
+      await postJSON(`/api/estancies/${estanciaId}/reactivar`, {});
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error reactivant l’estada');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Si ja està finalitzada anticipadament: botó per desfer-ho (tornar a allotjat).
+  if (jaAnticipada) {
+    return (
+      <Button variant="ghost" size="sm" onClick={reactivar} disabled={saving}>
+        <RotateCcw className="h-4 w-4" /> {saving ? 'Reactivant…' : 'Reactivar (tornar a allotjat)'}
+      </Button>
+    );
+  }
+
   return (
     <>
       <Button variant="ghost" size="sm" onClick={obre}>
-        <LogOut className="h-4 w-4" /> Finalitzar anticipada
+        <LogOut className="h-4 w-4" /> Sortida anticipada
       </Button>
 
       <dialog
@@ -80,11 +108,11 @@ export function FinalitzarAnticipada({
         <div className="p-6">
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="font-semibold text-slate-900">Finalitzar estada anticipadament</h2>
+              <h2 className="font-semibold text-slate-900">Sortida anticipada</h2>
               <p className="mt-1 text-sm text-slate-500">
-                L’hoste marxa abans del previst. S’escurçarà la sortida, s’alliberarà
-                {habitacioNom ? ` l’habitació ${habitacioNom}` : ' l’habitació'} i quedarà una nota
-                interna.
+                L’hoste marxa abans del previst. Es marcarà l’estada com a finalitzada abans d’hora,
+                s’alliberarà{habitacioNom ? ` l’habitació ${habitacioNom}` : ' l’habitació'} i quedarà
+                una nota interna. Ho podràs desfer si t’equivoques.
               </p>
             </div>
             <button onClick={() => setOpen(false)} className="shrink-0 text-slate-400 hover:text-slate-600">
@@ -93,15 +121,24 @@ export function FinalitzarAnticipada({
           </div>
 
           <div className="mt-5 space-y-4">
-            <Field label="Data real de sortida" required>
-              <Input
-                type="date"
-                value={dataSortida}
-                min={dataEntrada ?? undefined}
-                max={dataSortidaActual ?? undefined}
-                onChange={(e) => setDataSortida(e.target.value)}
-              />
-            </Field>
+            <div className="flex items-end gap-2">
+              <Field label="Data real de sortida" required>
+                <Input
+                  type="date"
+                  value={dataSortida}
+                  min={dataEntrada ?? undefined}
+                  max={dataSortidaActual ?? undefined}
+                  onChange={(e) => setDataSortida(e.target.value)}
+                />
+              </Field>
+              <Field label="Hora (opcional)">
+                <Input
+                  type="time"
+                  value={horaSortida}
+                  onChange={(e) => setHoraSortida(e.target.value)}
+                />
+              </Field>
+            </div>
 
             <div className="space-y-2 rounded-lg bg-slate-50 p-3">
               <p className="text-xs font-medium text-slate-500">Devolució de diners</p>
@@ -156,7 +193,7 @@ export function FinalitzarAnticipada({
               disabled={saving || !dataSortida || (retorn && !(Number(retornImport) > 0))}
             >
               <LogOut className="h-4 w-4" />
-              {saving ? 'Finalitzant…' : 'Finalitzar estada'}
+              {saving ? 'Desant…' : 'Marcar sortida anticipada'}
             </Button>
           </div>
         </div>

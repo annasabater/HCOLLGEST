@@ -499,13 +499,19 @@ export async function finalitzarEstanciaAnticipada(
   }
 
   const fmt = (d: Date) => d.toLocaleDateString('ca-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  // Hora només si no és mitjanit (00:00) — l'usuari pot indicar-la opcionalment.
+  const teHora = input.dataSortida.getHours() !== 0 || input.dataSortida.getMinutes() !== 0;
+  const fmtDataHora = (d: Date) =>
+    teHora
+      ? `${fmt(d)} a les ${d.toLocaleTimeString('ca-ES', { hour: '2-digit', minute: '2-digit' })}`
+      : fmt(d);
   const habNom = est.habitacio?.nom ?? null;
   const titularId = est.viatgers[0]?.huesped?.id ?? null;
   const prevista = est.dataSortida;
   const retornImport = input.retorn ? input.retornImport ?? 0 : 0;
 
   const nota =
-    `Sortida anticipada: ha deixat ${habNom ? `l'habitació ${habNom}` : "l'allotjament"} el ${fmt(input.dataSortida)}` +
+    `Sortida anticipada: ha deixat ${habNom ? `l'habitació ${habNom}` : "l'allotjament"} el ${fmtDataHora(input.dataSortida)}` +
     `${prevista ? ` (sortida prevista: ${fmt(prevista)})` : ''}.` +
     `${retornImport > 0 ? ` S'han retornat ${retornImport.toFixed(2)} €.` : ' No s\'ha retornat cap import.'}`;
 
@@ -515,6 +521,9 @@ export async function finalitzarEstanciaAnticipada(
       data: {
         dataSortida: input.dataSortida,
         estat: 'FINALITZADA',
+        sortidaAnticipada: true,
+        // Guarda la sortida original només la primera vegada (per poder desfer-ho).
+        ...(est.sortidaAnticipada ? {} : { dataSortidaPrevista: est.dataSortida }),
         observacions: est.observacions ? `${est.observacions}\n${nota}` : nota,
       },
     });
@@ -554,6 +563,62 @@ export async function finalitzarEstanciaAnticipada(
     ip,
   });
   return { ok: true, retorn: retornImport };
+}
+
+/**
+ * Desfà una sortida anticipada (feta per error): torna l'estada a allotjada
+ * (EN_CURS), restaura la data de sortida original, i neteja el rastre que va
+ * deixar la sortida anticipada — la nota interna del titular, les línies de la
+ * nota a les observacions i la devolució que s'hagués registrat.
+ */
+export async function reactivarEstancia(
+  estanciaId: string,
+  actor: { id: string } | null,
+  ip: string | null,
+) {
+  const est = await prisma.estancia.findFirst({
+    where: { id: estanciaId, deletedAt: null },
+    select: { id: true, sortidaAnticipada: true, dataSortidaPrevista: true, observacions: true },
+  });
+  if (!est) throw new Error('Estada no trobada');
+  if (!est.sortidaAnticipada) throw new Error('Aquesta estada no està marcada com a sortida anticipada');
+
+  // Treu les línies de la nota de sortida anticipada de les observacions.
+  const observacionsNet =
+    est.observacions
+      ?.split('\n')
+      .filter((l) => !l.trim().startsWith('Sortida anticipada:'))
+      .join('\n')
+      .trim() || null;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.estancia.update({
+      where: { id: estanciaId },
+      data: {
+        dataSortida: est.dataSortidaPrevista ?? undefined,
+        estat: 'EN_CURS',
+        sortidaAnticipada: false,
+        dataSortidaPrevista: null,
+        observacions: observacionsNet,
+      },
+    });
+    await tx.anotacioHuesped.deleteMany({
+      where: { estanciaId, tipus: 'Sortida anticipada' },
+    });
+    await tx.cobrament.deleteMany({
+      where: { estanciaId, descripcio: 'Devolució per sortida anticipada' },
+    });
+  });
+
+  await audit({
+    usuariId: actor?.id ?? null,
+    accio: 'MODIFICACIO',
+    entitat: 'estancia',
+    entitatId: estanciaId,
+    detall: { reactivada: true },
+    ip,
+  });
+  return { ok: true };
 }
 
 /**

@@ -399,6 +399,10 @@ model Estancia {
   dataFormalitzacio DateTime      @map("data_formalitzacio")
   dataEntrada       DateTime?     @map("data_entrada")
   dataSortida       DateTime?     @map("data_sortida")
+  // Sortida anticipada: marca que l'estada va finalitzar abans del previst i guarda
+  // la sortida original per poder desfer-ho (tornar a allotjat) si va ser per error.
+  sortidaAnticipada    Boolean   @default(false) @map("sortida_anticipada")
+  dataSortidaPrevista  DateTime? @map("data_sortida_prevista")
   numViatgers       Int           @map("num_viatgers")
   tipusPagament     TipusPagament @map("tipus_pagament")
   numHabitacions    Int?          @map("num_habitacions")

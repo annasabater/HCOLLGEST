@@ -86,11 +86,13 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
       ? { label: 'Esborrany', tone: 'warning' }
       : estancia.estat === 'CANCELLADA'
         ? { label: 'Cancel·lada', tone: 'neutral' }
-        : estancia.dataEntrada && avuiIso < toISODate(estancia.dataEntrada)
-          ? { label: 'Reserva', tone: 'info' }
-          : estancia.dataSortida && avuiIso < toISODate(estancia.dataSortida)
-            ? { label: 'Allotjat ara', tone: 'success' }
-            : { label: 'Estada acabada', tone: 'neutral' };
+        : estancia.sortidaAnticipada
+          ? { label: 'Sortida anticipada', tone: 'warning' }
+          : estancia.dataEntrada && avuiIso < toISODate(estancia.dataEntrada)
+            ? { label: 'Reserva', tone: 'info' }
+            : estancia.dataSortida && avuiIso < toISODate(estancia.dataSortida)
+              ? { label: 'Allotjat ara', tone: 'success' }
+              : { label: 'Estada acabada', tone: 'neutral' };
 
   return (
     <div>
@@ -143,6 +145,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                     dataEntrada={estancia.dataEntrada ? toISODate(estancia.dataEntrada) : null}
                     dataSortidaActual={estancia.dataSortida ? toISODate(estancia.dataSortida) : null}
                     habitacioNom={estancia.habitacio?.nom ?? null}
+                    jaAnticipada={estancia.sortidaAnticipada}
                   />
                 )}
                 {estancia.esBorrany && <TreureEsborrany estanciaId={estancia.id} />}
@@ -195,7 +198,20 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             <CardBody>
               <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 <Dl label="Entrada" value={formatDate(estancia.dataEntrada)} />
-                <Dl label="Sortida" value={formatDate(estancia.dataSortida)} />
+                <Dl
+                  label={estancia.sortidaAnticipada ? 'Sortida (anticipada)' : 'Sortida'}
+                  value={
+                    estancia.sortidaAnticipada && estancia.dataSortidaPrevista ? (
+                      <span>
+                        {formatDate(estancia.dataSortida)}{' '}
+                        <span className="text-slate-400">(prevista {formatDate(estancia.dataSortidaPrevista)})</span>
+                      </span>
+                    ) : (
+                      formatDate(estancia.dataSortida)
+                    )
+                  }
+                />
+
                 <Dl label="Formalització" value={formatDate(estancia.dataFormalitzacio)} />
                 <Dl label="Viatgers" value={estancia.numViatgers} />
                 <Dl label="Pagament" value={TIPUS_PAGAMENT_LABELS[estancia.tipusPagament]} />
