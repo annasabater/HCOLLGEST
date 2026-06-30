@@ -101,7 +101,7 @@ export function FinalitzarAnticipada({
 
       <dialog
         ref={dialogRef}
-        className="m-auto w-[min(92vw,34rem)] max-w-none max-h-[88vh] overflow-y-auto rounded-2xl border-0 p-0 shadow-2xl backdrop:bg-slate-900/50"
+        className="fixed left-1/2 top-1/2 w-[min(90vw,30rem)] max-w-none -translate-x-1/2 -translate-y-1/2 max-h-[85vh] overflow-y-auto rounded-2xl border-0 p-0 shadow-2xl backdrop:bg-slate-900/50"
         onClick={(e) => { if (e.target === dialogRef.current) setOpen(false); }}
         onCancel={() => setOpen(false)}
       >
@@ -190,6 +190,7 @@ export function FinalitzarAnticipada({
             </Button>
             <Button
               type="button"
+              variant="primary"
               size="sm"
               onClick={confirmar}
               disabled={saving || !dataSortida || (retorn && !(Number(retornImport) > 0))}
