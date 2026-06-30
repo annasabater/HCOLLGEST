@@ -107,16 +107,18 @@ export function FinalitzarAnticipada({
         onCancel={() => setOpen(false)}
       >
         <div className="p-6">
-          <div className="relative">
-            <button
-              onClick={() => setOpen(false)}
-              className="absolute right-0 top-0 text-slate-400 hover:text-slate-600"
-              aria-label="Tancar"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <h2 className="pr-8 text-lg font-semibold text-slate-900">Sortida anticipada</h2>
-            <p className="mt-1 pr-8 text-sm text-slate-500">
+          <div>
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-lg font-semibold text-slate-900">Sortida anticipada</h2>
+              <button
+                onClick={() => setOpen(false)}
+                className="shrink-0 text-slate-400 hover:text-slate-600"
+                aria-label="Tancar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="mt-1 text-sm text-slate-500">
               L’hoste marxa abans del previst. Es marcarà l’estada com a finalitzada abans d’hora,
               s’alliberarà{habitacioNom ? ` l’habitació ${habitacioNom}` : ' l’habitació'} i quedarà
               una nota interna. Ho podràs desfer si t’equivoques.
@@ -195,6 +197,7 @@ export function FinalitzarAnticipada({
               size="sm"
               onClick={confirmar}
               disabled={saving || !dataSortida || (retorn && !(Number(retornImport) > 0))}
+              className="bg-brand-700 text-black hover:bg-brand-800 hover:text-black"
             >
               <LogOut className="h-4 w-4" />
               {saving ? 'Desant…' : 'Confirmar sortida'}
