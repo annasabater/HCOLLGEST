@@ -113,9 +113,10 @@ export function EmailsPanel({
       nom: nom || titularNom,
       enllac: benvLink(waLang, nom || titularNom, habitacioNom, estanciaId),
     });
-    enviaWhatsApp(telefon, text, nom || titularNom);
-    // Marca la benvinguda com a enviada perquè deixi de sortir a Plantilles.
-    patchJSON(`/api/estancies/${estanciaId}`, { benvingudaEnviada: true }).catch(() => {});
+    // Només marca com a enviada si confirmes l'enviament (no si canceŀles).
+    if (enviaWhatsApp(telefon, text, nom || titularNom)) {
+      patchJSON(`/api/estancies/${estanciaId}`, { benvingudaEnviada: true }).catch(() => {});
+    }
   }
 
   async function submit() {

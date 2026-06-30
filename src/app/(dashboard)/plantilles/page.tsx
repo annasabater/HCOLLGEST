@@ -721,7 +721,7 @@ function BenvingudaCard() {
                             size="sm"
                             disabled={!phone}
                             title={phone ? undefined : 'Aquest hoste no té telèfon'}
-                            onClick={() => { enviaWhatsApp(phone, msgFor(e, nom), nom); marcarEnviada(e.id); }}
+                            onClick={() => { if (enviaWhatsApp(phone, msgFor(e, nom), nom)) marcarEnviada(e.id); }}
                           >
                             <MessageCircle className="h-4 w-4" /> WhatsApp
                           </Button>
