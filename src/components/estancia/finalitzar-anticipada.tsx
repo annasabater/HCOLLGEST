@@ -102,7 +102,7 @@ export function FinalitzarAnticipada({
       <dialog
         ref={dialogRef}
         style={{ width: '100%', maxWidth: '30rem', maxHeight: '85vh' }}
-        className="m-auto overflow-y-auto rounded-2xl border-0 p-0 shadow-2xl backdrop:bg-slate-900/50"
+        className="m-auto box-border overflow-x-hidden overflow-y-auto rounded-2xl border-0 p-0 shadow-2xl backdrop:bg-slate-900/50"
         onClick={(e) => { if (e.target === dialogRef.current) setOpen(false); }}
         onCancel={() => setOpen(false)}
       >
@@ -126,10 +126,11 @@ export function FinalitzarAnticipada({
           </div>
 
           <div className="mt-5 space-y-4">
-            <div className="flex items-end gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <Field label="Data real de sortida" required>
                 <Input
                   type="date"
+                  className="w-full"
                   value={dataSortida}
                   min={dataEntrada ?? undefined}
                   max={dataSortidaActual ?? undefined}
@@ -139,6 +140,7 @@ export function FinalitzarAnticipada({
               <Field label="Hora (opcional)">
                 <Input
                   type="time"
+                  className="w-full"
                   value={horaSortida}
                   onChange={(e) => setHoraSortida(e.target.value)}
                 />
@@ -156,12 +158,13 @@ export function FinalitzarAnticipada({
                 Torno diners
               </label>
               {retorn && (
-                <div className="flex items-end gap-2 pt-1">
+                <div className="grid grid-cols-2 gap-2 pt-1">
                   <Field label="Import €">
                     <Input
                       type="number"
                       step="0.01"
                       min="0"
+                      className="w-full"
                       value={retornImport}
                       onChange={(e) => setRetornImport(e.target.value)}
                       placeholder="0.00"
@@ -169,7 +172,7 @@ export function FinalitzarAnticipada({
                     />
                   </Field>
                   <Field label="Mètode">
-                    <Select value={retornMetode} onChange={(e) => setRetornMetode(e.target.value)}>
+                    <Select className="w-full" value={retornMetode} onChange={(e) => setRetornMetode(e.target.value)}>
                       {metodeCobramentValues.map((m) => (
                         <option key={m} value={m}>{METODE_COBRAMENT_LABELS[m]}</option>
                       ))}
@@ -187,7 +190,7 @@ export function FinalitzarAnticipada({
             {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
 
-          <div className="mt-6 flex flex-wrap justify-end gap-2">
+          <div className="mt-6 flex justify-end gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
               Cancel·lar
             </Button>
