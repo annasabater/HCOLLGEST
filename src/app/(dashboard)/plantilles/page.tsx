@@ -672,6 +672,7 @@ function BenvingudaCard() {
                       type="button"
                       size="sm"
                       variant="outline"
+                      className="shrink-0 whitespace-nowrap"
                       title="Marcar la benvinguda com a enviada (deixarà de sortir)"
                       onClick={() => marcarEnviada(e.id)}
                     >
