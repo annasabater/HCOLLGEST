@@ -25,22 +25,22 @@ const GRACIES_HTML: Record<LangEmail, string> = {
 <p>Ha estat un plaer tenir-te a l'Hostal Coll. Esperem que l'estada hagi estat del teu gust!</p>
 <p>Si tens un moment, t'agrairíem molt que deixessis una ressenya a Google. Ens ajuda molt:</p>
 <p><a href="{{enlacRessenya}}" style="background:#7A1F2B;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block">Deixar una ressenya</a></p>
-<p>Fins aviat!<br>L'equip de l'Hostal Coll</p>`,
+<p>Fins aviat!</p>`,
   es: `<p>Hola {{nom}},</p>
 <p>Ha sido un placer tenerte en el Hostal Coll. ¡Esperamos que la estancia haya sido de tu agrado!</p>
 <p>Si tienes un momento, te agradeceríamos mucho que dejaras una reseña en Google. Nos ayuda mucho:</p>
 <p><a href="{{enlacRessenya}}" style="background:#7A1F2B;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block">Dejar una reseña</a></p>
-<p>¡Hasta pronto!<br>El equipo del Hostal Coll</p>`,
+<p>¡Hasta pronto!</p>`,
   en: `<p>Hi {{nom}},</p>
 <p>It was a pleasure having you at Hostal Coll. We hope you enjoyed your stay!</p>
 <p>If you have a moment, we would really appreciate it if you left us a review on Google. It helps us a lot:</p>
 <p><a href="{{enlacRessenya}}" style="background:#7A1F2B;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block">Leave a review</a></p>
-<p>Hope to see you again soon!<br>The Hostal Coll team</p>`,
+<p>Hope to see you again soon!</p>`,
   fr: `<p>Bonjour {{nom}},</p>
 <p>C'était un plaisir de vous accueillir à l'Hostal Coll. Nous espérons que votre séjour vous a plu!</p>
 <p>Si vous avez un moment, nous vous serions très reconnaissants de laisser un avis sur Google. Cela nous aide beaucoup:</p>
 <p><a href="{{enlacRessenya}}" style="background:#7A1F2B;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block">Laisser un avis</a></p>
-<p>À bientôt!<br>L'équipe de l'Hostal Coll</p>`,
+<p>À bientôt!</p>`,
 };
 
 // ---------------------------------------------------------------------------
@@ -83,7 +83,7 @@ const BASE_HTML = (cos: string) => `<!DOCTYPE html>
     </div>
     <div style="color:#333;line-height:1.7;font-size:15px">${cos}</div>
     <hr style="border:none;border-top:1px solid #e8ddd5;margin:24px 0">
-    <p style="font-size:12px;color:#999;text-align:center">Hostal Coll · Calella de Mar</p>
+    <p style="font-size:12px;color:#999;text-align:center">Hostal Coll · Calella de la Costa</p>
   </div>
 </body>
 </html>`;
