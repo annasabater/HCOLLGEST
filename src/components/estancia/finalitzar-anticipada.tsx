@@ -101,23 +101,25 @@ export function FinalitzarAnticipada({
 
       <dialog
         ref={dialogRef}
-        className="m-auto w-full max-w-md rounded-2xl border-0 p-0 shadow-2xl backdrop:bg-slate-900/50"
+        className="m-auto w-[min(92vw,34rem)] max-w-none max-h-[88vh] overflow-y-auto rounded-2xl border-0 p-0 shadow-2xl backdrop:bg-slate-900/50"
         onClick={(e) => { if (e.target === dialogRef.current) setOpen(false); }}
         onCancel={() => setOpen(false)}
       >
         <div className="p-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h2 className="font-semibold text-slate-900">Sortida anticipada</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                L’hoste marxa abans del previst. Es marcarà l’estada com a finalitzada abans d’hora,
-                s’alliberarà{habitacioNom ? ` l’habitació ${habitacioNom}` : ' l’habitació'} i quedarà
-                una nota interna. Ho podràs desfer si t’equivoques.
-              </p>
-            </div>
-            <button onClick={() => setOpen(false)} className="shrink-0 text-slate-400 hover:text-slate-600">
-              <X className="h-4 w-4" />
+          <div className="relative">
+            <button
+              onClick={() => setOpen(false)}
+              className="absolute right-0 top-0 text-slate-400 hover:text-slate-600"
+              aria-label="Tancar"
+            >
+              <X className="h-5 w-5" />
             </button>
+            <h2 className="pr-8 text-lg font-semibold text-slate-900">Sortida anticipada</h2>
+            <p className="mt-1 pr-8 text-sm text-slate-500">
+              L’hoste marxa abans del previst. Es marcarà l’estada com a finalitzada abans d’hora,
+              s’alliberarà{habitacioNom ? ` l’habitació ${habitacioNom}` : ' l’habitació'} i quedarà
+              una nota interna. Ho podràs desfer si t’equivoques.
+            </p>
           </div>
 
           <div className="mt-5 space-y-4">
@@ -182,7 +184,7 @@ export function FinalitzarAnticipada({
             {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
 
-          <div className="mt-6 flex justify-end gap-2">
+          <div className="mt-6 flex flex-wrap justify-end gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
               Cancel·lar
             </Button>
@@ -193,7 +195,7 @@ export function FinalitzarAnticipada({
               disabled={saving || !dataSortida || (retorn && !(Number(retornImport) > 0))}
             >
               <LogOut className="h-4 w-4" />
-              {saving ? 'Desant…' : 'Marcar sortida anticipada'}
+              {saving ? 'Desant…' : 'Confirmar sortida'}
             </Button>
           </div>
         </div>
