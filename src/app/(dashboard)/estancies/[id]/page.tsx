@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { EstanciaActions } from '@/components/estancia/estancia-actions';
 import { ViatgerFirma } from '@/components/estancia/viatger-firma';
 import { AmpliarEstada } from '@/components/estancia/ampliar-estada';
+import { FinalitzarAnticipada } from '@/components/estancia/finalitzar-anticipada';
 import { EliminarEstada } from '@/components/estancia/eliminar-estada';
 import { TreureEsborrany } from '@/components/estancia/treure-esborrany';
 import { ConvertirAEnCurs } from '@/components/estancia/convertir-a-en-curs';
@@ -136,6 +137,14 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                     <Pencil className="h-4 w-4" /> Editar
                   </Button>
                 </Link>
+                {!estancia.esBorrany && estancia.estat !== 'CANCELLADA' && (
+                  <FinalitzarAnticipada
+                    estanciaId={estancia.id}
+                    dataEntrada={estancia.dataEntrada ? toISODate(estancia.dataEntrada) : null}
+                    dataSortidaActual={estancia.dataSortida ? toISODate(estancia.dataSortida) : null}
+                    habitacioNom={estancia.habitacio?.nom ?? null}
+                  />
+                )}
                 {estancia.esBorrany && <TreureEsborrany estanciaId={estancia.id} />}
                 <EliminarEstada
                   id={estancia.id}

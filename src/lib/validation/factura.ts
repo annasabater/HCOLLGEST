@@ -70,6 +70,23 @@ export const PagamentEstadaSchema = z.object({
   facturaId: z.string().optional(),
 });
 
+export const FinalitzarAnticipadaSchema = z
+  .object({
+    dataSortida: z.coerce.date(),
+    retorn: z.boolean().default(false),
+    retornImport: z.coerce.number().positive().optional(),
+    retornMetode: z.enum(metodeCobramentValues).optional(),
+  })
+  .superRefine((d, ctx) => {
+    if (d.retorn && (!d.retornImport || d.retornImport <= 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['retornImport'],
+        message: "Indica l'import a retornar",
+      });
+    }
+  });
+
 export const FacturaSeleccioSchema = z.object({
   pagamentIds: z.array(z.string().min(1)).default([]),
   fiancaIds: z.array(z.string().min(1)).default([]),

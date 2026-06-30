@@ -17,6 +17,7 @@ import {
   FacturaEditSchema,
   CobramentEditSchema,
   DipositCreateSchema,
+  FinalitzarAnticipadaSchema,
 } from '../validation/factura';
 import { CONCEPTE_LINIA_LABELS } from '../validation/enums';
 
@@ -464,6 +465,95 @@ export async function addDiposit(
     ip,
   });
   return diposit;
+}
+
+/**
+ * Finalitza una estada de forma anticipada: escurça la data de sortida real,
+ * marca l'estada FINALITZADA, deixa una nota interna OBJECTIVA al titular i a les
+ * observacions de l'estada, i (opcionalment) registra la devolució de diners com
+ * a cobrament negatiu a compte (resta de l'ingrés). Allibera l'habitació perquè
+ * la disponibilitat es calcula per `dataSortida`.
+ */
+export async function finalitzarEstanciaAnticipada(
+  estanciaId: string,
+  raw: unknown,
+  actor: { id: string } | null,
+  ip: string | null,
+) {
+  const input = FinalitzarAnticipadaSchema.parse(raw);
+  const est = await prisma.estancia.findFirst({
+    where: { id: estanciaId, deletedAt: null },
+    include: {
+      habitacio: { select: { nom: true } },
+      viatgers: {
+        where: { esTitular: true },
+        take: 1,
+        select: { huesped: { select: { id: true } } },
+      },
+    },
+  });
+  if (!est) throw new Error('Estada no trobada');
+  if (!est.dataEntrada) throw new Error("L'estada no té data d'entrada");
+  if (input.dataSortida < est.dataEntrada) {
+    throw new Error("La data de sortida no pot ser anterior a l'entrada");
+  }
+
+  const fmt = (d: Date) => d.toLocaleDateString('ca-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const habNom = est.habitacio?.nom ?? null;
+  const titularId = est.viatgers[0]?.huesped?.id ?? null;
+  const prevista = est.dataSortida;
+  const retornImport = input.retorn ? input.retornImport ?? 0 : 0;
+
+  const nota =
+    `Sortida anticipada: ha deixat ${habNom ? `l'habitació ${habNom}` : "l'allotjament"} el ${fmt(input.dataSortida)}` +
+    `${prevista ? ` (sortida prevista: ${fmt(prevista)})` : ''}.` +
+    `${retornImport > 0 ? ` S'han retornat ${retornImport.toFixed(2)} €.` : ' No s\'ha retornat cap import.'}`;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.estancia.update({
+      where: { id: estanciaId },
+      data: {
+        dataSortida: input.dataSortida,
+        estat: 'FINALITZADA',
+        observacions: est.observacions ? `${est.observacions}\n${nota}` : nota,
+      },
+    });
+    if (titularId) {
+      await tx.anotacioHuesped.create({
+        data: {
+          huespedId: titularId,
+          estanciaId,
+          sentit: 'NEUTRA',
+          tipus: 'Sortida anticipada',
+          descripcio: nota,
+          privada: true,
+          usuariId: actor?.id ?? null,
+        },
+      });
+    }
+    if (retornImport > 0) {
+      await tx.cobrament.create({
+        data: {
+          estanciaId,
+          concepte: 'ALLOTJAMENT',
+          descripcio: 'Devolució per sortida anticipada',
+          metode: input.retornMetode ?? 'EFECTIU',
+          import: -retornImport,
+          data: new Date(),
+        },
+      });
+    }
+  });
+
+  await audit({
+    usuariId: actor?.id ?? null,
+    accio: 'MODIFICACIO',
+    entitat: 'estancia',
+    entitatId: estanciaId,
+    detall: { sortidaAnticipada: true, dataSortida: input.dataSortida.toISOString(), retorn: retornImport },
+    ip,
+  });
+  return { ok: true, retorn: retornImport };
 }
 
 /**
