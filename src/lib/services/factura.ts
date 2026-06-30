@@ -27,9 +27,9 @@ const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 /**
  * Següent número de factura de l'any (format `AAAA-NNNN`). Es calcula a partir
- * del número MÉS ALT existent + 1 (no per recompte), perquè factures esborrades
- * o buits no provoquin xocs de número. Inclou també les esborrades (soft-delete)
- * perquè els números no es reutilitzin mai.
+ * del número MÉS ALT de les factures VIGENTS (no esborrades) + 1. En esborrar una
+ * factura el seu número s'allibera (a DELETE es retola la factura esborrada amb un
+ * sufix), de manera que es pot tornar a utilitzar.
  */
 export async function proximNumeroFactura(
   client: Prisma.TransactionClient,
@@ -37,7 +37,7 @@ export async function proximNumeroFactura(
 ): Promise<string> {
   const prefix = `${year}-`;
   const last = await client.factura.findFirst({
-    where: { numero: { startsWith: prefix } },
+    where: { numero: { startsWith: prefix }, deletedAt: null },
     orderBy: { numero: 'desc' },
     select: { numero: true },
   });

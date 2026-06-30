@@ -88,15 +88,21 @@ export async function DELETE(req: Request, ctx: Ctx) {
 
     const existing = await prisma.factura.findFirst({
       where: { id, deletedAt: null },
-      select: { id: true },
+      select: { id: true, numero: true },
     });
     if (!existing) return notFound();
 
-    // Els pagaments tornen a "a compte" (segueixen sent ingrés de l'estada);
-    // esborrar el document no fa desaparèixer els diners cobrats.
+    // Els pagaments i fiances tornen a "a compte" (segueixen sent de l'estada);
+    // esborrar el document no fa desaparèixer els diners. El número es retola amb
+    // un sufix per alliberar-lo (la restricció UNIQUE no el bloqueja) i poder
+    // reutilitzar-lo en una nova factura.
     await prisma.$transaction([
       prisma.cobrament.updateMany({ where: { facturaId: id }, data: { facturaId: null } }),
-      prisma.factura.update({ where: { id }, data: { deletedAt: new Date() } }),
+      prisma.diposit.updateMany({ where: { facturaId: id }, data: { facturaId: null } }),
+      prisma.factura.update({
+        where: { id },
+        data: { deletedAt: new Date(), numero: `${existing.numero} (eliminada ${id})` },
+      }),
     ]);
     await audit({
       usuariId: auth.id,

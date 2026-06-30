@@ -75,7 +75,9 @@ export function FacturaPanel({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [tipus, setTipus] = useState<'FACTURA_SIMPLIFICADA' | 'FACTURA'>('FACTURA_SIMPLIFICADA');
+  // La factura es crea com a simplificada per defecte; el tipus/format (simple o
+  // fiscal) es tria després des del detall de la factura en imprimir.
+  const tipus = 'FACTURA_SIMPLIFICADA' as const;
   const [numero, setNumero] = useState('');
   const [selPag, setSelPag] = useState<Set<string>>(new Set());
   const [selFi, setSelFi] = useState<Set<string>>(new Set());
@@ -209,22 +211,6 @@ export function FacturaPanel({
 
       {open ? (
         <form onSubmit={crear} className="space-y-3 rounded-lg border border-slate-200 p-3">
-          {/* Tipus de document */}
-          <div className="flex items-center gap-4">
-            <span className="text-xs font-medium text-slate-500">Tipus:</span>
-            {(['FACTURA_SIMPLIFICADA', 'FACTURA'] as const).map((t) => (
-              <label key={t} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                <input
-                  type="radio"
-                  name="tipusFactura"
-                  checked={tipus === t}
-                  onChange={() => setTipus(t)}
-                />
-                {TIPUS_LABEL[t]}
-              </label>
-            ))}
-          </div>
-
           {/* Número */}
           <label className="flex items-center gap-2 text-sm">
             <span className="text-xs font-medium text-slate-500">Núm. factura:</span>
