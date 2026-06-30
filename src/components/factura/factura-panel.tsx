@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getJSON, postJSON, ApiError } from '@/lib/api';
-import { Receipt, FileText, ShieldCheck } from 'lucide-react';
+import { Receipt, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -143,11 +143,6 @@ export function FacturaPanel({
     }
   }
 
-  function printUrl(f: FacturaLite, ambCustodia = false): string {
-    if (f.tipusDocument === 'FACTURA') return `/imprimir/factura/${f.id}`;
-    return `/imprimir/factura-simple/${f.id}${ambCustodia ? '?custodia=true' : ''}`;
-  }
-
   return (
     <div className="space-y-3">
       {factures.length === 0 && !open && (
@@ -174,38 +169,6 @@ export function FacturaPanel({
               </Badge>
             </span>
           </Link>
-          <div className="flex flex-wrap gap-2 border-t border-slate-100 px-3 py-1.5">
-            {fiances.some((fi) => fi.facturaId === f.id) ? (
-              <>
-                <a
-                  href={printUrl(f, true)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-xs text-brand-600 hover:underline"
-                >
-                  <FileText className="h-3 w-3" /> Imprimir (amb fiança)
-                </a>
-                <span className="text-slate-300">·</span>
-                <a
-                  href={printUrl(f, false)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-slate-500 hover:underline"
-                >
-                  Sense fiança
-                </a>
-              </>
-            ) : (
-              <a
-                href={printUrl(f, false)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-brand-600 hover:underline"
-              >
-                <FileText className="h-3 w-3" /> Imprimir
-              </a>
-            )}
-          </div>
         </div>
       ))}
 
