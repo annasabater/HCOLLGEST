@@ -173,23 +173,36 @@ export function FacturaPanel({
             </span>
           </Link>
           <div className="flex flex-wrap gap-2 border-t border-slate-100 px-3 py-1.5">
-            <a
-              href={printUrl(f, true)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-xs text-brand-600 hover:underline"
-            >
-              <FileText className="h-3 w-3" /> Imprimir (amb fiança)
-            </a>
-            <span className="text-slate-300">·</span>
-            <a
-              href={printUrl(f, false)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-slate-500 hover:underline"
-            >
-              Sense fiança
-            </a>
+            {fiances.some((fi) => fi.facturaId === f.id) ? (
+              <>
+                <a
+                  href={printUrl(f, true)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs text-brand-600 hover:underline"
+                >
+                  <FileText className="h-3 w-3" /> Imprimir (amb fiança)
+                </a>
+                <span className="text-slate-300">·</span>
+                <a
+                  href={printUrl(f, false)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-slate-500 hover:underline"
+                >
+                  Sense fiança
+                </a>
+              </>
+            ) : (
+              <a
+                href={printUrl(f, false)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-brand-600 hover:underline"
+              >
+                <FileText className="h-3 w-3" /> Imprimir
+              </a>
+            )}
           </div>
         </div>
       ))}

@@ -9,9 +9,11 @@ import { cn } from '@/lib/utils';
 export function FiancaTogglePrint({
   facturaId,
   fiancaInclosa: initial,
+  teFianca = true,
 }: {
   facturaId: string;
   fiancaInclosa: boolean | null;
+  teFianca?: boolean;
 }) {
   const [fianca, setFianca] = useState<boolean | null>(initial);
   const [saving, setSaving] = useState(false);
@@ -36,6 +38,35 @@ export function FiancaTogglePrint({
   const fiscalHref = ambFianca
     ? `/imprimir/factura/${facturaId}?fianca=true`
     : `/imprimir/factura/${facturaId}`;
+
+  // Sense fiança a la factura: només botons d'impressió normals, sense el toggle.
+  if (!teFianca) {
+    return (
+      <div className="space-y-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Imprimir</p>
+        <div className="flex gap-2">
+          <Link
+            href={`/imprimir/factura-simple/${facturaId}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
+          >
+            <FileText className="h-3.5 w-3.5" /> Simple
+            <ExternalLink className="h-3 w-3 opacity-50" />
+          </Link>
+          <Link
+            href={`/imprimir/factura/${facturaId}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
+          >
+            <Printer className="h-3.5 w-3.5" /> Fiscal
+            <ExternalLink className="h-3 w-3 opacity-50" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">

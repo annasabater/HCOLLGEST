@@ -23,6 +23,7 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
     where: { id, deletedAt: null },
     include: {
       linies: true,
+      diposits: { select: { id: true } },
       estancia: {
         include: {
           viatgers: { where: { esTitular: true }, include: { huesped: true } },
@@ -33,6 +34,8 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
     },
   });
   if (!factura) notFound();
+
+  const teFianca = factura.diposits.length > 0;
 
   const titular = factura.estancia.viatgers[0]?.huesped;
   const base = Number(factura.base);
@@ -127,6 +130,7 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
               <FiancaTogglePrint
                 facturaId={factura.id}
                 fiancaInclosa={factura.fiancaInclosa}
+                teFianca={teFianca}
               />
             </CardBody>
           </Card>
