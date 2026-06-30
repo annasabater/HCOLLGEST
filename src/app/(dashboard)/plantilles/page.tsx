@@ -589,18 +589,22 @@ function GraciesCard() {
             <LangSelect value={editLang} onChange={setEditLang} className="max-w-40" />
           </div>
 
+          <p className="mt-2 text-xs text-slate-400">
+            «{'{nom}'}» s’omple automàticament amb el nom de cada hoste. Aquí es mostra un exemple.
+          </p>
+
           {/* Missatge de WhatsApp de gràcies (amb l'enllaç de ressenya) */}
           <div className="mt-3">
             <p className="mb-1 text-xs font-medium text-slate-500">WhatsApp de gràcies</p>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 whitespace-pre-wrap">
-              {fillTemplate(PLANTILLA_GRACIES[editLang], { nom: 'Anna', enllac: enlacRessenya })}
+              {fillTemplate(PLANTILLA_GRACIES[editLang], { nom: '[nom de l’hoste]', enllac: enlacRessenya })}
             </div>
             <Button
               type="button"
               size="sm"
               variant="outline"
               className="mt-2"
-              onClick={() => copia(fillTemplate(PLANTILLA_GRACIES[editLang], { nom: 'Anna', enllac: enlacRessenya }))}
+              onClick={() => copia(fillTemplate(PLANTILLA_GRACIES[editLang], { nom: '[nom de l’hoste]', enllac: enlacRessenya }))}
             >
               <Copy className="h-4 w-4" /> Copiar WhatsApp
             </Button>
@@ -610,7 +614,7 @@ function GraciesCard() {
           <p className="mb-1 mt-3 text-xs font-medium text-slate-500">Correu de gràcies</p>
           <div className="overflow-hidden rounded-lg border border-slate-200">
             <iframe
-              srcDoc={buildGraciesEmail(editLang, { nom: 'Anna', enlacRessenya }).html}
+              srcDoc={buildGraciesEmail(editLang, { nom: '[nom de l’hoste]', enlacRessenya }).html}
               className="h-72 w-full"
               title="Previsualització email de gràcies"
             />
