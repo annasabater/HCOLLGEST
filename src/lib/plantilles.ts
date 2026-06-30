@@ -34,6 +34,17 @@ export const PLANTILLA_BENVINGUDA: Record<Lang, string> = {
   en: 'Hi {nom}! 😊 We hope your first night at Hostal Coll went well. Here’s a little welcome guide (what to do in Calella, useful info…) and, if you like, you can leave us your review: {enllac}',
 };
 
+/**
+ * Plantilla de gràcies + valoració per WhatsApp (variables {nom} {enllac}).
+ * S'envia després de la sortida; agraeix l'estada i conté l'enllaç a la ressenya.
+ */
+export const PLANTILLA_GRACIES: Record<Lang, string> = {
+  ca: 'Hola {nom}! 😊 Moltes gràcies per allotjar-te a l’Hostal Coll, ha estat un plaer tenir-te. Si vols, ens ajudaria molt que ens deixessis la teva valoració a Google: {enllac}',
+  es: '¡Hola {nom}! 😊 Muchas gracias por alojarte en el Hostal Coll, ha sido un placer tenerte. Si quieres, nos ayudaría mucho que nos dejaras tu valoración en Google: {enllac}',
+  fr: 'Bonjour {nom} ! 😊 Merci beaucoup d’avoir séjourné à l’Hostal Coll, ce fut un plaisir de vous accueillir. Si vous le souhaitez, votre avis sur Google nous aiderait beaucoup : {enllac}',
+  en: 'Hi {nom}! 😊 Thank you so much for staying at Hostal Coll, it was a pleasure having you. If you’d like, leaving us a Google review would help us a lot: {enllac}',
+};
+
 /** Plantilla per a la neteja (variables {nom} {data} {habitacions} {pasillo} {pati} {vorera} {hora}). */
 export const PLANTILLA_NETEJA: Record<Lang, string> = {
   ca: 'Hola {nom}! 😊 Per a demà ({data}) tindríem: {habitacions}.{pasillo}{pati}{vorera}{hora} Moltíssimes gràcies per la teva feina! 🙏',

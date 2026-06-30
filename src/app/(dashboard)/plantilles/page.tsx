@@ -21,6 +21,7 @@ import {
   PLANTILLA_HOSTE,
   PLANTILLA_NETEJA,
   PLANTILLA_BENVINGUDA,
+  PLANTILLA_GRACIES,
   PASILLO_TXT,
   PATI_TXT,
   VORERA_TXT,
@@ -527,6 +528,13 @@ function GraciesCard() {
             {elegibles.map((e) => {
               const titular = e.viatgers.find((v) => v.esTitular) ?? e.viatgers[0];
               const email = titular?.huesped.email;
+              const phone = titular?.huesped.telefon;
+              const lang: Lang = (e.idioma && (['ca', 'es', 'en', 'fr'] as string[]).includes(e.idioma))
+                ? (e.idioma as Lang) : 'ca';
+              const waMsg = fillTemplate(PLANTILLA_GRACIES[lang], {
+                nom: titular?.huesped.nom ?? '',
+                enllac: enlacRessenya,
+              });
               return (
                 <div key={e.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 p-2">
                   <div className="flex-1 min-w-0">
@@ -539,6 +547,17 @@ function GraciesCard() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="whitespace-nowrap"
+                      disabled={!phone}
+                      title={phone ? undefined : 'Aquest hoste no té telèfon'}
+                      onClick={() => enviaWhatsApp(phone, waMsg, titular?.huesped.nom)}
+                    >
+                      <MessageCircle className="h-4 w-4" /> WhatsApp
+                    </Button>
                     {done[e.id] ? (
                       <span className="flex items-center gap-1 text-xs text-green-600">
                         <CheckCircle className="h-3.5 w-3.5" /> Programat per demà 12:00
