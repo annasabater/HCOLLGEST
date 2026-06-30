@@ -30,6 +30,7 @@ interface Row {
   nacionalitat: string;
   tipusDocument: string;
   numDocument: string;
+  numSuport: string;
   dataExpedicio: string;
   paisEmissor: string;
   adreca: string;
@@ -182,6 +183,7 @@ export default function LlibrePage() {
               {complet && <Th>Naixement</Th>}
               {complet && <Th>Nacionalitat</Th>}
               <Th>Document</Th>
+              {complet && <Th>Núm. suport</Th>}
               {complet && <Th>Data exped.</Th>}
               {complet && <Th>País emissor</Th>}
               {complet && <Th>Adreça</Th>}
@@ -216,6 +218,7 @@ export default function LlibrePage() {
                   <Td>
                     {r.tipusDocument} {r.numDocument}
                   </Td>
+                  {complet && <Td>{r.numSuport}</Td>}
                   {complet && <Td>{r.dataExpedicio}</Td>}
                   {complet && <Td>{r.paisEmissor}</Td>}
                   {complet && <Td>{r.adreca}</Td>}
