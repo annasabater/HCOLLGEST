@@ -84,7 +84,7 @@ export function EmailsPanel({
   const [nom, setNom] = useState(titularNom);
   const [lang, setLang] = useState<LangEmail>(defaultLang);
   const [programatPer, setProgramatPer] = useState('');
-  const [enlacRessenya, setEnlacRessenya] = useState('https://g.page/r/hostalcoll/review');
+  const [enlacRessenya, setEnlacRessenya] = useState('https://g.page/r/CRX-Sb9SNVzJEBM/review');
 
   function load() {
     getJSON<{ emails: EmailP[] }>(`/api/emails-programats?estanciaId=${estanciaId}`)

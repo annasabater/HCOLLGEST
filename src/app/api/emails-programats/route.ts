@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     if (input.tipus === 'gracies') {
       const { asumpte: a, html } = buildGraciesEmail(lang, {
         nom: input.nomDestinatari,
-        enlacRessenya: input.enlacRessenya ?? 'https://g.page/r/hostalcoll/review',
+        enlacRessenya: input.enlacRessenya ?? 'https://g.page/r/CRX-Sb9SNVzJEBM/review',
       });
       asumpte = a;
       cos = html;

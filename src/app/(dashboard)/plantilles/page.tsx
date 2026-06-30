@@ -466,14 +466,14 @@ function HostesCard() {
 // --- Email de gràcies + ressenya Google (l'endemà de la sortida) -------------
 function GraciesCard() {
   const [estancies, setEstancies] = useState<Estancia[]>([]);
-  const [enlacRessenya, setEnlacRessenya] = useState('https://g.page/r/hostalcoll/review');
+  const [enlacRessenya, setEnlacRessenya] = useState('https://g.page/r/CRX-Sb9SNVzJEBM/review');
   const [editLang, setEditLang] = useState<Lang>('ca');
   const [scheduling, setScheduling] = useState<Record<string, boolean>>({});
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [errs, setErrs] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    setEnlacRessenya(lsGet('enlac_ressenya', 'https://g.page/r/hostalcoll/review'));
+    setEnlacRessenya(lsGet('enlac_ressenya', 'https://g.page/r/CRX-Sb9SNVzJEBM/review'));
     getJSON<{ estancies: Estancia[] }>('/api/estancies').then((r) => setEstancies(r.estancies));
   }, []);
 
