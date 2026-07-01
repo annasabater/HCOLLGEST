@@ -25,7 +25,7 @@ export function Paginacio({ total, pagina, perPagina, paramName = 'pagina', clas
   function nav(newPagina: number, newPer?: number) {
     const params = new URLSearchParams(searchParams.toString());
     params.set(paramName, String(newPagina));
-    if (paramName === 'pagina') params.set('perPagina', String(newPer ?? perPagina));
+    if (newPer != null) params.set('perPagina', String(newPer));
     router.push(`${pathname}?${params.toString()}`);
   }
 

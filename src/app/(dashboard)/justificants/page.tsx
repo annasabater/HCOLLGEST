@@ -1,8 +1,9 @@
 import { FileSignature, FileCheck, AlertTriangle } from 'lucide-react';
+import type { Prisma } from '@prisma/client';
 import { Paginacio } from '@/components/ui/paginacio';
 import { prisma } from '@/lib/db';
 import { PageHeader } from '@/components/ui/page-header';
-import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { CollapsibleCard } from '@/components/ui/collapsible-card';
 import { Badge } from '@/components/ui/badge';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import { EliminarComprovant } from '@/components/estancia/eliminar-comprovant';
 import { EliminarEstada } from '@/components/estancia/eliminar-estada';
 import { EnviarCorreuButton } from '@/components/justificants/enviar-correu-button';
 import { FitxaExpandible } from '@/components/justificants/fitxa-expandible';
+import { JustificantsFiltres } from '@/components/justificants/justificants-filtres';
 import { buildParteFromDb } from '@/lib/mossos/build-parte';
 import { validaParteErrors } from '@/lib/mossos/fitxer';
 import { ESTAT_ENVIAMENT_LABELS } from '@/lib/validation/enums';
@@ -18,26 +20,52 @@ import { formatDate } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
-const PER_PAGINA = 10;
-
 export default async function JustificantsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ pagina?: string; paginaMossos?: string }>;
+  searchParams: Promise<{ pagina?: string; paginaMossos?: string; perPagina?: string; any?: string; mes?: string }>;
 }) {
-  const { pagina: paginaStr, paginaMossos: paginaMossosStr } = await searchParams;
-  const pagina = Math.max(1, Number(paginaStr) || 1);
-  const paginaMossos = Math.max(1, Number(paginaMossosStr) || 1);
+  const sp = await searchParams;
+  const pagina = Math.max(1, Number(sp.pagina) || 1);
+  const paginaMossos = Math.max(1, Number(sp.paginaMossos) || 1);
+  const perPagina = [10, 25, 50].includes(Number(sp.perPagina)) ? Number(sp.perPagina) : 10;
+
+  // Filtre per any/mes: acota el rang de dates de les dues llistes.
+  const anyNum = Number(sp.any) || null;
+  const mesNum = Number(sp.mes) || null;
+  let rang: { gte: Date; lte: Date } | null = null;
+  if (anyNum) {
+    if (mesNum) {
+      rang = {
+        gte: new Date(anyNum, mesNum - 1, 1, 0, 0, 0, 0),
+        lte: new Date(anyNum, mesNum, 0, 23, 59, 59, 999),
+      };
+    } else {
+      rang = {
+        gte: new Date(anyNum, 0, 1, 0, 0, 0, 0),
+        lte: new Date(anyNum, 11, 31, 23, 59, 59, 999),
+      };
+    }
+  }
+
+  const whereFitxes: Prisma.EstanciaWhereInput = {
+    deletedAt: null,
+    ...(rang ? { dataEntrada: rang } : {}),
+  };
+  const whereMossos: Prisma.EnviamentMossosWhereInput = {
+    estat: { in: ['ENVIAT', 'ACCEPTAT'] },
+    ...(rang ? { createdAt: rang } : {}),
+  };
 
   const [establiment, totalFitxes, totalMossos, estancies, enviaments] = await Promise.all([
     prisma.establiment.findFirst(),
-    prisma.estancia.count({ where: { deletedAt: null } }),
-    prisma.enviamentMossos.count({ where: { estat: { in: ['ENVIAT', 'ACCEPTAT'] } } }),
+    prisma.estancia.count({ where: whereFitxes }),
+    prisma.enviamentMossos.count({ where: whereMossos }),
     prisma.estancia.findMany({
-      where: { deletedAt: null },
+      where: whereFitxes,
       orderBy: { dataFormalitzacio: 'desc' },
-      skip: (pagina - 1) * PER_PAGINA,
-      take: PER_PAGINA,
+      skip: (pagina - 1) * perPagina,
+      take: perPagina,
       include: {
         viatgers: { include: { huesped: true }, orderBy: { esTitular: 'desc' } },
         enviaments: {
@@ -48,10 +76,10 @@ export default async function JustificantsPage({
       },
     }),
     prisma.enviamentMossos.findMany({
-      where: { estat: { in: ['ENVIAT', 'ACCEPTAT'] } },
+      where: whereMossos,
       orderBy: { createdAt: 'desc' },
-      skip: (paginaMossos - 1) * PER_PAGINA,
-      take: PER_PAGINA,
+      skip: (paginaMossos - 1) * perPagina,
+      take: perPagina,
       include: {
         estancia: {
           include: {
@@ -74,7 +102,11 @@ export default async function JustificantsPage({
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Justificants" subtitle="Comprovants de Mossos i fitxes de registre" />
+      <PageHeader
+        title="Justificants"
+        subtitle="Comprovants de Mossos i fitxes de registre"
+        actions={<JustificantsFiltres anyActual={new Date().getFullYear()} />}
+      />
 
       {nPendents > 0 && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -88,12 +120,13 @@ export default async function JustificantsPage({
       )}
 
       {/* ── Fitxes de registre ─────────────────────────────────────────── */}
-      <Card>
-        <CardHeader className="flex items-center gap-2">
-          <FileSignature className="h-4 w-4 text-brand-600" />
-          <CardTitle>Fitxes de registre</CardTitle>
-        </CardHeader>
-        <CardBody>
+      <CollapsibleCard
+        title="Fitxes de registre"
+        icon={<FileSignature className="h-4 w-4 text-brand-600" />}
+        count={totalFitxes}
+        defaultOpen
+      >
+        <div>
           {fitxes.length === 0 ? (
             <EmptyState>Encara no hi ha estades.</EmptyState>
           ) : (
@@ -174,17 +207,18 @@ export default async function JustificantsPage({
               </tbody>
             </Table>
           )}
-          <Paginacio total={totalFitxes} pagina={pagina} perPagina={PER_PAGINA} className="px-1 pb-1" />
-        </CardBody>
-      </Card>
+          <Paginacio total={totalFitxes} pagina={pagina} perPagina={perPagina} className="px-1 pb-1" />
+        </div>
+      </CollapsibleCard>
 
       {/* ── Comprovants de Mossos ──────────────────────────────────────── */}
-      <Card>
-        <CardHeader className="flex items-center gap-2">
-          <FileCheck className="h-4 w-4 text-brand-600" />
-          <CardTitle>Comprovants de Mossos</CardTitle>
-        </CardHeader>
-        <CardBody>
+      <CollapsibleCard
+        title="Comprovants de Mossos"
+        icon={<FileCheck className="h-4 w-4 text-brand-600" />}
+        count={totalMossos}
+        defaultOpen
+      >
+        <div>
           {enviaments.length === 0 ? (
             <EmptyState>Encara no s&apos;ha comunicat cap estada a Mossos.</EmptyState>
           ) : (
@@ -232,12 +266,12 @@ export default async function JustificantsPage({
           <Paginacio
             total={totalMossos}
             pagina={paginaMossos}
-            perPagina={PER_PAGINA}
+            perPagina={perPagina}
             paramName="paginaMossos"
             className="px-1 pb-1"
           />
-        </CardBody>
-      </Card>
+        </div>
+      </CollapsibleCard>
     </div>
   );
 }
