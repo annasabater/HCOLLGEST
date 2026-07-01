@@ -7,7 +7,7 @@ import { cn, formatEur } from '@/lib/utils';
 const STORAGE_KEY = 'hc:finances-amagades';
 const MASK = '••••';
 
-type Ctx = { hidden: boolean; toggle: () => void };
+type Ctx = { hidden: boolean; toggle: () => void; hide: () => void };
 
 const AmountsContext = createContext<Ctx | null>(null);
 
@@ -32,12 +32,22 @@ export function AmountsVisibilityProvider({ children }: { children: React.ReactN
     });
   }, []);
 
-  return <AmountsContext.Provider value={{ hidden, toggle }}>{children}</AmountsContext.Provider>;
+  // Amaga sense desar la preferència (per amagar per defecte en entrar a una pàgina).
+  const hide = useCallback(() => setHidden(true), []);
+
+  return <AmountsContext.Provider value={{ hidden, toggle, hide }}>{children}</AmountsContext.Provider>;
 }
 
 export function useAmountsHidden(): Ctx {
   // Fallback segur si s'usa fora del provider: mai amaga.
-  return useContext(AmountsContext) ?? { hidden: false, toggle: () => {} };
+  return useContext(AmountsContext) ?? { hidden: false, toggle: () => {}, hide: () => {} };
+}
+
+/** Amaga els imports en muntar (p. ex. en entrar a Balanç). No es renderitza. */
+export function HideAmountsOnMount() {
+  const { hide } = useAmountsHidden();
+  useEffect(() => { hide(); }, [hide]);
+  return null;
 }
 
 /** Botó d'ull per mostrar/amagar tots els imports de la pàgina. */

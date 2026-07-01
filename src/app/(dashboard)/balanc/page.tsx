@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils';
 import { BalancChart } from '@/components/balanc/balanc-chart';
 import { Donut } from '@/components/balanc/donut';
 import { FinancesNav } from '@/components/balanc/finances-nav';
-import { Eur, HideAmountsButton } from '@/components/finances/amounts-visibility';
+import { Eur, HideAmountsButton, HideAmountsOnMount } from '@/components/finances/amounts-visibility';
 import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 
 interface Breakdowns {
@@ -374,6 +374,7 @@ export default function BalancPage() {
 
   return (
     <div>
+      <HideAmountsOnMount />
       <PageHeader
         title="Balanç"
         subtitle="Comptabilitat del hostal: ingressos, despeses, benefici i caixa"
