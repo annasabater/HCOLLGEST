@@ -74,7 +74,13 @@ export default async function EditarEstadaPage({ params }: { params: Promise<{ i
           estancia.esBorrany ? ' · esborrany' : ''
         }`}
       />
-      <MasterForm mode="edit" estanciaId={estancia.id} habitacions={habitacions} initial={initial} />
+      <MasterForm
+        mode="edit"
+        estanciaId={estancia.id}
+        habitacions={habitacions}
+        initial={initial}
+        creadaAvui={toISODate(estancia.createdAt) === toISODate(new Date())}
+      />
     </div>
   );
 }

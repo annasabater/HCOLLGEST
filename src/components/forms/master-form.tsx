@@ -149,12 +149,15 @@ export function MasterForm({
   mode = 'create',
   estanciaId,
   initial,
+  creadaAvui = false,
 }: {
   habitacions: { id: string; nom: string }[];
   initialHoste?: HosteLite | null;
   mode?: 'create' | 'edit';
   estanciaId?: string;
   initial?: MasterFormInitial;
+  /** Si l'estada s'ha creat avui: canviar la data és corregir un error → sense avís. */
+  creadaAvui?: boolean;
 }) {
   const router = useRouter();
   const isEdit = mode === 'edit';
@@ -475,8 +478,9 @@ export function MasterForm({
     setServerError(null);
 
     // En editar una estada, si canvia alguna data d'entrada/sortida, confirma-ho
-    // (afecta la fitxa de registre). Es pregunta un sol cop (no si ja s'ha forçat).
-    if (isEdit && !force && initial) {
+    // (afecta la fitxa de registre). NO es pregunta si l'estada s'ha creat avui
+    // (llavors canviar la data és corregir un error, no una ampliació posterior).
+    if (isEdit && !force && !creadaAvui && initial) {
       const fmtD = (s: string) => (s ? s.split('-').reverse().join('/') : '(buida)');
       const canvis: string[] = [];
       if (estancia.dataEntrada !== initial.estancia.dataEntrada) {
