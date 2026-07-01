@@ -123,6 +123,11 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 <FileSignature className="h-4 w-4" /> Fitxa PDF
               </Button>
             </a>
+            <a href={`/imprimir/registre/${estancia.id}`} target="_blank" rel="noreferrer">
+              <Button variant="outline" size="sm">
+                <FileSignature className="h-4 w-4" /> Llibre registre
+              </Button>
+            </a>
             {canWrite && estancia.estat === 'RESERVA' && (
               <ConvertirAEnCurs estanciaId={estancia.id} numContracteActual={estancia.numContracte} />
             )}
