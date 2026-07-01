@@ -25,7 +25,7 @@ export function FitxaExpandible({
   anyContracte: number;
   viatgers: Viatger[];
 }) {
-  const [obert, setObert] = useState(false);
+  const [obert, setObert] = useState(true);
   const altresViatgers = viatgers.filter((v) => !v.esTitular);
 
   return (
