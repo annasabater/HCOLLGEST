@@ -19,6 +19,10 @@
       "schedule": "15 6 1 * *"
     },
     {
+      "path": "/api/cron/drive-diari",
+      "schedule": "45 6 * * *"
+    },
+    {
       "path": "/api/cron/emails",
       "schedule": "0 8 * * *"
     }

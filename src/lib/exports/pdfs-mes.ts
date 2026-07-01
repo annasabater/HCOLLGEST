@@ -6,6 +6,7 @@
 import 'server-only';
 import { prisma } from './../db';
 import { buildFitxaPdf } from '../pdf/fitxa';
+import { buildRegistrePdf } from '../pdf/registre';
 import { buildReportPdf, type ReportSection } from '../pdf/report';
 import { readUpload } from '../storage';
 import { formatDate } from '../utils';
@@ -42,6 +43,27 @@ export async function buildFitxesPdfs(monthStart: Date, monthEnd: Date): Promise
   for (const est of estancies) {
     const pdf = await buildFitxaPdf(establiment, est, est.viatgers);
     out.push({ name: `Fitxa ${safe(`${est.numContracte}-${est.anyContracte}`)}.pdf`, data: Buffer.from(pdf) });
+  }
+  return out;
+}
+
+/** "Libro de Registro de Alojamiento" (NRA/NRUA) de les estades del rang. */
+export async function buildRegistresPdfs(desde: Date, fins: Date): Promise<PdfFitxer[]> {
+  const establiment = await prisma.establiment.findFirst();
+  const estancies = await prisma.estancia.findMany({
+    where: { deletedAt: null, dataEntrada: { gte: desde, lte: fins } },
+    include: {
+      habitacio: true,
+      viatgers: { include: { huesped: true, signatura: true }, orderBy: { esTitular: 'desc' } },
+      cobraments: { orderBy: { data: 'asc' } },
+    },
+    orderBy: { dataEntrada: 'asc' },
+  });
+
+  const out: PdfFitxer[] = [];
+  for (const est of estancies) {
+    const pdf = await buildRegistrePdf(establiment, est);
+    out.push({ name: `Registre ${safe(`${est.numContracte}-${est.anyContracte}`)}.pdf`, data: Buffer.from(pdf) });
   }
   return out;
 }
