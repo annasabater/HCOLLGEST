@@ -153,6 +153,11 @@ export default async function JustificantsPage({
                               <FileSignature className="h-4 w-4" /> Fitxa PDF
                             </Button>
                           </a>
+                          <a href={`/imprimir/registre/${e.id}`} target="_blank" rel="noreferrer">
+                            <Button variant="outline" size="sm">
+                              <FileSignature className="h-4 w-4" /> Llibre registre
+                            </Button>
+                          </a>
                           <EnviarCorreuButton apiUrl={`/api/estancies/${e.id}/fitxa-email`} />
                           <EliminarEstada
                             id={e.id}
