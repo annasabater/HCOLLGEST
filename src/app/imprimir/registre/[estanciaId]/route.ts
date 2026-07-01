@@ -57,7 +57,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: st
   const emNom = esc(est?.raoSocial || est?.nom || 'Hostal Coll');
   const emCif = esc(est?.cif ?? '');
   const emMunicipi = esc(est?.poblacio ?? '');
-  const emTel = esc(est?.telefon ?? '');
+  const emTel = '+34 687 55 82 48';
+  const emEmail = 'hostalcoll@gmail.com';
+  const emWeb = 'hostalcoll.com';
   const emAdreca = esc([est?.adreca, est?.codiPostal, est?.poblacio].filter(Boolean).join(', '));
   const nra = esc(est?.fileIdentifier ?? '');
 
@@ -125,11 +127,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: st
           <td class="lbl">Tipo documento</td><td class="val">NIF ${chk(false)} Pas ${chk(false)} TIE ${chk(false)}</td>
         </tr>
         <tr>
-          <td class="lbl">Email</td><td class="val"></td>
+          <td class="lbl">Email</td><td class="val">${emEmail}</td>
           <td class="lbl">Nº documento</td><td class="val"></td>
         </tr>
         <tr>
-          <td class="lbl">Web</td><td class="val"></td>
+          <td class="lbl">Web</td><td class="val">${emWeb}</td>
           <td class="lbl">Nacionalidad</td><td class="val"></td>
         </tr>
         <tr>
