@@ -55,8 +55,8 @@ export async function GET(
   const emDescriptor = esc(establiment?.poblacio ? `Casa de Hostes · ${establiment.poblacio}` : 'Casa de Hostes · Calella');
   const emTelefon = esc(establiment?.telefon ? `Tel. ${establiment.telefon}` : '');
 
-  // Número: usem el número de factura
-  const numeroDisplay = esc(factura.numero);
+  // Número: només la part seqüencial, sense l'any (2026-0001 → 0001).
+  const numeroDisplay = esc(factura.numero.replace(/^\d{4}-/, ''));
 
   const habDates = esc(
     factura.estancia.dataEntrada && factura.estancia.dataSortida
