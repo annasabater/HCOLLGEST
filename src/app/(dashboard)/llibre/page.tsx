@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Download, Eye, AlertTriangle, Pencil } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { Card, CardBody } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -59,35 +59,66 @@ function estatBadge(estat: string) {
 
 const PER_PAGINA_OPTS = [10, 25, 50];
 
+const MESOS = ['Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny', 'Juliol', 'Agost', 'Setembre', 'Octubre', 'Novembre', 'Desembre'];
+
 export default function LlibrePage() {
+  const anyActual = new Date().getFullYear();
+  const ANYS = [anyActual + 1, anyActual, anyActual - 1, anyActual - 2, anyActual - 3, anyActual - 4];
+
   const [desde, setDesde] = useState('');
   const [fins, setFins] = useState('');
+  const [any, setAny] = useState('');
+  const [mes, setMes] = useState('');
   const [rows, setRows] = useState<Row[] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [nomesMascota, setNomesMascota] = useState(false);
   const [complet, setComplet] = useState(false);
   const [pagina, setPagina] = useState(1);
   const [perPagina, setPerPagina] = useState(25);
 
-  const query = () => {
+  const queryDe = (d: string, f: string) => {
     const p = new URLSearchParams();
-    if (desde) p.set('desde', desde);
-    if (fins) p.set('fins', fins);
+    if (d) p.set('desde', d);
+    if (f) p.set('fins', f);
     return p.toString();
   };
 
-  async function veure() {
+  async function veure(d = desde, f = fins) {
     setLoading(true);
+    setPagina(1);
     try {
-      const res = await getJSON<{ rows: Row[] }>(`/api/llibre?${query()}`);
+      const res = await getJSON<{ rows: Row[] }>(`/api/llibre?${queryDe(d, f)}`);
       setRows(res.rows);
     } finally {
       setLoading(false);
     }
   }
 
+  // Aplica un període per mes/any: calcula desde/fins i recarrega.
+  function aplicarPeriode(novAny: string, novMes: string) {
+    setAny(novAny);
+    setMes(novMes);
+    let d = '';
+    let f = '';
+    if (novAny) {
+      const y = Number(novAny);
+      if (novMes) {
+        const m = Number(novMes); // 1-12
+        const ultimDia = new Date(y, m, 0).getDate();
+        const mm = String(m).padStart(2, '0');
+        d = `${y}-${mm}-01`;
+        f = `${y}-${mm}-${String(ultimDia).padStart(2, '0')}`;
+      } else {
+        d = `${y}-01-01`;
+        f = `${y}-12-31`;
+      }
+    }
+    setDesde(d);
+    setFins(f);
+    veure(d, f);
+  }
+
   function exportXlsx() {
-    const p = new URLSearchParams(query());
+    const p = new URLSearchParams(queryDe(desde, fins));
     p.set('format', 'xlsx');
     window.open(`/api/llibre?${p.toString()}`, '_blank');
   }
@@ -99,12 +130,7 @@ export default function LlibrePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Les accions (editar / enviar a Mossos) són per estada: només es mostren al
-  // primer viatger de cada contracte per no duplicar-les ni generar fitxers repetits.
-  const visibles = useMemo(() => (rows ?? []).filter(
-    (r) => !nomesMascota || (!!r.mascotes && r.mascotes.trim() !== '' && r.mascotes !== '—'),
-  ), [rows, nomesMascota]);
-
+  const visibles = rows ?? [];
   const totalPagines = Math.ceil(visibles.length / perPagina);
   const paginats = visibles.slice((pagina - 1) * perPagina, pagina * perPagina);
 
@@ -134,20 +160,28 @@ export default function LlibrePage() {
 
       <Card className="mb-6">
         <CardBody className="flex flex-wrap items-end gap-3">
+          <Field label="Any">
+            <Select value={any} onChange={(e) => aplicarPeriode(e.target.value, mes)}>
+              <option value="">Tots</option>
+              {ANYS.map((a) => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Mes">
+            <Select value={mes} onChange={(e) => aplicarPeriode(any, e.target.value)} disabled={!any}>
+              <option value="">Tot l’any</option>
+              {MESOS.map((nom, i) => (
+                <option key={i} value={i + 1}>{nom}</option>
+              ))}
+            </Select>
+          </Field>
           <Field label="Des de">
-            <Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
+            <Input type="date" value={desde} onChange={(e) => { setDesde(e.target.value); setAny(''); setMes(''); }} />
           </Field>
           <Field label="Fins a">
-            <Input type="date" value={fins} onChange={(e) => setFins(e.target.value)} />
+            <Input type="date" value={fins} onChange={(e) => { setFins(e.target.value); setAny(''); setMes(''); }} />
           </Field>
-          <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={nomesMascota}
-              onChange={(e) => setNomesMascota(e.target.checked)}
-            />
-            Només amb mascota
-          </label>
           <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
@@ -156,7 +190,7 @@ export default function LlibrePage() {
             />
             Llibre complet
           </label>
-          <Button onClick={veure} disabled={loading} variant="outline">
+          <Button onClick={() => veure()} disabled={loading} variant="outline">
             <Eye className="h-4 w-4" /> {loading ? 'Carregant…' : 'Veure'}
           </Button>
 
@@ -170,7 +204,7 @@ export default function LlibrePage() {
       {rows === null ? (
         <EmptyState>Carregant…</EmptyState>
       ) : visibles.length === 0 ? (
-        <EmptyState>{nomesMascota ? 'Cap registre amb mascota.' : 'Cap registre en aquest rang.'}</EmptyState>
+        <EmptyState>Cap registre en aquest període.</EmptyState>
       ) : (
         <Table>
           <Thead>
