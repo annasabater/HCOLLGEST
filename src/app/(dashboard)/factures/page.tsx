@@ -70,7 +70,7 @@ export default async function FacturesPage() {
                 <Tr key={f.id}>
                   <Td>
                     <Link href={`/factures/${f.id}`} className="font-medium text-brand-700">
-                      {f.numero}
+                      {f.numero.replace(/^\d{4}-/, '')}
                     </Link>
                     {f.fiancaInclosa === true && (
                       <span className="ml-1 inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200">

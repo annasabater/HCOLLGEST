@@ -13,17 +13,20 @@ export function EditarNumeroFactura({
   numero: string;
 }) {
   const router = useRouter();
+  // Es mostra i s'edita només la part seqüencial; l'any es manté internament.
+  const any = numero.match(/^(\d{4})-/)?.[1] ?? String(new Date().getFullYear());
+  const seqActual = numero.replace(/^\d{4}-/, '');
   const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(numero);
+  const [value, setValue] = useState(seqActual);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function desar() {
-    if (value.trim() === numero) { setEditing(false); return; }
+    if (value.trim() === seqActual || !value.trim()) { setEditing(false); return; }
     setSaving(true);
     setError(null);
     try {
-      await patchJSON(`/api/factures/${facturaId}`, { numero: value.trim() });
+      await patchJSON(`/api/factures/${facturaId}`, { numero: `${any}-${value.trim()}` });
       setEditing(false);
       router.refresh();
     } catch (e) {
@@ -34,7 +37,7 @@ export function EditarNumeroFactura({
   }
 
   function cancel() {
-    setValue(numero);
+    setValue(seqActual);
     setEditing(false);
     setError(null);
   }
@@ -43,7 +46,7 @@ export function EditarNumeroFactura({
     return (
       <div className="flex items-center gap-2">
         <h1 className="text-3xl font-serif font-semibold text-slate-900">
-          Factura {numero}
+          Factura {seqActual}
         </h1>
         <button
           type="button"
