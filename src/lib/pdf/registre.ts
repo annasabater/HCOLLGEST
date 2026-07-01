@@ -4,7 +4,7 @@
  * contracte, pagament i signatures. Reutilitzable per a descàrrega i export a Drive.
  */
 import 'server-only';
-import { PDFDocument, StandardFonts, rgb, type PDFPage, type PDFFont, type PDFImage } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage } from 'pdf-lib';
 import { PARENTESC_LABELS } from '../validation/enums';
 
 const A4 = { w: 595.28, h: 841.89 };
