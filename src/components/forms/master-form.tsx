@@ -473,6 +473,27 @@ export function MasterForm({
 
   async function doSubmit(force: boolean, borrany = false) {
     setServerError(null);
+
+    // En editar una estada, si canvia alguna data d'entrada/sortida, confirma-ho
+    // (afecta la fitxa de registre). Es pregunta un sol cop (no si ja s'ha forçat).
+    if (isEdit && !force && initial) {
+      const fmtD = (s: string) => (s ? s.split('-').reverse().join('/') : '(buida)');
+      const canvis: string[] = [];
+      if (estancia.dataEntrada !== initial.estancia.dataEntrada) {
+        canvis.push(`Entrada: ${fmtD(initial.estancia.dataEntrada)} → ${fmtD(estancia.dataEntrada)}`);
+      }
+      if (estancia.dataSortida !== initial.estancia.dataSortida) {
+        canvis.push(`Sortida: ${fmtD(initial.estancia.dataSortida)} → ${fmtD(estancia.dataSortida)}`);
+      }
+      if (canvis.length > 0) {
+        const ok = window.confirm(
+          `Vols canviar la data a la fitxa de registre?\n\n${canvis.join('\n')}\n\n` +
+            `Si acceptes, s'actualitzarà la fitxa de registre amb les noves dates.`,
+        );
+        if (!ok) return;
+      }
+    }
+
     const input = buildInput();
 
     // 1) Validació. En esborrany és laxa (es pot desar incomplet); si no, dura (§2.3).
