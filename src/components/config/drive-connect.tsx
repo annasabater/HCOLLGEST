@@ -6,12 +6,15 @@ import { Button } from '@/components/ui/button';
 import { getJSON, ApiError } from '@/lib/api';
 
 export function DriveConnect({ connectada }: { connectada: boolean }) {
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<null | 'mensual' | 'diari'>(null);
   const [msg, setMsg] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
 
-  async function provar() {
-    setBusy(true);
+  async function provar(quin: 'mensual' | 'diari') {
+    setBusy(quin);
     setMsg(null);
+    const url = quin === 'mensual'
+      ? '/api/cron/drive-mensual?mes=actual'
+      : '/api/cron/drive-diari?dies=30';
     try {
       const r = await getJSON<{
         ok: boolean;
@@ -19,7 +22,7 @@ export function DriveConnect({ connectada }: { connectada: boolean }) {
         fitxers?: string[];
         errors?: string[];
         error?: string;
-      }>('/api/cron/drive-mensual?mes=actual');
+      }>(url);
       if (r.error) {
         setMsg({ tone: 'err', text: r.error });
       } else {
@@ -34,7 +37,7 @@ export function DriveConnect({ connectada }: { connectada: boolean }) {
     } catch (e) {
       setMsg({ tone: 'err', text: e instanceof ApiError ? e.message : 'Error provant l’export.' });
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -54,8 +57,11 @@ export function DriveConnect({ connectada }: { connectada: boolean }) {
         </a>
         {connectada && (
           <>
-            <Button type="button" variant="outline" size="sm" onClick={provar} disabled={busy}>
-              <FolderUp className="h-4 w-4" /> {busy ? 'Provant…' : 'Provar ara'}
+            <Button type="button" variant="outline" size="sm" onClick={() => provar('mensual')} disabled={!!busy}>
+              <FolderUp className="h-4 w-4" /> {busy === 'mensual' ? 'Provant…' : 'Provar mensual'}
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => provar('diari')} disabled={!!busy}>
+              <FolderUp className="h-4 w-4" /> {busy === 'diari' ? 'Provant…' : 'Provar diari (any)'}
             </Button>
             <span className="inline-flex items-center gap-1 text-green-700">
               <Check className="h-4 w-4" /> Connectat
