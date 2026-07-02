@@ -250,7 +250,7 @@ export default async function JustificantsPage({
                         <div className="flex items-center justify-end gap-2">
                           <a href={`/api/enviaments/${env.id}/justificant`} target="_blank" rel="noreferrer">
                             <Button variant="outline" size="sm">
-                              <FileCheck className="h-4 w-4" /> PDF
+                              <FileCheck className="h-4 w-4" /> Comprovant mossos
                             </Button>
                           </a>
                           <EnviarCorreuButton apiUrl={`/api/enviaments/${env.id}/email`} />
