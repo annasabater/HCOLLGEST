@@ -183,7 +183,7 @@ export default async function JustificantsPage({
                         <div className="flex items-center justify-end gap-2">
                           <a href={`/api/estancies/${e.id}/fitxa-pdf`} target="_blank" rel="noreferrer">
                             <Button variant="outline" size="sm">
-                              <FileSignature className="h-4 w-4" /> Fitxa PDF
+                              <FileSignature className="h-4 w-4" /> Registre persones allotjades
                             </Button>
                           </a>
                           <a href={`/imprimir/registre/${e.id}`} target="_blank" rel="noreferrer">
