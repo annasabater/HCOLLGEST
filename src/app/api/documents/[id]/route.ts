@@ -12,24 +12,32 @@ async function addWatermark(buf: Buffer, mime: string): Promise<Buffer> {
   try {
     const img = sharp(buf);
     const { width = 800, height = 600 } = await img.metadata();
-    const fontSize = Math.max(28, Math.round(Math.min(width, height) / 7));
-    const cx = Math.round(width / 2);
-    const cy = Math.round(height / 2);
+    const w = Math.max(1, width);
+    const h = Math.max(1, height);
 
-    // SVG watermark — funciona a totes les plataformes sense Pango ni librsvg addicional
+    // Marca d'aigua REPETIDA i ben visible en tota la imatge ("HOSTAL COLL"),
+    // en color granate de marca amb contorn blanc perquè es llegeixi tant sobre
+    // zones clares com fosques del document.
+    const fontSize = Math.max(18, Math.round(w / 16));
+    const stepX = Math.max(200, Math.round(w / 1.9));
+    const stepY = Math.max(110, Math.round(h / 5));
+    let tiles = '';
+    for (let y = stepY; y < h + stepY; y += stepY) {
+      for (let x = -Math.round(w * 0.2); x < w; x += stepX) {
+        tiles +=
+          `<text x="${x}" y="${y}" transform="rotate(-30 ${x} ${y})" ` +
+          `font-family="Arial,Helvetica,sans-serif" font-weight="bold" font-size="${fontSize}" ` +
+          `fill="#7A1F2B" fill-opacity="0.42" stroke="#ffffff" stroke-opacity="0.35" stroke-width="1">HOSTAL COLL</text>`;
+      }
+    }
     const svg = Buffer.from(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-        <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle"
-          font-family="Arial,Helvetica,sans-serif" font-size="${fontSize}"
-          font-weight="bold" fill="rgba(0,0,0,0.40)"
-          transform="rotate(-30,${cx},${cy})">HOSTAL COLL</text>
-      </svg>`
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">${tiles}</svg>`,
     );
 
     return await img
       .grayscale()
-      .composite([{ input: svg, gravity: 'center' }])
-      .jpeg({ quality: 90 })
+      .composite([{ input: svg, gravity: 'northwest' }])
+      .jpeg({ quality: 88 })
       .toBuffer();
   } catch (err) {
     console.error('[watermark error]', err);

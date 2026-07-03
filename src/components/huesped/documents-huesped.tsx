@@ -37,6 +37,7 @@ export function DocumentsHuesped({
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   async function pujar(e: React.FormEvent) {
     e.preventDefault();
@@ -95,22 +96,35 @@ export function DocumentsHuesped({
           </p>
 
           {documents.length === 0 && <p className="text-sm text-slate-400">Sense documents.</p>}
-      {documents.map((d) => (
+      {documents.map((d) => {
+        const esImatge = (d.mime || '').startsWith('image/');
+        const url = `/api/documents/${d.id}`;
+        return (
         <div
           key={d.id}
-          className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm"
         >
-          <a
-            href={`/api/documents/${d.id}`}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-2 font-medium text-slate-800 hover:text-brand-700"
-          >
-            <FileText className="h-4 w-4 text-slate-400" />
-            {TIPUS_DOCUMENT_PUJAT_LABELS[d.tipus]}
-            <Badge tone="neutral">{d.fitxerNom}</Badge>
-          </a>
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            {esImatge ? (
+              <button type="button" onClick={() => setLightbox(url)} title="Veure el document" className="shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={url}
+                  alt={TIPUS_DOCUMENT_PUJAT_LABELS[d.tipus]}
+                  className="h-14 w-20 rounded border border-slate-200 object-cover"
+                />
+              </button>
+            ) : (
+              <a href={url} target="_blank" rel="noreferrer" className="shrink-0" title="Obrir el document">
+                <FileText className="h-6 w-6 text-slate-400" />
+              </a>
+            )}
+            <div className="min-w-0">
+              <div className="font-medium text-slate-800">{TIPUS_DOCUMENT_PUJAT_LABELS[d.tipus]}</div>
+              <Badge tone="neutral">{d.fitxerNom}</Badge>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
             <span className="text-xs text-slate-400">{formatDate(d.dataSubida)}</span>
             {canWrite && (
               <button className="text-slate-400 hover:text-red-600" onClick={() => esborrar(d.id)}>
@@ -119,7 +133,8 @@ export function DocumentsHuesped({
             )}
           </div>
         </div>
-      ))}
+        );
+      })}
 
       {canWrite && (
         <form onSubmit={pujar} className="space-y-2 border-t border-slate-100 pt-3">
@@ -149,6 +164,28 @@ export function DocumentsHuesped({
         </form>
           )}
         </CardBody>
+      )}
+
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setLightbox(null)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightbox}
+            alt="Document"
+            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            type="button"
+            className="absolute right-4 top-4 text-2xl font-bold text-white/80 hover:text-white"
+            onClick={() => setLightbox(null)}
+          >
+            ✕
+          </button>
+        </div>
       )}
     </Card>
   );
