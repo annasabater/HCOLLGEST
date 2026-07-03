@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Paginacio } from '@/components/ui/paginacio';
 import { formatDate } from '@/lib/utils';
-import { TIPUS_REGISTRE_LABELS, ESTAT_ENVIAMENT_LABELS } from '@/lib/validation/enums';
+import { ESTAT_ENVIAMENT_LABELS } from '@/lib/validation/enums';
 import type { EstatEnviament, EstatEstancia } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
@@ -165,7 +165,6 @@ export default async function EstanciesPage({
                     <span className="flex items-center gap-1">
                       <Users className="h-3.5 w-3.5" /> {e.numViatgers}
                     </span>
-                    <span className="text-slate-400">{TIPUS_REGISTRE_LABELS[e.tipusRegistre]}</span>
                   </div>
                 </div>
 
