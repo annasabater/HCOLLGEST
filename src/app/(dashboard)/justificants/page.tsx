@@ -176,7 +176,7 @@ export default async function JustificantsPage({
                         <div className="flex items-center justify-end gap-2">
                           <a href={`/api/estancies/${e.id}/fitxa-pdf`} target="_blank" rel="noreferrer">
                             <Button variant="outline" size="sm" className="h-auto py-1.5 whitespace-normal text-center leading-tight">
-                              <FileSignature className="h-4 w-4 shrink-0" /> Registre persones allotjades
+                              <FileSignature className="h-4 w-4 shrink-0" /> Reg. pers. allotjades
                             </Button>
                           </a>
                           <a href={`/imprimir/registre/${e.id}`} target="_blank" rel="noreferrer">
