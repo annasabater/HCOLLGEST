@@ -4,6 +4,7 @@ import { audit } from '@/lib/audit';
 import { handleApiError, notFound, ok } from '@/lib/http';
 import { buildFitxaPdf } from '@/lib/pdf/fitxa';
 import { buildRegistrePdf } from '@/lib/pdf/registre';
+import { getComprovantMossosPdf } from '@/lib/pdf/comprovant-mossos';
 import { sendEmail } from '@/lib/email';
 const ESTABLIMENT_ID = 'hostal-coll';
 type Ctx = { params: Promise<{ id: string }> };
@@ -41,14 +42,27 @@ export async function POST(req: Request, ctx: Ctx) {
     const titular = viatgers[0]?.huesped;
     const nom = titular ? `${titular.nom} ${titular.cognom1}` : '—';
 
+    // 3r adjunt: el comprovant de Mossos, si l'estada ja s'ha comunicat.
+    const enviament = await prisma.enviamentMossos.findFirst({
+      where: { estanciaId: id, estat: { in: ['ENVIAT', 'ACCEPTAT'] } },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+    const comprovant = enviament ? await getComprovantMossosPdf(enviament.id) : null;
+
+    const attachments = [
+      { filename: `Registre persones allotjades - ${sufix}.pdf`, content: Buffer.from(fitxaPdf).toString('base64') },
+      { filename: `Llibre registre - ${sufix}.pdf`, content: Buffer.from(registrePdf).toString('base64') },
+    ];
+    if (comprovant) {
+      attachments.push({ filename: comprovant.filename, content: comprovant.buffer.toString('base64') });
+    }
+
     const result = await sendEmail({
       to,
       subject: `Registre de persones allotjades — ${nom} · Contracte ${estancia.numContracte}/${estancia.anyContracte}`,
-      html: `<p>Hola,</p><p>Adjuntem la fitxa de registre i el llibre de registre de persones allotjades per a l'estada de <strong>${nom}</strong> (contracte ${estancia.numContracte}/${estancia.anyContracte}).</p><p>Hostal Coll</p>`,
-      attachments: [
-        { filename: `fitxa-${sufix}.pdf`, content: Buffer.from(fitxaPdf).toString('base64') },
-        { filename: `registre-${sufix}.pdf`, content: Buffer.from(registrePdf).toString('base64') },
-      ],
+      html: `<p>Hola,</p><p>Adjuntem, per a l'estada de <strong>${nom}</strong> (contracte ${estancia.numContracte}/${estancia.anyContracte}): la fitxa de registre de persones allotjades, el llibre de registre${comprovant ? ' i el comprovant de comunicació a Mossos' : ''}.</p><p>Hostal Coll</p>`,
+      attachments,
     });
 
     if (!result.ok) return new Response(JSON.stringify({ error: result.error }), { status: 502, headers: { 'Content-Type': 'application/json' } });
