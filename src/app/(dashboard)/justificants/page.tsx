@@ -141,11 +141,17 @@ export default async function JustificantsPage({
                         />
                       </Td>
                       <Td className="text-sm text-slate-600 whitespace-nowrap">
-                        {formatDate(e.dataEntrada)} – {formatDate(e.dataSortida)}
+                        <div className="flex flex-col items-center text-center leading-tight">
+                          <span>{formatDate(e.dataEntrada)}</span>
+                          <span className="text-slate-400">–</span>
+                          <span>{formatDate(e.dataSortida)}</span>
+                        </div>
                       </Td>
                       <Td className="whitespace-nowrap text-sm">
                         {env ? (
-                          <span className="font-medium text-slate-700">{env.fitxerNom}</span>
+                          <span className="font-medium text-slate-700">
+                            {env.fitxerNom.replace(/^[^.]+\./, '')}
+                          </span>
                         ) : (
                           <span className="text-slate-400">— no comunicat</span>
                         )}
