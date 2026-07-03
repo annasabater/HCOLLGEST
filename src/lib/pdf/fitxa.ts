@@ -79,6 +79,20 @@ export async function buildFitxaPdf(
   const font = await out.embedFont(StandardFonts.Helvetica);
   const template = await PDFDocument.load(templateBytes);
 
+  // Títol del document (el navegador el mostra a la pestanya en obrir el PDF):
+  // "Registre de persones allotjades — NOM COGNOM, …" en comptes de "fitxa-pdf".
+  const noms = viatgers
+    .map((r) => `${r.huesped.nom} ${r.huesped.cognom1}`.trim())
+    .filter(Boolean);
+  out.setTitle(
+    sanitize(
+      noms.length
+        ? `Registre de persones allotjades — ${noms.join(', ')}`
+        : `Registre de persones allotjades — ${estancia.numContracte}/${estancia.anyContracte}`,
+    ),
+    { showInWindowTitleBar: true },
+  );
+
   /** Trunca un text perquè càpiga a maxW. */
   const fit = (s: string, maxW: number): string => {
     if (font.widthOfTextAtSize(s, VAL_SIZE) <= maxW) return s;

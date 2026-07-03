@@ -29,6 +29,13 @@ export async function GET(req: Request, ctx: Ctx) {
 
     const pdf = await buildFitxaPdf(establiment, estancia, viatgers);
 
+    // Nom del fitxer amb els noms dels viatgers (titular primer): "Registre - NOM COGNOM…".
+    const noms = viatgers
+      .map((v) => `${v.huesped.nom} ${v.huesped.cognom1}`.trim())
+      .filter(Boolean);
+    const base = noms.length ? `Registre - ${noms.join(', ')}` : `Registre - ${estancia.numContracte}-${estancia.anyContracte}`;
+    const filename = `${base.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9 ,\-]/g, '').replace(/\s+/g, ' ').trim()}.pdf`;
+
     await audit({
       usuariId: auth.id,
       accio: 'IMPRESSIO',
@@ -41,7 +48,7 @@ export async function GET(req: Request, ctx: Ctx) {
     return new NextResponse(new Uint8Array(pdf), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="fitxa-${estancia.numContracte}-${estancia.anyContracte}.pdf"`,
+        'Content-Disposition': `inline; filename="${filename}"`,
         'Cache-Control': 'private, no-store',
       },
     });
