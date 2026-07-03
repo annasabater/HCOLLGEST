@@ -1,6 +1,6 @@
 /**
  * Crea (o restableix) el compte de propietat amb vista restringida:
- *   hcoll@gmail.com · rol ADMIN · contrasenya "Hostal.2026".
+ *   hcoll@gmail.com · rol ADMIN · contrasenya de la variable HCOLL_PASSWORD.
  *
  * Entra com l'ADMIN (ho veu tot) però amb tres limitacions definides a
  * src/lib/auth/restriccions.ts:
@@ -20,7 +20,7 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 const EMAIL = 'hcoll@gmail.com';
-const PASSWORD = process.env.HCOLL_PASSWORD ?? 'Hostal.2026';
+const PASSWORD = process.env.HCOLL_PASSWORD ?? 'CanviaAquestaClau!';
 
 async function main() {
   const passwordHash = await bcrypt.hash(PASSWORD, 12);

@@ -39,13 +39,9 @@ Des del teu PC amb el `.env` apuntant a Supabase:
 pnpm db:seed
 ```
 
-Usuaris creats (canvia les contrasenyes després):
-
-| Rol | Email | Contrasenya |
-|---|---|---|
-| ADMIN | hostalcoll@gmail.com | `Hostal2026!` |
-| RECEPCIO | recepcio@hostalcoll.com | `Hostal2026!` |
-| CONSULTA | consulta@hostalcoll.com | `Hostal2026!` |
+Es creen els usuaris ADMIN, RECEPCIO i CONSULTA. La contrasenya inicial es defineix
+amb la variable d'entorn `SEED_PASSWORD` (i `PROPIETAT_PASSWORD` per al compte de
+propietat); canvia-la des de l'app després del primer accés.
 
 > Si al login surt "Credencials incorrectes" en lloc de l'error de servidor, vol dir que
 > les taules ja hi són però la contrasenya no coincideix (o no s'ha fet el seed).

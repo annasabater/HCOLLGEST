@@ -111,7 +111,7 @@ Pulsa **Deploy**. Al terminar tendrás una URL tipo `hostalcoll-gestion.vercel.a
 
 - **Login de la app**: ya exige usuario/contraseña (JWT + roles). Si solo tú tienes
   las credenciales, solo tú entras. **Cambia la contraseña inicial** del seed
-  (`Hostal2026!`) cuanto antes.
+  (definida en la variable de entorno `SEED_PASSWORD`) cuanto antes.
 - **Capa extra (opcional, plan Pro)**: *Settings → Deployment Protection →
   Vercel Authentication* o *Password Protection* pone un muro **antes** de llegar a la
   app. Doble candado.
