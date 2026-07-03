@@ -61,7 +61,7 @@ export default async function EstanciesPage({
     skip: (pagina - 1) * perPagina,
     take: perPagina,
     include: {
-      viatgers: { where: { esTitular: true }, include: { huesped: true } },
+      viatgers: { include: { huesped: true }, orderBy: { esTitular: 'desc' } },
       enviaments: { orderBy: { createdAt: 'desc' }, take: 1 },
       habitacio: true,
     },
@@ -128,8 +128,12 @@ export default async function EstanciesPage({
       ) : (
         <div className="space-y-2">
           {estancies.map((e) => {
-            const titular = e.viatgers[0]?.huesped;
+            const titularRow = e.viatgers.find((v) => v.esTitular) ?? e.viatgers[0];
+            const titular = titularRow?.huesped;
             const nomTitular = titular ? `${titular.nom} ${titular.cognom1}` : '—';
+            const acompanyants = e.viatgers
+              .filter((v) => v.huespedId !== titularRow?.huespedId && v.huesped)
+              .map((v) => `${v.huesped!.nom} ${v.huesped!.cognom1}${v.huesped!.cognom2 ? ` ${v.huesped!.cognom2}` : ''}`);
             const env = e.enviaments[0];
             const cfg = ESTAT_CONFIG[e.estat];
 
@@ -166,6 +170,13 @@ export default async function EstanciesPage({
                       <Users className="h-3.5 w-3.5" /> {e.numViatgers}
                     </span>
                   </div>
+                  {acompanyants.length > 0 && (
+                    <div className="mt-1 ml-0.5 space-y-0.5 border-l border-slate-100 pl-3">
+                      {acompanyants.map((nom, i) => (
+                        <div key={i} className="text-xs text-slate-500">{nom}</div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="shrink-0 text-right">
