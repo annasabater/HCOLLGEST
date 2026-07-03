@@ -239,6 +239,26 @@ export function MasterForm({
   }, [mode, tipusRegistre, estancia, viatgers, portaMascota, mascotes, pagaments, fiances]);
   // ──────────────────────────────────────────────────────────────────────────
 
+  // En alta, proposa el següent número de contracte (últim registrat + 1) si el
+  // camp encara és buit. Es fa un sol cop; si l'usuari l'edita, no s'hi torna.
+  const numeroPrefilled = useRef(false);
+  useEffect(() => {
+    if (isEdit || numeroPrefilled.current) return;
+    if (estancia.numContracte.trim() !== '') {
+      numeroPrefilled.current = true;
+      return;
+    }
+    let cancel = false;
+    getJSON<{ numero: string }>(`/api/estancies/next-numero?any=${encodeURIComponent(estancia.anyContracte)}`)
+      .then((r) => {
+        if (cancel) return;
+        numeroPrefilled.current = true;
+        setEstancia((prev) => (prev.numContracte.trim() === '' ? { ...prev, numContracte: r.numero } : prev));
+      })
+      .catch(() => {});
+    return () => { cancel = true; };
+  }, [isEdit, estancia.anyContracte, estancia.numContracte]);
+
   const esReserva = tipusRegistre === 'RESERVA';
 
   const setV = (i: number, patch: Partial<ViatgerState>) =>
@@ -582,8 +602,26 @@ export function MasterForm({
       router.push(`/estancies/${res.estanciaId}`);
       router.refresh();
     } catch (err) {
-      if (err instanceof ApiError) setServerError(err.message);
-      else setServerError('Error desant l’estada');
+      if (err instanceof ApiError) {
+        // Restricció única (P2002): marca en vermell el camp exacte que ha xocat.
+        const det = err.details as { code?: string; target?: string } | undefined;
+        if (det?.code === 'P2002' && det.target) {
+          const map: Record<string, string> = {};
+          if (det.target === 'estancia.numContracte') {
+            map['estancia.numContracte'] = 'Aquest número de contracte ja existeix';
+          } else if (det.target === 'numDocument') {
+            viatgers.forEach((v, i) => {
+              if (v.numDocument) map[`viatgers.${i}.numDocument`] = 'Document ja registrat';
+            });
+          } else if (det.target === 'email') {
+            viatgers.forEach((v, i) => {
+              if (v.email) map[`viatgers.${i}.email`] = 'Correu ja registrat';
+            });
+          }
+          setErrors(map);
+        }
+        setServerError(err.message);
+      } else setServerError('Error desant l’estada');
     } finally {
       setSubmitting(false);
     }

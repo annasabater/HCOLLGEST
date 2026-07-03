@@ -40,6 +40,7 @@ export async function GET(req: Request) {
         id: true,
         numContracte: true,
         anyContracte: true,
+        estat: true,
         dataEntrada: true,
         dataSortida: true,
         viatgers: {
@@ -55,6 +56,7 @@ export async function GET(req: Request) {
       return {
         id: e.id,
         contracte: `${e.numContracte}/${e.anyContracte}`,
+        estat: e.estat,
         titular: h ? `${h.nom} ${h.cognom1}${h.cognom2 ? ` ${h.cognom2}` : ''}` : 'Sense titular',
         dataEntrada: e.dataEntrada ? toISODate(e.dataEntrada) : null,
         dataSortida: e.dataSortida ? toISODate(e.dataSortida) : null,
