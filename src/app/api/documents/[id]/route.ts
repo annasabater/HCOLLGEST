@@ -16,8 +16,8 @@ async function addWatermark(buf: Buffer, mime: string): Promise<Buffer> {
     const h = Math.max(1, height);
 
     // Marca d'aigua REPETIDA i ben visible en tota la imatge ("HOSTAL COLL"),
-    // en color granate de marca amb contorn blanc perquè es llegeixi tant sobre
-    // zones clares com fosques del document.
+    // en negre amb un contorn blanc perquè es llegeixi tant sobre zones clares
+    // com fosques del document.
     const fontSize = Math.max(18, Math.round(w / 16));
     const stepX = Math.max(200, Math.round(w / 1.9));
     const stepY = Math.max(110, Math.round(h / 5));
@@ -27,7 +27,7 @@ async function addWatermark(buf: Buffer, mime: string): Promise<Buffer> {
         tiles +=
           `<text x="${x}" y="${y}" transform="rotate(-30 ${x} ${y})" ` +
           `font-family="Arial,Helvetica,sans-serif" font-weight="bold" font-size="${fontSize}" ` +
-          `fill="#7A1F2B" fill-opacity="0.42" stroke="#ffffff" stroke-opacity="0.35" stroke-width="1">HOSTAL COLL</text>`;
+          `fill="#000000" fill-opacity="0.45" stroke="#ffffff" stroke-opacity="0.35" stroke-width="1">HOSTAL COLL</text>`;
       }
     }
     const svg = Buffer.from(
