@@ -221,8 +221,8 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 <Dl label="Viatgers" value={estancia.numViatgers} />
                 <Dl label="Pagament" value={TIPUS_PAGAMENT_LABELS[estancia.tipusPagament]} />
                 <Dl label="Habitació" value={estancia.habitacio?.nom} />
-                <Dl label="Internet" value={estancia.teInternet ? 'Sí' : 'No'} />
                 <Dl
+                  wide
                   label="Tipus de registre (Mossos)"
                   value={
                     estancia.tipusRegistre === 'RESERVA'
