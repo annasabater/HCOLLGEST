@@ -80,7 +80,8 @@ export async function POST(req: Request) {
     const base64 = Buffer.from(bytes).toString('base64');
 
     const message = await client.messages.create({
-      model: 'claude-opus-4-8',
+      // Model que la clau d'API de producció té disponible (opus 4.8 no hi és).
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       // Temperatura 0: transcripció determinista i fidel, sense "creativitat" que
       // faci inventar dígits. Clau perquè no s'inventi valors del document.
