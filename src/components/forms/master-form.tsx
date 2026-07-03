@@ -754,14 +754,15 @@ export function MasterForm({
             <Input
               type="date"
               value={estancia.dataFormalitzacio}
-              onChange={(e) => setEstancia({ ...estancia, dataFormalitzacio: e.target.value })}
+              // La formalització i l'entrada van lligades: canviar-ne una posa l'altra igual.
+              onChange={(e) => setEstancia({ ...estancia, dataFormalitzacio: e.target.value, dataEntrada: e.target.value })}
             />
           </Field>
           <Field label="Data d’entrada" required error={err('estancia.dataEntrada')}>
             <Input
               type="date"
               value={estancia.dataEntrada}
-              onChange={(e) => setEstancia({ ...estancia, dataEntrada: e.target.value })}
+              onChange={(e) => setEstancia({ ...estancia, dataEntrada: e.target.value, dataFormalitzacio: e.target.value })}
             />
           </Field>
           <Field label="Data de sortida" required error={err('estancia.dataSortida')}>
