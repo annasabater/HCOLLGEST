@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { authorize } from '@/lib/auth/guard';
 import { handleApiError } from '@/lib/http';
-import type { ViatgerOcr } from '@/lib/ocr/mrz';
+import { dniCheckLetter, type ViatgerOcr } from '@/lib/ocr/mrz';
 
 // Claude pot trigar 10-20 s en imatges grans; ampliem el timeout de la funció.
 export const maxDuration = 60;
@@ -10,8 +10,16 @@ const client = new Anthropic();
 
 const SUPPORTED_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']);
 
-const SYSTEM_PROMPT = `Ets un sistema d'extracció de dades de documents d'identitat espanyols i europeus.
-Analitza la imatge i extreu totes les dades disponibles.
+const SYSTEM_PROMPT = `Ets un sistema de TRANSCRIPCIÓ EXACTA de documents d'identitat espanyols i europeus.
+La teva única feina és copiar, caràcter per caràcter, EL QUE REALMENT ES VEU a la imatge.
+
+REGLES ABSOLUTES (molt importants):
+- NO inventis, dedueixis, completis ni "arreglis" cap valor. Transcriu literalment.
+- Si un caràcter és borrós, tapat o dubtós, NO l'endevinis: deixa el camp buit (null) i
+  afegeix un warning explicant què no s'ha pogut llegir bé.
+- Val MÉS deixar un camp buit que posar-hi un valor possiblement incorrecte.
+- No corregeixis un número perquè "faci més sentit"; si el que veus no quadra amb el format
+  esperat, transcriu el que veus TAL QUAL i afegeix un warning.
 Respon SEMPRE en format JSON vàlid, sense cap text addicional fora del JSON.`;
 
 const USER_PROMPT = `Extreu les dades d'aquest document d'identitat (DNI, NIE, passaport o carnet de conduir).
@@ -36,14 +44,20 @@ Retorna un objecte JSON amb exactament aquesta estructura (omite els camps que n
   "warnings": ["array de strings — avisos sobre dades que semblen incorrectes, incompletes o dubtoses"]
 }
 
-Regles:
-- DNI espanyol: el numDocument han de ser 8 dígits seguits d'una lletra (p.ex. "12345678Z"). Avisa si no quadra.
-- NIE: comença per X, Y o Z seguida de 7 dígits i una lletra (p.ex. "X1234567L"). Avisa si no quadra.
-- Passaport espanyol: el numSuport sol ser el número de sèrie (alfanumèric, 9 caràcters). Avisa si sembla incomplet.
-- El numSuport del DNI (IDESP) té format 3 lletres + 6 dígits (p.ex. "AAA111222"). Avisa si no quadra.
-- Afegeix un warning per cada camp que hagis deduït amb poca certesa o que sembli erroni.
-- Si la imatge és del revers del DNI, extreu l'adreça, codi postal, localitat i província; el nom/cognom pot ser buit.
-- Si no pots llegir cap dada útil, retorna { "nom": "", "cognom1": "", "valid": false, "warnings": ["No s'han pogut llegir dades del document"] }.`;
+Regles de lectura (transcripció fidel, sense inventar):
+- Llegeix cada caràcter amb atenció. Distingeix bé 0/O, 1/I/L, 2/Z, 5/S, 8/B, 6/G. Si dubtes
+  entre dos caràcters, NO tries a l'atzar: deixa el número buit i posa un warning.
+- DNI espanyol: numDocument = 8 dígits + 1 lletra (p.ex. "12345678Z"). Si no en llegeixes
+  exactament 8 dígits i una lletra clara, deixa'l buit i avisa. NO afegeixis ni treguis dígits.
+- NIE: X/Y/Z + 7 dígits + lletra (p.ex. "X1234567L"). Mateixa norma: si no és nítid, buit + warning.
+- Passaport: transcriu el número tal com apareix (no el completis a 9 caràcters si no els veus).
+- numSuport del DNI (IDESP): 3 lletres + 6 dígits (p.ex. "ABC123456"). Si no és clar, buit + warning.
+- Les dates: transcriu-les tal com surten; si una xifra és il·legible, deixa la data buida i avisa.
+- Prioritza la zona MRZ (les línies de sota amb <<<) si hi és: és la més fiable per número, nom,
+  nacionalitat, sexe i dates. Si la MRZ i la part visual no coincideixen, avisa-ho.
+- Si la imatge és del revers del DNI, extreu adreça, codi postal, localitat i província; nom/cognom pot ser buit.
+- Afegeix un warning CLAR per cada camp dubtós, dient exactament què no s'ha pogut llegir bé.
+- Si no pots llegir cap dada amb prou seguretat, retorna { "nom": "", "cognom1": "", "valid": false, "warnings": ["No s'han pogut llegir dades fiables del document; fes una foto més nítida"] }.`;
 
 export async function POST(req: Request) {
   try {
@@ -66,8 +80,11 @@ export async function POST(req: Request) {
     const base64 = Buffer.from(bytes).toString('base64');
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-opus-4-8',
       max_tokens: 1024,
+      // Temperatura 0: transcripció determinista i fidel, sense "creativitat" que
+      // faci inventar dígits. Clau perquè no s'inventi valors del document.
+      temperature: 0,
       system: SYSTEM_PROMPT,
       messages: [
         {
@@ -93,6 +110,33 @@ export async function POST(req: Request) {
       return Response.json({ error: 'Resposta invàlida del model', raw: text }, { status: 502 });
     }
 
+    const warnings = [...(parsed.warnings ?? [])];
+    const numDoc = (parsed.numDocument ?? '').toUpperCase().trim();
+
+    // Validació del dígit de control (mòdul 23): si la lletra del DNI/NIE no quadra
+    // amb els dígits, l'OCR ha llegit malament algun caràcter → avisem clarament en
+    // comptes de donar el número per bo. Així no es "cola" un número inventat.
+    const dni = numDoc.match(/^(\d{8})([A-Z])$/);
+    const nie = numDoc.match(/^([XYZ])(\d{7})([A-Z])$/);
+    if (dni) {
+      if (dniCheckLetter(dni[1]!) !== dni[2]!) {
+        warnings.unshift(
+          `El DNI llegit "${numDoc}" no supera el dígit de control: probablement s'ha llegit malament algun dígit. Revisa'l abans de desar.`,
+        );
+      }
+    } else if (nie) {
+      const pre: Record<string, string> = { X: '0', Y: '1', Z: '2' };
+      if (dniCheckLetter(`${pre[nie[1]!]}${nie[2]!}`) !== nie[3]!) {
+        warnings.unshift(
+          `El NIE llegit "${numDoc}" no supera el dígit de control: probablement s'ha llegit malament algun caràcter. Revisa'l abans de desar.`,
+        );
+      }
+    } else if (numDoc && parsed.tipusDocument === 'DNI_NIF') {
+      warnings.unshift(
+        `El DNI llegit "${numDoc}" no té el format esperat (8 dígits + lletra). Revisa'l abans de desar.`,
+      );
+    }
+
     const result: ViatgerOcr = {
       nom: parsed.nom ?? '',
       cognom1: parsed.cognom1 ?? '',
@@ -108,7 +152,7 @@ export async function POST(req: Request) {
       localitat: parsed.localitat ?? undefined,
       provinciaNom: parsed.provinciaNom ?? undefined,
       valid: parsed.valid ?? false,
-      warnings: parsed.warnings ?? [],
+      warnings,
     };
 
     return Response.json({ result, warnings: result.warnings });
