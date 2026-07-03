@@ -4,11 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Download, AlertTriangle, FileCheck, Send, ShieldAlert, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { GenerarFitxerButton, type FitxerNotice } from './generar-fitxer-button';
-import { patchJSON, ApiError } from '@/lib/api';
-import { ESTAT_ENVIAMENT_LABELS, estatEnviamentValues } from '@/lib/validation/enums';
+import { ESTAT_ENVIAMENT_LABELS } from '@/lib/validation/enums';
 import { formatDate } from '@/lib/utils';
 import type { EstatEnviament } from '@prisma/client';
 
@@ -161,13 +159,11 @@ export function EstanciaActions({
 }
 
 function EnviamentRow({ enviament, onChanged }: { enviament: Enviament; onChanged: () => void }) {
-  const [estat, setEstat] = useState<EstatEnviament>(enviament.estat);
-  const [errorMsg, setErrorMsg] = useState(enviament.errorMsg ?? '');
-  const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   // Eliminació amb doble confirmació (0 cap · 1 avís · 2 confirmació final).
   const [delStep, setDelStep] = useState<0 | 1 | 2>(0);
   const [deleting, setDeleting] = useState(false);
+  const estat = enviament.estat;
 
   async function eliminar() {
     setDeleting(true);
@@ -187,22 +183,6 @@ function EnviamentRow({ enviament, onChanged }: { enviament: Enviament; onChange
     }
   }
 
-  async function save() {
-    setSaving(true);
-    setErr(null);
-    try {
-      await patchJSON(`/api/enviaments/${enviament.id}`, {
-        estat,
-        errorMsg: errorMsg || undefined,
-      });
-      onChanged();
-    } catch (e) {
-      setErr(e instanceof ApiError ? e.message : 'Error');
-    } finally {
-      setSaving(false);
-    }
-  }
-
   return (
     <div className="rounded-lg border border-slate-200 p-3">
       <div className="mb-2 flex items-center justify-between">
@@ -214,19 +194,7 @@ function EnviamentRow({ enviament, onChanged }: { enviament: Enviament; onChange
           {ESTAT_ENVIAMENT_LABELS[estat]}
         </Badge>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">
-        <Select value={estat} onChange={(e) => setEstat(e.target.value as EstatEnviament)}>
-          {estatEnviamentValues.map((v) => (
-            <option key={v} value={v}>
-              {ESTAT_ENVIAMENT_LABELS[v]}
-            </option>
-          ))}
-        </Select>
-        <Button size="md" onClick={save} disabled={saving}>
-          {saving ? 'Desant…' : 'Actualitzar'}
-        </Button>
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <a href={`/api/enviaments/${enviament.id}/justificant`} target="_blank" rel="noreferrer">
           <Button type="button" variant="outline" size="sm">
             <FileCheck className="h-4 w-4" /> Comprovant mossos
@@ -270,13 +238,10 @@ function EnviamentRow({ enviament, onChanged }: { enviament: Enviament; onChange
           </div>
         </div>
       )}
-      {(estat === 'ERROR' || estat === 'REBUTJAT') && (
-        <Input
-          className="mt-2"
-          placeholder="Missatge d’error / motiu del rebuig"
-          value={errorMsg}
-          onChange={(e) => setErrorMsg(e.target.value)}
-        />
+      {(estat === 'ERROR' || estat === 'REBUTJAT') && enviament.errorMsg && (
+        <p className="mt-2 whitespace-pre-line rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {enviament.errorMsg}
+        </p>
       )}
       {enviament.dataEnviament && (
         <p className="mt-1 text-xs text-slate-400">Enviat: {formatDate(enviament.dataEnviament)}</p>
