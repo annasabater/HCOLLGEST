@@ -144,7 +144,7 @@ export function EstanciaActions({
           }`}
         >
           {notice.tone === 'error' && <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />}
-          <span>{notice.msg}</span>
+          <span className="whitespace-pre-line">{notice.msg}</span>
         </div>
       )}
 

@@ -268,7 +268,10 @@ export function validaParteErrors(parte: ParteViatgers): string[] {
     errs.push('La data de sortida ha de ser posterior a l’entrada');
 
   parte.viatgers.forEach((v, i) => {
-    const p = `Viatger ${i + 1}`;
+    // Etiqueta el viatger pel nom (si el tenim) perquè l'usuari sàpiga exactament
+    // qui té el problema; si encara no hi ha nom, hi posem el número d'ordre.
+    const nomComplet = [v.nom?.trim(), v.cognom1?.trim(), v.cognom2?.trim()].filter(Boolean).join(' ');
+    const p = nomComplet ? `${nomComplet} (viatger ${i + 1})` : `Viatger ${i + 1}`;
     if (!v.nom?.trim()) errs.push(`${p}: falta el nom`);
     if (!v.cognom1?.trim()) errs.push(`${p}: falta el primer cognom`);
 
