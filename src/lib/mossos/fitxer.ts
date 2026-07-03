@@ -299,6 +299,11 @@ export function validaParteErrors(parte: ParteViatgers): string[] {
       if (!v.numSuport?.trim()) errs.push(`${p}: falta el número de suport (DNI/NIE)`);
       else if (v.numSuport.trim().length !== 9)
         errs.push(`${p}: el número de suport ha de tenir 9 caràcters exactes`);
+    } else if (v.numSuport && v.numSuport.trim().length > 9) {
+      // Per a qualsevol document, Mossos limita el número de suport a 9 caràcters.
+      errs.push(
+        `${p}: el número de suport "${v.numSuport.trim()}" supera els 9 caràcters (màxim de Mossos). Escurça'l o deixa'l buit.`,
+      );
     }
     if (v.tipusDocument === 'DNI_NIF' && !v.cognom2?.trim())
       errs.push(`${p}: falta el segon cognom (obligatori amb DNI/NIF)`);
