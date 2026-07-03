@@ -102,15 +102,22 @@ export async function buildRegistrePdf(
     const text = (s: string, x: number, size: number, f: PDFFont = font, color = INK) =>
       page.drawText(sanitize(s), { x, y: y - size + 2, size, font: f, color });
 
-    // Cel·la amb vora + text (retallat si sobra).
-    const cell = (x: number, w: number, h: number, label: string, value: string, opts: { lblCol?: boolean } = {}) => {
-      page.drawRectangle({ x, y: y - h, width: w, height: h, borderColor: LINE, borderWidth: 0.7, color: opts.lblCol ? LBLBG : undefined });
+    // Cel·la amb etiqueta i valor UN AL COSTAT DE L'ALTRE (com el formulari oficial):
+    // columna d'etiqueta ombrejada a l'esquerra + columna de valor a la dreta, tots
+    // dos centrats verticalment (així mai se superposen).
+    const cell = (x: number, w: number, h: number, label: string, value: string) => {
       const pad = 3;
-      const size = 6.5;
+      const lblW = Math.min(w * 0.42, 150);
+      // Vores + fons de l'etiqueta.
+      page.drawRectangle({ x, y: y - h, width: lblW, height: h, borderColor: LINE, borderWidth: 0.7, color: LBLBG });
+      page.drawRectangle({ x: x + lblW, y: y - h, width: w - lblW, height: h, borderColor: LINE, borderWidth: 0.7 });
+      const baseY = y - h / 2 - 2.3; // línia base centrada verticalment
+      let lbl = sanitize(label);
+      while (lbl && bold.widthOfTextAtSize(lbl, 6) > lblW - pad * 2) lbl = lbl.slice(0, -1);
+      page.drawText(lbl, { x: x + pad, y: baseY, size: 6, font: bold, color: rgb(0.35, 0.35, 0.35) });
       let out = sanitize(value);
-      while (out && font.widthOfTextAtSize(out, size) > w - pad * 2) out = out.slice(0, -1);
-      page.drawText(sanitize(label), { x: x + pad, y: y - 8, size: 6, font: bold, color: rgb(0.35, 0.35, 0.35) });
-      page.drawText(out, { x: x + pad, y: y - h + 4, size, font, color: INK });
+      while (out && font.widthOfTextAtSize(out, 6.5) > w - lblW - pad * 2) out = out.slice(0, -1);
+      page.drawText(out, { x: x + lblW + pad, y: baseY, size: 6.5, font, color: INK });
     };
 
     // Títol.
