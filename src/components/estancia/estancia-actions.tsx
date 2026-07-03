@@ -229,7 +229,7 @@ function EnviamentRow({ enviament, onChanged }: { enviament: Enviament; onChange
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <a href={`/api/enviaments/${enviament.id}/justificant`} target="_blank" rel="noreferrer">
           <Button type="button" variant="outline" size="sm">
-            <FileCheck className="h-4 w-4" /> Justificant PDF
+            <FileCheck className="h-4 w-4" /> Comprovant mossos
           </Button>
         </a>
         {delStep === 0 && (
