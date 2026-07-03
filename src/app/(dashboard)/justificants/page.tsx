@@ -83,7 +83,7 @@ export default async function JustificantsPage({
       include: {
         estancia: {
           include: {
-            viatgers: { where: { esTitular: true }, include: { huesped: true } },
+            viatgers: { include: { huesped: true }, orderBy: { esTitular: 'desc' } },
           },
         },
       },
@@ -234,12 +234,27 @@ export default async function JustificantsPage({
               </Thead>
               <tbody>
                 {enviaments.map((env) => {
-                  const titular = env.estancia.viatgers[0]?.huesped ?? null;
+                  const vTitular = env.estancia.viatgers.find((v) => v.esTitular) ?? env.estancia.viatgers[0];
+                  const titular = vTitular?.huesped ?? null;
                   const estatLabel = ESTAT_ENVIAMENT_LABELS[env.estat as keyof typeof ESTAT_ENVIAMENT_LABELS] ?? env.estat;
                   return (
                     <Tr key={env.id}>
                       <Td className="font-medium text-slate-800">{env.fitxerNom}</Td>
-                      <Td>{titular ? `${titular.nom} ${titular.cognom1}` : '—'}</Td>
+                      <Td>
+                        <FitxaExpandible
+                          estanciaId={env.estancia.id}
+                          titular={titular ? `${titular.nom} ${titular.cognom1}` : '—'}
+                          numContracte={env.estancia.numContracte}
+                          anyContracte={env.estancia.anyContracte}
+                          viatgers={env.estancia.viatgers.filter((v) => v.huesped).map((v) => ({
+                            id: v.huesped!.id,
+                            nom: v.huesped!.nom,
+                            cognom1: v.huesped!.cognom1,
+                            cognom2: v.huesped?.cognom2 ?? null,
+                            esTitular: v.esTitular,
+                          }))}
+                        />
+                      </Td>
                       <Td>
                         <Badge tone={env.estat === 'ACCEPTAT' ? 'success' : 'info'}>
                           {estatLabel}
