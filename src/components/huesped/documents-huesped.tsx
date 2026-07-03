@@ -106,13 +106,14 @@ export function DocumentsHuesped({
         >
           <div className="flex min-w-0 items-center gap-3">
             {esImatge ? (
-              <button type="button" onClick={() => setLightbox(url)} title="Veure el document" className="shrink-0">
+              <button type="button" onClick={() => setLightbox(url)} title="Veure el document" className="relative shrink-0 overflow-hidden rounded border border-slate-200">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={url}
                   alt={TIPUS_DOCUMENT_PUJAT_LABELS[d.tipus]}
-                  className="h-14 w-20 rounded border border-slate-200 object-cover"
+                  className="h-14 w-20 object-cover"
                 />
+                <WatermarkOverlay size="sm" />
               </button>
             ) : (
               <a href={url} target="_blank" rel="noreferrer" className="shrink-0" title="Obrir el document">
@@ -171,13 +172,15 @@ export function DocumentsHuesped({
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
           onClick={() => setLightbox(null)}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={lightbox}
-            alt="Document"
-            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="relative" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightbox}
+              alt="Document"
+              className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+            />
+            <WatermarkOverlay size="lg" />
+          </div>
           <button
             type="button"
             className="absolute right-4 top-4 text-2xl font-bold text-white/80 hover:text-white"
@@ -188,5 +191,28 @@ export function DocumentsHuesped({
         </div>
       )}
     </Card>
+  );
+}
+
+/**
+ * Marca d'aigua "HOSTAL COLL" repetida, dibuixada AL NAVEGADOR sobre la imatge
+ * (fiable: el navegador sí que té fonts, a diferència del servidor de Vercel).
+ */
+function WatermarkOverlay({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
+  const text = size === 'sm' ? 'text-[6px]' : 'text-base';
+  const rows = size === 'sm' ? 6 : 14;
+  const cols = size === 'sm' ? 4 : 10;
+  return (
+    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 overflow-hidden select-none">
+      {Array.from({ length: rows }).map((_, r) => (
+        <div key={r} className="flex gap-4 whitespace-nowrap" style={{ transform: 'rotate(-30deg)' }}>
+          {Array.from({ length: cols }).map((_, c) => (
+            <span key={c} className={`${text} font-bold uppercase tracking-wider text-black/40`}>
+              HOSTAL COLL
+            </span>
+          ))}
+        </div>
+      ))}
+    </div>
   );
 }
