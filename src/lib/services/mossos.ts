@@ -173,9 +173,10 @@ export async function generateFitxer(
 
   const encoding = (establiment.encoding as Encoding) || 'latin1';
 
-  // Secuencia 001..999 basada en el nº de enviaments previos del establecimiento.
-  const prev = await prisma.enviamentMossos.count();
-  const seq = prev + 1;
+  // Seqüència 001..999: SEMPRE creixent (el més alt existent + 1), no pas el
+  // recompte d'enviaments (que reutilitzava números en esborrar-ne un).
+  const agg = await prisma.enviamentMossos.aggregate({ _max: { seq: true } });
+  const seq = (agg._max.seq ?? 0) + 1;
   const fitxerNom = buildFileName(establiment.fileIdentifier, seq);
 
   const buffer = buildFitxerBuffer(parte, encoding); // valida internamente (§2.3)
