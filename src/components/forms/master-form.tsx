@@ -721,7 +721,7 @@ export function MasterForm({
         <CardHeader>
           <CardTitle>Dades de l’estada</CardTitle>
         </CardHeader>
-        <CardBody className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <CardBody className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
           <Field
             label="Número de contracte"
             required={tipusRegistre !== 'RESERVA'}
@@ -972,7 +972,7 @@ export function MasterForm({
                 )}
               </div>
             </CardHeader>
-            <CardBody className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <CardBody className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
               <div className="sm:col-span-2 lg:col-span-3">
                 <HosteSearch onSelect={(h) => applyHuesped(i, h)} />
                 {(v.huespedId || v._recurrent) && (
