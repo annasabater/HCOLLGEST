@@ -199,13 +199,15 @@ export function DocumentsHuesped({
  * (fiable: el navegador sí que té fonts, a diferència del servidor de Vercel).
  */
 function WatermarkOverlay({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
-  const text = size === 'sm' ? 'text-[6px]' : 'text-base';
-  const rows = size === 'sm' ? 6 : 14;
-  const cols = size === 'sm' ? 4 : 10;
+  const text = size === 'sm' ? 'text-[7px]' : 'text-2xl sm:text-3xl';
+  const rows = size === 'sm' ? 2 : 3;
+  const cols = size === 'sm' ? 2 : 2;
+  const rowGap = size === 'sm' ? 'gap-2' : 'gap-16';
+  const colGap = size === 'sm' ? 'gap-2' : 'gap-16';
   return (
-    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 overflow-hidden select-none">
+    <div className={`pointer-events-none absolute inset-0 flex flex-col items-center justify-center overflow-hidden select-none ${rowGap}`}>
       {Array.from({ length: rows }).map((_, r) => (
-        <div key={r} className="flex gap-4 whitespace-nowrap" style={{ transform: 'rotate(-30deg)' }}>
+        <div key={r} className={`flex whitespace-nowrap ${colGap}`} style={{ transform: 'rotate(-30deg)' }}>
           {Array.from({ length: cols }).map((_, c) => (
             <span key={c} className={`${text} font-bold uppercase tracking-wider text-black/40`}>
               HOSTAL COLL
