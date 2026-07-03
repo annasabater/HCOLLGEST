@@ -188,7 +188,7 @@ export default function LlibrePage() {
               checked={complet}
               onChange={(e) => setComplet(e.target.checked)}
             />
-            Llibre complet
+            Llibre registre
           </label>
           <Button onClick={() => veure()} disabled={loading} variant="outline">
             <Eye className="h-4 w-4" /> {loading ? 'Carregant…' : 'Veure'}
@@ -219,7 +219,6 @@ export default function LlibrePage() {
               <Th>Document</Th>
               {complet && <Th>Núm. suport</Th>}
               {complet && <Th>Data exped.</Th>}
-              {complet && <Th>País emissor</Th>}
               {complet && <Th>Adreça</Th>}
               <Th>Municipi</Th>
               {complet && <Th>CP</Th>}
@@ -254,7 +253,6 @@ export default function LlibrePage() {
                   </Td>
                   {complet && <Td>{r.numSuport}</Td>}
                   {complet && <Td>{r.dataExpedicio}</Td>}
-                  {complet && <Td>{r.paisEmissor}</Td>}
                   {complet && <Td>{r.adreca}</Td>}
                   <Td>{r.municipi}</Td>
                   {complet && <Td>{r.codiPostal}</Td>}

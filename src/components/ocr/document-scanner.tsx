@@ -38,7 +38,7 @@ export function DocumentScanner({
   const uploadRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [msg, setMsg] = useState<{ tone: 'ok' | 'warn'; text: string } | null>(null);
+  const [msg, setMsg] = useState<{ tone: 'ok' | 'warn'; text: string; items?: string[] } | null>(null);
   const [previews, setPreviews] = useState<Record<string, string>>({});
   const [lightbox, setLightbox] = useState<string | null>(null);
 
@@ -89,9 +89,14 @@ export function DocumentScanner({
       onExtract({ ...result, warnings });
 
       if (warnings && warnings.length > 0) {
-        setMsg({ tone: 'warn', text: `Dades llegides. Avisos: ${warnings.join(' · ')}` });
+        // Prioritza els avisos de lectura ("no s'ha pogut llegir…") i, després, les
+        // incoherències (titular menor, etc.). Cada avís es mostra en una línia.
+        const prioritari = (w: string) =>
+          /no s.?ha pogut llegir|no s.?ha llegit|il·legible|no s.?ha reconegut|sense llegir/i.test(w);
+        const items = [...warnings].sort((a, b) => Number(prioritari(b)) - Number(prioritari(a)));
+        setMsg({ tone: 'warn', text: 'Dades llegides. Revisa aquests avisos:', items });
       } else {
-        setMsg({ tone: 'ok', text: "Dades llegides correctament. Revisa-les i corregeix si cal." });
+        setMsg({ tone: 'ok', text: 'Dades llegides correctament. Revisa-les i corregeix si cal.' });
       }
     } catch {
       setMsg({ tone: 'warn', text: "Document desat, però no s'ha pogut llegir el text per autoreplenar." });
@@ -143,19 +148,25 @@ export function DocumentScanner({
 
       <p className="mt-1.5 text-xs text-slate-500">
         DNI (anvers i revers), passaport, NIE o carnet de conduir. S&apos;autoreplenen totes les dades
-        disponibles: nom, cognoms, número, suport, sexe, data de naixement, nacionalitat, adreça…
-        Cada foto es desa xifrada. Pots afegir-ne diversos.
+        disponibles i totes les fotos es desen xifrades, en pots afegir diverses.
       </p>
 
       {msg && (
-        <p
-          className={`mt-2 flex items-center gap-1.5 text-xs ${
-            msg.tone === 'ok' ? 'text-green-700' : 'text-amber-700'
-          }`}
+        <div
+          className={`mt-2 text-xs ${msg.tone === 'ok' ? 'text-green-700' : 'text-amber-700'}`}
         >
-          {msg.tone === 'ok' ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
-          {msg.text}
-        </p>
+          <p className="flex items-center gap-1.5 font-medium">
+            {msg.tone === 'ok' ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+            {msg.text}
+          </p>
+          {msg.items && msg.items.length > 0 && (
+            <ul className="mt-1 ml-5 list-disc space-y-0.5">
+              {msg.items.map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
 
       {list.length > 0 && (
