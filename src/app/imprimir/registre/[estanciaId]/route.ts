@@ -278,6 +278,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: st
     .sheet { padding:8px; min-height:auto; }
     .toolbar { flex-wrap:wrap; gap:8px; }
     td { padding:2px 3px; }
+    /* Les etiquetes poden fer salt de línia (si no, vessen sobre el valor). */
+    .lbl { white-space:normal; word-break:break-word; font-size:8.5px; }
+    /* Una mica més d'espai per a les etiquetes llargues d'aquestes seccions. */
+    .contracte td.lbl, .pago td.lbl { width:34%; }
+    .top td.lbl, .viatgers td.lbl { width:22%; }
+    .ctit { width:14%; }
   }
   @media print {
     body { background:#fff; }
