@@ -20,7 +20,7 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 const EMAIL = 'hcoll@gmail.com';
-const PASSWORD = process.env.HCOLL_PASSWORD ?? 'CanviaAquestaClau!';
+const PASSWORD = process.env.HCOLL_PASSWORD ?? 'Hcoll26!';
 
 async function main() {
   const passwordHash = await bcrypt.hash(PASSWORD, 12);

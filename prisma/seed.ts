@@ -15,7 +15,7 @@ const prisma = new PrismaClient();
 // Contrasenya inicial del seed. En producció es defineix amb la variable d'entorn
 // SEED_PASSWORD; el valor per defecte és només un marcador per a proves locals i
 // s'ha de canviar des de l'app al primer accés (l'upsert no toca contrasenyes ja creades).
-const SEED_PASSWORD = process.env.SEED_PASSWORD ?? 'CanviaAquestaClau!';
+const SEED_PASSWORD = process.env.SEED_PASSWORD ?? 'Hcoll26!';
 
 const CATEGORIES_GASTO = [
   'Neteja',
@@ -38,7 +38,7 @@ const USUARIS: { email: string; nom: string; role: Role; password?: string }[] =
   // Compte de propietat: entra com ADMIN (ho veu tot) però és NOMÉS LECTURA i,
   // a més, als ingressos s'exclou el mètode ALTRES i el llibre amaga les estades
   // amb "ZP11". Tot es defineix a src/lib/auth/restriccions.ts. Contrasenya pròpia.
-  { email: 'hcoll@gmail.com', nom: 'Propietat', role: Role.ADMIN, password: process.env.PROPIETAT_PASSWORD ?? 'CanviaAquestaClau!' },
+  { email: 'hcoll@gmail.com', nom: 'Propietat', role: Role.ADMIN, password: process.env.PROPIETAT_PASSWORD ?? 'Hcoll26!' },
   { email: 'recepcio@hostalcoll.com', nom: 'Recepció', role: Role.RECEPCIO },
   { email: 'consulta@hostalcoll.com', nom: 'Consulta', role: Role.CONSULTA },
 ];
