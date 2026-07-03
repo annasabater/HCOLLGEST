@@ -209,7 +209,7 @@ function WatermarkOverlay({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
       {Array.from({ length: rows }).map((_, r) => (
         <div key={r} className={`flex whitespace-nowrap ${colGap}`} style={{ transform: 'rotate(-30deg)' }}>
           {Array.from({ length: cols }).map((_, c) => (
-            <span key={c} className={`${text} font-bold uppercase tracking-wider text-black/40`}>
+            <span key={c} className={`${text} font-bold uppercase tracking-wider text-black/20`}>
               HOSTAL COLL
             </span>
           ))}
