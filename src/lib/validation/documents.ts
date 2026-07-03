@@ -30,10 +30,13 @@ export function validaCodiPostal(s: string): boolean {
 export interface FormatCheckViatger {
   tipusDocument?: string;
   numDocument?: string;
+  numSuport?: string;
   codiPostal?: string;
   pais?: string;
   dataNaixement?: string;
   dataExpedicio?: string;
+  nom?: string;
+  cognom1?: string;
 }
 
 function parseDate(s?: string): Date | null {
@@ -49,7 +52,8 @@ export function formatWarnings(viatgers: FormatCheckViatger[]): string[] {
   avui.setHours(0, 0, 0, 0);
 
   viatgers.forEach((v, i) => {
-    const p = `Viatger ${i + 1}`;
+    const nomComplet = [v.nom?.trim(), v.cognom1?.trim()].filter(Boolean).join(' ');
+    const p = nomComplet ? `${nomComplet} (viatger ${i + 1})` : `Viatger ${i + 1}`;
     const doc = v.numDocument?.trim();
     if (doc) {
       if (v.tipusDocument === 'DNI_NIF' && !validaDni(doc)) {
@@ -59,6 +63,15 @@ export function formatWarnings(viatgers: FormatCheckViatger[]): string[] {
       } else if (v.tipusDocument === 'NIE' && !validaNie(doc)) {
         w.push(`${p}: el NIE «${doc}» no sembla vàlid (X/Y/Z + 7 xifres + lletra).`);
       }
+    }
+
+    // Número de suport: Mossos el limita a 9 caràcters; els passaports no en solen portar.
+    const sup = v.numSuport?.trim();
+    if (sup && sup.length > 9) {
+      w.push(`${p}: el número de suport «${sup}» supera els 9 caràcters (màxim de Mossos). Escurça'l o deixa'l buit.`);
+    }
+    if (sup && v.tipusDocument === 'PASSAPORT') {
+      w.push(`${p}: has posat un número de suport en un passaport; els passaports normalment no en tenen. Deixa'l buit si el document no en porta.`);
     }
 
     // Codi postal espanyol: 5 xifres i província 01–52 (només si país Espanya o buit).

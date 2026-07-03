@@ -39,6 +39,40 @@ export function connectorAvailable(): boolean {
   return getBrowserbaseConfig() !== null;
 }
 
+/**
+ * De tot el text visible del portal (que inclou menú, ajuda, telèfons…), extreu
+ * NOMÉS el resum de validació amb els errors, net i llegible. Retorna null si no
+ * el troba (llavors es mostra el text cru com a última opció).
+ */
+export function extreuErrorsMossos(raw: string): string | null {
+  const t = (raw ?? '').replace(/\s+/g, ' ');
+
+  // 1) Talla a partir del resum de validació ("...errors següents:").
+  const m = t.match(/errors?\s+seg[üu]ents:?/i);
+  let seg = m ? t.slice(m.index! + m[0].length) : null;
+
+  // 2) Si no hi ha aquest text, busca directament la primera "Línia N:".
+  if (!seg) {
+    const l = t.search(/L[íi]nia\s*\d+\s*:/i);
+    if (l >= 0) seg = t.slice(l);
+  }
+  if (!seg) return null;
+
+  // 3) Treu l'eco del registre (la línia amb molts "|", p. ex. "2|PAR726094|…").
+  const echo = seg.search(/\d+\s*\|/);
+  if (echo > 0) seg = seg.slice(0, echo);
+
+  // 4) Cada error ("Línia N:") a la seva pròpia línia, amb pic.
+  seg = seg
+    .replace(/L[íi]nia\s*(\d+)\s*:/gi, '\n• Línia $1: ')
+    .replace(/\s+/g, ' ')
+    .replace(/ \n/g, '\n')
+    .replace(/\n /g, '\n')
+    .trim();
+
+  return seg || null;
+}
+
 const SEL = {
   usuari: ['input[name="j_username"]', 'input[name*="user" i]', '#username'],
   contrasenya: ['input[name="j_password"]', 'input[type="password"]'],
@@ -165,10 +199,13 @@ export async function pujaFitxerAMossos(input: ConnectorInput): Promise<Connecto
     const exit = teComprovant || /èxit|correctament|realitzad/i.test(text);
 
     if (!exit) {
-      const net = text.replace(/\s+/g, ' ').trim();
-      // El menú ocupa el principi; mostrem un tros ampli per veure el missatge real.
-      const msg = net.slice(0, 800) || 'sense missatge visible al portal';
-      return { ok: false, errorMsg: `El portal no ha acceptat el fitxer. Mira la gravació: ${replay} — Resposta: ${msg}` };
+      const errors = extreuErrorsMossos(text);
+      const errorMsg = errors
+        ? `Mossos ha rebutjat el fitxer. Corregeix això i torna-ho a provar:\n${errors}\n\n(Gravació de la sessió: ${replay})`
+        : `El portal no ha acceptat el fitxer. Mira la gravació: ${replay} — Resposta: ${
+            text.replace(/\s+/g, ' ').trim().slice(0, 800) || 'sense missatge visible al portal'
+          }`;
+      return { ok: false, errorMsg };
     }
 
     // 5) Comprovant oficial: el descarreguem DINS de la sessió (l'URL del report

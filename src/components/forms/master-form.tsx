@@ -559,10 +559,13 @@ export function MasterForm({
         viatgers.map((v) => ({
           tipusDocument: v.tipusDocument || undefined,
           numDocument: v.numDocument || undefined,
+          numSuport: v.numSuport || undefined,
           codiPostal: v.codiPostal || undefined,
           pais: v.pais || undefined,
           dataNaixement: v.dataNaixement || undefined,
           dataExpedicio: v.dataExpedicio || undefined,
+          nom: v.nom || undefined,
+          cognom1: v.cognom1 || undefined,
         })),
       );
       if (fw.length > 0 && !force) {
@@ -1067,7 +1070,13 @@ export function MasterForm({
                     label="Número de suport"
                     required={isDniNie}
                     error={err(P('numSuport'))}
-                    hint={isDniNie ? 'Obligatori amb DNI/NIE' : undefined}
+                    hint={
+                      isDniNie
+                        ? 'Obligatori amb DNI/NIE (9 caràcters)'
+                        : v.tipusDocument === 'PASSAPORT'
+                          ? 'Els passaports no solen tenir número de suport: deixa’l buit si no en porta.'
+                          : 'Màxim 9 caràcters.'
+                    }
                   >
                     <Input uppercase value={v.numSuport} onChange={(e) => setV(i, { numSuport: e.target.value })} />
                   </Field>
