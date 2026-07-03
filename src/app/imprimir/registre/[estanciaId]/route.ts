@@ -244,7 +244,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: st
   .toolbar .brand { font-weight:bold; letter-spacing:.5px; }
   .btn { border:0; border-radius:8px; padding:8px 14px; font-size:14px; cursor:pointer; background:#fff; color:var(--brand); font-weight:600; }
   .wrap { padding:16px; }
-  .sheet { background:#fff; width:210mm; min-height:290mm; margin:0 auto 16px; padding:10mm; page-break-after:always; }
+  .sheet { background:#fff; width:210mm; max-width:100%; min-height:290mm; margin:0 auto 16px; padding:10mm; page-break-after:always; }
   .sheet:last-child { page-break-after:auto; }
   .nra { font-size:12px; font-weight:bold; text-decoration:underline; margin-bottom:6px; }
   .nra-val { text-decoration:none; font-weight:normal; }
@@ -271,6 +271,14 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: st
   .firma:last-child { border-right:0; }
   .firma img { max-width:100%; max-height:66px; }
   .pag { text-align:right; font-size:9px; color:#777; margin-top:4px; }
+  /* Mòbil: el full A4 no hi cap; l'ajustem a l'ample de pantalla (la impressió/PDF
+     manté la mida A4 gràcies a @media print). */
+  @media screen and (max-width:820px) {
+    .wrap { padding:6px; }
+    .sheet { padding:8px; min-height:auto; }
+    .toolbar { flex-wrap:wrap; gap:8px; }
+    td { padding:2px 3px; }
+  }
   @media print {
     body { background:#fff; }
     .toolbar { display:none; }
