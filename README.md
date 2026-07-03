@@ -32,16 +32,6 @@ pnpm db:seed
 pnpm dev                 # http://localhost:3000
 ```
 
-### Usuaris seed
-
-| Rol      | Email                   | Contrasenya  |
-| -------- | ----------------------- | ------------ |
-| ADMIN    | hostalcoll@gmail.com    | `Hostal2026!` |
-| RECEPCIO | recepcio@hostalcoll.com | `Hostal2026!` |
-| CONSULTA | consulta@hostalcoll.com | `Hostal2026!` |
-
-> Canvia les contrasenyes després del primer accés.
-
 ## Scripts
 
 | Comanda            | Descripció                                  |
