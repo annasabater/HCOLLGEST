@@ -11,12 +11,13 @@ export function EnviarCorreuButton({ apiUrl }: { apiUrl: string }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [hora, setHora] = useState<string | null>(null);
 
-  // Recupera l'hora d'enviament persistent del localStorage
+  // Recupera la data d'enviament persistent del localStorage (traient l'hora si
+  // el valor desat és antic i encara portava "HH:MM DD/MM").
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY(apiUrl));
       if (saved) {
-        setHora(saved);
+        setHora(saved.replace(/^\d{1,2}:\d{2}\s+/, ''));
         setEstat('ok');
       }
     } catch {}
@@ -29,7 +30,8 @@ export function EnviarCorreuButton({ apiUrl }: { apiUrl: string }) {
     try {
       await postJSON(apiUrl, {});
       const ara = new Date();
-      const horaStr = `${String(ara.getHours()).padStart(2, '0')}:${String(ara.getMinutes()).padStart(2, '0')} ${ara.getDate().toString().padStart(2, '0')}/${(ara.getMonth() + 1).toString().padStart(2, '0')}`;
+      // Només la data (DD/MM), sense hora.
+      const horaStr = `${ara.getDate().toString().padStart(2, '0')}/${(ara.getMonth() + 1).toString().padStart(2, '0')}`;
       try { localStorage.setItem(STORAGE_KEY(apiUrl), horaStr); } catch {}
       setHora(horaStr);
       setEstat('ok');
