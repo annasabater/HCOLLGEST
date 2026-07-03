@@ -723,7 +723,11 @@ export function MasterForm({
             label="Número de contracte"
             required={tipusRegistre !== 'RESERVA'}
             error={err('estancia.numContracte')}
-            hint={tipusRegistre === 'RESERVA' ? 'Opcional per a reserves · es pot omplir al check-in' : undefined}
+            hint={
+              tipusRegistre === 'RESERVA'
+                ? 'Opcional per a reserves · es pot omplir al check-in'
+                : 'Proposat automàticament (l’últim + 1). Revisa’l i canvia’l si cal.'
+            }
           >
             <Input
               uppercase
