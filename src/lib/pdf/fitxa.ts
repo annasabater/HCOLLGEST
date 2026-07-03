@@ -80,16 +80,9 @@ export async function buildFitxaPdf(
   const template = await PDFDocument.load(templateBytes);
 
   // Títol del document (el navegador el mostra a la pestanya en obrir el PDF):
-  // "Registre de persones allotjades — NOM COGNOM, …" en comptes de "fitxa-pdf".
-  const noms = viatgers
-    .map((r) => `${r.huesped.nom} ${r.huesped.cognom1}`.trim())
-    .filter(Boolean);
+  // "Registre de persones allotjades — <núm. contracte>" en comptes de "fitxa-pdf".
   out.setTitle(
-    sanitize(
-      noms.length
-        ? `Registre de persones allotjades — ${noms.join(', ')}`
-        : `Registre de persones allotjades — ${estancia.numContracte}/${estancia.anyContracte}`,
-    ),
+    sanitize(`Registre de persones allotjades — ${estancia.numContracte}/${estancia.anyContracte}`),
     { showInWindowTitleBar: true },
   );
 

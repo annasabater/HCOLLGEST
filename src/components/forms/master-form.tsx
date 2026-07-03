@@ -29,7 +29,7 @@ import {
 import { isMenor } from '@/lib/dates';
 import { postJSON, putJSON, ApiError, getJSON } from '@/lib/api';
 import { formatWarnings } from '@/lib/validation/documents';
-import { PROVINCIES, PAISOS } from '@/lib/data/geo';
+import { PROVINCIES, PAISOS, provinciaDesDeCodiPostal, matchProvincia } from '@/lib/data/geo';
 import { DocumentScanner, type PendingDoc } from '@/components/ocr/document-scanner';
 import { HosteSearch, type HosteLite } from '@/components/forms/hoste-search';
 import { AvisSolapament } from '@/components/estancia/avis-solapament';
@@ -300,7 +300,21 @@ export function MasterForm({
     if (v.nacionalitat) patch.nacionalitat = v.nacionalitat;
     if (v.adreca) patch.adreca = v.adreca;
     if (v.codiPostal) patch.codiPostal = v.codiPostal;
-    if (v.localitat) patch.localitat = v.localitat;
+
+    // Província i país (adreça del revers del DNI). El codi postal és la font més
+    // fiable (2 primers dígits = província); si no, el nom llegit de la província.
+    const provincia = provinciaDesDeCodiPostal(v.codiPostal) ?? matchProvincia(v.provinciaNom);
+    if (provincia) {
+      patch.provincia = provincia;
+      patch.pais = 'Espanya';
+      loadMunicipis(provincia);
+      // Municipi: proposem el que ha llegit l'OCR (l'usuari el pot confirmar/triar
+      // de la llista INE de la província).
+      if (v.localitat) patch.municipi = v.localitat;
+    } else if (v.localitat) {
+      // Document sense província espanyola (p. ex. estranger): va al camp localitat.
+      patch.localitat = v.localitat;
+    }
     setV(i, patch);
   };
 
@@ -810,8 +824,7 @@ export function MasterForm({
         <CardBody className="space-y-3">
           <p className="text-xs text-slate-500">
             Si ja t’han pagat, indica quant i com. Pots partir-ho en més d’un mètode (p. ex. una part
-            en efectiu i una altra per transferència). En desar es crearà un rebut amb aquests
-            cobraments. Si no, ho pots fer després des de la fitxa de l’estada.
+            en efectiu i una altra per transferència).
           </p>
           {pagaments.length === 0 && (
             <p className="text-sm italic text-slate-400">Sense pagaments ni fiances registrats.</p>
@@ -865,8 +878,7 @@ export function MasterForm({
           {/* --- Fiança (opcional): garantia retornable, va a custòdia --- */}
           <div className="border-t border-slate-100 pt-3">
             <p className="text-xs text-slate-500">
-              Fiança (garantia que <strong>tornaràs</strong>): queda en custòdia i{' '}
-              <strong>no</strong> compta com a ingrés fins que la retens.
+              Fiança (garantia que <strong>tornaràs</strong>).
             </p>
             <div className="mt-2 space-y-3">
               {fiances.map((f, i) => (

@@ -187,3 +187,39 @@ export const PAISOS: string[] = [
   'Vietnam',
   'Altres',
 ];
+
+/**
+ * Codi INE de província (= 2 primers dígits del codi postal espanyol) → nom de
+ * província. Permet deduir la província (fiable) a partir del CP llegit del DNI.
+ */
+export const PROVINCIA_PER_CODI_POSTAL: Record<string, string> = {
+  '01': 'Araba/Álava', '02': 'Albacete', '03': 'Alacant', '04': 'Almeria',
+  '05': 'Àvila', '06': 'Badajoz', '07': 'Illes Balears', '08': 'Barcelona',
+  '09': 'Burgos', '10': 'Càceres', '11': 'Cadis', '12': 'Castelló',
+  '13': 'Ciudad Real', '14': 'Còrdova', '15': 'A Coruña', '16': 'Conca',
+  '17': 'Girona', '18': 'Granada', '19': 'Guadalajara', '20': 'Gipuzkoa',
+  '21': 'Huelva', '22': 'Osca', '23': 'Jaén', '24': 'Lleó', '25': 'Lleida',
+  '26': 'La Rioja', '27': 'Lugo', '28': 'Madrid', '29': 'Màlaga', '30': 'Múrcia',
+  '31': 'Navarra', '32': 'Ourense', '33': 'Astúries', '34': 'Palència',
+  '35': 'Las Palmas', '36': 'Pontevedra', '37': 'Salamanca',
+  '38': 'Santa Cruz de Tenerife', '39': 'Cantàbria', '40': 'Segòvia',
+  '41': 'Sevilla', '42': 'Sòria', '43': 'Tarragona', '44': 'Terol',
+  '45': 'Toledo', '46': 'València', '47': 'Valladolid', '48': 'Bizkaia',
+  '49': 'Zamora', '50': 'Saragossa', '51': 'Ceuta', '52': 'Melilla',
+};
+
+const normalitzaProv = (s: string) =>
+  s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+/** Província (de la llista oficial) a partir del codi postal, o undefined. */
+export function provinciaDesDeCodiPostal(cp: string | undefined | null): string | undefined {
+  if (!cp) return undefined;
+  return PROVINCIA_PER_CODI_POSTAL[cp.trim().slice(0, 2)];
+}
+
+/** Casa un nom de província llegit (amb/sense accents) amb la llista oficial. */
+export function matchProvincia(nom: string | undefined | null): string | undefined {
+  if (!nom) return undefined;
+  const t = normalitzaProv(nom);
+  return PROVINCIES.find((p) => normalitzaProv(p) === t);
+}
