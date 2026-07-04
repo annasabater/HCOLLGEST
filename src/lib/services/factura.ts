@@ -77,6 +77,29 @@ export async function proximNumeroFacturaContracte(
   return `${base}.${max + 1}`;
 }
 
+/**
+ * Número de factura FISCAL: sèrie contínua per any en format NN/YY (01/26,
+ * 02/26…). Pren el número més alt de les factures fiscals de l'any + 1. Inclou
+ * esborrades (número @unique) perquè la sèrie fiscal no reutilitzi números.
+ */
+export async function proximNumeroFacturaFiscal(
+  client: Prisma.TransactionClient,
+  year: number,
+): Promise<string> {
+  const yy = String(year % 100).padStart(2, '0');
+  const fiscals = await client.factura.findMany({
+    where: { tipusDocument: 'FACTURA', numero: { endsWith: `/${yy}` } },
+    select: { numero: true },
+  });
+  let max = 0;
+  for (const f of fiscals) {
+    const slash = f.numero.indexOf('/');
+    const nn = slash > 0 ? parseInt(f.numero.slice(0, slash), 10) : NaN;
+    if (!isNaN(nn) && nn > max) max = nn;
+  }
+  return `${String(max + 1).padStart(2, '0')}/${yy}`;
+}
+
 export async function createFactura(
   raw: FacturaCreateInput,
   actor: { id: string } | null,
@@ -676,11 +699,13 @@ export async function createFacturaSeleccio(
 
     if (pagaments.length + fiances.length === 0) throw new Error('Cap element seleccionat');
 
-    // La fiança és un dipòsit en CUSTÒDIA, no un ingrés: NO entra a la base/total
-    // ni com a línia de factura. Només compten els pagaments. Les fiances només
-    // es vinculen a la factura (per referència) i es mostren a part —una sola
-    // vegada— al document "amb fiança".
-    const total = round2(pagaments.reduce((a, p) => a + Number(p.import), 0));
+    const esFiscal = input.tipusDocument === 'FACTURA';
+    const totalPag = round2(pagaments.reduce((a, p) => a + Number(p.import), 0));
+    const totalFi = round2(fiances.reduce((a, f) => a + Number(f.import), 0));
+    // FISCAL: SEMPRE inclou la fiança al total (base = pagaments + fiança), com a
+    // línia a part. SIMPLIFICADA: la fiança NO entra al total (és dipòsit en
+    // custòdia); va a part al document "amb fiança".
+    const total = esFiscal ? round2(totalPag + totalFi) : totalPag;
 
     let numero: string;
     if (input.numero?.trim()) {
@@ -691,15 +716,17 @@ export async function createFacturaSeleccio(
         );
       }
       numero = input.numero.trim();
+    } else if (esFiscal) {
+      // Sèrie fiscal contínua: 01/26, 02/26…
+      numero = await proximNumeroFacturaFiscal(tx, new Date().getFullYear());
     } else {
-      // Per defecte, número basat en el contracte de l'estada (26004, 26004.1…).
+      // Simplificada: número basat en el contracte de l'estada (26004, 26004.1…).
       numero =
         (await proximNumeroFacturaContracte(tx, estanciaId)) ||
         (await proximNumeroFactura(tx, new Date().getFullYear()));
     }
 
-    // Una sola línia d'allotjament (l'ingrés) amb una descripció llegible per al
-    // client. La fiança NO és línia (és dipòsit en custòdia, va a part).
+    const descAllot = input.descripcioAllotjament?.trim() || CONCEPTE_LINIA_LABELS.ALLOTJAMENT;
     const factura = await tx.factura.create({
       data: {
         estanciaId,
@@ -710,18 +737,17 @@ export async function createFacturaSeleccio(
         total,
         estat: 'COBRADA',
         tipusDocument: input.tipusDocument ?? 'RECIBO',
-        linies:
-          total > 0
-            ? {
-                create: [
-                  {
-                    concepte: 'ALLOTJAMENT',
-                    descripcio: input.descripcioAllotjament?.trim() || CONCEPTE_LINIA_LABELS.ALLOTJAMENT,
-                    import: total,
-                  },
-                ],
-              }
-            : undefined,
+        fiancaInclosa: esFiscal && totalFi > 0 ? true : undefined,
+        linies: {
+          create: [
+            ...(totalPag > 0
+              ? [{ concepte: 'ALLOTJAMENT' as const, descripcio: descAllot, import: totalPag }]
+              : []),
+            ...(esFiscal && totalFi > 0
+              ? [{ concepte: 'ALLOTJAMENT' as const, descripcio: 'Fiança', import: totalFi }]
+              : []),
+          ],
+        },
       },
     });
 

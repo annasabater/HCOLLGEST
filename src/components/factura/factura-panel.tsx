@@ -75,9 +75,10 @@ export function FacturaPanel({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  // La factura es crea com a simplificada per defecte; el tipus/format (simple o
-  // fiscal) es tria després des del detall de la factura en imprimir.
-  const tipus = 'FACTURA_SIMPLIFICADA' as const;
+  // Es tria en obrir: "Factura simple" (fiança a part) o "Factura fiscal" (fiança
+  // sempre inclosa al total, sèrie NN/YY).
+  const [tipus, setTipus] = useState<'FACTURA_SIMPLIFICADA' | 'FACTURA'>('FACTURA_SIMPLIFICADA');
+  const esFiscal = tipus === 'FACTURA';
   const [numero, setNumero] = useState('');
   const [selPag, setSelPag] = useState<Set<string>>(new Set());
   const [selFi, setSelFi] = useState<Set<string>>(new Set());
@@ -104,13 +105,16 @@ export function FacturaPanel({
   const toggleFi = (id: string) =>
     setSelFi((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
-  async function obrir() {
+  async function obrir(t: 'FACTURA_SIMPLIFICADA' | 'FACTURA') {
+    setTipus(t);
     setError(null);
     // Preselecciona tots els pendents (el cas habitual: facturar-ho tot).
     setSelPag(new Set(pagamentsLliures.map((p) => p.id)));
     setSelFi(new Set(fiancesLliures.map((f) => f.id)));
     try {
-      const res = await getJSON<{ numero: string }>(`/api/factures/seguent-numero?estanciaId=${estanciaId}`);
+      const res = await getJSON<{ numero: string }>(
+        `/api/factures/seguent-numero?estanciaId=${estanciaId}&tipus=${t}`,
+      );
       setNumero(res.numero);
     } catch {
       setNumero('');
@@ -174,7 +178,10 @@ export function FacturaPanel({
 
       {open ? (
         <form onSubmit={crear} className="space-y-3 rounded-lg border border-slate-200 p-3">
-          {/* Número (basat en el contracte de l'estada: 26004, 26004.1…) */}
+          <p className="text-sm font-semibold text-slate-800">
+            {esFiscal ? 'Nova factura fiscal' : 'Nova factura simple'}
+          </p>
+          {/* Número: contracte (26004…) per a la simple; sèrie NN/YY per a la fiscal */}
           <label className="flex items-center gap-2 text-sm">
             <span className="text-xs font-medium text-slate-500">Núm. factura:</span>
             <Input
@@ -211,7 +218,10 @@ export function FacturaPanel({
           {fiancesLliures.length > 0 && (
             <div>
               <p className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-500">
-                <ShieldCheck className="h-3.5 w-3.5" /> Fiança (a part — surt al document «amb fiança»)
+                <ShieldCheck className="h-3.5 w-3.5" />
+                {esFiscal
+                  ? 'Fiança (inclosa al total de la factura fiscal)'
+                  : 'Fiança (a part — surt al document «amb fiança»)'}
               </p>
               <div className="space-y-1">
                 {fiancesLliures.map((f) => (
@@ -232,9 +242,20 @@ export function FacturaPanel({
 
           {/* Resum */}
           <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
-            Factura: <strong>{formatEur(totalPag)}</strong>
-            {totalFi > 0 && (
-              <span className="text-slate-500"> · amb fiança: <strong>{formatEur(totalPag + totalFi)}</strong></span>
+            {esFiscal ? (
+              <>
+                Factura fiscal: <strong>{formatEur(totalPag + totalFi)}</strong>
+                {totalFi > 0 && (
+                  <span className="text-slate-500"> (fiança inclosa)</span>
+                )}
+              </>
+            ) : (
+              <>
+                Factura: <strong>{formatEur(totalPag)}</strong>
+                {totalFi > 0 && (
+                  <span className="text-slate-500"> · amb fiança: <strong>{formatEur(totalPag + totalFi)}</strong></span>
+                )}
+              </>
             )}
           </div>
 
@@ -249,9 +270,14 @@ export function FacturaPanel({
           </div>
         </form>
       ) : (
-        <Button variant="outline" size="sm" onClick={obrir}>
-          <Receipt className="h-4 w-4" /> Nova factura
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => obrir('FACTURA_SIMPLIFICADA')}>
+            <Receipt className="h-4 w-4" /> Factura simple
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => obrir('FACTURA')}>
+            <Receipt className="h-4 w-4" /> Factura fiscal
+          </Button>
+        </div>
       )}
     </div>
   );
