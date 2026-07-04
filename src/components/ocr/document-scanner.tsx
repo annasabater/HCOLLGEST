@@ -41,6 +41,8 @@ export function DocumentScanner({
   const [msg, setMsg] = useState<{ tone: 'ok' | 'warn'; text: string; items?: string[] } | null>(null);
   const [previews, setPreviews] = useState<Record<string, string>>({});
   const [lightbox, setLightbox] = useState<string | null>(null);
+  // Si està desactivat, la foto NOMÉS es desa (no llegeix ni autoreplena el formulari).
+  const [autoreplenar, setAutoreplenar] = useState(true);
 
   // Genera URLs de previsualització per a cada imatge pendent
   useEffect(() => {
@@ -109,9 +111,9 @@ export function DocumentScanner({
     const files = Array.from(e.target.files ?? []);
     e.target.value = ''; // permet tornar a triar el mateix fitxer
     for (const file of files) onImage?.(file); // desa cada foto/fitxer com a document
-    // OCR (autoreplenat) només amb la primera imatge.
+    // OCR (autoreplenat) només amb la primera imatge, i només si està activat.
     const first = files[0];
-    if (first && first.type.startsWith('image/')) processFile(first);
+    if (autoreplenar && first && first.type.startsWith('image/')) processFile(first);
   }
 
   const opts = optionsFrom(tipusDocumentPujatValues, TIPUS_DOCUMENT_PUJAT_LABELS);
@@ -145,6 +147,16 @@ export function DocumentScanner({
           </Button>
         </div>
       </div>
+
+      <label className="mt-2 flex items-center gap-2 text-xs text-slate-600">
+        <input
+          type="checkbox"
+          checked={autoreplenar}
+          onChange={(e) => setAutoreplenar(e.target.checked)}
+        />
+        Autoreplenar el formulari amb la foto
+        <span className="text-slate-400">(desmarca-ho per només desar la foto, sense tocar les dades)</span>
+      </label>
 
       <p className="mt-1.5 text-xs text-slate-500">
         DNI (anvers i revers), passaport, NIE o carnet de conduir. S&apos;autoreplenen totes les dades
