@@ -8,7 +8,6 @@ import {
   Wallet,
   TrendingDown,
   PiggyBank,
-  Percent,
   Download,
   FileText,
   CheckCircle2,
@@ -567,7 +566,6 @@ export default function BalancPage() {
                     <Kpi label="Benefici + fiança" value={<Eur value={any.totals.benefici + any.totals.retencions} />} icon={Wallet} color={any.totals.benefici + any.totals.retencions >= 0 ? 'text-green-600' : 'text-red-600'} big />
                   </>
                 )}
-                <Kpi label="Marge" value={`${marge(any.totals.benefici, any.totals.ingressos)}%`} icon={Percent} color="text-brand-700" />
               </div>
 
               <BalancChart mesos={any.mesos} />

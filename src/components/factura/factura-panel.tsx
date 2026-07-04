@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getJSON, postJSON, ApiError } from '@/lib/api';
-import { Receipt, ShieldCheck, ShieldOff } from 'lucide-react';
+import { getJSON, postJSON, delJSON, ApiError } from '@/lib/api';
+import { Receipt, ShieldCheck, ShieldOff, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -149,9 +149,13 @@ export function FacturaPanel({
         },
       );
       setOpen(false);
-      // La fiscal obre directament la impressió (ja porta la fiança inclosa).
-      if (esFiscal && res?.factura?.id) {
-        window.open(`/imprimir/factura/${res.factura.id}`, '_blank', 'noopener,noreferrer');
+      // En crear, obre directament la impressió (fiscal o simple), sense passar
+      // per la pàgina de detall.
+      if (res?.factura?.id) {
+        const url = esFiscal
+          ? `/imprimir/factura/${res.factura.id}`
+          : `/imprimir/factura-simple/${res.factura.id}`;
+        window.open(url, '_blank', 'noopener,noreferrer');
       }
       router.refresh();
     } catch (err) {

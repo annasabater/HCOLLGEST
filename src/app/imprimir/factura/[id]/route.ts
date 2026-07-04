@@ -139,15 +139,15 @@ export async function GET(
 <title>Factura ${esc(factura.numero)} · Hostal Coll</title>
 <style>
   :root{
-    --ink:#2C1810;
-    --slate:#3C2828;
-    --muted:#7A6868;
-    --line:#E5D8D5;
-    --accent:#7A1F2B;
-    --accent-soft:#F7EEEC;
-    --warm-tint:#F5ECEC;
-    --paper:#FFFCF8;
-    --app:#F0ECEB;
+    --ink:#16233A;
+    --slate:#2A3A52;
+    --muted:#6B7688;
+    --line:#D8DEE8;
+    --accent:#1D3E6E;
+    --accent-soft:#EAF0F8;
+    --warm-tint:#EDF2F9;
+    --paper:#FDFDFE;
+    --app:#ECEEF2;
   }
   *{ box-sizing:border-box; }
   html,body{ margin:0; }
@@ -172,7 +172,7 @@ export async function GET(
   .btn.ghost{ background:#fff; color:var(--ink); border-color:var(--ink); }
   .btn.ghost:hover{ background:#F5EEEC; }
   .btn.solid{ background:var(--accent); color:#fff; border-color:var(--accent); }
-  .btn.solid:hover{ background:#621829; }
+  .btn.solid:hover{ background:#152C4E; }
   .app{ padding:24px 16px 48px; }
   .invoice{
     width:100%; max-width:820px; margin:0 auto; background:var(--paper);

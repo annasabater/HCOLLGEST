@@ -49,7 +49,9 @@ export async function GET(
   const establiment = await prisma.establiment.findFirst();
   const titular = factura.estancia.viatgers[0]?.huesped ?? null;
 
-  const diposits = ambCustodia ? factura.estancia.diposits : [];
+  // Si la fiança ja va inclosa a la base (fiancaInclosa), no la tornem a afegir
+  // com a bloc de custòdia (evita duplicar-la).
+  const diposits = ambCustodia && !factura.fiancaInclosa ? factura.estancia.diposits : [];
 
   const emNom = esc(establiment?.raoSocial || establiment?.nom || 'Hostal Coll');
   const emDescriptor = esc(establiment?.poblacio ? `Casa de Hostes · ${establiment.poblacio}` : 'Casa de Hostes · Calella');
