@@ -774,3 +774,80 @@ export async function createFacturaSeleccio(
     return factura;
   });
 }
+
+/**
+ * Crea ALHORA una factura FISCAL (va a Veri*Factu) i una SIMPLIFICADA (còpia pel
+ * client, NO va a Veri*Factu), amb el MATEIX import (inclou la fiança). Els
+ * pagaments/fiances només es vinculen a la fiscal; l'ingrés es compta un sol cop
+ * (els ingressos surten dels cobraments, no de les factures).
+ */
+export async function createFacturaDupla(
+  estanciaId: string,
+  raw: unknown,
+  actor: { id: string } | null,
+  ip: string | null,
+) {
+  const input = FacturaSeleccioSchema.parse(raw);
+  return prisma.$transaction(async (tx) => {
+    const pagaments = await tx.cobrament.findMany({
+      where: { id: { in: input.pagamentIds }, estanciaId, facturaId: null },
+    });
+    const fiances = input.fiancaIds.length > 0
+      ? await tx.diposit.findMany({ where: { id: { in: input.fiancaIds }, estanciaId } })
+      : [];
+    if (pagaments.length + fiances.length === 0) throw new Error('Cap element seleccionat');
+
+    const total = round2(
+      pagaments.reduce((a, p) => a + Number(p.import), 0) +
+      fiances.reduce((a, f) => a + Number(f.import), 0),
+    );
+    const teFianca = fiances.length > 0;
+    const descAllot = input.descripcioAllotjament?.trim() || CONCEPTE_LINIA_LABELS.ALLOTJAMENT;
+    const year = new Date().getFullYear();
+    const liniaData = () =>
+      total > 0
+        ? { create: [{ concepte: 'ALLOTJAMENT' as const, descripcio: descAllot, import: total }] }
+        : undefined;
+
+    const numFiscal = await proximNumeroFacturaFiscal(tx, year);
+    const fiscal = await tx.factura.create({
+      data: {
+        estanciaId, numero: numFiscal, data: new Date(), base: total, iva: 0, total,
+        estat: 'COBRADA', tipusDocument: 'FACTURA',
+        fiancaInclosa: teFianca ? true : undefined, linies: liniaData(),
+      },
+    });
+
+    const numSimple =
+      (await proximNumeroFacturaContracte(tx, estanciaId)) || (await proximNumeroFactura(tx, year));
+    const simple = await tx.factura.create({
+      data: {
+        estanciaId, numero: numSimple, data: new Date(), base: total, iva: 0, total,
+        estat: 'COBRADA', tipusDocument: 'FACTURA_SIMPLIFICADA',
+        fiancaInclosa: teFianca ? true : undefined, linies: liniaData(),
+      },
+    });
+
+    // Vincle només a la fiscal (l'oficial): l'ingrés no es duplica.
+    if (pagaments.length > 0) {
+      await tx.cobrament.updateMany({ where: { id: { in: pagaments.map((p) => p.id) } }, data: { facturaId: fiscal.id } });
+    }
+    if (fiances.length > 0) {
+      await tx.diposit.updateMany({ where: { id: { in: fiances.map((f) => f.id) } }, data: { facturaId: fiscal.id } });
+    }
+
+    await audit(
+      {
+        usuariId: actor?.id ?? null,
+        accio: 'CREACIO',
+        entitat: 'factura',
+        entitatId: fiscal.id,
+        detall: { fiscal: fiscal.numero, simple: simple.numero, total, dupla: true },
+        ip,
+      },
+      tx,
+    );
+
+    return { fiscal, simple };
+  });
+}

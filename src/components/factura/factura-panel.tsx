@@ -84,6 +84,8 @@ export function FacturaPanel({
   const [selFi, setSelFi] = useState<Set<string>>(new Set());
   // Simple: si la fiança seleccionada compta al total (fiscal sempre la inclou).
   const [ambFianca, setAmbFianca] = useState(true);
+  // Mode "simple + fiscal alhora" (crea les dues amb el mateix import).
+  const [dupla, setDupla] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,8 +95,8 @@ export function FacturaPanel({
 
   const totalPag = pagamentsLliures.filter((p) => selPag.has(p.id)).reduce((a, p) => a + p.import, 0);
   const totalFi = fiancesLliures.filter((f) => selFi.has(f.id)).reduce((a, f) => a + f.import, 0);
-  // La fiança compta al total si és fiscal, o si a la simple s'ha triat "amb fiança".
-  const incloureFianca = esFiscal || ambFianca;
+  // La fiança compta al total si és fiscal, dupla, o si a la simple s'ha triat "amb fiança".
+  const incloureFianca = esFiscal || dupla || ambFianca;
   const totalFactura = incloureFianca ? totalPag + totalFi : totalPag;
 
   function buildDesc(): string {
@@ -110,20 +112,26 @@ export function FacturaPanel({
   const toggleFi = (id: string) =>
     setSelFi((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
-  async function obrir(t: 'FACTURA_SIMPLIFICADA' | 'FACTURA') {
+  async function obrir(mode: 'simple' | 'fiscal' | 'dupla') {
+    const t = mode === 'fiscal' ? 'FACTURA' : 'FACTURA_SIMPLIFICADA';
     setTipus(t);
+    setDupla(mode === 'dupla');
     setError(null);
     setAmbFianca(true);
     // Preselecciona tots els pendents (el cas habitual: facturar-ho tot).
     setSelPag(new Set(pagamentsLliures.map((p) => p.id)));
     setSelFi(new Set(fiancesLliures.map((f) => f.id)));
-    try {
-      const res = await getJSON<{ numero: string }>(
-        `/api/factures/seguent-numero?estanciaId=${estanciaId}&tipus=${t}`,
-      );
-      setNumero(res.numero);
-    } catch {
-      setNumero('');
+    if (mode === 'dupla') {
+      setNumero(''); // números automàtics (fiscal NN/YY + contracte)
+    } else {
+      try {
+        const res = await getJSON<{ numero: string }>(
+          `/api/factures/seguent-numero?estanciaId=${estanciaId}&tipus=${t}`,
+        );
+        setNumero(res.numero);
+      } catch {
+        setNumero('');
+      }
     }
     setOpen(true);
   }
@@ -137,6 +145,22 @@ export function FacturaPanel({
     setSaving(true);
     setError(null);
     try {
+      if (dupla) {
+        const res = await postJSON<{ fiscal: { id: string } }>(
+          `/api/estancies/${estanciaId}/factura-dupla`,
+          {
+            pagamentIds: [...selPag],
+            fiancaIds: [...selFi],
+            descripcioAllotjament: buildDesc(),
+          },
+        );
+        setOpen(false);
+        if (res?.fiscal?.id) {
+          window.open(`/imprimir/factura/${res.fiscal.id}`, '_blank', 'noopener,noreferrer');
+        }
+        router.refresh();
+        return;
+      }
       const res = await postJSON<{ factura: { id: string } }>(
         `/api/estancies/${estanciaId}/factura-seleccio`,
         {
@@ -228,17 +252,25 @@ export function FacturaPanel({
       {open ? (
         <form onSubmit={crear} className="space-y-3 rounded-lg border border-slate-200 p-3">
           <p className="text-sm font-semibold text-slate-800">
-            {esFiscal ? 'Nova factura fiscal' : 'Nova factura simple'}
+            {dupla ? 'Nova factura simple + fiscal' : esFiscal ? 'Nova factura fiscal' : 'Nova factura simple'}
           </p>
-          {/* Número: contracte (26004…) per a la simple; sèrie NN/YY per a la fiscal */}
-          <label className="flex items-center gap-2 text-sm">
-            <span className="text-xs font-medium text-slate-500">Núm. factura:</span>
-            <Input
-              className="h-9 w-40"
-              value={numero}
-              onChange={(e) => setNumero(e.target.value)}
-            />
-          </label>
+          {dupla ? (
+            <p className="text-xs text-slate-500">
+              Es crearan dues factures amb el mateix import: una <strong>fiscal</strong> (sèrie NN/YY, va a
+              Veri*Factu) i una <strong>simplificada</strong> (número de contracte). L&apos;ingrés només es
+              compta un cop.
+            </p>
+          ) : (
+            /* Número: contracte (26004…) per a la simple; sèrie NN/YY per a la fiscal */
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-xs font-medium text-slate-500">Núm. factura:</span>
+              <Input
+                className="h-9 w-40"
+                value={numero}
+                onChange={(e) => setNumero(e.target.value)}
+              />
+            </label>
+          )}
 
           {/* Pagaments (ingrés) */}
           <div>
@@ -266,9 +298,9 @@ export function FacturaPanel({
           {/* Fiança (a part) */}
           {fiancesLliures.length > 0 && (
             <div>
-              {esFiscal ? (
+              {esFiscal || dupla ? (
                 <p className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-500">
-                  <ShieldCheck className="h-3.5 w-3.5" /> Fiança (inclosa al total de la factura fiscal)
+                  <ShieldCheck className="h-3.5 w-3.5" /> Fiança (inclosa al total)
                 </p>
               ) : (
                 <div className="mb-2">
@@ -318,7 +350,7 @@ export function FacturaPanel({
 
           {/* Resum */}
           <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
-            {esFiscal ? 'Factura fiscal: ' : 'Factura: '}
+            {dupla ? 'Cada factura: ' : esFiscal ? 'Factura fiscal: ' : 'Factura: '}
             <strong>{formatEur(totalFactura)}</strong>
             {totalFi > 0 && incloureFianca && <span className="text-slate-500"> (fiança inclosa)</span>}
             {totalFi > 0 && !incloureFianca && (
@@ -329,7 +361,7 @@ export function FacturaPanel({
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex items-center gap-3">
             <Button type="submit" disabled={saving || (selPag.size === 0 && selFi.size === 0)}>
-              {saving ? 'Creant…' : 'Crear factura'}
+              {saving ? 'Creant…' : dupla ? 'Crear les dues' : 'Crear factura'}
             </Button>
             <button type="button" className="text-sm text-slate-500 hover:underline" onClick={() => setOpen(false)}>
               Cancel·lar
@@ -338,11 +370,14 @@ export function FacturaPanel({
         </form>
       ) : (
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => obrir('FACTURA_SIMPLIFICADA')}>
+          <Button variant="outline" size="sm" onClick={() => obrir('simple')}>
             <Receipt className="h-4 w-4" /> Factura simple
           </Button>
-          <Button variant="outline" size="sm" onClick={() => obrir('FACTURA')}>
+          <Button variant="outline" size="sm" onClick={() => obrir('fiscal')}>
             <Receipt className="h-4 w-4" /> Factura fiscal
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => obrir('dupla')}>
+            <Receipt className="h-4 w-4" /> Simple + Fiscal
           </Button>
         </div>
       )}
