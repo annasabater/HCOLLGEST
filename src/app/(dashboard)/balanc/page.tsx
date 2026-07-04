@@ -667,7 +667,11 @@ export default function BalancPage() {
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <span className="text-xs text-slate-400">(a {situacioCutoff.split('-').reverse().join('/')})</span>
+            <span className="text-xs text-slate-400">
+              {finalPeriode > avuiIso
+                ? `(període en curs · foto a avui, ${situacioCutoff.split('-').reverse().join('/')})`
+                : `(a ${situacioCutoff.split('-').reverse().join('/')})`}
+            </span>
             {!restringit && (
               <div className="ml-2 flex overflow-hidden rounded-lg border border-slate-300">
                 <button
