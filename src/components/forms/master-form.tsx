@@ -1141,16 +1141,28 @@ export function MasterForm({
               )}
 
               <Field label="Data de naixement" error={err(P('dataNaixement'))}>
-                <Input
-                  type="date"
-                  value={v.dataNaixement}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    // Suggereix "menor" si la data indica <14, però es pot desmarcar després.
-                    const auto = !!val && isMenor(new Date(val), refEntrada);
-                    setV(i, auto ? { dataNaixement: val, esMenor: true } : { dataNaixement: val });
-                  }}
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="date"
+                    value={v.dataNaixement}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      // Suggereix "menor" si la data indica <14, però es pot desmarcar després.
+                      const auto = !!val && isMenor(new Date(val), refEntrada);
+                      setV(i, auto ? { dataNaixement: val, esMenor: true } : { dataNaixement: val });
+                    }}
+                  />
+                  {v.dataNaixement && (
+                    <button
+                      type="button"
+                      onClick={() => setV(i, { dataNaixement: '' })}
+                      title="Esborrar la data"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-400 hover:border-red-400 hover:text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </Field>
               <Field label="Email" required={esReserva} error={err(P('email'))}>
                 <Input
