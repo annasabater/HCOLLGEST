@@ -87,6 +87,22 @@ export default async function JustificantsPage({
         actions={<JustificantsFiltres anyActual={new Date().getFullYear()} />}
       />
 
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
+        <span className="font-medium text-slate-700">Plantilles en blanc:</span>
+        <a href="/api/plantilles-buides?doc=fitxa" target="_blank" rel="noreferrer">
+          <Button variant="outline" size="sm">
+            <FileSignature className="h-4 w-4" /> Registre persones allotjades
+          </Button>
+        </a>
+        <a href="/api/plantilles-buides?doc=llibre" target="_blank" rel="noreferrer">
+          <Button variant="outline" size="sm">
+            <FileSignature className="h-4 w-4" /> Llibre registre
+          </Button>
+        </a>
+        <span className="ml-1 text-xs text-slate-500">Enviar per correu:</span>
+        <EnviarCorreuButton apiUrl="/api/plantilles-buides" />
+      </div>
+
       {nPendents > 0 && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
