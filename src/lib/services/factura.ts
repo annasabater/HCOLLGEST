@@ -738,16 +738,12 @@ export async function createFacturaSeleccio(
         estat: 'COBRADA',
         tipusDocument: input.tipusDocument ?? 'RECIBO',
         fiancaInclosa: totalFi > 0 ? incloureFianca : undefined,
-        linies: {
-          create: [
-            ...(totalPag > 0
-              ? [{ concepte: 'ALLOTJAMENT' as const, descripcio: descAllot, import: totalPag }]
-              : []),
-            ...(incloureFianca && totalFi > 0
-              ? [{ concepte: 'ALLOTJAMENT' as const, descripcio: 'Fiança', import: totalFi }]
-              : []),
-          ],
-        },
+        // Una sola línia d'allotjament amb el TOTAL (si s'inclou la fiança, ja hi
+        // està sumada; no es fa una línia de fiança a part).
+        linies:
+          total > 0
+            ? { create: [{ concepte: 'ALLOTJAMENT' as const, descripcio: descAllot, import: total }] }
+            : undefined,
       },
     });
 

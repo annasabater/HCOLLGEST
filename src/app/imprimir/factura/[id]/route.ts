@@ -36,8 +36,9 @@ export async function GET(
   if (!user) redirect('/login');
 
   const { id } = await ctx.params;
-  const url = new URL(req.url);
-  const ambFianca = url.searchParams.get('fianca') === 'true';
+  // La factura fiscal ja inclou la fiança dins la base (una sola línia "Estancia
+  // Pensión Coll"): mai es mostra el bloc de "fiança en custòdia" a part.
+  const ambFianca = false;
 
   const factura = await prisma.factura.findFirst({
     where: { id, deletedAt: null },

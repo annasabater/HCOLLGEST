@@ -137,15 +137,22 @@ export function FacturaPanel({
     setSaving(true);
     setError(null);
     try {
-      await postJSON(`/api/estancies/${estanciaId}/factura-seleccio`, {
-        pagamentIds: [...selPag],
-        fiancaIds: [...selFi],
-        tipusDocument: tipus,
-        ambFianca: incloureFianca,
-        numero: numero.trim() || undefined,
-        descripcioAllotjament: buildDesc(),
-      });
+      const res = await postJSON<{ factura: { id: string } }>(
+        `/api/estancies/${estanciaId}/factura-seleccio`,
+        {
+          pagamentIds: [...selPag],
+          fiancaIds: [...selFi],
+          tipusDocument: tipus,
+          ambFianca: incloureFianca,
+          numero: numero.trim() || undefined,
+          descripcioAllotjament: buildDesc(),
+        },
+      );
       setOpen(false);
+      // La fiscal obre directament la impressió (ja porta la fiança inclosa).
+      if (esFiscal && res?.factura?.id) {
+        window.open(`/imprimir/factura/${res.factura.id}`, '_blank', 'noopener,noreferrer');
+      }
       router.refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error creant la factura');
