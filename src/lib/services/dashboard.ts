@@ -566,7 +566,10 @@ export async function getBalancSituacio(dataTall: Date, opts?: { incloureCustodi
 
   const immobilitzatBrut = r2(num(immobAgg, 'cost'));
   const deutors = r2(num(deutorsAgg, 'total'));
-  const fiances = incloureCustodia ? r2(num(fiancesAgg, 'import')) : 0;
+  // Import REAL de les fiances en custòdia (sempre; per treure-les de la tresoreria).
+  const fiancaCustodia = r2(num(fiancesAgg, 'import'));
+  // El que ES MOSTRA (línia d'actiu + passiu): només amb fiança.
+  const fiances = incloureCustodia ? fiancaCustodia : 0;
   const tresoreriaFiances = fiances;
 
   const saldoInicial = r2(Number(establiment?.saldoInicialTresoreria ?? 0));
@@ -574,9 +577,9 @@ export async function getBalancSituacio(dataTall: Date, opts?: { incloureCustodi
   const totalGastos = r2(num(gastoAgg, 'import'));
   const totalJornades = r2(num(jornadaAgg, 'import'));
   // Tresoreria operativa = saldo inicial + ingressos cobrats − despeses − personal.
-  // Les fiances en custòdia ja s'inclouen en cobraments (si es van cobrar), però
-  // com que van a una línia separada, les restem per no duplicar.
-  const tresoreriaOperativa = r2(saldoInicial + totalCobraments - totalGastos - totalJornades - tresoreriaFiances);
+  // La fiança SEMPRE surt de la tresoreria (és diner que es deu, no ingrés): amb
+  // fiança es mostra en una línia separada + passiu; sense fiança, no es mostra.
+  const tresoreriaOperativa = r2(saldoInicial + totalCobraments - totalGastos - totalJornades - fiancaCustodia);
 
   const totalActiu = r2(immobilitzatBrut + deutors + tresoreriaOperativa + tresoreriaFiances);
   const passiuNoCorrent = 0;

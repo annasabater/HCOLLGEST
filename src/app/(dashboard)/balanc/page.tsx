@@ -328,7 +328,7 @@ export default function BalancPage() {
     } else if (mode === 'any' && any) {
       const rows: (string | number)[][] = [
         [`Balanç ${any.any}`, ''],
-        ['Mes', 'Ingressos', 'Retencions', 'Ingressos+ret', 'Despeses (inclou personal)', 'Benefici'],
+        ['Mes', 'Ingressos', 'Fiança', 'Ingressos+fiança', 'Despeses (inclou personal)', 'Benefici'],
         ...any.mesos.map((m) => [
           MESOS[m.mes - 1]!,
           m.ingressos.toFixed(2),
@@ -488,8 +488,8 @@ export default function BalancPage() {
                   <tr>
                     <Th>Mes</Th>
                     <Th className="text-right">Ingressos</Th>
-                    <Th className="text-right">Retencions</Th>
-                    <Th className="text-right">Ing.+ret.</Th>
+                    <Th className="text-right">Fiança</Th>
+                    <Th className="text-right">Ing.+fiança</Th>
                     <Th className="text-right">Despeses</Th>
                     <Th className="text-right">Benefici</Th>
                   </tr>
