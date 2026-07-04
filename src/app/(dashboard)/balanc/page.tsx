@@ -287,14 +287,18 @@ export default function BalancPage() {
   const [fins, setFins] = useState(`${iniciTrim.y}-${String(iniciTrim.m2).padStart(2, '0')}`);
   const [rang, setRang] = useState<Balanc | null>(null);
 
-  // Data de tall del balanç de situació = últim dia del període triat.
+  // Data de tall del balanç de situació = últim dia del període triat, però MAI en
+  // el futur (un balanç no pot incloure moviments que encara no han passat): si el
+  // final del període és posterior a avui, es talla a avui.
   const isoDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const situacioCutoff =
+  const finalPeriode =
     situacioPeriode === 'any'
       ? isoDay(new Date(year, 11, 31))
       : situacioPeriode === 'trimestre'
         ? isoDay(new Date(anchor.getFullYear(), Math.floor(anchor.getMonth() / 3) * 3 + 3, 0))
         : isoDay(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0));
+  const avuiIso = isoDay(new Date());
+  const situacioCutoff = finalPeriode > avuiIso ? avuiIso : finalPeriode;
 
   const mesParam = `${anchor.getFullYear()}-${String(anchor.getMonth() + 1).padStart(2, '0')}`;
   const loadMes = useCallback(async () => setMes(await getJSON<Balanc>(`/api/balanc?mes=${mesParam}`)), [mesParam]);
