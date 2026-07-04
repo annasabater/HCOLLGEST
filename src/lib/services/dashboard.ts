@@ -364,8 +364,9 @@ export async function getBalanc(monthStart: Date, monthEnd: Date, opts?: Finance
     ingressosAmbRetencions,
     despeses,
     personal,
-    // Benefici = Ingressos + fiança − Despeses (personal inclòs).
-    benefici: r2(ingressosAmbRetencions - despeses - personal),
+    // Benefici real = Ingressos − Despeses (personal inclòs). La versió "+ fiança"
+    // es mostra a part (benefici + retencions) perquè la fiança és retornable.
+    benefici: r2(ingressos - despeses - personal),
     custodiaDetall, // de qui són els dipòsits en custòdia
   };
 }

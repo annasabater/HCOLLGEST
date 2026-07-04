@@ -475,6 +475,13 @@ export default function BalancPage() {
                   <>
                     <Kpi label="Ingressos + fiança" value={<Eur value={mes.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
                     <Kpi label="Despeses (amb personal)" value={<Eur value={mes.despeses + mes.personal} />} icon={TrendingDown} color="text-red-600" />
+                    <Kpi
+                      label="Benefici + fiança"
+                      value={<Eur value={mes.benefici + mes.retencions} />}
+                      icon={Wallet}
+                      color={mes.benefici + mes.retencions >= 0 ? 'text-green-600' : 'text-red-600'}
+                      big
+                    />
                   </>
                 )}
               </div>
@@ -528,6 +535,7 @@ export default function BalancPage() {
                   <>
                     <Kpi label="Ingressos + fiança" value={<Eur value={rang.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
                     <Kpi label="Despeses (amb personal)" value={<Eur value={rang.despeses + rang.personal} />} icon={TrendingDown} color="text-red-600" />
+                    <Kpi label="Benefici + fiança" value={<Eur value={rang.benefici + rang.retencions} />} icon={Wallet} color={rang.benefici + rang.retencions >= 0 ? 'text-green-600' : 'text-red-600'} big />
                   </>
                 )}
               </div>
@@ -549,9 +557,16 @@ export default function BalancPage() {
           {any && (
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <Kpi label="Ingressos (any)" value={<Eur value={any.totals.ingressos} />} icon={TrendingUp} color="text-green-600" big delta={variacio(any.totals.ingressos, any.anterior.ingressos)} />
-                <Kpi label="Despeses (inclou personal)" value={<Eur value={any.totals.despeses + any.totals.personal} />} icon={TrendingDown} color="text-red-600" delta={variacio(any.totals.despeses + any.totals.personal, any.anterior.despeses + any.anterior.personal)} deltaInvert />
-                <Kpi label="Benefici (any)" value={<Eur value={any.totals.benefici} />} icon={Wallet} color={any.totals.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big delta={variacio(any.totals.benefici, any.anterior.benefici)} />
+                <Kpi label="Ingressos" value={<Eur value={any.totals.ingressos} />} icon={TrendingUp} color="text-green-600" big delta={variacio(any.totals.ingressos, any.anterior.ingressos)} />
+                <Kpi label="Despeses (sense personal)" value={<Eur value={any.totals.despeses} />} icon={TrendingDown} color="text-red-600" />
+                <Kpi label="Benefici" value={<Eur value={any.totals.benefici} />} icon={Wallet} color={any.totals.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big delta={variacio(any.totals.benefici, any.anterior.benefici)} />
+                {!restringit && (
+                  <>
+                    <Kpi label="Ingressos + fiança" value={<Eur value={any.totals.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
+                    <Kpi label="Despeses (amb personal)" value={<Eur value={any.totals.despeses + any.totals.personal} />} icon={TrendingDown} color="text-red-600" delta={variacio(any.totals.despeses + any.totals.personal, any.anterior.despeses + any.anterior.personal)} deltaInvert />
+                    <Kpi label="Benefici + fiança" value={<Eur value={any.totals.benefici + any.totals.retencions} />} icon={Wallet} color={any.totals.benefici + any.totals.retencions >= 0 ? 'text-green-600' : 'text-red-600'} big />
+                  </>
+                )}
                 <Kpi label="Marge" value={`${marge(any.totals.benefici, any.totals.ingressos)}%`} icon={Percent} color="text-brand-700" />
               </div>
 
@@ -639,8 +654,8 @@ export default function BalancPage() {
       {mode !== 'situacio' && (
         <p className="mt-4 text-xs text-slate-400">
           Ingressos = cobraments + dipòsits retinguts. Les despeses inclouen el cost de personal.
-          El <strong>benefici = Ingressos + fiança − Despeses</strong> (les fiances en custòdia són
-          diners retornables; tingues-ho en compte). Exporta-ho tot a CSV per a la gestoria.
+          El <strong>Benefici</strong> és Ingressos − Despeses (el real); el <strong>Benefici + fiança</strong>
+          hi suma les fiances en custòdia (diners retornables). Exporta-ho tot a CSV per a la gestoria.
         </p>
       )}
     </div>
