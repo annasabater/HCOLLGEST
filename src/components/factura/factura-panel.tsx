@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getJSON, postJSON, delJSON, ApiError } from '@/lib/api';
+import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { Receipt, ShieldCheck, ShieldOff, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -205,6 +205,16 @@ export function FacturaPanel({
     }
   }
 
+  async function toggleEstat(id: string, actual: 'PENDENT' | 'COBRADA') {
+    const nou = actual === 'COBRADA' ? 'PENDENT' : 'COBRADA';
+    try {
+      await patchJSON(`/api/factures/${id}`, { estat: nou });
+      router.refresh();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "No s'ha pogut canviar l'estat");
+    }
+  }
+
   return (
     <div className="space-y-3">
       {factures.length === 0 && !open && (
@@ -231,9 +241,16 @@ export function FacturaPanel({
           </a>
           <div className="flex items-center gap-2">
             {formatEur(Number(f.total))}
-            <Badge tone={f.estat === 'COBRADA' ? 'success' : 'warning'}>
-              {f.estat === 'COBRADA' ? 'Cobrada' : 'Pendent'}
-            </Badge>
+            <button
+              type="button"
+              onClick={() => toggleEstat(f.id, f.estat)}
+              title="Canviar entre Cobrada i Pendent"
+              className="cursor-pointer"
+            >
+              <Badge tone={f.estat === 'COBRADA' ? 'success' : 'warning'}>
+                {f.estat === 'COBRADA' ? 'Cobrada' : 'Pendent'}
+              </Badge>
+            </button>
             <Link href={`/factures/${f.id}`} title="Editar" className="text-slate-400 hover:text-brand-600">
               <Pencil className="h-4 w-4" />
             </Link>
