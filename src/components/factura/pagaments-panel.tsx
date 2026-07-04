@@ -251,7 +251,7 @@ export function PagamentsPanel({
         </div>
       )}
 
-      {aCompte.length > 0 && (
+      {(aCompte.length > 0 || fiancesCustodia.length > 0) && (
         <div className="space-y-2">
           {aCompte.map((p) =>
             editPagId === p.id ? (
