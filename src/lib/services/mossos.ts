@@ -8,6 +8,7 @@ import { prisma } from '../db';
 import { audit } from '../audit';
 import { decryptString } from '../crypto';
 import { saveUpload } from '../storage';
+import { enviaJustificantsEmailAuto } from './justificants-email';
 import {
   buildFileName,
   buildFitxerBuffer,
@@ -302,6 +303,10 @@ export async function enviarFitxerMossos(
     detall: { accio: 'puja_auto', ok: true },
     ip,
   });
+
+  // Amb el comprovant de Mossos ja hi són els 3 justificants: envia'ls per correu
+  // automàticament (una sola vegada, best-effort — no bloqueja si el correu falla).
+  await enviaJustificantsEmailAuto(estanciaId, ip);
 
   return { ok: true, fitxerNom: gen.fitxerNom, codiValidacio: result.codiValidacio };
 }
