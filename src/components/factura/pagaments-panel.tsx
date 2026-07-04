@@ -531,7 +531,12 @@ export function PagamentsPanel({
           <Button size="sm" variant="outline" onClick={() => obrir('PAGAMENT')}>
             <Plus className="h-4 w-4" /> Afegir pagament
           </Button>
-          <Button size="sm" variant="outline" onClick={() => obrir('FIANCA')}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-orange-400 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+            onClick={() => obrir('FIANCA')}
+          >
             <ShieldCheck className="h-4 w-4" /> Afegir fiança
           </Button>
         </div>
