@@ -82,6 +82,8 @@ export function FacturaPanel({
   const [numero, setNumero] = useState('');
   const [selPag, setSelPag] = useState<Set<string>>(new Set());
   const [selFi, setSelFi] = useState<Set<string>>(new Set());
+  // Simple: si la fiança seleccionada compta al total (fiscal sempre la inclou).
+  const [ambFianca, setAmbFianca] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,6 +93,9 @@ export function FacturaPanel({
 
   const totalPag = pagamentsLliures.filter((p) => selPag.has(p.id)).reduce((a, p) => a + p.import, 0);
   const totalFi = fiancesLliures.filter((f) => selFi.has(f.id)).reduce((a, f) => a + f.import, 0);
+  // La fiança compta al total si és fiscal, o si a la simple s'ha triat "amb fiança".
+  const incloureFianca = esFiscal || ambFianca;
+  const totalFactura = incloureFianca ? totalPag + totalFi : totalPag;
 
   function buildDesc(): string {
     const habLabel = tipusHabitacio(habitacioNom);
@@ -108,6 +113,7 @@ export function FacturaPanel({
   async function obrir(t: 'FACTURA_SIMPLIFICADA' | 'FACTURA') {
     setTipus(t);
     setError(null);
+    setAmbFianca(true);
     // Preselecciona tots els pendents (el cas habitual: facturar-ho tot).
     setSelPag(new Set(pagamentsLliures.map((p) => p.id)));
     setSelFi(new Set(fiancesLliures.map((f) => f.id)));
@@ -135,6 +141,7 @@ export function FacturaPanel({
         pagamentIds: [...selPag],
         fiancaIds: [...selFi],
         tipusDocument: tipus,
+        ambFianca: incloureFianca,
         numero: numero.trim() || undefined,
         descripcioAllotjament: buildDesc(),
       });
@@ -217,12 +224,16 @@ export function FacturaPanel({
           {/* Fiança (a part) */}
           {fiancesLliures.length > 0 && (
             <div>
-              <p className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-500">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                {esFiscal
-                  ? 'Fiança (inclosa al total de la factura fiscal)'
-                  : 'Fiança (a part — surt al document «amb fiança»)'}
-              </p>
+              {esFiscal ? (
+                <p className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-500">
+                  <ShieldCheck className="h-3.5 w-3.5" /> Fiança (inclosa al total de la factura fiscal)
+                </p>
+              ) : (
+                <label className="mb-1 flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600">
+                  <input type="checkbox" checked={ambFianca} onChange={(e) => setAmbFianca(e.target.checked)} />
+                  <ShieldCheck className="h-3.5 w-3.5 text-amber-600" /> Incloure la fiança al total (amb fiança)
+                </label>
+              )}
               <div className="space-y-1">
                 {fiancesLliures.map((f) => (
                   <label
@@ -242,20 +253,11 @@ export function FacturaPanel({
 
           {/* Resum */}
           <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
-            {esFiscal ? (
-              <>
-                Factura fiscal: <strong>{formatEur(totalPag + totalFi)}</strong>
-                {totalFi > 0 && (
-                  <span className="text-slate-500"> (fiança inclosa)</span>
-                )}
-              </>
-            ) : (
-              <>
-                Factura: <strong>{formatEur(totalPag)}</strong>
-                {totalFi > 0 && (
-                  <span className="text-slate-500"> · amb fiança: <strong>{formatEur(totalPag + totalFi)}</strong></span>
-                )}
-              </>
+            {esFiscal ? 'Factura fiscal: ' : 'Factura: '}
+            <strong>{formatEur(totalFactura)}</strong>
+            {totalFi > 0 && incloureFianca && <span className="text-slate-500"> (fiança inclosa)</span>}
+            {totalFi > 0 && !incloureFianca && (
+              <span className="text-slate-500"> · amb fiança: <strong>{formatEur(totalPag + totalFi)}</strong></span>
             )}
           </div>
 

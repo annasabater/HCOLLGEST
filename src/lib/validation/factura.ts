@@ -93,6 +93,8 @@ export const FacturaSeleccioSchema = z.object({
   tipusDocument: z.enum(['RECIBO', 'FACTURA', 'FACTURA_SIMPLIFICADA']).default('RECIBO'),
   numero: z.string().trim().min(1).optional(),
   descripcioAllotjament: z.string().trim().min(1).optional(),
+  // Simplificada: si true, la fiança compta al total. Fiscal: sempre inclosa.
+  ambFianca: z.boolean().optional(),
 }).refine(
   (d) => d.pagamentIds.length + d.fiancaIds.length > 0,
   { message: 'Selecciona almenys un pagament o fiança' },

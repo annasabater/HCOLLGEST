@@ -702,10 +702,10 @@ export async function createFacturaSeleccio(
     const esFiscal = input.tipusDocument === 'FACTURA';
     const totalPag = round2(pagaments.reduce((a, p) => a + Number(p.import), 0));
     const totalFi = round2(fiances.reduce((a, f) => a + Number(f.import), 0));
-    // FISCAL: SEMPRE inclou la fiança al total (base = pagaments + fiança), com a
-    // línia a part. SIMPLIFICADA: la fiança NO entra al total (és dipòsit en
-    // custòdia); va a part al document "amb fiança".
-    const total = esFiscal ? round2(totalPag + totalFi) : totalPag;
+    // La fiança compta al total si és FISCAL (sempre) o si a la simplificada s'ha
+    // triat "amb fiança". Si no, la fiança va a part (document "amb fiança").
+    const incloureFianca = esFiscal || input.ambFianca === true;
+    const total = incloureFianca ? round2(totalPag + totalFi) : totalPag;
 
     let numero: string;
     if (input.numero?.trim()) {
@@ -737,13 +737,13 @@ export async function createFacturaSeleccio(
         total,
         estat: 'COBRADA',
         tipusDocument: input.tipusDocument ?? 'RECIBO',
-        fiancaInclosa: esFiscal && totalFi > 0 ? true : undefined,
+        fiancaInclosa: totalFi > 0 ? incloureFianca : undefined,
         linies: {
           create: [
             ...(totalPag > 0
               ? [{ concepte: 'ALLOTJAMENT' as const, descripcio: descAllot, import: totalPag }]
               : []),
-            ...(esFiscal && totalFi > 0
+            ...(incloureFianca && totalFi > 0
               ? [{ concepte: 'ALLOTJAMENT' as const, descripcio: 'Fiança', import: totalFi }]
               : []),
           ],
