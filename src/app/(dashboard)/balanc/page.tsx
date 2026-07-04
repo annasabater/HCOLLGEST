@@ -97,7 +97,7 @@ interface BalancSituacio {
   mancances: string[];
 }
 
-type Mode = 'mes' | 'any' | 'situacio';
+type Mode = 'mes' | 'rang' | 'any' | 'situacio';
 const MESOS = ['Gen', 'Feb', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Des'];
 const todayISO = () => {
   const d = new Date();
@@ -285,9 +285,15 @@ export default function BalancPage() {
   const [dataTall, setDataTall] = useState(todayISO);
   const [situacio, setSituacio] = useState<BalancSituacio | null>(null);
   const [incloureCustodiaSituacio, setIncloureCustodiaSituacio] = useState(true);
+  // Rang de mesos (trimestre / de X mes a Y mes). Per defecte, el trimestre actual.
+  const iniciTrim = (() => { const n = new Date(); const q = Math.floor(n.getMonth() / 3); return { y: n.getFullYear(), m1: q * 3 + 1, m2: q * 3 + 3 }; })();
+  const [desde, setDesde] = useState(`${iniciTrim.y}-${String(iniciTrim.m1).padStart(2, '0')}`);
+  const [fins, setFins] = useState(`${iniciTrim.y}-${String(iniciTrim.m2).padStart(2, '0')}`);
+  const [rang, setRang] = useState<Balanc | null>(null);
 
   const mesParam = `${anchor.getFullYear()}-${String(anchor.getMonth() + 1).padStart(2, '0')}`;
   const loadMes = useCallback(async () => setMes(await getJSON<Balanc>(`/api/balanc?mes=${mesParam}`)), [mesParam]);
+  const loadRang = useCallback(async () => setRang(await getJSON<Balanc>(`/api/balanc/rang?desde=${desde}&fins=${fins}`)), [desde, fins]);
   const loadAny = useCallback(async () => setAny(await getJSON<BalancAny>(`/api/balanc/any?any=${year}`)), [year]);
   const loadSituacio = useCallback(
     async () =>
@@ -300,9 +306,10 @@ export default function BalancPage() {
   );
   useEffect(() => {
     if (mode === 'mes') loadMes();
+    else if (mode === 'rang') loadRang();
     else if (mode === 'any') loadAny();
     else loadSituacio();
-  }, [mode, loadMes, loadAny, loadSituacio]);
+  }, [mode, loadMes, loadRang, loadAny, loadSituacio]);
 
   const mesLabel = new Intl.DateTimeFormat('ca-ES', { month: 'long', year: 'numeric' }).format(anchor);
 
@@ -325,6 +332,24 @@ export default function BalancPage() {
         ...mes.despesesPerCategoria.map((d) => [d.categoria, d.import.toFixed(2)]),
       ];
       downloadCSV(`balanc-${mes.mes}.csv`, rows);
+    } else if (mode === 'rang' && rang) {
+      const rows: (string | number)[][] = [
+        [`Balanç ${rang.mes}`, ''],
+        ['Concepte', 'Import'],
+        ['Ingressos (sense fiança)', rang.ingressos.toFixed(2)],
+        ['Fiança en custòdia', rang.retencions.toFixed(2)],
+        ['Ingressos + fiança', rang.ingressosAmbRetencions.toFixed(2)],
+        ['Despeses (inclou personal)', (rang.despeses + rang.personal).toFixed(2)],
+        ['Benefici', rang.benefici.toFixed(2)],
+        ['Marge %', marge(rang.benefici, rang.ingressos)],
+        [''],
+        ['Ingressos per mètode', ''],
+        ...metodeItems(rang.ingressosPerMetode).map((m) => [m.label, m.value.toFixed(2)]),
+        [''],
+        ['Despeses per categoria', ''],
+        ...rang.despesesPerCategoria.map((d) => [d.categoria, d.import.toFixed(2)]),
+      ];
+      downloadCSV(`balanc-rang-${rang.mes.replace(/[^\d-]+/g, '_')}.csv`, rows);
     } else if (mode === 'any' && any) {
       const rows: (string | number)[][] = [
         [`Balanç ${any.any}`, ''],
@@ -386,7 +411,10 @@ export default function BalancPage() {
                 <button onClick={() => setMode('mes')} className={cn('px-3 py-1.5 text-sm', mode === 'mes' ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>
                   Mes
                 </button>
-                <button onClick={() => setMode('any')} className={cn('px-3 py-1.5 text-sm', mode === 'any' ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>
+                <button onClick={() => setMode('rang')} className={cn('border-l border-slate-300 px-3 py-1.5 text-sm', mode === 'rang' ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>
+                  Trimestre / rang
+                </button>
+                <button onClick={() => setMode('any')} className={cn('border-l border-slate-300 px-3 py-1.5 text-sm', mode === 'any' ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>
                   Any
                 </button>
               </div>
@@ -401,20 +429,22 @@ export default function BalancPage() {
             <Button variant="outline" size="sm" onClick={exporta}>
               <Download className="h-4 w-4" /> CSV
             </Button>
-            <a
-              href={
-                mode === 'mes'
-                  ? `/api/balanc/pdf?mes=${mesParam}`
-                  : mode === 'any'
-                    ? `/api/balanc/pdf?any=${year}`
-                    : `/api/balanc/pdf?situacio=${dataTall}&custodia=${incloureCustodiaSituacio ? 'true' : 'false'}`
-              }
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              <FileText className="h-4 w-4" /> PDF
-            </a>
+            {mode !== 'rang' && (
+              <a
+                href={
+                  mode === 'mes'
+                    ? `/api/balanc/pdf?mes=${mesParam}`
+                    : mode === 'any'
+                      ? `/api/balanc/pdf?any=${year}`
+                      : `/api/balanc/pdf?situacio=${dataTall}&custodia=${incloureCustodiaSituacio ? 'true' : 'false'}`
+                }
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                <FileText className="h-4 w-4" /> PDF
+              </a>
+            )}
           </div>
         }
       />
@@ -458,6 +488,58 @@ export default function BalancPage() {
 
 
               <BreakdownsSection data={ambPersonal(mes, mes.personal)} />
+            </>
+          )}
+        </div>
+      ) : mode === 'rang' ? (
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-sm text-slate-600">De</label>
+            <input
+              type="month"
+              value={desde}
+              onChange={(e) => setDesde(e.target.value)}
+              className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+            />
+            <label className="text-sm text-slate-600">a</label>
+            <input
+              type="month"
+              value={fins}
+              onChange={(e) => setFins(e.target.value)}
+              className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+            />
+            <span className="mx-1 text-slate-300">·</span>
+            <span className="text-xs text-slate-400">Trimestre:</span>
+            {[1, 2, 3, 4].map((q) => (
+              <Button
+                key={q}
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const y = Number(desde.slice(0, 4)) || new Date().getFullYear();
+                  setDesde(`${y}-${String((q - 1) * 3 + 1).padStart(2, '0')}`);
+                  setFins(`${y}-${String((q - 1) * 3 + 3).padStart(2, '0')}`);
+                }}
+              >
+                T{q}
+              </Button>
+            ))}
+          </div>
+          {rang && (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <Kpi label="Ingressos" value={<Eur value={rang.ingressos} />} icon={TrendingUp} color="text-green-600" big />
+                <Kpi label="Despeses (sense personal)" value={<Eur value={rang.despeses} />} icon={TrendingDown} color="text-red-600" />
+                <Kpi label="Benefici" value={<Eur value={rang.benefici} />} icon={Wallet} color={rang.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big />
+                {!restringit && (
+                  <>
+                    <Kpi label="Ingressos + fiança" value={<Eur value={rang.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
+                    <Kpi label="Despeses (amb personal)" value={<Eur value={rang.despeses + rang.personal} />} icon={TrendingDown} color="text-red-600" />
+                    <Kpi label="Benefici + fiança" value={<Eur value={rang.benefici + rang.retencions} />} icon={Wallet} color={rang.benefici + rang.retencions >= 0 ? 'text-green-600' : 'text-red-600'} big />
+                  </>
+                )}
+              </div>
+              <BreakdownsSection data={ambPersonal(rang, rang.personal)} />
             </>
           )}
         </div>
