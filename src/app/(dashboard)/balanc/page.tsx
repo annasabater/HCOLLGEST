@@ -687,6 +687,12 @@ export default function BalancPage() {
               </div>
             )}
           </div>
+          <p className="text-xs text-slate-400">
+            El balanç de situació és una <strong>foto acumulada</strong>: mostra tot el que tens i
+            deus a final del període triat (no només els moviments d&apos;aquell període). Per veure
+            els ingressos i despeses <strong>només</strong> d&apos;un mes, trimestre o any, fes servir
+            les vistes <strong>Mes</strong>, <strong>Trimestre / rang</strong> o <strong>Any</strong>.
+          </p>
           {situacio && <SituacioView data={situacio} />}
         </div>
       )}
