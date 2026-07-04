@@ -110,7 +110,7 @@ export function FacturaPanel({
     setSelPag(new Set(pagamentsLliures.map((p) => p.id)));
     setSelFi(new Set(fiancesLliures.map((f) => f.id)));
     try {
-      const res = await getJSON<{ numero: string }>('/api/factures/seguent-numero');
+      const res = await getJSON<{ numero: string }>(`/api/factures/seguent-numero?estanciaId=${estanciaId}`);
       setNumero(res.numero);
     } catch {
       setNumero('');
@@ -127,12 +127,11 @@ export function FacturaPanel({
     setSaving(true);
     setError(null);
     try {
-      const seq = numero.replace(/^\d{4}-/, '').trim();
       await postJSON(`/api/estancies/${estanciaId}/factura-seleccio`, {
         pagamentIds: [...selPag],
         fiancaIds: [...selFi],
         tipusDocument: tipus,
-        numero: seq ? numero.trim() : undefined,
+        numero: numero.trim() || undefined,
         descripcioAllotjament: buildDesc(),
       });
       setOpen(false);
@@ -156,7 +155,7 @@ export function FacturaPanel({
             className="flex items-center justify-between px-3 py-2 hover:bg-slate-50"
           >
             <span className="flex items-center gap-2 font-medium text-slate-800">
-              <Receipt className="h-4 w-4 text-slate-400" /> {f.numero.replace(/^\d{4}-/, '')}
+              <Receipt className="h-4 w-4 text-slate-400" /> {f.numero}
               {f.tipusDocument && (
                 <span className="text-xs font-normal text-slate-400">
                   {TIPUS_LABEL[f.tipusDocument] ?? f.tipusDocument}
@@ -175,16 +174,13 @@ export function FacturaPanel({
 
       {open ? (
         <form onSubmit={crear} className="space-y-3 rounded-lg border border-slate-200 p-3">
-          {/* Número (es mostra sense l'any; internament es manté AAAA-NNNN) */}
+          {/* Número (basat en el contracte de l'estada: 26004, 26004.1…) */}
           <label className="flex items-center gap-2 text-sm">
             <span className="text-xs font-medium text-slate-500">Núm. factura:</span>
             <Input
               className="h-9 w-40"
-              value={numero.replace(/^\d{4}-/, '')}
-              onChange={(e) => {
-                const any = numero.match(/^(\d{4})-/)?.[1] ?? String(new Date().getFullYear());
-                setNumero(`${any}-${e.target.value}`);
-              }}
+              value={numero}
+              onChange={(e) => setNumero(e.target.value)}
             />
           </label>
 

@@ -45,6 +45,38 @@ export async function proximNumeroFactura(
   return `${prefix}${String(seq).padStart(4, '0')}`;
 }
 
+/**
+ * Número de factura basat en el NÚMERO DE CONTRACTE de l'estada: la primera
+ * factura és el número de contracte tal qual (p. ex. "26004") i les següents de
+ * la mateixa estada hi afegeixen ".1", ".2"… Inclou factures esborrades perquè el
+ * número és @unique i no es pot reutilitzar. Retorna '' si no hi ha núm. contracte.
+ */
+export async function proximNumeroFacturaContracte(
+  client: Prisma.TransactionClient,
+  estanciaId: string,
+): Promise<string> {
+  const est = await client.estancia.findUnique({
+    where: { id: estanciaId },
+    select: { numContracte: true },
+  });
+  const base = (est?.numContracte ?? '').trim();
+  if (!base) return '';
+  const existents = await client.factura.findMany({
+    where: { OR: [{ numero: base }, { numero: { startsWith: `${base}.` } }] },
+    select: { numero: true },
+  });
+  const nums = existents.map((f) => f.numero);
+  if (!nums.includes(base)) return base;
+  let max = 0;
+  for (const n of nums) {
+    if (n.startsWith(`${base}.`)) {
+      const s = parseInt(n.slice(base.length + 1), 10);
+      if (!isNaN(s) && s > max) max = s;
+    }
+  }
+  return `${base}.${max + 1}`;
+}
+
 export async function createFactura(
   raw: FacturaCreateInput,
   actor: { id: string } | null,
@@ -660,7 +692,10 @@ export async function createFacturaSeleccio(
       }
       numero = input.numero.trim();
     } else {
-      numero = await proximNumeroFactura(tx, new Date().getFullYear());
+      // Per defecte, número basat en el contracte de l'estada (26004, 26004.1…).
+      numero =
+        (await proximNumeroFacturaContracte(tx, estanciaId)) ||
+        (await proximNumeroFactura(tx, new Date().getFullYear()));
     }
 
     // Una sola línia d'allotjament (l'ingrés) amb una descripció llegible per al
