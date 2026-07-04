@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, UserCheck, Search, AlertTriangle, PawPrint, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, UserCheck, Search, AlertTriangle, PawPrint, RotateCcw, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -238,6 +238,10 @@ export function MasterForm({
     return () => { if (draftTimer.current) clearTimeout(draftTimer.current); };
   }, [mode, tipusRegistre, estancia, viatgers, portaMascota, mascotes, pagaments, fiances]);
   // ──────────────────────────────────────────────────────────────────────────
+
+  // Confirmació del número de contracte proposat: en alta comença sense confirmar
+  // (cal fer tick o editar-lo); en edició ja es considera confirmat.
+  const [numeroConfirmat, setNumeroConfirmat] = useState(isEdit);
 
   // En alta, proposa el següent número de contracte (últim registrat + 1) si el
   // camp encara és buit. Es fa un sol cop; si l'usuari l'edita, no s'hi torna.
@@ -732,11 +736,27 @@ export function MasterForm({
                 : 'Proposat automàticament (l’últim + 1). Revisa’l i canvia’l si cal.'
             }
           >
-            <Input
-              uppercase
-              value={estancia.numContracte}
-              onChange={(e) => setEstancia({ ...estancia, numContracte: e.target.value })}
-            />
+            <div className="flex items-center gap-2">
+              <Input
+                uppercase
+                value={estancia.numContracte}
+                // Editar el número el dóna per confirmat (és la teva tria).
+                onChange={(e) => { setEstancia({ ...estancia, numContracte: e.target.value }); setNumeroConfirmat(true); }}
+              />
+              <button
+                type="button"
+                onClick={() => setNumeroConfirmat(true)}
+                title={numeroConfirmat ? 'Número confirmat' : 'Confirmar aquest número'}
+                aria-pressed={numeroConfirmat}
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+                  numeroConfirmat
+                    ? 'border-green-600 bg-green-600 text-white'
+                    : 'border-slate-300 text-slate-400 hover:border-green-400 hover:text-green-600'
+                }`}
+              >
+                <Check className="h-4 w-4" />
+              </button>
+            </div>
           </Field>
           <Field label="Any" required error={err('estancia.anyContracte')}>
             <Input
@@ -1081,11 +1101,23 @@ export function MasterForm({
                     <Input uppercase value={v.numSuport} onChange={(e) => setV(i, { numSuport: e.target.value })} />
                   </Field>
                   <Field label="Data d’expedició" error={err(P('dataExpedicio'))}>
-                    <Input
-                      type="date"
-                      value={v.dataExpedicio}
-                      onChange={(e) => setV(i, { dataExpedicio: e.target.value })}
-                    />
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="date"
+                        value={v.dataExpedicio}
+                        onChange={(e) => setV(i, { dataExpedicio: e.target.value })}
+                      />
+                      {v.dataExpedicio && (
+                        <button
+                          type="button"
+                          onClick={() => setV(i, { dataExpedicio: '' })}
+                          title="Esborrar la data"
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-400 hover:border-red-400 hover:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   </Field>
                   <Field label="Sexe">
                     <Select value={v.sexe} onChange={(e) => setV(i, { sexe: e.target.value })}>
