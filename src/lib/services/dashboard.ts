@@ -355,15 +355,17 @@ export async function getBalanc(monthStart: Date, monthEnd: Date, opts?: Finance
     };
   });
 
+  const ingressosAmbRetencions = r2(ingressos + retencions);
   return {
     cobraments,
     retinguts,
     ingressos, // el que NO es reté (ingrés real)
     retencions, // el que es reté (en custòdia)
-    ingressosAmbRetencions: r2(ingressos + retencions),
+    ingressosAmbRetencions,
     despeses,
     personal,
-    benefici: r2(ingressos - despeses - personal),
+    // Benefici = Ingressos + fiança − Despeses (personal inclòs).
+    benefici: r2(ingressosAmbRetencions - despeses - personal),
     custodiaDetall, // de qui són els dipòsits en custòdia
   };
 }

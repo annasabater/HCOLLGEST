@@ -475,13 +475,6 @@ export default function BalancPage() {
                   <>
                     <Kpi label="Ingressos + fiança" value={<Eur value={mes.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
                     <Kpi label="Despeses (amb personal)" value={<Eur value={mes.despeses + mes.personal} />} icon={TrendingDown} color="text-red-600" />
-                    <Kpi
-                      label="Benefici + fiança"
-                      value={<Eur value={mes.benefici + mes.retencions} />}
-                      icon={Wallet}
-                      color={mes.benefici + mes.retencions >= 0 ? 'text-green-600' : 'text-red-600'}
-                      big
-                    />
                   </>
                 )}
               </div>
@@ -535,7 +528,6 @@ export default function BalancPage() {
                   <>
                     <Kpi label="Ingressos + fiança" value={<Eur value={rang.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
                     <Kpi label="Despeses (amb personal)" value={<Eur value={rang.despeses + rang.personal} />} icon={TrendingDown} color="text-red-600" />
-                    <Kpi label="Benefici + fiança" value={<Eur value={rang.benefici + rang.retencions} />} icon={Wallet} color={rang.benefici + rang.retencions >= 0 ? 'text-green-600' : 'text-red-600'} big />
                   </>
                 )}
               </div>
@@ -646,9 +638,9 @@ export default function BalancPage() {
 
       {mode !== 'situacio' && (
         <p className="mt-4 text-xs text-slate-400">
-          Ingressos = cobraments + dipòsits retinguts. Les retencions en custòdia no són ingrés. Les
-          despeses inclouen el cost de personal i el benefici és ingressos − despeses. Exporta-ho tot
-          a CSV per a la gestoria.
+          Ingressos = cobraments + dipòsits retinguts. Les despeses inclouen el cost de personal.
+          El <strong>benefici = Ingressos + fiança − Despeses</strong> (les fiances en custòdia són
+          diners retornables; tingues-ho en compte). Exporta-ho tot a CSV per a la gestoria.
         </p>
       )}
     </div>
