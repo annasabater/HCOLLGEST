@@ -98,10 +98,6 @@ interface BalancSituacio {
 
 type Mode = 'mes' | 'rang' | 'any' | 'situacio';
 const MESOS = ['Gen', 'Feb', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Des'];
-const todayISO = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
 const marge = (benefici: number, ingressos: number) =>
   ingressos > 0 ? Math.round((benefici / ingressos) * 100) : 0;
 const variacio = (cur: number, prev: number) =>
@@ -281,14 +277,24 @@ export default function BalancPage() {
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [mes, setMes] = useState<Balanc | null>(null);
   const [any, setAny] = useState<BalancAny | null>(null);
-  const [dataTall, setDataTall] = useState(todayISO);
   const [situacio, setSituacio] = useState<BalancSituacio | null>(null);
   const [incloureCustodiaSituacio, setIncloureCustodiaSituacio] = useState(true);
+  // Període del balanç de situació: el tall és a FINAL de mes / trimestre / any.
+  const [situacioPeriode, setSituacioPeriode] = useState<'mes' | 'trimestre' | 'any'>('mes');
   // Rang de mesos (trimestre / de X mes a Y mes). Per defecte, el trimestre actual.
   const iniciTrim = (() => { const n = new Date(); const q = Math.floor(n.getMonth() / 3); return { y: n.getFullYear(), m1: q * 3 + 1, m2: q * 3 + 3 }; })();
   const [desde, setDesde] = useState(`${iniciTrim.y}-${String(iniciTrim.m1).padStart(2, '0')}`);
   const [fins, setFins] = useState(`${iniciTrim.y}-${String(iniciTrim.m2).padStart(2, '0')}`);
   const [rang, setRang] = useState<Balanc | null>(null);
+
+  // Data de tall del balanç de situació = últim dia del període triat.
+  const isoDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const situacioCutoff =
+    situacioPeriode === 'any'
+      ? isoDay(new Date(year, 11, 31))
+      : situacioPeriode === 'trimestre'
+        ? isoDay(new Date(anchor.getFullYear(), Math.floor(anchor.getMonth() / 3) * 3 + 3, 0))
+        : isoDay(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0));
 
   const mesParam = `${anchor.getFullYear()}-${String(anchor.getMonth() + 1).padStart(2, '0')}`;
   const loadMes = useCallback(async () => setMes(await getJSON<Balanc>(`/api/balanc?mes=${mesParam}`)), [mesParam]);
@@ -298,10 +304,10 @@ export default function BalancPage() {
     async () =>
       setSituacio(
         await getJSON<BalancSituacio>(
-          `/api/balanc/situacio?data=${dataTall}&custodia=${!restringit && incloureCustodiaSituacio ? 'true' : 'false'}`,
+          `/api/balanc/situacio?data=${situacioCutoff}&custodia=${!restringit && incloureCustodiaSituacio ? 'true' : 'false'}`,
         ),
       ),
-    [dataTall, incloureCustodiaSituacio, restringit],
+    [situacioCutoff, incloureCustodiaSituacio, restringit],
   );
   useEffect(() => {
     if (mode === 'mes') loadMes();
@@ -435,7 +441,7 @@ export default function BalancPage() {
                     ? `/api/balanc/pdf?mes=${mesParam}`
                     : mode === 'any'
                       ? `/api/balanc/pdf?any=${year}`
-                      : `/api/balanc/pdf?situacio=${dataTall}&custodia=${incloureCustodiaSituacio ? 'true' : 'false'}`
+                      : `/api/balanc/pdf?situacio=${situacioCutoff}&custodia=${incloureCustodiaSituacio ? 'true' : 'false'}`
                 }
                 target="_blank"
                 rel="noreferrer"
@@ -613,19 +619,26 @@ export default function BalancPage() {
         <div className="space-y-6">
           <div className="flex flex-wrap items-center gap-2">
             <Scale className="h-4 w-4 text-slate-400" />
-            <label className="text-sm text-slate-600" htmlFor="data-tall">
-              A data de
-            </label>
-            <input
-              id="data-tall"
-              type="date"
-              value={dataTall}
-              onChange={(e) => setDataTall(e.target.value || todayISO())}
-              className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-slate-700"
-            />
-            <Button variant="outline" size="sm" onClick={() => setDataTall(todayISO())}>
-              Avui
+            {/* Període: el tall és a final de mes / trimestre / any */}
+            <div className="flex overflow-hidden rounded-lg border border-slate-300">
+              <button type="button" onClick={() => setSituacioPeriode('mes')} className={cn('px-3 py-1.5 text-sm', situacioPeriode === 'mes' ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>Mes</button>
+              <button type="button" onClick={() => setSituacioPeriode('trimestre')} className={cn('border-l border-slate-300 px-3 py-1.5 text-sm', situacioPeriode === 'trimestre' ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>Trimestre</button>
+              <button type="button" onClick={() => setSituacioPeriode('any')} className={cn('border-l border-slate-300 px-3 py-1.5 text-sm', situacioPeriode === 'any' ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>Any</button>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => situacioPeriode === 'any' ? setYear(year - 1) : setAnchor(addMonths(anchor, situacioPeriode === 'trimestre' ? -3 : -1))}>
+              <ChevronLeft className="h-4 w-4" />
             </Button>
+            <span className="min-w-24 text-center text-sm font-medium capitalize text-slate-600">
+              {situacioPeriode === 'any'
+                ? `${year}`
+                : situacioPeriode === 'trimestre'
+                  ? `T${Math.floor(anchor.getMonth() / 3) + 1} ${anchor.getFullYear()}`
+                  : mesLabel}
+            </span>
+            <Button variant="outline" size="sm" onClick={() => situacioPeriode === 'any' ? setYear(year + 1) : setAnchor(addMonths(anchor, situacioPeriode === 'trimestre' ? 3 : 1))}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <span className="text-xs text-slate-400">(a {situacioCutoff.split('-').reverse().join('/')})</span>
             {!restringit && (
               <div className="ml-2 flex overflow-hidden rounded-lg border border-slate-300">
                 <button
