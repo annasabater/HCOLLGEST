@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, UserCheck, Search, AlertTriangle, PawPrint, RotateCcw, Check } from 'lucide-react';
+import { Plus, Trash2, UserCheck, Search, AlertTriangle, PawPrint, RotateCcw, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -242,6 +242,26 @@ export function MasterForm({
   // Confirmació del número de contracte proposat: en alta comença sense confirmar
   // (cal fer tick o editar-lo); en edició ja es considera confirmat.
   const [numeroConfirmat, setNumeroConfirmat] = useState(isEdit);
+  // Si el número ja està en ús per aquest any (comprovat contra la BD).
+  const [numeroOcupat, setNumeroOcupat] = useState(false);
+
+  // Comprova (amb una petita espera) si el número de contracte ja està agafat.
+  useEffect(() => {
+    const num = estancia.numContracte.trim();
+    if (!num) { setNumeroOcupat(false); return; }
+    let cancel = false;
+    const t = setTimeout(async () => {
+      try {
+        const p = new URLSearchParams({ any: String(estancia.anyContracte), numero: num });
+        if (isEdit && estanciaId) p.set('exclou', estanciaId);
+        const r = await getJSON<{ exists: boolean }>(`/api/estancies/check-numero?${p.toString()}`);
+        if (cancel) return;
+        setNumeroOcupat(r.exists);
+        if (r.exists) setNumeroConfirmat(false); // ocupat → no pot quedar confirmat
+      } catch { /* silenciós */ }
+    }, 350);
+    return () => { cancel = true; clearTimeout(t); };
+  }, [estancia.numContracte, estancia.anyContracte, isEdit, estanciaId]);
 
   // En alta, proposa el següent número de contracte (últim registrat + 1) si el
   // camp encara és buit. Es fa un sol cop; si l'usuari l'edita, no s'hi torna.
@@ -729,32 +749,38 @@ export function MasterForm({
           <Field
             label="Número de contracte"
             required={tipusRegistre !== 'RESERVA'}
-            error={err('estancia.numContracte')}
+            error={numeroOcupat ? 'Aquest número ja està en ús. Tria’n un altre.' : err('estancia.numContracte')}
             hint={
-              tipusRegistre === 'RESERVA'
-                ? 'Opcional per a reserves · es pot omplir al check-in'
-                : 'Proposat automàticament (l’últim + 1). Revisa’l i canvia’l si cal.'
+              numeroOcupat
+                ? undefined
+                : tipusRegistre === 'RESERVA'
+                  ? 'Opcional per a reserves · es pot omplir al check-in'
+                  : 'Proposat automàticament (l’últim + 1). Revisa’l i canvia’l si cal.'
             }
           >
             <div className="flex items-center gap-2">
               <Input
                 uppercase
                 value={estancia.numContracte}
-                // Editar el número el dóna per confirmat (és la teva tria).
+                // Editar el número el dóna per confirmat (si no està ocupat; la
+                // comprovació de disponibilitat el pot tornar a treure).
                 onChange={(e) => { setEstancia({ ...estancia, numContracte: e.target.value }); setNumeroConfirmat(true); }}
               />
               <button
                 type="button"
-                onClick={() => setNumeroConfirmat(true)}
-                title={numeroConfirmat ? 'Número confirmat' : 'Confirmar aquest número'}
+                disabled={numeroOcupat}
+                onClick={() => { if (!numeroOcupat) setNumeroConfirmat(true); }}
+                title={numeroOcupat ? 'Aquest número ja està en ús' : numeroConfirmat ? 'Número confirmat' : 'Confirmar aquest número'}
                 aria-pressed={numeroConfirmat}
                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors ${
-                  numeroConfirmat
-                    ? 'border-green-600 bg-green-600 text-white'
-                    : 'border-slate-300 text-slate-400 hover:border-green-400 hover:text-green-600'
+                  numeroOcupat
+                    ? 'cursor-not-allowed border-red-500 bg-red-500 text-white'
+                    : numeroConfirmat
+                      ? 'border-green-600 bg-green-600 text-white'
+                      : 'border-slate-300 text-slate-400 hover:border-green-400 hover:text-green-600'
                 }`}
               >
-                <Check className="h-4 w-4" />
+                {numeroOcupat ? <X className="h-4 w-4" /> : <Check className="h-4 w-4" />}
               </button>
             </div>
           </Field>
