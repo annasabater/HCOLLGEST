@@ -300,6 +300,25 @@ export default function BalancPage() {
   const avuiIso = isoDay(new Date());
   const situacioCutoff = finalPeriode > avuiIso ? avuiIso : finalPeriode;
 
+  // En mode Situació NO es pot navegar a períodes futurs (no tenen moviments i
+  // el saldo seria el d'avui, cosa que confon). La fletxa ">" es desactiva al
+  // període actual, i si s'entra amb un anchor futur, es reajusta a avui.
+  const ara = new Date();
+  const potAvancarSituacio =
+    situacioPeriode === 'any'
+      ? year < ara.getFullYear()
+      : anchor.getFullYear() < ara.getFullYear() ||
+        (anchor.getFullYear() === ara.getFullYear() &&
+          (situacioPeriode === 'trimestre'
+            ? Math.floor(anchor.getMonth() / 3) < Math.floor(ara.getMonth() / 3)
+            : anchor.getMonth() < ara.getMonth()));
+  useEffect(() => {
+    if (mode !== 'situacio') return;
+    const n = new Date();
+    if (anchor > n) setAnchor(n);
+    if (year > n.getFullYear()) setYear(n.getFullYear());
+  }, [mode, anchor, year]);
+
   const mesParam = `${anchor.getFullYear()}-${String(anchor.getMonth() + 1).padStart(2, '0')}`;
   const loadMes = useCallback(async () => setMes(await getJSON<Balanc>(`/api/balanc?mes=${mesParam}`)), [mesParam]);
   const loadRang = useCallback(async () => setRang(await getJSON<Balanc>(`/api/balanc/rang?desde=${desde}&fins=${fins}`)), [desde, fins]);
@@ -639,7 +658,13 @@ export default function BalancPage() {
                   ? `T${Math.floor(anchor.getMonth() / 3) + 1} ${anchor.getFullYear()}`
                   : mesLabel}
             </span>
-            <Button variant="outline" size="sm" onClick={() => situacioPeriode === 'any' ? setYear(year + 1) : setAnchor(addMonths(anchor, situacioPeriode === 'trimestre' ? 3 : 1))}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!potAvancarSituacio}
+              title={potAvancarSituacio ? undefined : 'No es pot anar a un període futur'}
+              onClick={() => situacioPeriode === 'any' ? setYear(year + 1) : setAnchor(addMonths(anchor, situacioPeriode === 'trimestre' ? 3 : 1))}
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
             <span className="text-xs text-slate-400">(a {situacioCutoff.split('-').reverse().join('/')})</span>
