@@ -165,32 +165,63 @@ export function FacturaPanel({
     }
   }
 
+  function printUrl(f: FacturaLite): string {
+    return f.tipusDocument === 'FACTURA'
+      ? `/imprimir/factura/${f.id}`
+      : `/imprimir/factura-simple/${f.id}`;
+  }
+
+  async function eliminarFactura(id: string, num: string) {
+    if (!window.confirm(`Eliminar la factura ${num}?`)) return;
+    try {
+      await delJSON(`/api/factures/${id}`);
+      router.refresh();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "No s'ha pogut eliminar la factura");
+    }
+  }
+
   return (
     <div className="space-y-3">
       {factures.length === 0 && !open && (
         <p className="text-sm text-slate-400 italic">Sense factures.</p>
       )}
       {factures.map((f) => (
-        <div key={f.id} className="rounded-lg border border-slate-200 text-sm">
-          <Link
-            href={`/factures/${f.id}`}
-            className="flex items-center justify-between px-3 py-2 hover:bg-slate-50"
+        <div
+          key={f.id}
+          className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+        >
+          <a
+            href={printUrl(f)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex min-w-0 items-center gap-2 font-medium text-slate-800 hover:underline"
+            title="Obrir / imprimir"
           >
-            <span className="flex items-center gap-2 font-medium text-slate-800">
-              <Receipt className="h-4 w-4 text-slate-400" /> {f.numero}
-              {f.tipusDocument && (
-                <span className="text-xs font-normal text-slate-400">
-                  {TIPUS_LABEL[f.tipusDocument] ?? f.tipusDocument}
-                </span>
-              )}
-            </span>
-            <span className="flex items-center gap-2">
-              {formatEur(Number(f.total))}
-              <Badge tone={f.estat === 'COBRADA' ? 'success' : 'warning'}>
-                {f.estat === 'COBRADA' ? 'Cobrada' : 'Pendent'}
-              </Badge>
-            </span>
-          </Link>
+            <Receipt className="h-4 w-4 shrink-0 text-slate-400" /> {f.numero}
+            {f.tipusDocument && (
+              <span className="truncate text-xs font-normal text-slate-400">
+                {TIPUS_LABEL[f.tipusDocument] ?? f.tipusDocument}
+              </span>
+            )}
+          </a>
+          <div className="flex items-center gap-2">
+            {formatEur(Number(f.total))}
+            <Badge tone={f.estat === 'COBRADA' ? 'success' : 'warning'}>
+              {f.estat === 'COBRADA' ? 'Cobrada' : 'Pendent'}
+            </Badge>
+            <Link href={`/factures/${f.id}`} title="Editar" className="text-slate-400 hover:text-brand-600">
+              <Pencil className="h-4 w-4" />
+            </Link>
+            <button
+              type="button"
+              onClick={() => eliminarFactura(f.id, f.numero)}
+              title="Eliminar"
+              className="text-slate-400 hover:text-red-600"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       ))}
 
