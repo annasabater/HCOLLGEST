@@ -544,16 +544,16 @@ export default function BalancPage() {
                 <button
                   type="button"
                   onClick={() => setIncloureCustodiaSituacio(true)}
-                  className={cn('px-3 py-1.5 text-sm', incloureCustodiaSituacio ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}
+                  className={cn('px-3 py-1.5 text-sm', incloureCustodiaSituacio ? 'bg-orange-500 text-white' : 'bg-white text-orange-600')}
                 >
-                  Amb custòdia
+                  Amb fiança
                 </button>
                 <button
                   type="button"
                   onClick={() => setIncloureCustodiaSituacio(false)}
                   className={cn('border-l border-slate-300 px-3 py-1.5 text-sm', !incloureCustodiaSituacio ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}
                 >
-                  Sense custòdia
+                  Sense fiança
                 </button>
               </div>
             )}
