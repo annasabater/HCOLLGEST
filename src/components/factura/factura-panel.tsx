@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getJSON, postJSON, ApiError } from '@/lib/api';
-import { Receipt, ShieldCheck } from 'lucide-react';
+import { Receipt, ShieldCheck, ShieldOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -229,10 +229,33 @@ export function FacturaPanel({
                   <ShieldCheck className="h-3.5 w-3.5" /> Fiança (inclosa al total de la factura fiscal)
                 </p>
               ) : (
-                <label className="mb-1 flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600">
-                  <input type="checkbox" checked={ambFianca} onChange={(e) => setAmbFianca(e.target.checked)} />
-                  <ShieldCheck className="h-3.5 w-3.5 text-amber-600" /> Incloure la fiança al total (amb fiança)
-                </label>
+                <div className="mb-2">
+                  <p className="mb-1.5 text-xs font-medium text-slate-500">Fiança inclosa a la factura:</p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAmbFianca(true)}
+                      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                        ambFianca
+                          ? 'border-amber-400 bg-amber-50 text-amber-700'
+                          : 'border-slate-200 bg-white text-slate-500 hover:border-amber-300'
+                      }`}
+                    >
+                      <ShieldCheck className="h-4 w-4" /> Amb fiança
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAmbFianca(false)}
+                      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                        !ambFianca
+                          ? 'border-slate-400 bg-slate-100 text-slate-700'
+                          : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                      }`}
+                    >
+                      <ShieldOff className="h-4 w-4" /> Sense fiança
+                    </button>
+                  </div>
+                </div>
               )}
               <div className="space-y-1">
                 {fiancesLliures.map((f) => (
