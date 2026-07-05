@@ -520,7 +520,7 @@ export async function getBalancSituacio(dataTall: Date, opts?: { incloureCustodi
     immobAgg, immobCount,
     deutorsAgg, deutorsCount,
     fiancesAgg, fiancesCount,
-    cobraAgg, gastoAgg, jornadaAgg,
+    cobraAgg, gastoAgg, jornadaAgg, retingutsAgg,
   ] = await Promise.all([
     prisma.establiment.findFirst({ select: { saldoInicialTresoreria: true } }),
     prisma.actiu.aggregate({
@@ -565,13 +565,19 @@ export async function getBalancSituacio(dataTall: Date, opts?: { incloureCustodi
       _sum: { import: true },
       where: { data: { lte: dataTall } },
     }),
+    // Dipòsits RETINGUTS fins la data: són ingrés (com al P&L mensual).
+    prisma.diposit.aggregate({
+      _sum: { import: true },
+      where: { estat: 'RETINGUT', dataResolucio: { lte: dataTall }, estancia: { deletedAt: null } },
+    }),
   ]);
 
   const immobilitzatBrut = r2(num(immobAgg, 'cost'));
   const deutors = r2(num(deutorsAgg, 'total'));
-  // Import REAL de les fiances en custòdia (sempre; per treure-les de la tresoreria).
+  // Fiances EN CUSTÒDIA a la data de tall: el seu efectiu és un actiu a part i,
+  // alhora, un deute (passiu) perquè s'han de retornar. Es mostren només "amb fiança"
+  // (sense fiança s'amaguen totes dues línies i el patrimoni no canvia).
   const fiancaCustodia = r2(num(fiancesAgg, 'import'));
-  // El que ES MOSTRA (línia d'actiu + passiu): només amb fiança.
   const fiances = incloureCustodia ? fiancaCustodia : 0;
   const tresoreriaFiances = fiances;
 
@@ -579,10 +585,11 @@ export async function getBalancSituacio(dataTall: Date, opts?: { incloureCustodi
   const totalCobraments = r2(num(cobraAgg, 'import'));
   const totalGastos = r2(num(gastoAgg, 'import'));
   const totalJornades = r2(num(jornadaAgg, 'import'));
-  // Tresoreria operativa = saldo inicial + ingressos cobrats − despeses − personal.
-  // La fiança SEMPRE surt de la tresoreria (és diner que es deu, no ingrés): amb
-  // fiança es mostra en una línia separada + passiu; sense fiança, no es mostra.
-  const tresoreriaOperativa = r2(saldoInicial + totalCobraments - totalGastos - totalJornades - fiancaCustodia);
+  const totalRetinguts = r2(num(retingutsAgg, 'import'));
+  // Tresoreria general = saldo inicial + cobraments + dipòsits retinguts (ingrés,
+  // com al P&L) − despeses − personal. L'efectiu de les fiances en custòdia NO és
+  // aquí: els dipòsits són una entrada de caixa pròpia i van a la seva línia.
+  const tresoreriaOperativa = r2(saldoInicial + totalCobraments + totalRetinguts - totalGastos - totalJornades);
 
   const totalActiu = r2(immobilitzatBrut + deutors + tresoreriaOperativa + tresoreriaFiances);
   const passiuNoCorrent = 0;
