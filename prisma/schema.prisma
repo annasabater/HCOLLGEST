@@ -458,6 +458,10 @@ model EstanciaViatger {
   esTitular  Boolean    @default(false) @map("es_titular")
   parentesc  Parentesc?
   esMenor    Boolean    @default(false) @map("es_menor")
+  // Habitació "administrativa" del viatger quan als papers (llibre de registre,
+  // factura) ha de constar en una habitació diferent de la real de l'estada.
+  habitacioSeparadaId String?    @map("habitacio_separada_id")
+  habitacioSeparada   Habitacio? @relation(fields: [habitacioSeparadaId], references: [id], onDelete: SetNull)
   // Snapshot de les dades del viatger per a aquesta estada (es congela quan
   // l'estada passa a ser antiga >7 dies de la sortida). Si està informat, el
   // llibre/fitxa/Mossos l'usen en lloc de la fitxa viva (no reescriure el passat).
@@ -555,6 +559,7 @@ model Habitacio {
   tasquesNeteja TascaNeteja[]
   tarifes       Tarifa[]
   incidencies   Incidencia[]
+  viatgersSeparats EstanciaViatger[]
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

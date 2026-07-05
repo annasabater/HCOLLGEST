@@ -65,6 +65,8 @@ export const ViatgerInputSchema = z.object({
   esTitular: z.boolean().default(false),
   parentesc: ParentescEnum.optional(),
   esMenor: z.boolean().default(false),
+  // Habitació "administrativa" del viatger (llibre/factura) si és diferent de la real.
+  habitacioSeparadaId: optStr,
 });
 
 /** Mascota opcional vinculada a l'estada (s'associa al titular). */

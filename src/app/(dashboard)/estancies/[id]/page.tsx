@@ -50,6 +50,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
         include: {
           huesped: { include: { animals: { where: { deletedAt: null }, orderBy: { nom: 'asc' } } } },
           signatura: true,
+          habitacioSeparada: { select: { nom: true } },
         },
         orderBy: { esTitular: 'desc' },
       },
@@ -353,6 +354,22 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 estanciaId={estancia.id}
                 habitacioNom={estancia.habitacio?.nom ?? null}
                 numViatgers={estancia.numViatgers ?? null}
+                habitacioOpcions={(() => {
+                  // Habitació real + habitacions "separades" dels viatgers (papers).
+                  const separats = new Map<string, number>();
+                  estancia.viatgers.forEach((v) => {
+                    const nom = v.habitacioSeparada?.nom;
+                    if (nom) separats.set(nom, (separats.get(nom) ?? 0) + 1);
+                  });
+                  const nSeparats = [...separats.values()].reduce((a, b) => a + b, 0);
+                  return [
+                    {
+                      nom: estancia.habitacio?.nom ?? null,
+                      persones: Math.max(estancia.viatgers.length - nSeparats, 0) || (estancia.numViatgers ?? 1),
+                    },
+                    ...[...separats.entries()].map(([nom, persones]) => ({ nom, persones })),
+                  ];
+                })()}
                 dataEntrada={estancia.dataEntrada?.toISOString() ?? null}
                 dataSortida={estancia.dataSortida?.toISOString() ?? null}
                 pagaments={estancia.cobraments.map((c) => ({

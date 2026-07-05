@@ -41,7 +41,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: st
     include: {
       habitacio: true,
       viatgers: {
-        include: { huesped: true, signatura: true },
+        include: { huesped: true, signatura: true, habitacioSeparada: { select: { nom: true } } },
         orderBy: { esTitular: 'desc' },
       },
       cobraments: { orderBy: { data: 'asc' } },
@@ -82,20 +82,38 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: st
   const internetSi = estancia.teInternet === true;
   const internetNo = estancia.teInternet === false;
 
-  // Els viatgers es reparteixen en fulls de 4 (com el llibre en paper).
-  const grups: Viatger[][] = [];
-  for (let i = 0; i < estancia.viatgers.length; i += 4) {
-    grups.push(estancia.viatgers.slice(i, i + 4));
+  // Fulls separats per HABITACIÓ: els viatgers amb "habitació separada" van en un
+  // full propi amb aquella habitació; la resta, al full de l'habitació de l'estada.
+  // Dins de cada habitació, fulls de 4 viatgers (com el llibre en paper).
+  const principals = estancia.viatgers.filter((v) => !v.habitacioSeparada);
+  const separatsMap = new Map<string, Viatger[]>();
+  for (const v of estancia.viatgers) {
+    if (!v.habitacioSeparada) continue;
+    const arr = separatsMap.get(v.habitacioSeparada.nom) ?? [];
+    arr.push(v);
+    separatsMap.set(v.habitacioSeparada.nom, arr);
   }
-  if (grups.length === 0) grups.push([]);
+  const grups: { hab: string | null; viatgers: Viatger[] }[] = [];
+  if (principals.length > 0 || separatsMap.size === 0) {
+    for (let i = 0; i < Math.max(1, principals.length); i += 4) {
+      grups.push({ hab: null, viatgers: principals.slice(i, i + 4) });
+    }
+  }
+  for (const [nom, vs] of separatsMap) {
+    for (let i = 0; i < vs.length; i += 4) {
+      grups.push({ hab: nom, viatgers: vs.slice(i, i + 4) });
+    }
+  }
 
-  function fullHtml(grup: Viatger[], idxGrup: number, total: number): string {
+  function fullHtml(grup: Viatger[], habSeparada: string | null, idxGrup: number, total: number): string {
     const cel = (fn: (v: Viatger | undefined) => string) => {
       let tds = '';
       for (let i = 0; i < 4; i++) tds += `<td class="vcell">${fn(grup[i])}</td>`;
       return tds;
     };
     const h = (v: Viatger | undefined) => v?.huesped;
+    // El full d'una habitació separada mostra AQUELLA habitació.
+    const numHabFull = habSeparada ? esc(habSeparada) : numHab;
 
     return `
     <div class="sheet">
@@ -184,7 +202,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: st
           <td class="lbl">Dirección del inmueble:</td><td class="val" colspan="3">${emAdreca}</td>
         </tr>
         <tr>
-          <td class="lbl">Nº habitaciones</td><td class="val" colspan="3">${numHab}</td>
+          <td class="lbl">Nº habitaciones</td><td class="val" colspan="3">${numHabFull}</td>
         </tr>
         <tr>
           <td class="lbl">Conexión a Internet</td><td class="val" colspan="3">Sí ${chk(internetSi)} &nbsp; No ${chk(internetNo)}</td>
@@ -226,7 +244,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: st
     </div>`;
   }
 
-  const sheets = grups.map((g, i) => fullHtml(g, i, grups.length)).join('');
+  const sheets = grups.map((g, i) => fullHtml(g.viatgers, g.hab, i, grups.length)).join('');
   const titol = esc(estancia.viatgers[0]?.huesped ? `${estancia.viatgers[0].huesped.nom} ${estancia.viatgers[0].huesped.cognom1}` : 'Registre');
 
   const html = `<!DOCTYPE html>

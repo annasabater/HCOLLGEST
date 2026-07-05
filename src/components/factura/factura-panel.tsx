@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { Receipt, ShieldCheck, ShieldOff, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { formatEur, formatDate } from '@/lib/utils';
 import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
@@ -62,6 +62,7 @@ export function FacturaPanel({
   dataSortida,
   pagaments = [],
   fiances = [],
+  habitacioOpcions,
 }: {
   estanciaId: string;
   factures: FacturaLite[];
@@ -71,6 +72,8 @@ export function FacturaPanel({
   dataSortida?: string | null;
   pagaments?: PagamentLite[];
   fiances?: FiancaLite[];
+  /** Habitacions facturables de l'estada (real + separades) amb el nre. de persones. */
+  habitacioOpcions?: { nom: string | null; persones: number }[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -105,12 +108,23 @@ export function FacturaPanel({
   const incloureFianca = esFiscal || dupla || ambFianca;
   const totalFactura = incloureFianca ? totalPag + totalFi : totalPag;
 
+  // Habitació que sortirà a la factura: la real o una de "separada" (per a viatgers
+  // que als papers consten en una altra habitació).
+  const opcionsHab: { nom: string | null; persones: number }[] =
+    habitacioOpcions && habitacioOpcions.length > 0
+      ? habitacioOpcions
+      : [{ nom: habitacioNom ?? null, persones: numViatgers ?? 0 }];
+  const [habIdx, setHabIdx] = useState(0);
+  const habSel = opcionsHab[Math.min(habIdx, opcionsHab.length - 1)]!;
+
   function buildDesc(): string {
-    const habLabel = tipusHabitacio(habitacioNom);
-    const personesLabel = numViatgers ? ` (${numViatgers} ${numViatgers === 1 ? 'persona' : 'persones'})` : '';
+    const nomHab = habSel.nom ?? habitacioNom ?? null;
+    const habLabel = tipusHabitacio(nomHab);
+    const n = habSel.persones || numViatgers || 0;
+    const personesLabel = n ? ` (${n} ${n === 1 ? 'persona' : 'persones'})` : '';
     const datesLabel =
       dataEntrada && dataSortida ? ` · Del ${fmtDateShort(dataEntrada)} al ${fmtDateShort(dataSortida)}` : '';
-    return habitacioNom ? `${habLabel}${personesLabel}${datesLabel}` : 'Allotjament';
+    return nomHab ? `${habLabel}${personesLabel}${datesLabel}` : 'Allotjament';
   }
 
   const togglePag = (id: string) =>
@@ -392,6 +406,25 @@ export function FacturaPanel({
                 value={numero}
                 onChange={(e) => setNumero(e.target.value)}
               />
+            </label>
+          )}
+
+          {/* Si hi ha viatgers amb habitació separada, tria quina habitació surt a la factura */}
+          {opcionsHab.length > 1 && (
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-xs font-medium text-slate-500">Habitació de la factura:</span>
+              <Select
+                className="h-9 max-w-64"
+                value={String(habIdx)}
+                onChange={(e) => setHabIdx(Number(e.target.value))}
+              >
+                {opcionsHab.map((o, i) => (
+                  <option key={i} value={i}>
+                    Habitació {o.nom ?? '—'} · {o.persones} {o.persones === 1 ? 'persona' : 'persones'}
+                    {i === 0 ? ' (real)' : ' (separada)'}
+                  </option>
+                ))}
+              </Select>
             </label>
           )}
 

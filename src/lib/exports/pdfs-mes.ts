@@ -34,7 +34,7 @@ export async function buildFitxesPdfs(monthStart: Date, monthEnd: Date): Promise
   const estancies = await prisma.estancia.findMany({
     where: { deletedAt: null, dataEntrada: { gte: monthStart, lte: monthEnd } },
     include: {
-      viatgers: { include: { huesped: true, signatura: true }, orderBy: { esTitular: 'desc' } },
+      viatgers: { include: { huesped: true, signatura: true, habitacioSeparada: { select: { nom: true } } }, orderBy: { esTitular: 'desc' } },
     },
     orderBy: { dataEntrada: 'asc' },
   });
@@ -54,7 +54,7 @@ export async function buildRegistresPdfs(desde: Date, fins: Date): Promise<PdfFi
     where: { deletedAt: null, dataEntrada: { gte: desde, lte: fins } },
     include: {
       habitacio: true,
-      viatgers: { include: { huesped: true, signatura: true }, orderBy: { esTitular: 'desc' } },
+      viatgers: { include: { huesped: true, signatura: true, habitacioSeparada: { select: { nom: true } } }, orderBy: { esTitular: 'desc' } },
       cobraments: { orderBy: { data: 'asc' } },
     },
     orderBy: { dataEntrada: 'asc' },

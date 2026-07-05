@@ -61,6 +61,7 @@ export default async function EditarEstadaPage({ params }: { params: Promise<{ i
       esTitular: ev.esTitular,
       parentesc: ev.parentesc ?? '',
       esMenor: ev.esMenor,
+      habitacioSeparadaId: ev.habitacioSeparadaId ?? '',
     })),
     esBorrany: estancia.esBorrany,
   };

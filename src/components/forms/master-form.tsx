@@ -59,6 +59,8 @@ export type ViatgerState = {
   esTitular: boolean;
   parentesc: string;
   esMenor: boolean;
+  /** Habitació "administrativa" (llibre/factura) si és diferent de la real. */
+  habitacioSeparadaId: string;
   _recurrent?: string; // aviso de huésped recurrente (Fase 2)
   _noAcollir?: boolean;
   _anotacions?: { sentit: string; descripcio: string; noAcollir: boolean }[];
@@ -89,6 +91,7 @@ function emptyViatger(titular = false): ViatgerState {
     esTitular: titular,
     parentesc: '',
     esMenor: false,
+    habitacioSeparadaId: '',
   };
 }
 
@@ -440,6 +443,7 @@ export function MasterForm({
         esTitular: v.esTitular,
         parentesc: (v.parentesc || undefined) as RegistreInput['viatgers'][number]['parentesc'],
         esMenor: v.esMenor,
+        habitacioSeparadaId: v.habitacioSeparadaId || undefined,
       })),
       // Només mascotes amb nom; l'espècie té un valor per defecte.
       mascotes: portaMascota
@@ -1277,6 +1281,22 @@ export function MasterForm({
                       </Select>
                     </Field>
                   )}
+                  <Field
+                    label="Habitació al llibre / factura"
+                    hint="Opcional: si als papers aquest viatger ha de constar en una ALTRA habitació (fitxa del llibre i factura a part). L’estada real no canvia."
+                  >
+                    <Select
+                      value={v.habitacioSeparadaId}
+                      onChange={(e) => setV(i, { habitacioSeparadaId: e.target.value })}
+                    >
+                      <option value="">La de l’estada</option>
+                      {habitacions.map((h) => (
+                        <option key={h.id} value={h.id}>
+                          Habitació {h.nom}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
                 </>
               )}
             </CardBody>

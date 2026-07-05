@@ -18,7 +18,7 @@ export async function GET(req: Request, ctx: Ctx) {
       where: { id, deletedAt: null },
       include: {
         habitacio: true,
-        viatgers: { include: { huesped: true, signatura: true }, orderBy: { esTitular: 'desc' } },
+        viatgers: { include: { huesped: true, signatura: true, habitacioSeparada: { select: { nom: true } } }, orderBy: { esTitular: 'desc' } },
         cobraments: { orderBy: { data: 'asc' } },
       },
     });

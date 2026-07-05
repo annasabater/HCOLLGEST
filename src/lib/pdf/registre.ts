@@ -42,6 +42,8 @@ interface ViatgerLite {
   parentesc: string | null;
   huesped: HuespedLite;
   signatura: { imatge: string } | null;
+  /** Habitació "administrativa" del viatger (full a part), si és diferent de la real. */
+  habitacioSeparada?: { nom: string } | null;
 }
 interface EstanciaLite {
   numContracte: string; anyContracte: number;
@@ -74,10 +76,25 @@ export async function buildRegistrePdf(
   const metodes = new Set(estancia.cobraments.map((c) => c.metode));
   const numRef = `${estancia.numContracte}/${estancia.anyContracte}`;
 
-  // Viatgers en grups de 4.
-  const grups: ViatgerLite[][] = [];
-  for (let i = 0; i < estancia.viatgers.length; i += 4) grups.push(estancia.viatgers.slice(i, i + 4));
-  if (grups.length === 0) grups.push([]);
+  // Fulls per HABITACIÓ: els viatgers amb habitació separada van en un full propi
+  // amb aquella habitació; la resta al full de l'estada. Dins, grups de 4.
+  const principals = estancia.viatgers.filter((v) => !v.habitacioSeparada);
+  const separatsMap = new Map<string, ViatgerLite[]>();
+  for (const v of estancia.viatgers) {
+    if (!v.habitacioSeparada) continue;
+    const arr = separatsMap.get(v.habitacioSeparada.nom) ?? [];
+    arr.push(v);
+    separatsMap.set(v.habitacioSeparada.nom, arr);
+  }
+  const grups: { hab: string | null; viatgers: ViatgerLite[] }[] = [];
+  if (principals.length > 0 || separatsMap.size === 0) {
+    for (let i = 0; i < Math.max(1, principals.length); i += 4) {
+      grups.push({ hab: null, viatgers: principals.slice(i, i + 4) });
+    }
+  }
+  for (const [nom, vs] of separatsMap) {
+    for (let i = 0; i < vs.length; i += 4) grups.push({ hab: nom, viatgers: vs.slice(i, i + 4) });
+  }
 
   // Precarrega les imatges de signatura.
   const sigCache = new Map<string, PDFImage>();
@@ -95,7 +112,8 @@ export async function buildRegistrePdf(
   }
 
   for (let gi = 0; gi < grups.length; gi++) {
-    const grup = grups[gi] ?? [];
+    const grup = grups[gi]?.viatgers ?? [];
+    const habSeparada = grups[gi]?.hab ?? null;
     const page = doc.addPage([A4.w, A4.h]);
     let y = A4.h - M;
 
@@ -188,7 +206,7 @@ export async function buildRegistrePdf(
     cell(M, A4.w - M * 2, 16, 'Fecha y hora de entrada', `${fmtDate(estancia.dataEntrada)} ${fmtHora(estancia.dataEntrada)}`.trim()); y -= 16;
     cell(M, A4.w - M * 2, 16, 'Fecha y hora de salida', `${fmtDate(estancia.dataSortida)} ${fmtHora(estancia.dataSortida)}`.trim()); y -= 16;
     cell(M, A4.w - M * 2, 16, 'Dirección del inmueble', emAdreca); y -= 16;
-    cell(M, w2, 16, 'Nº habitaciones', estancia.numHabitacions != null ? String(estancia.numHabitacions) : (estancia.habitacio?.nom ?? ''));
+    cell(M, w2, 16, 'Nº habitaciones', habSeparada ?? (estancia.numHabitacions != null ? String(estancia.numHabitacions) : (estancia.habitacio?.nom ?? '')));
     cell(M + w2, w2, 16, 'Conexión a Internet', estancia.teInternet === true ? 'Sí' : estancia.teInternet === false ? 'No' : ''); y -= 16;
 
     // ── Pagament ──

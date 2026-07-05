@@ -26,7 +26,7 @@ export async function enviaJustificantsEmail(
     where: { id: estanciaId, deletedAt: null },
     include: {
       habitacio: true,
-      viatgers: { include: { huesped: true, signatura: true }, orderBy: { esTitular: 'desc' } },
+      viatgers: { include: { huesped: true, signatura: true, habitacioSeparada: { select: { nom: true } } }, orderBy: { esTitular: 'desc' } },
       cobraments: { orderBy: { data: 'asc' } },
     },
   });
