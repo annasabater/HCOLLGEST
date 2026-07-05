@@ -380,7 +380,17 @@ export type Balanc = Awaited<ReturnType<typeof getBalanc>>;
 export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts) {
   const num = (v: unknown) => Number(v ?? 0);
   const endExcl = new Date(end.getTime() + 1);
-  const [base, cobMetode, dipMetode, gastoCat, categories, habCount, estades, roomRevAgg] =
+  const titularSel = {
+    select: {
+      id: true,
+      viatgers: {
+        where: { esTitular: true },
+        take: 1,
+        select: { huesped: { select: { nom: true, cognom1: true } } },
+      },
+    },
+  } as const;
+  const [base, cobMetode, dipMetode, gastoCat, categories, habCount, estades, roomRevAgg, cobsPersona, retsPersona] =
     await Promise.all([
       getBalanc(start, end, opts),
       prisma.cobrament.groupBy({
@@ -412,6 +422,16 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
       prisma.liniaFactura.aggregate({
         _sum: { import: true },
         where: { concepte: 'ALLOTJAMENT', factura: { deletedAt: null, data: { gte: start, lte: end } } },
+      }),
+      // Moviments per persona: cobraments (positius i devolucions) del període…
+      prisma.cobrament.findMany({
+        where: { data: { gte: start, lte: end }, estancia: { deletedAt: null }, OR: [{ facturaId: null }, { factura: { deletedAt: null } }], ...metodeFiltre(opts) },
+        select: { import: true, estancia: titularSel },
+      }),
+      // …i dipòsits retinguts (també són ingrés).
+      prisma.diposit.findMany({
+        where: { estat: 'RETINGUT', dataResolucio: { gte: start, lte: end }, estancia: { deletedAt: null }, ...metodeFiltre(opts) },
+        select: { import: true, estancia: titularSel },
       }),
     ]);
 
@@ -446,7 +466,29 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
     .filter((x) => x.import !== 0)
     .sort((a, b) => b.import - a.import);
 
-  return { ...base, ingressosPerMetode, despesesPerCategoria, ocupacio, adr, revpar };
+  // Agrupa els moviments per estada/titular: ingressos (+) i devolucions (−).
+  type EstTit = { id: string; viatgers: { huesped: { nom: string; cognom1: string } | null }[] } | null;
+  const perPersona = new Map<string, { estanciaId: string | null; titular: string; ingressos: number; devolucions: number }>();
+  const afegeixMov = (estancia: EstTit, imp: number) => {
+    const key = estancia?.id ?? '—';
+    const h = estancia?.viatgers[0]?.huesped;
+    const cur = perPersona.get(key) ?? {
+      estanciaId: estancia?.id ?? null,
+      titular: h ? `${h.nom} ${h.cognom1}` : 'Sense titular',
+      ingressos: 0,
+      devolucions: 0,
+    };
+    if (imp >= 0) cur.ingressos = r2(cur.ingressos + imp);
+    else cur.devolucions = r2(cur.devolucions + Math.abs(imp));
+    perPersona.set(key, cur);
+  };
+  for (const c of cobsPersona) afegeixMov(c.estancia, Number(c.import));
+  for (const d of retsPersona) afegeixMov(d.estancia, Number(d.import));
+  const movimentsPerPersona = [...perPersona.values()].sort(
+    (a, b) => b.ingressos - b.devolucions - (a.ingressos - a.devolucions),
+  );
+
+  return { ...base, ingressosPerMetode, despesesPerCategoria, ocupacio, adr, revpar, movimentsPerPersona };
 }
 
 export type BalancDetall = Awaited<ReturnType<typeof getBalancDetall>>;

@@ -35,6 +35,7 @@ interface Breakdowns {
   ocupacio: number;
   adr: number;
   revpar: number;
+  movimentsPerPersona?: { estanciaId: string | null; titular: string; ingressos: number; devolucions: number }[];
 }
 interface CustodiaItem {
   id: string;
@@ -249,32 +250,80 @@ function SituacioView({ data }: { data: BalancSituacio }) {
 
 function BreakdownsSection({ data }: { data: Breakdowns }) {
   const metodes = metodeItems(data.ingressosPerMetode);
+  const moviments = data.movimentsPerPersona ?? [];
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Despeses per categoria</CardTitle>
+          </CardHeader>
+          <CardBody>
+            <Donut items={data.despesesPerCategoria.map((d) => ({ label: d.categoria, value: d.import }))} />
+          </CardBody>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Ingressos per mètode</CardTitle>
+          </CardHeader>
+          <CardBody>
+            {metodes.length === 0 ? (
+              <p className="text-sm text-slate-400">Sense cobraments en aquest període.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {metodes.map((m) => (
+                  <li key={m.label} className="flex items-center justify-between border-b border-slate-100 pb-1">
+                    <span className="text-slate-700">{m.label}</span>
+                    <span className="font-medium text-slate-900"><Eur value={m.value} /></span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* Moviments per persona: ingressos i devolucions del període, per titular */}
       <Card>
         <CardHeader>
-          <CardTitle>Despeses per categoria</CardTitle>
+          <CardTitle>Moviments per persona</CardTitle>
         </CardHeader>
         <CardBody>
-          <Donut items={data.despesesPerCategoria.map((d) => ({ label: d.categoria, value: d.import }))} />
-        </CardBody>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Ingressos per mètode</CardTitle>
-        </CardHeader>
-        <CardBody>
-          {metodes.length === 0 ? (
-            <p className="text-sm text-slate-400">Sense cobraments en aquest període.</p>
+          {moviments.length === 0 ? (
+            <p className="text-sm text-slate-400">Sense moviments en aquest període.</p>
           ) : (
-            <ul className="space-y-2 text-sm">
-              {metodes.map((m) => (
-                <li key={m.label} className="flex items-center justify-between border-b border-slate-100 pb-1">
-                  <span className="text-slate-700">{m.label}</span>
-                  <span className="font-medium text-slate-900"><Eur value={m.value} /></span>
-                </li>
-              ))}
-            </ul>
+            <Table>
+              <Thead>
+                <tr>
+                  <Th>Titular</Th>
+                  <Th className="text-right">Ingressos</Th>
+                  <Th className="text-right">Devolucions</Th>
+                  <Th className="text-right">Net</Th>
+                </tr>
+              </Thead>
+              <tbody>
+                {moviments.map((m, i) => (
+                  <Tr key={i}>
+                    <Td>
+                      {m.estanciaId ? (
+                        <a href={`/estancies/${m.estanciaId}`} className="font-medium text-brand-700 hover:underline">
+                          {m.titular}
+                        </a>
+                      ) : (
+                        m.titular
+                      )}
+                    </Td>
+                    <Td className="text-right text-green-700"><Eur value={m.ingressos} /></Td>
+                    <Td className="text-right text-red-700">
+                      {m.devolucions > 0 ? <>−<Eur value={m.devolucions} /></> : <span className="text-slate-300">—</span>}
+                    </Td>
+                    <Td className={cn('text-right font-medium', m.ingressos - m.devolucions >= 0 ? 'text-slate-900' : 'text-red-700')}>
+                      <Eur value={Math.round((m.ingressos - m.devolucions) * 100) / 100} />
+                    </Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
           )}
         </CardBody>
       </Card>
@@ -293,10 +342,13 @@ export default function BalancPage() {
   const [incloureCustodiaSituacio, setIncloureCustodiaSituacio] = useState(true);
   // Període del balanç de situació: el tall és a FINAL de mes / trimestre / any.
   const [situacioPeriode, setSituacioPeriode] = useState<'mes' | 'trimestre' | 'any'>('mes');
-  // Rang de mesos (trimestre / de X mes a Y mes). Per defecte, el trimestre actual.
+  // Rang per DIES (de X dia de Y mes a Z dia de S mes). Per defecte, el trimestre actual.
   const iniciTrim = (() => { const n = new Date(); const q = Math.floor(n.getMonth() / 3); return { y: n.getFullYear(), m1: q * 3 + 1, m2: q * 3 + 3 }; })();
-  const [desde, setDesde] = useState(`${iniciTrim.y}-${String(iniciTrim.m1).padStart(2, '0')}`);
-  const [fins, setFins] = useState(`${iniciTrim.y}-${String(iniciTrim.m2).padStart(2, '0')}`);
+  const [desde, setDesde] = useState(() => `${iniciTrim.y}-${String(iniciTrim.m1).padStart(2, '0')}-01`);
+  const [fins, setFins] = useState(() => {
+    const ultim = new Date(iniciTrim.y, iniciTrim.m2, 0);
+    return `${iniciTrim.y}-${String(iniciTrim.m2).padStart(2, '0')}-${String(ultim.getDate()).padStart(2, '0')}`;
+  });
   const [rang, setRang] = useState<Balanc | null>(null);
 
   // Data de tall del balanç de situació = últim dia del període triat, però MAI en
@@ -357,8 +409,8 @@ export default function BalancPage() {
   const serieDesde =
     mode === 'mes'
       ? (() => { const d = addMonths(anchor, -11); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })()
-      : desde;
-  const serieFins = mode === 'mes' ? mesParam : fins;
+      : desde.slice(0, 7);
+  const serieFins = mode === 'mes' ? mesParam : fins.slice(0, 7);
   useEffect(() => {
     if (mode !== 'mes' && mode !== 'rang') return;
     let cancel = false;
@@ -581,16 +633,16 @@ export default function BalancPage() {
           <div className="flex flex-wrap items-center gap-2">
             <label className="text-sm text-slate-600">De</label>
             <input
-              type="month"
+              type="date"
               value={desde}
-              onChange={(e) => setDesde(e.target.value)}
+              onChange={(e) => e.target.value && setDesde(e.target.value)}
               className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
             />
             <label className="text-sm text-slate-600">a</label>
             <input
-              type="month"
+              type="date"
               value={fins}
-              onChange={(e) => setFins(e.target.value)}
+              onChange={(e) => e.target.value && setFins(e.target.value)}
               className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
             />
             <span className="mx-1 text-slate-300">·</span>
@@ -602,8 +654,11 @@ export default function BalancPage() {
                 size="sm"
                 onClick={() => {
                   const y = Number(desde.slice(0, 4)) || new Date().getFullYear();
-                  setDesde(`${y}-${String((q - 1) * 3 + 1).padStart(2, '0')}`);
-                  setFins(`${y}-${String((q - 1) * 3 + 3).padStart(2, '0')}`);
+                  const m1 = (q - 1) * 3 + 1;
+                  const m2 = (q - 1) * 3 + 3;
+                  const ultim = new Date(y, m2, 0).getDate();
+                  setDesde(`${y}-${String(m1).padStart(2, '0')}-01`);
+                  setFins(`${y}-${String(m2).padStart(2, '0')}-${String(ultim).padStart(2, '0')}`);
                 }}
               >
                 T{q}
