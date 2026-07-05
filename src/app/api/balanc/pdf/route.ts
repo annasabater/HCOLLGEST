@@ -32,14 +32,23 @@ export async function GET(req: Request) {
   let sections: ReportSection[];
 
   if (situacioParam !== null) {
-    let dataTall = new Date();
+    const re = /^(\d{4})-(\d{2})-(\d{2})$/;
+    let end = new Date();
+    end.setHours(23, 59, 59, 999);
     if (situacioParam) {
-      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(situacioParam);
+      const m = re.exec(situacioParam);
       if (!m) return badRequest('Data no vàlida (YYYY-MM-DD)');
-      dataTall = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59, 999);
+      end = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59, 999);
     }
-    const b = await getBalancSituacio(dataTall, { incloureCustodia });
-    title = `Balanç de situació ${b.data}${b.inclouCustodia ? '' : ' sense custòdia'}`;
+    const desdeParam = sp.get('desde');
+    let start = new Date(1970, 0, 1);
+    if (desdeParam) {
+      const m = re.exec(desdeParam);
+      if (!m) return badRequest('Data inicial no vàlida (YYYY-MM-DD)');
+      start = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    }
+    const b = await getBalancSituacio(start, end, { incloureCustodia });
+    title = `Balanç de situació ${desdeParam ? `${b.desde} a ` : ''}${b.data}${b.inclouCustodia ? '' : ' sense fiança'}`;
     sections = [
       {
         heading: 'Actiu',

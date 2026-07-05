@@ -552,10 +552,11 @@ export type BalancAny = Awaited<ReturnType<typeof getBalancAny>>;
  *    data; la seva contrapartida és el passiu "Fiances a retornar".
  *  - Fiances rebudes a retornar (passiu corrent) = mateixos dipòsits en custòdia.
  */
-export async function getBalancSituacio(dataTall: Date, opts?: { incloureCustodia?: boolean }) {
+export async function getBalancSituacio(start: Date, end: Date, opts?: { incloureCustodia?: boolean }) {
   const num = (d: { _sum: Record<string, unknown> }, k: string) => Number(d._sum[k] ?? 0);
   const r2 = (n: number) => Math.round(n * 100) / 100;
   const incloureCustodia = opts?.incloureCustodia ?? true;
+  const periode = { gte: start, lte: end };
 
   const [
     establiment,
@@ -567,50 +568,49 @@ export async function getBalancSituacio(dataTall: Date, opts?: { incloureCustodi
     prisma.establiment.findFirst({ select: { saldoInicialTresoreria: true } }),
     prisma.actiu.aggregate({
       _sum: { cost: true },
-      where: { deletedAt: null, dataCompra: { lte: dataTall } },
+      where: { deletedAt: null, dataCompra: periode },
     }),
-    prisma.actiu.count({ where: { deletedAt: null, dataCompra: { lte: dataTall } } }),
+    prisma.actiu.count({ where: { deletedAt: null, dataCompra: periode } }),
     prisma.factura.aggregate({
       _sum: { total: true },
-      where: { deletedAt: null, estat: 'PENDENT', data: { lte: dataTall } },
+      where: { deletedAt: null, estat: 'PENDENT', data: periode },
     }),
-    prisma.factura.count({ where: { deletedAt: null, estat: 'PENDENT', data: { lte: dataTall } } }),
-    // Dipòsits en custòdia A LA DATA DE TALL: creats abans i no resolts (o
-    // resolts després). Així funciona també per a una data passada.
+    prisma.factura.count({ where: { deletedAt: null, estat: 'PENDENT', data: periode } }),
+    // Fiances rebudes DINS del període i encara no resoltes a final del període.
     prisma.diposit.aggregate({
       _sum: { import: true },
       where: {
-        data: { lte: dataTall },
-        OR: [{ dataResolucio: null }, { dataResolucio: { gt: dataTall } }],
+        data: periode,
+        OR: [{ dataResolucio: null }, { dataResolucio: { gt: end } }],
         estancia: { deletedAt: null },
       },
     }),
     prisma.diposit.count({
       where: {
-        data: { lte: dataTall },
-        OR: [{ dataResolucio: null }, { dataResolucio: { gt: dataTall } }],
+        data: periode,
+        OR: [{ dataResolucio: null }, { dataResolucio: { gt: end } }],
         estancia: { deletedAt: null },
       },
     }),
-    // Tresoreria operativa: ingressos cobrats fins la data.
+    // Tresoreria: ingressos cobrats DINS del període.
     prisma.cobrament.aggregate({
       _sum: { import: true },
-      where: { data: { lte: dataTall }, estancia: { deletedAt: null } },
+      where: { data: periode, estancia: { deletedAt: null } },
     }),
-    // Tresoreria operativa: despeses pagades fins la data.
+    // Despeses pagades dins del període.
     prisma.gasto.aggregate({
       _sum: { import: true },
-      where: { data: { lte: dataTall } },
+      where: { data: periode },
     }),
-    // Tresoreria operativa: cost de personal fins la data.
+    // Cost de personal del període.
     prisma.jornada.aggregate({
       _sum: { import: true },
-      where: { data: { lte: dataTall } },
+      where: { data: periode },
     }),
-    // Dipòsits RETINGUTS fins la data: són ingrés (com al P&L mensual).
+    // Dipòsits RETINGUTS dins del període: són ingrés (com al P&L).
     prisma.diposit.aggregate({
       _sum: { import: true },
-      where: { estat: 'RETINGUT', dataResolucio: { lte: dataTall }, estancia: { deletedAt: null } },
+      where: { estat: 'RETINGUT', dataResolucio: periode, estancia: { deletedAt: null } },
     }),
   ]);
 
@@ -628,10 +628,10 @@ export async function getBalancSituacio(dataTall: Date, opts?: { incloureCustodi
   const totalGastos = r2(num(gastoAgg, 'import'));
   const totalJornades = r2(num(jornadaAgg, 'import'));
   const totalRetinguts = r2(num(retingutsAgg, 'import'));
-  // Tresoreria general = saldo inicial + cobraments + dipòsits retinguts (ingrés,
-  // com al P&L) − despeses − personal. L'efectiu de les fiances en custòdia NO és
-  // aquí: els dipòsits són una entrada de caixa pròpia i van a la seva línia.
-  const tresoreriaOperativa = r2(saldoInicial + totalCobraments + totalRetinguts - totalGastos - totalJornades);
+  // Tresoreria general DEL PERÍODE = cobraments + dipòsits retinguts (ingrés, com
+  // al P&L) − despeses − personal. Només moviments del període: el saldo inicial
+  // NO s'hi suma (no és un moviment). L'efectiu de les fiances va a la seva línia.
+  const tresoreriaOperativa = r2(totalCobraments + totalRetinguts - totalGastos - totalJornades);
 
   const totalActiu = r2(immobilitzatBrut + deutors + tresoreriaOperativa + tresoreriaFiances);
   const passiuNoCorrent = 0;
@@ -639,8 +639,10 @@ export async function getBalancSituacio(dataTall: Date, opts?: { incloureCustodi
   const totalPassiu = r2(passiuNoCorrent + passiuCorrent);
   const patrimoniNet = r2(totalActiu - totalPassiu);
 
+  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   return {
-    data: `${dataTall.getFullYear()}-${String(dataTall.getMonth() + 1).padStart(2, '0')}-${String(dataTall.getDate()).padStart(2, '0')}`,
+    desde: iso(start),
+    data: iso(end),
     inclouCustodia: incloureCustodia,
     actiu: {
       noCorrent: { immobilitzatBrut },

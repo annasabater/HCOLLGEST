@@ -354,34 +354,21 @@ export default function BalancPage() {
   // Data de tall del balanç de situació = últim dia del període triat, però MAI en
   // el futur (un balanç no pot incloure moviments que encara no han passat): si el
   // final del període és posterior a avui, es talla a avui.
+  // Període de la Situació (NOMÉS els moviments d'aquest període, com les altres
+  // vistes): mes de l'anchor, trimestre de l'anchor o l'any sencer.
   const isoDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const finalPeriode =
+  const situacioDesde =
+    situacioPeriode === 'any'
+      ? isoDay(new Date(year, 0, 1))
+      : situacioPeriode === 'trimestre'
+        ? isoDay(new Date(anchor.getFullYear(), Math.floor(anchor.getMonth() / 3) * 3, 1))
+        : isoDay(new Date(anchor.getFullYear(), anchor.getMonth(), 1));
+  const situacioFins =
     situacioPeriode === 'any'
       ? isoDay(new Date(year, 11, 31))
       : situacioPeriode === 'trimestre'
         ? isoDay(new Date(anchor.getFullYear(), Math.floor(anchor.getMonth() / 3) * 3 + 3, 0))
         : isoDay(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0));
-  const avuiIso = isoDay(new Date());
-  const situacioCutoff = finalPeriode > avuiIso ? avuiIso : finalPeriode;
-
-  // En mode Situació NO es pot navegar a períodes futurs (no tenen moviments i
-  // el saldo seria el d'avui, cosa que confon). La fletxa ">" es desactiva al
-  // període actual, i si s'entra amb un anchor futur, es reajusta a avui.
-  const ara = new Date();
-  const potAvancarSituacio =
-    situacioPeriode === 'any'
-      ? year < ara.getFullYear()
-      : anchor.getFullYear() < ara.getFullYear() ||
-        (anchor.getFullYear() === ara.getFullYear() &&
-          (situacioPeriode === 'trimestre'
-            ? Math.floor(anchor.getMonth() / 3) < Math.floor(ara.getMonth() / 3)
-            : anchor.getMonth() < ara.getMonth()));
-  useEffect(() => {
-    if (mode !== 'situacio') return;
-    const n = new Date();
-    if (anchor > n) setAnchor(n);
-    if (year > n.getFullYear()) setYear(n.getFullYear());
-  }, [mode, anchor, year]);
 
   const mesParam = `${anchor.getFullYear()}-${String(anchor.getMonth() + 1).padStart(2, '0')}`;
   const loadMes = useCallback(async () => setMes(await getJSON<Balanc>(`/api/balanc?mes=${mesParam}`)), [mesParam]);
@@ -391,10 +378,10 @@ export default function BalancPage() {
     async () =>
       setSituacio(
         await getJSON<BalancSituacio>(
-          `/api/balanc/situacio?data=${situacioCutoff}&custodia=${!restringit && incloureCustodiaSituacio ? 'true' : 'false'}`,
+          `/api/balanc/situacio?desde=${situacioDesde}&fins=${situacioFins}&custodia=${!restringit && incloureCustodiaSituacio ? 'true' : 'false'}`,
         ),
       ),
-    [situacioCutoff, incloureCustodiaSituacio, restringit],
+    [situacioDesde, situacioFins, incloureCustodiaSituacio, restringit],
   );
   useEffect(() => {
     if (mode === 'mes') loadMes();
@@ -551,7 +538,7 @@ export default function BalancPage() {
                     ? `/api/balanc/pdf?mes=${mesParam}`
                     : mode === 'any'
                       ? `/api/balanc/pdf?any=${year}`
-                      : `/api/balanc/pdf?situacio=${situacioCutoff}&custodia=${incloureCustodiaSituacio ? 'true' : 'false'}`
+                      : `/api/balanc/pdf?situacio=${situacioFins}&desde=${situacioDesde}&custodia=${incloureCustodiaSituacio ? 'true' : 'false'}`
                 }
                 target="_blank"
                 rel="noreferrer"
@@ -794,16 +781,12 @@ export default function BalancPage() {
             <Button
               variant="outline"
               size="sm"
-              disabled={!potAvancarSituacio}
-              title={potAvancarSituacio ? undefined : 'No es pot anar a un període futur'}
               onClick={() => situacioPeriode === 'any' ? setYear(year + 1) : setAnchor(addMonths(anchor, situacioPeriode === 'trimestre' ? 3 : 1))}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
             <span className="text-xs text-slate-400">
-              {finalPeriode > avuiIso
-                ? `(període en curs · foto a avui, ${situacioCutoff.split('-').reverse().join('/')})`
-                : `(a ${situacioCutoff.split('-').reverse().join('/')})`}
+              (del {situacioDesde.split('-').reverse().join('/')} al {situacioFins.split('-').reverse().join('/')})
             </span>
             {!restringit && (
               <div className="ml-2 flex overflow-hidden rounded-lg border border-slate-300">
@@ -825,10 +808,9 @@ export default function BalancPage() {
             )}
           </div>
           <p className="text-xs text-slate-400">
-            El balanç de situació és una <strong>foto acumulada</strong>: mostra tot el que tens i
-            deus a final del període triat (no només els moviments d&apos;aquell període). Per veure
-            els ingressos i despeses <strong>només</strong> d&apos;un mes, trimestre o any, fes servir
-            les vistes <strong>Mes</strong>, <strong>Trimestre / rang</strong> o <strong>Any</strong>.
+            Balanç <strong>del període</strong>: només s&apos;hi compten els moviments del mes,
+            trimestre o any triat (cobraments, devolucions, fiances rebudes, despeses i actius
+            comprats dins del període). No és un acumulat històric.
           </p>
           {situacio && <SituacioView data={situacio} />}
         </div>
