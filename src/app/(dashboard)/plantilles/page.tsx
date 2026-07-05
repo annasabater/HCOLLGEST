@@ -24,9 +24,6 @@ import {
   PLANTILLA_NETEJA,
   PLANTILLA_BENVINGUDA,
   PLANTILLA_GRACIES,
-  PASILLO_TXT,
-  PATI_TXT,
-  VORERA_TXT,
   HORA_NETEJA_TXT,
   LANGS,
   type Lang,
@@ -230,10 +227,12 @@ function NetejaCard() {
           ),
           // Zones comunes combinades en una sola frase ("También el pasillo, el patio y la acera.").
           zones: zonesComunesTxt(lang, { pasillo, pati, vorera }),
-          // Variables antigues, per si hi ha una plantilla desada amb el format vell.
-          pasillo: pasillo ? PASILLO_TXT[lang] : '',
-          pati: pati ? PATI_TXT[lang] : '',
-          vorera: vorera ? VORERA_TXT[lang] : '',
+          // Compatibilitat amb plantilles desades antigues ({pasillo}{pati}{vorera}):
+          // la frase combinada va al primer forat i els altres queden buits, així
+          // MAI surt "También el pasillo. También el patio. També la acera.".
+          pasillo: ` ${zonesComunesTxt(lang, { pasillo, pati, vorera })}`,
+          pati: '',
+          vorera: '',
           hora: mostrarHora ? fillTemplate(HORA_NETEJA_TXT[lang], { hora }) : '',
         }),
       ),
