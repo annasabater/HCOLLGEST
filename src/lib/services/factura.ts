@@ -596,6 +596,14 @@ export async function finalitzarEstanciaAnticipada(
       });
     }
     if (retornImport > 0) {
+      // La devolució es data el dia del PAGAMENT original: així al balanç es
+      // resta al mateix període i l'ingrés del mes reflecteix el net real
+      // (el que la persona ha pagat de veritat), no el brut.
+      const darrerPagament = await tx.cobrament.findFirst({
+        where: { estanciaId, import: { gt: 0 } },
+        orderBy: { data: 'desc' },
+        select: { data: true },
+      });
       await tx.cobrament.create({
         data: {
           estanciaId,
@@ -603,7 +611,7 @@ export async function finalitzarEstanciaAnticipada(
           descripcio: 'Devolució per sortida anticipada',
           metode: input.retornMetode ?? 'EFECTIU',
           import: -retornImport,
-          data: new Date(),
+          data: darrerPagament?.data ?? new Date(),
         },
       });
     }
