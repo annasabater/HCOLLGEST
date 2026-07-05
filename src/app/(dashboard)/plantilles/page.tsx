@@ -161,9 +161,10 @@ function NetejaCard() {
   const [treballadors, setTreballadors] = useState<Treballador[]>([]);
   const [treballadorId, setTreballadorId] = useState('');
   const [tasques, setTasques] = useState<Tasca[]>([]);
+  // Zones comunes: per defecte TOTES activades (passadís, pati i vorera).
   const [pasillo, setPasillo] = useState(true);
-  const [pati, setPati] = useState(false);
-  const [vorera, setVorera] = useState(false);
+  const [pati, setPati] = useState(true);
+  const [vorera, setVorera] = useState(true);
   const [mostrarHora, setMostrarHora] = useState(false);
   const [hora, setHora] = useState('15:00');
   const [lang, setLang] = useState<Lang>('es');
