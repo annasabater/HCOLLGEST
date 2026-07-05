@@ -7,8 +7,12 @@ interface MesRow {
   mes: number;
   ingressos: number;
   despeses: number;
+  personal?: number;
   benefici: number;
 }
+
+// Despeses totals del mes = despeses generals + personal (forma part de despeses).
+const despTotal = (m: MesRow) => m.despeses + (m.personal ?? 0);
 
 const MESOS = ['Gen', 'Feb', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Des'];
 
@@ -16,7 +20,7 @@ const MESOS = ['Gen', 'Feb', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'O
 export function BalancChart({ mesos }: { mesos: MesRow[] }) {
   const { hidden } = useAmountsHidden();
   const eur = (v: number) => (hidden ? '••••' : formatEur(v));
-  const max = Math.max(1, ...mesos.map((m) => Math.max(m.ingressos, m.despeses)));
+  const max = Math.max(1, ...mesos.map((m) => Math.max(m.ingressos, despTotal(m))));
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -40,8 +44,8 @@ export function BalancChart({ mesos }: { mesos: MesRow[] }) {
               />
               <div
                 className="w-1/2 rounded-t bg-red-400 transition-all hover:bg-red-500"
-                style={{ height: `${(m.despeses / max) * 100}%` }}
-                title={`${MESOS[m.mes - 1]}: despeses ${eur(m.despeses)}`}
+                style={{ height: `${(despTotal(m) / max) * 100}%` }}
+                title={`${MESOS[m.mes - 1]}: despeses ${eur(despTotal(m))}`}
               />
             </div>
           </div>

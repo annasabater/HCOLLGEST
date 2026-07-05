@@ -384,7 +384,7 @@ export default function BalancPage() {
         ['Ingressos (sense retencions)', mes.ingressos.toFixed(2)],
         ['Retencions en custòdia', mes.retencions.toFixed(2)],
         ['Ingressos + retencions', mes.ingressosAmbRetencions.toFixed(2)],
-        ['Despeses (inclou personal)', (mes.despeses + mes.personal).toFixed(2)],
+        ['Despeses', (mes.despeses + mes.personal).toFixed(2)],
         ['Benefici', mes.benefici.toFixed(2)],
         ['Marge %', marge(mes.benefici, mes.ingressos)],
         [''],
@@ -402,7 +402,7 @@ export default function BalancPage() {
         ['Ingressos (sense fiança)', rang.ingressos.toFixed(2)],
         ['Fiança en custòdia', rang.retencions.toFixed(2)],
         ['Ingressos + fiança', rang.ingressosAmbRetencions.toFixed(2)],
-        ['Despeses (inclou personal)', (rang.despeses + rang.personal).toFixed(2)],
+        ['Despeses', (rang.despeses + rang.personal).toFixed(2)],
         ['Benefici', rang.benefici.toFixed(2)],
         ['Marge %', marge(rang.benefici, rang.ingressos)],
         [''],
@@ -416,7 +416,7 @@ export default function BalancPage() {
     } else if (mode === 'any' && any) {
       const rows: (string | number)[][] = [
         [`Balanç ${any.any}`, ''],
-        ['Mes', 'Ingressos', 'Fiança', 'Ingressos+fiança', 'Despeses (inclou personal)', 'Benefici'],
+        ['Mes', 'Ingressos', 'Fiança', 'Ingressos+fiança', 'Despeses', 'Benefici'],
         ...any.mesos.map((m) => [
           MESOS[m.mes - 1]!,
           m.ingressos.toFixed(2),
@@ -563,7 +563,7 @@ export default function BalancPage() {
                       titol="Amb fiança (últims 12 mesos)"
                       punts={seriePunts(serie).map((s) => ({ label: s.label, barA: s.ingressosAmbRetencions, barB: s.despeses + s.personal, linia: s.benefici + s.retencions }))}
                       nomA="Ingressos + fiança"
-                      nomB="Despeses (amb personal)"
+                      nomB="Despeses"
                       nomLinia="Benefici + fiança"
                       colorA="#f97316"
                       colorLinia="#c2410c"
@@ -637,7 +637,7 @@ export default function BalancPage() {
                       titol="Amb fiança (mesos del període)"
                       punts={seriePunts(serie).map((s) => ({ label: s.label, barA: s.ingressosAmbRetencions, barB: s.despeses + s.personal, linia: s.benefici + s.retencions }))}
                       nomA="Ingressos + fiança"
-                      nomB="Despeses (amb personal)"
+                      nomB="Despeses"
                       nomLinia="Benefici + fiança"
                       colorA="#f97316"
                       colorLinia="#c2410c"
