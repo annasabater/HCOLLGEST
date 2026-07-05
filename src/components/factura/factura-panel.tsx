@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { Receipt, ShieldCheck, ShieldOff, Pencil, Trash2 } from 'lucide-react';
@@ -88,6 +87,13 @@ export function FacturaPanel({
   const [dupla, setDupla] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Edició inline d'una factura (número + línies) sense sortir de l'estada.
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editNumero, setEditNumero] = useState('');
+  const [editLinies, setEditLinies] = useState<{ concepte: string; descripcio: string; import: string }[]>([]);
+  const [editBusy, setEditBusy] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   // Pendents de facturar: pagaments sense factura i fiances en custòdia sense factura.
   const pagamentsLliures = pagaments.filter((p) => !p.facturaId);
@@ -215,54 +221,154 @@ export function FacturaPanel({
     }
   }
 
+  async function obrirEdicio(f: FacturaLite) {
+    try {
+      const r = await getJSON<{
+        factura: { numero: string; linies: { concepte: string; descripcio: string | null; import: number | string }[] };
+      }>(`/api/factures/${f.id}`);
+      setEditNumero(r.factura.numero);
+      setEditLinies(
+        r.factura.linies.map((l) => ({ concepte: l.concepte, descripcio: l.descripcio ?? '', import: String(Number(l.import)) })),
+      );
+      setEditError(null);
+      setEditId(f.id);
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "No s'ha pogut carregar la factura");
+    }
+  }
+
+  async function desarEdicio() {
+    if (!editId) return;
+    const linies = editLinies
+      .filter((l) => l.descripcio.trim() || Number(l.import))
+      .map((l) => ({ concepte: l.concepte, descripcio: l.descripcio.trim() || 'Concepte', import: Number(l.import) || 0 }));
+    if (linies.length === 0) {
+      setEditError('Cal almenys una línia.');
+      return;
+    }
+    setEditBusy(true);
+    setEditError(null);
+    try {
+      await patchJSON(`/api/factures/${editId}`, { numero: editNumero.trim() || undefined, linies });
+      setEditId(null);
+      router.refresh();
+    } catch (err) {
+      setEditError(err instanceof ApiError ? err.message : 'Error desant la factura');
+    } finally {
+      setEditBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-3">
       {factures.length === 0 && !open && (
         <p className="text-sm text-slate-400 italic">Sense factures.</p>
       )}
       {factures.map((f) => (
-        <div
-          key={f.id}
-          className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm"
-        >
-          <a
-            href={printUrl(f)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex min-w-0 items-center gap-2 font-medium text-slate-800 hover:underline"
-            title="Obrir / imprimir"
-          >
-            <Receipt className="h-4 w-4 shrink-0 text-slate-400" /> {f.numero}
-            {f.tipusDocument && (
-              <span className="truncate text-xs font-normal text-slate-400">
-                {TIPUS_LABEL[f.tipusDocument] ?? f.tipusDocument}
-              </span>
-            )}
-          </a>
-          <div className="flex items-center gap-2">
-            {formatEur(Number(f.total))}
-            <button
-              type="button"
-              onClick={() => toggleEstat(f.id, f.estat)}
-              title="Canviar entre Cobrada i Pendent"
-              className="cursor-pointer"
+        <div key={f.id} className="rounded-lg border border-slate-200">
+          <div className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+            <a
+              href={printUrl(f)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex min-w-0 items-center gap-2 font-medium text-slate-800 hover:underline"
+              title="Obrir / imprimir"
             >
-              <Badge tone={f.estat === 'COBRADA' ? 'success' : 'warning'}>
-                {f.estat === 'COBRADA' ? 'Cobrada' : 'Pendent'}
-              </Badge>
-            </button>
-            <Link href={`/factures/${f.id}`} title="Editar" className="text-slate-400 hover:text-brand-600">
-              <Pencil className="h-4 w-4" />
-            </Link>
-            <button
-              type="button"
-              onClick={() => eliminarFactura(f.id, f.numero)}
-              title="Eliminar"
-              className="text-slate-400 hover:text-red-600"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
+              <Receipt className="h-4 w-4 shrink-0 text-slate-400" /> {f.numero}
+              {f.tipusDocument && (
+                <span className="truncate text-xs font-normal text-slate-400">
+                  {TIPUS_LABEL[f.tipusDocument] ?? f.tipusDocument}
+                </span>
+              )}
+            </a>
+            <div className="flex items-center gap-2">
+              {formatEur(Number(f.total))}
+              <button
+                type="button"
+                onClick={() => toggleEstat(f.id, f.estat)}
+                title="Canviar entre Cobrada i Pendent"
+                className="cursor-pointer"
+              >
+                <Badge tone={f.estat === 'COBRADA' ? 'success' : 'warning'}>
+                  {f.estat === 'COBRADA' ? 'Cobrada' : 'Pendent'}
+                </Badge>
+              </button>
+              <button
+                type="button"
+                onClick={() => (editId === f.id ? setEditId(null) : obrirEdicio(f))}
+                title="Editar la factura aquí"
+                className="text-slate-400 hover:text-brand-600"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => eliminarFactura(f.id, f.numero)}
+                title="Eliminar"
+                className="text-slate-400 hover:text-red-600"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
           </div>
+
+          {/* Editor inline: número + línies, sense sortir de l'estada */}
+          {editId === f.id && (
+            <div className="space-y-2 border-t border-slate-100 px-3 py-3">
+              <label className="flex items-center gap-2 text-sm">
+                <span className="text-xs font-medium text-slate-500">Núm. factura:</span>
+                <Input className="h-9 w-44" value={editNumero} onChange={(e) => setEditNumero(e.target.value)} />
+              </label>
+              {editLinies.map((l, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Input
+                    className="h-9 flex-1"
+                    placeholder="Concepte"
+                    value={l.descripcio}
+                    onChange={(e) => setEditLinies((p) => p.map((x, xi) => (xi === i ? { ...x, descripcio: e.target.value } : x)))}
+                  />
+                  <Input
+                    className="h-9 w-28 text-right"
+                    type="number"
+                    step="0.01"
+                    placeholder="Import €"
+                    value={l.import}
+                    onChange={(e) => setEditLinies((p) => p.map((x, xi) => (xi === i ? { ...x, import: e.target.value } : x)))}
+                  />
+                  {editLinies.length > 1 && (
+                    <button
+                      type="button"
+                      className="text-slate-400 hover:text-red-600"
+                      title="Treure línia"
+                      onClick={() => setEditLinies((p) => p.filter((_, xi) => xi !== i))}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setEditLinies((p) => [...p, { concepte: 'EXTRA', descripcio: '', import: '' }])}
+                >
+                  + Afegir línia
+                </Button>
+                <span className="ml-auto text-sm text-slate-600">
+                  Total: <strong>{formatEur(editLinies.reduce((a, l) => a + (Number(l.import) || 0), 0))}</strong>
+                </span>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setEditId(null)} disabled={editBusy}>
+                  Cancel·lar
+                </Button>
+                <Button type="button" size="sm" onClick={desarEdicio} disabled={editBusy}>
+                  {editBusy ? 'Desant…' : 'Desar'}
+                </Button>
+              </div>
+              {editError && <p className="text-xs text-red-600">{editError}</p>}
+            </div>
+          )}
         </div>
       ))}
 

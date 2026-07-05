@@ -79,7 +79,7 @@ export async function GET(
     // Per a línies d'allotjament sense dates a la descripció, afegim-les com a detall
     const needsDates = l.concepte === 'ALLOTJAMENT' && habDates && !label.includes('Del ');
     return `
-    <tr class="item">
+    <tr class="item" data-concepte="${esc(l.concepte)}">
       <td class="c-qty"><input class="in qty" inputmode="decimal" aria-label="Quantitat" value="1"></td>
       <td>
         <input class="in concept" aria-label="Concepte" value="${label}">
@@ -97,7 +97,7 @@ export async function GET(
 
   // Línies de dipòsit (fiança) addicionals si s'inclou (amb custodia)
   const dipositsHtml = diposits.length > 0 ? diposits.map((d) => `
-    <tr class="item">
+    <tr class="item" data-fianca="1">
       <td class="c-qty"><input class="in qty" inputmode="decimal" aria-label="Quantitat" value="1"></td>
       <td><input class="in concept" aria-label="Concepte" value="${esc((d.notes ?? 'Fiança') + ' ' + fmtDate(d.data))}"></td>
       <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${esc(plain(Number(d.import)))}"></td>
@@ -238,6 +238,7 @@ export async function GET(
   <div class="tb-brand">Hostal Coll<span class="tb-badge">${ambCustodia ? 'Factura simple amb fiança' : 'Factura simple'}</span></div>
   <div class="tb-actions">
     <button id="addLine" class="btn ghost">+ Afegir línia</button>
+    <button id="save" class="btn ghost" title="Desa les línies i imports a la factura (queda guardat per sempre)">Desar canvis</button>
     <button id="print" class="btn solid">Imprimir / Guardar PDF</button>
   </div>
 </div>
@@ -352,9 +353,48 @@ export async function GET(
     const tbody = document.querySelector('#items tbody');
     const row = document.querySelector('.item').cloneNode(true);
     row.querySelectorAll('.qty, .concept, .detail, .price, .amount').forEach(i => i.value = '');
+    // Les línies noves es desen com a EXTRA (i mai com a fiança).
+    row.removeAttribute('data-fianca');
+    row.setAttribute('data-concepte', 'EXTRA');
     tbody.appendChild(row);
     row.querySelector('.concept').focus();
     recalc();
+  });
+
+  // Desa les línies (concepte + import) a la factura de la base de dades.
+  // Les files de fiança no són línies de la factura i no es desen aquí.
+  document.getElementById('save').addEventListener('click', async () => {
+    const btn = document.getElementById('save');
+    const rows = Array.from(document.querySelectorAll('#items tbody tr.item')).filter(r => !r.hasAttribute('data-fianca'));
+    const linies = rows.map(r => {
+      const c = r.querySelector('.concept');
+      const a = r.querySelector('.amount');
+      return {
+        concepte: r.getAttribute('data-concepte') || 'EXTRA',
+        descripcio: (c && c.value ? c.value : '').trim(),
+        import: num(a ? a.value : 0)
+      };
+    }).filter(l => l.descripcio || l.import)
+      .map(l => ({ concepte: l.concepte, descripcio: l.descripcio || 'Concepte', import: l.import }));
+    if (!linies.length) { alert('Cal almenys una línia amb concepte o import (les línies de fiança no es desen aquí).'); return; }
+    const orig = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Desant…';
+    try {
+      const res = await fetch('/api/factures/${factura.id}', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ linies })
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || 'Error desant els canvis');
+      }
+      btn.textContent = 'Desat ✓';
+      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1600);
+    } catch (e) {
+      alert(e && e.message ? e.message : "No s'ha pogut desar");
+      btn.textContent = orig; btn.disabled = false;
+    }
   });
 
   document.addEventListener('click', e => {

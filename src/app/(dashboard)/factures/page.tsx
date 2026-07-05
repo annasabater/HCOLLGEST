@@ -1,12 +1,12 @@
-import Link from 'next/link';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { teVistaRestringida } from '@/lib/auth/restriccions';
 import { PageHeader } from '@/components/ui/page-header';
 import { FinancesNav } from '@/components/balanc/finances-nav';
-import { Badge } from '@/components/ui/badge';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { Eur, HideAmountsButton } from '@/components/finances/amounts-visibility';
+import { EstatFacturaToggle, EliminarFacturaIcona } from '@/components/factura/factures-llista-accions';
+import { FitxaExpandible } from '@/components/justificants/fitxa-expandible';
 import { formatDate } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +22,7 @@ export default async function FacturesPage() {
     include: {
       estancia: {
         include: {
-          viatgers: { where: { esTitular: true }, include: { huesped: true } },
+          viatgers: { include: { huesped: true }, orderBy: { esTitular: 'desc' } },
           diposits: { where: { estat: 'EN_CUSTODIA' } },
         },
       },
@@ -61,17 +61,29 @@ export default async function FacturesPage() {
               <Th>Base</Th>
               <Th>Total</Th>
               <Th>Estat</Th>
+              <Th className="text-right">Accions</Th>
             </tr>
           </Thead>
           <tbody>
             {factures.map((f) => {
-              const t = f.estancia.viatgers[0]?.huesped;
+              const vTitular = f.estancia.viatgers.find((v) => v.esTitular) ?? f.estancia.viatgers[0];
+              const t = vTitular?.huesped;
+              // El número obre directament la factura impresa (fiscal o simple).
+              const printUrl = f.tipusDocument === 'FACTURA'
+                ? `/imprimir/factura/${f.id}`
+                : `/imprimir/factura-simple/${f.id}`;
               return (
                 <Tr key={f.id}>
                   <Td>
-                    <Link href={`/factures/${f.id}`} className="font-medium text-brand-700">
+                    <a
+                      href={printUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="Obrir la factura"
+                      className="font-medium text-brand-700 hover:underline"
+                    >
                       {f.numero.replace(/^\d{4}-/, '')}
-                    </Link>
+                    </a>
                     {f.fiancaInclosa === true && (
                       <span className="ml-1 inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200">
                         Fiança
@@ -83,14 +95,37 @@ export default async function FacturesPage() {
                       </span>
                     )}
                   </Td>
-                  <Td>{t ? `${t.nom} ${t.cognom1}` : '—'}</Td>
+                  <Td>
+                    {t ? (
+                      <FitxaExpandible
+                        estanciaId={f.estancia.id}
+                        titular={`${t.nom} ${t.cognom1}`}
+                        numContracte={f.estancia.numContracte}
+                        anyContracte={f.estancia.anyContracte}
+                        viatgers={f.estancia.viatgers.filter((v) => v.huesped).map((v) => ({
+                          id: v.huesped!.id,
+                          nom: v.huesped!.nom,
+                          cognom1: v.huesped!.cognom1,
+                          cognom2: v.huesped?.cognom2 ?? null,
+                          esTitular: v.esTitular,
+                        }))}
+                      />
+                    ) : (
+                      '—'
+                    )}
+                  </Td>
                   <Td>{formatDate(f.data)}</Td>
                   <Td><Eur value={Number(f.base)} /></Td>
                   <Td className="font-medium"><Eur value={Number(f.total)} /></Td>
                   <Td>
-                    <Badge tone={f.estat === 'COBRADA' ? 'success' : 'warning'}>
-                      {f.estat === 'COBRADA' ? 'Cobrada' : 'Pendent'}
-                    </Badge>
+                    {restringit ? (
+                      <span>{f.estat === 'COBRADA' ? 'Cobrada' : 'Pendent'}</span>
+                    ) : (
+                      <EstatFacturaToggle id={f.id} estat={f.estat} />
+                    )}
+                  </Td>
+                  <Td className="text-right">
+                    {!restringit && <EliminarFacturaIcona id={f.id} numero={f.numero} />}
                   </Td>
                 </Tr>
               );
