@@ -138,7 +138,7 @@ function NetejaCard() {
   const [pati, setPati] = useState(false);
   const [vorera, setVorera] = useState(false);
   const [mostrarHora, setMostrarHora] = useState(false);
-  const [hora, setHora] = useState('11:00');
+  const [hora, setHora] = useState('15:00');
   const [lang, setLang] = useState<Lang>('es');
   const [tpls, setTpls] = useState<Record<Lang, string>>(PLANTILLA_NETEJA);
   const [editLang, setEditLang] = useState<Lang>('es');
