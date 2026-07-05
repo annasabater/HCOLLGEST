@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
-import { fillTemplate, enviaWhatsApp, PLANTILLA_BENVINGUDA, type Lang } from '@/lib/plantilles';
+import { fillTemplate, enviaWhatsApp, PLANTILLA_BENVINGUDA, PLANTILLA_GRACIES, type Lang } from '@/lib/plantilles';
 
 type LangEmail = 'ca' | 'es' | 'en' | 'fr';
 const LANGS = [
@@ -119,6 +119,15 @@ export function EmailsPanel({
     }
   }
 
+  function openWhatsAppGracies() {
+    const waLang = lang as Lang;
+    const text = fillTemplate(PLANTILLA_GRACIES[waLang], {
+      nom: nom || titularNom,
+      enllac: lsGet('enlac_ressenya', enlacRessenya),
+    });
+    enviaWhatsApp(telefon, text, nom || titularNom);
+  }
+
   async function submit() {
     if (!a || !programatPer) { setErr('Omple correu i hora'); return; }
     setSaving(true);
@@ -178,6 +187,16 @@ export function EmailsPanel({
               <MessageCircle className="h-4 w-4" /> Benvinguda WhatsApp
             </Button>
           </div>
+          <Button
+            type="button"
+            size="sm"
+            disabled={!titularTelefon}
+            title={titularTelefon ? undefined : 'El titular no té telèfon'}
+            onClick={openWhatsAppGracies}
+            className="bg-green-600 hover:bg-green-700 text-white border-green-600"
+          >
+            <MessageCircle className="h-4 w-4" /> Gràcies WhatsApp
+          </Button>
           <Button type="button" size="sm" variant="outline" onClick={() => openForm('gracies')}>
             <Plus className="h-4 w-4" /> Email de gràcies
           </Button>
