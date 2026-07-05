@@ -550,7 +550,7 @@ export default function BalancPage() {
 
 
               {serie && serie.length > 0 && (
-                <>
+                <div className={`grid gap-4 ${restringit ? '' : 'lg:grid-cols-2'}`}>
                   <BalancLineChart
                     titol="Ingressos, despeses i benefici (últims 12 mesos)"
                     punts={seriePunts(serie).map((s) => ({ label: s.label, barA: s.ingressos, barB: s.despeses + s.personal, linia: s.benefici }))}
@@ -569,7 +569,7 @@ export default function BalancPage() {
                       colorLinia="#c2410c"
                     />
                   )}
-                </>
+                </div>
               )}
 
               <BreakdownsSection data={ambPersonal(mes, mes.personal)} />
@@ -624,7 +624,7 @@ export default function BalancPage() {
                 )}
               </div>
               {serie && serie.length > 0 && (
-                <>
+                <div className={`grid gap-4 ${restringit ? '' : 'lg:grid-cols-2'}`}>
                   <BalancLineChart
                     titol="Ingressos, despeses i benefici (mesos del període)"
                     punts={seriePunts(serie).map((s) => ({ label: s.label, barA: s.ingressos, barB: s.despeses + s.personal, linia: s.benefici }))}
@@ -643,7 +643,7 @@ export default function BalancPage() {
                       colorLinia="#c2410c"
                     />
                   )}
-                </>
+                </div>
               )}
 
               <BreakdownsSection data={ambPersonal(rang, rang.personal)} />
