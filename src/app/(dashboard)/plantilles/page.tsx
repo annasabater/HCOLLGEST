@@ -75,6 +75,36 @@ function copia(text: string) {
   navigator.clipboard?.writeText(text);
 }
 
+// ── Estat "enviat" dels avisos de neteja (persistent al navegador) ────────────
+// Claus per dia: una per al missatge a la dona de neteja i una per hoste/habitació.
+const AVIS_NETEJA_KEY = (data: string, treballadorId: string) => `avis_neteja_enviat:${data}:${treballadorId}`;
+const AVIS_HOSTE_KEY = (data: string, habitacio: string) => `avis_hoste_neteja:${data}:${habitacio}`;
+const AVIS_EVENT = 'avis-neteja-canvi';
+
+function marcaAvis(key: string) {
+  try {
+    const d = new Date();
+    window.localStorage.setItem(key, `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`);
+    window.dispatchEvent(new Event(AVIS_EVENT));
+  } catch { /* localStorage no disponible */ }
+}
+function llegeixAvis(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/** Badge verd "Enviat DD/MM". */
+function EnviatBadge({ quan }: { quan: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md border border-green-300 bg-green-50 px-2 py-1.5 text-xs font-medium text-green-700">
+      <CheckCircle className="h-3.5 w-3.5 shrink-0" /> Enviat {quan}
+    </span>
+  );
+}
+
 function LangSelect({ value, onChange, className }: { value: Lang; onChange: (l: Lang) => void; className?: string }) {
   return (
     <Select value={value} onChange={(e) => onChange(e.target.value as Lang)} className={className}>
@@ -162,6 +192,31 @@ function NetejaCard() {
   const treballador = treballadors.find((t) => t.id === treballadorId);
   // Només les habitacions assignades a la persona triada (el full diari les hi assigna).
   const tasquesPersona = tasques.filter((t) => t.assignadaA === treballadorId);
+
+  // Estat "enviat" (persistent): del missatge a la neteja i dels avisos als hostes
+  // de les habitacions d'aquest dia. S'actualitza quan s'envia des de l'altra targeta.
+  const [enviatNeteja, setEnviatNeteja] = useState<string | null>(null);
+  const [hostesAvisats, setHostesAvisats] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const carrega = () => {
+      setEnviatNeteja(llegeixAvis(AVIS_NETEJA_KEY(data, treballadorId)));
+      const m: Record<string, string> = {};
+      for (const t of tasques) {
+        const hab = t.habitacio?.nom;
+        if (!hab) continue;
+        const v = llegeixAvis(AVIS_HOSTE_KEY(data, hab));
+        if (v) m[hab] = v;
+      }
+      setHostesAvisats(m);
+    };
+    carrega();
+    window.addEventListener(AVIS_EVENT, carrega);
+    return () => window.removeEventListener(AVIS_EVENT, carrega);
+  }, [data, treballadorId, tasques]);
+
+  // Habitacions del missatge amb l'hoste encara per avisar.
+  const habsPendents = [...new Set(tasquesPersona.map((t) => t.habitacio?.nom).filter((h): h is string => !!h))]
+    .filter((h) => !hostesAvisats[h]);
   useEffect(() => {
     const meves = tasques.filter((t) => t.assignadaA === treballador?.id);
     setMsg(
@@ -289,14 +344,35 @@ function NetejaCard() {
           <Button
             type="button"
             disabled={!msg}
-            onClick={() => enviaWhatsApp(treballador?.telefon, msg, treballador?.nom)}
+            onClick={() => {
+              if (enviaWhatsApp(treballador?.telefon, msg, treballador?.nom)) {
+                marcaAvis(AVIS_NETEJA_KEY(data, treballadorId));
+              }
+            }}
           >
             <MessageCircle className="h-4 w-4" /> Enviar per WhatsApp
           </Button>
+          {enviatNeteja && <EnviatBadge quan={enviatNeteja} />}
           <Button type="button" variant="outline" onClick={() => copia(msg)}>
             <Copy className="h-4 w-4" /> Copiar
           </Button>
         </div>
+
+        {/* Recordatori: hostes de les habitacions del dia pendents d'avisar */}
+        {habsPendents.length > 0 && (
+          <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            <Users className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              Recorda avisar també {habsPendents.length === 1 ? "l'hoste de l'habitació" : 'els hostes de les habitacions'}{' '}
+              <strong>{habsPendents.join(', ')}</strong> — ho pots fer a la targeta «Avís als hostes (neteja)» aquí sota.
+            </p>
+          </div>
+        )}
+        {habsPendents.length === 0 && Object.keys(hostesAvisats).length > 0 && (
+          <p className="flex items-center gap-1.5 text-xs font-medium text-green-700">
+            <CheckCircle className="h-3.5 w-3.5" /> Tots els hostes de les habitacions d&apos;aquest dia ja estan avisats.
+          </p>
+        )}
 
         <details className="text-sm">
           <summary className="cursor-pointer text-slate-500">Editar plantilla per defecte (per idioma)</summary>
@@ -351,6 +427,25 @@ function HostesCard() {
     (e) =>
       toISODate(new Date(e.dataEntrada)) <= data && data <= toISODate(new Date(e.dataSortida)),
   );
+
+  // Avisos ja enviats per habitació (persistent; sincronitzat amb el recordatori
+  // de la targeta de neteja via l'event AVIS_EVENT).
+  const [avisats, setAvisats] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const carrega = () => {
+      const m: Record<string, string> = {};
+      estancies.forEach((e) => {
+        const hab = e.habitacio?.nom;
+        if (!hab) return;
+        const v = llegeixAvis(AVIS_HOSTE_KEY(data, hab));
+        if (v) m[hab] = v;
+      });
+      setAvisats(m);
+    };
+    carrega();
+    window.addEventListener(AVIS_EVENT, carrega);
+    return () => window.removeEventListener(AVIS_EVENT, carrega);
+  }, [data, estancies]);
 
   function travelerIdx(e: Estancia): number {
     const s = selIdx[e.id];
@@ -435,13 +530,20 @@ function HostesCard() {
                     {e.habitacio ? `Hab. ${e.habitacio.nom} · ` : ''}
                     {phone ?? 'sense telèfon'}
                   </span>
-                  <div className="ml-auto flex gap-2 pb-0.5">
+                  <div className="ml-auto flex items-center gap-2 pb-0.5">
+                    {e.habitacio?.nom && avisats[e.habitacio.nom] && (
+                      <EnviatBadge quan={avisats[e.habitacio.nom]!} />
+                    )}
                     <Button
                       type="button"
                       size="sm"
                       disabled={!phone}
                       title={phone ? undefined : 'Aquest hoste no té telèfon'}
-                      onClick={() => enviaWhatsApp(phone, msgFor(e), nomFor(e))}
+                      onClick={() => {
+                        if (enviaWhatsApp(phone, msgFor(e), nomFor(e)) && e.habitacio?.nom) {
+                          marcaAvis(AVIS_HOSTE_KEY(data, e.habitacio.nom));
+                        }
+                      }}
                     >
                       <MessageCircle className="h-4 w-4" /> WhatsApp
                     </Button>
