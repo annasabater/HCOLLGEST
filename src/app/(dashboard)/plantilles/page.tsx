@@ -18,6 +18,8 @@ import {
   enviaWhatsApp,
   descriuTasques,
   tipusNetejaLabel,
+  netejaLinies,
+  zonesComunesTxt,
   PLANTILLA_HOSTE,
   PLANTILLA_NETEJA,
   PLANTILLA_BENVINGUDA,
@@ -163,18 +165,23 @@ function NetejaCard() {
   useEffect(() => {
     const meves = tasques.filter((t) => t.assignadaA === treballador?.id);
     setMsg(
-      fillTemplate(tpls[lang], {
-        nom: treballador?.nom ?? '',
-        data: formatDate(data),
-        habitacions: descriuTasques(
-          meves.map((t) => ({ habitacio: t.habitacio?.nom ?? null, tipus: t.tipus, notes: t.notes })),
-          lang,
-        ),
-        pasillo: pasillo ? PASILLO_TXT[lang] : '',
-        pati: pati ? PATI_TXT[lang] : '',
-        vorera: vorera ? VORERA_TXT[lang] : '',
-        hora: mostrarHora ? fillTemplate(HORA_NETEJA_TXT[lang], { hora }) : '',
-      }),
+      netejaLinies(
+        fillTemplate(tpls[lang], {
+          nom: treballador?.nom ?? '',
+          data: formatDate(data),
+          habitacions: descriuTasques(
+            meves.map((t) => ({ habitacio: t.habitacio?.nom ?? null, tipus: t.tipus, notes: t.notes })),
+            lang,
+          ),
+          // Zones comunes combinades en una sola frase ("También el pasillo, el patio y la acera.").
+          zones: zonesComunesTxt(lang, { pasillo, pati, vorera }),
+          // Variables antigues, per si hi ha una plantilla desada amb el format vell.
+          pasillo: pasillo ? PASILLO_TXT[lang] : '',
+          pati: pati ? PATI_TXT[lang] : '',
+          vorera: vorera ? VORERA_TXT[lang] : '',
+          hora: mostrarHora ? fillTemplate(HORA_NETEJA_TXT[lang], { hora }) : '',
+        }),
+      ),
     );
   }, [tpls, lang, treballador, data, tasques, pasillo, pati, vorera, mostrarHora, hora]);
 
