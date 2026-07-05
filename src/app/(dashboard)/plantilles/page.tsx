@@ -324,7 +324,7 @@ function NetejaCard() {
 function HostesCard() {
   const [data, setData] = useState(toISODate(addDays(new Date(), 1)));
   const [estancies, setEstancies] = useState<Estancia[]>([]);
-  const [hora, setHora] = useState('11:00');
+  const [hora, setHora] = useState('15:00');
   const [tpls, setTpls] = useState<Record<Lang, string>>(PLANTILLA_HOSTE);
   const [editLang, setEditLang] = useState<Lang>('ca');
   const [noms, setNoms] = useState<Record<string, string>>({});
