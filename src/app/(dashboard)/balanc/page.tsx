@@ -23,6 +23,7 @@ import { useRestringit } from '@/components/layout/restringit-context';
 import { addMonths } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { BalancChart } from '@/components/balanc/balanc-chart';
+import { BalancLineChart } from '@/components/balanc/balanc-line-chart';
 import { Donut } from '@/components/balanc/donut';
 import { FinancesNav } from '@/components/balanc/finances-nav';
 import { Eur, HideAmountsButton, HideAmountsOnMount } from '@/components/finances/amounts-visibility';
@@ -67,6 +68,17 @@ interface BalancAny extends Breakdowns {
   mesos: MesRow[];
   totals: Omit<MesRow, 'mes'>;
   anterior: { ingressos: number; despeses: number; personal: number; benefici: number };
+}
+
+interface SerieMes {
+  any: number;
+  mes: number;
+  ingressos: number;
+  retencions: number;
+  ingressosAmbRetencions: number;
+  despeses: number;
+  personal: number;
+  benefici: number;
 }
 
 interface BalancSituacio {
@@ -339,6 +351,29 @@ export default function BalancPage() {
     else loadSituacio();
   }, [mode, loadMes, loadRang, loadAny, loadSituacio]);
 
+  // Sèrie mensual per a les gràfiques: a Mes, els últims 12 mesos fins al mes
+  // triat; a Trimestre/rang, els mesos del rang seleccionat.
+  const [serie, setSerie] = useState<SerieMes[] | null>(null);
+  const serieDesde =
+    mode === 'mes'
+      ? (() => { const d = addMonths(anchor, -11); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })()
+      : desde;
+  const serieFins = mode === 'mes' ? mesParam : fins;
+  useEffect(() => {
+    if (mode !== 'mes' && mode !== 'rang') return;
+    let cancel = false;
+    getJSON<{ mesos: SerieMes[] }>(`/api/balanc/mesos?desde=${serieDesde}&fins=${serieFins}`)
+      .then((r) => { if (!cancel) setSerie(r.mesos); })
+      .catch(() => { if (!cancel) setSerie(null); });
+    return () => { cancel = true; };
+  }, [mode, serieDesde, serieFins]);
+
+  // Etiquetes dels mesos de la sèrie (amb l'any abreujat si el rang creua anys).
+  const seriePunts = (s: SerieMes[]) => {
+    const creuaAnys = s.some((x) => x.any !== s[0]!.any);
+    return s.map((x) => ({ ...x, label: `${MESOS[x.mes - 1]}${creuaAnys ? ` ${String(x.any).slice(2)}` : ''}` }));
+  };
+
   const mesLabel = new Intl.DateTimeFormat('ca-ES', { month: 'long', year: 'numeric' }).format(anchor);
 
   function exporta() {
@@ -497,12 +532,11 @@ export default function BalancPage() {
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <Kpi label="Ingressos" value={<Eur value={mes.ingressos} />} icon={TrendingUp} color="text-green-600" big />
-                <Kpi label="Despeses (sense personal)" value={<Eur value={mes.despeses} />} icon={TrendingDown} color="text-red-600" />
+                <Kpi label="Despeses" value={<Eur value={mes.despeses + mes.personal} />} icon={TrendingDown} color="text-red-600" />
                 <Kpi label="Benefici" value={<Eur value={mes.benefici} />} icon={Wallet} color={mes.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big />
                 {!restringit && (
                   <>
                     <Kpi label="Ingressos + fiança" value={<Eur value={mes.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
-                    <Kpi label="Despeses (amb personal)" value={<Eur value={mes.despeses + mes.personal} />} icon={TrendingDown} color="text-red-600" />
                     <Kpi
                       label="Benefici + fiança"
                       value={<Eur value={mes.benefici + mes.retencions} />}
@@ -514,6 +548,29 @@ export default function BalancPage() {
                 )}
               </div>
 
+
+              {serie && serie.length > 0 && (
+                <>
+                  <BalancLineChart
+                    titol="Ingressos, despeses i benefici (últims 12 mesos)"
+                    punts={seriePunts(serie).map((s) => ({ label: s.label, barA: s.ingressos, barB: s.despeses + s.personal, linia: s.benefici }))}
+                    nomA="Ingressos"
+                    nomB="Despeses"
+                    nomLinia="Benefici"
+                  />
+                  {!restringit && (
+                    <BalancLineChart
+                      titol="Amb fiança (últims 12 mesos)"
+                      punts={seriePunts(serie).map((s) => ({ label: s.label, barA: s.ingressosAmbRetencions, barB: s.despeses + s.personal, linia: s.benefici + s.retencions }))}
+                      nomA="Ingressos + fiança"
+                      nomB="Despeses (amb personal)"
+                      nomLinia="Benefici + fiança"
+                      colorA="#f97316"
+                      colorLinia="#c2410c"
+                    />
+                  )}
+                </>
+              )}
 
               <BreakdownsSection data={ambPersonal(mes, mes.personal)} />
             </>
@@ -557,16 +614,38 @@ export default function BalancPage() {
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <Kpi label="Ingressos" value={<Eur value={rang.ingressos} />} icon={TrendingUp} color="text-green-600" big />
-                <Kpi label="Despeses (sense personal)" value={<Eur value={rang.despeses} />} icon={TrendingDown} color="text-red-600" />
+                <Kpi label="Despeses" value={<Eur value={rang.despeses + rang.personal} />} icon={TrendingDown} color="text-red-600" />
                 <Kpi label="Benefici" value={<Eur value={rang.benefici} />} icon={Wallet} color={rang.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big />
                 {!restringit && (
                   <>
                     <Kpi label="Ingressos + fiança" value={<Eur value={rang.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
-                    <Kpi label="Despeses (amb personal)" value={<Eur value={rang.despeses + rang.personal} />} icon={TrendingDown} color="text-red-600" />
                     <Kpi label="Benefici + fiança" value={<Eur value={rang.benefici + rang.retencions} />} icon={Wallet} color={rang.benefici + rang.retencions >= 0 ? 'text-green-600' : 'text-red-600'} big />
                   </>
                 )}
               </div>
+              {serie && serie.length > 0 && (
+                <>
+                  <BalancLineChart
+                    titol="Ingressos, despeses i benefici (mesos del període)"
+                    punts={seriePunts(serie).map((s) => ({ label: s.label, barA: s.ingressos, barB: s.despeses + s.personal, linia: s.benefici }))}
+                    nomA="Ingressos"
+                    nomB="Despeses"
+                    nomLinia="Benefici"
+                  />
+                  {!restringit && (
+                    <BalancLineChart
+                      titol="Amb fiança (mesos del període)"
+                      punts={seriePunts(serie).map((s) => ({ label: s.label, barA: s.ingressosAmbRetencions, barB: s.despeses + s.personal, linia: s.benefici + s.retencions }))}
+                      nomA="Ingressos + fiança"
+                      nomB="Despeses (amb personal)"
+                      nomLinia="Benefici + fiança"
+                      colorA="#f97316"
+                      colorLinia="#c2410c"
+                    />
+                  )}
+                </>
+              )}
+
               <BreakdownsSection data={ambPersonal(rang, rang.personal)} />
             </>
           )}
@@ -586,12 +665,11 @@ export default function BalancPage() {
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <Kpi label="Ingressos" value={<Eur value={any.totals.ingressos} />} icon={TrendingUp} color="text-green-600" big delta={variacio(any.totals.ingressos, any.anterior.ingressos)} />
-                <Kpi label="Despeses (sense personal)" value={<Eur value={any.totals.despeses} />} icon={TrendingDown} color="text-red-600" />
+                <Kpi label="Despeses" value={<Eur value={any.totals.despeses + any.totals.personal} />} icon={TrendingDown} color="text-red-600" delta={variacio(any.totals.despeses + any.totals.personal, any.anterior.despeses + any.anterior.personal)} deltaInvert />
                 <Kpi label="Benefici" value={<Eur value={any.totals.benefici} />} icon={Wallet} color={any.totals.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big delta={variacio(any.totals.benefici, any.anterior.benefici)} />
                 {!restringit && (
                   <>
                     <Kpi label="Ingressos + fiança" value={<Eur value={any.totals.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
-                    <Kpi label="Despeses (amb personal)" value={<Eur value={any.totals.despeses + any.totals.personal} />} icon={TrendingDown} color="text-red-600" delta={variacio(any.totals.despeses + any.totals.personal, any.anterior.despeses + any.anterior.personal)} deltaInvert />
                     <Kpi label="Benefici + fiança" value={<Eur value={any.totals.benefici + any.totals.retencions} />} icon={Wallet} color={any.totals.benefici + any.totals.retencions >= 0 ? 'text-green-600' : 'text-red-600'} big />
                   </>
                 )}
