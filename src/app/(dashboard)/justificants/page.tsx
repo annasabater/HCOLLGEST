@@ -244,6 +244,13 @@ export default async function JustificantsPage({
                               </span>
                             ));
                           })()}
+                          {teMenor && (
+                            <a href={`/imprimir/ieet-declaracio/${e.id}`} target="_blank" rel="noreferrer">
+                              <Button variant="outline" size="sm" className="h-auto py-1.5 whitespace-normal text-center leading-tight">
+                                <FileSignature className="h-4 w-4 shrink-0" /> Declaració IEET (menor)
+                              </Button>
+                            </a>
+                          )}
                           {env && (
                             <a href={`/api/enviaments/${env.id}/justificant`} target="_blank" rel="noreferrer">
                               <Button variant="outline" size="sm" className="h-auto py-1.5 whitespace-normal text-center leading-tight">

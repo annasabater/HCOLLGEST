@@ -23,7 +23,7 @@ import { EmailsPanel } from '@/components/estancia/emails-panel';
 import { FacturaPanel } from '@/components/factura/factura-panel';
 import { PagamentsPanel } from '@/components/factura/pagaments-panel';
 import { formatDate } from '@/lib/utils';
-import { toISODate } from '@/lib/dates';
+import { toISODate, ageAt } from '@/lib/dates';
 import {
   TIPUS_PAGAMENT_LABELS,
   TIPUS_DOCUMENT_LABELS,
@@ -79,6 +79,10 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
   const isAdmin = user?.role === 'ADMIN';
   const canWrite = user ? hasRole(user.role, ROLES_WRITE) : false;
   const titular = estancia.viatgers[0]?.huesped;
+  // Declaració IEET si hi ha algun menor de 17 anys (exempció impost turístic).
+  const teMenor = estancia.viatgers.some(
+    (v) => v.huesped?.dataNaixement && ageAt(v.huesped.dataNaixement, estancia.dataEntrada ?? new Date()) < 17,
+  );
 
   // Contractes separats: viatgers que als papers consten en una altra habitació
   // amb número de contracte propi. Un per habitació separada.
@@ -171,6 +175,13 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   </a>
                 </span>
               ))
+            )}
+            {teMenor && (
+              <a href={`/imprimir/ieet-declaracio/${estancia.id}`} target="_blank" rel="noreferrer">
+                <Button variant="outline" size="sm">
+                  <FileSignature className="h-4 w-4" /> Declaració IEET (menor)
+                </Button>
+              </a>
             )}
             {canWrite && estancia.estat === 'RESERVA' && (
               <ConvertirAEnCurs estanciaId={estancia.id} numContracteActual={estancia.numContracte} />
