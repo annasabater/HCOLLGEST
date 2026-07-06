@@ -36,18 +36,37 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: st
   if (!user) redirect('/login');
 
   const { estanciaId } = await ctx.params;
-  const estancia = await prisma.estancia.findFirst({
-    where: { id: estanciaId, deletedAt: null },
-    include: {
-      habitacio: true,
-      viatgers: {
-        include: { huesped: true, signatura: true, habitacioSeparada: { select: { nom: true } } },
-        orderBy: { esTitular: 'desc' },
-      },
-      cobraments: { orderBy: { data: 'asc' } },
-    },
-  });
-  if (!estancia) return new Response('Not found', { status: 404 });
+  // Mode "plantilla en blanc": mateix formulari, sense dades d'estada (només la
+  // capçalera de l'establiment). S'hi accedeix amb l'id sentinella "blank".
+  const BLANK = estanciaId === 'blank';
+  const dbEstancia = BLANK
+    ? null
+    : await prisma.estancia.findFirst({
+        where: { id: estanciaId, deletedAt: null },
+        include: {
+          habitacio: true,
+          viatgers: {
+            include: { huesped: true, signatura: true, habitacioSeparada: { select: { nom: true } } },
+            orderBy: { esTitular: 'desc' },
+          },
+          cobraments: { orderBy: { data: 'asc' } },
+        },
+      });
+  if (!BLANK && !dbEstancia) return new Response('Not found', { status: 404 });
+  const estancia =
+    dbEstancia ??
+    ({
+      viatgers: [],
+      cobraments: [],
+      numContracte: '',
+      anyContracte: new Date().getFullYear(),
+      dataFormalitzacio: null,
+      dataEntrada: null,
+      dataSortida: null,
+      numHabitacions: null,
+      habitacio: null,
+      teInternet: null,
+    } as unknown as NonNullable<typeof dbEstancia>);
 
   type Viatger = NonNullable<typeof estancia>['viatgers'][number];
 
@@ -72,7 +91,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: st
   const pagAltres = metodes.has('ALTRES');
 
   // Contracte.
-  const numRef = esc(`${estancia.numContracte}/${estancia.anyContracte}`);
+  const numRef = BLANK ? '' : esc(`${estancia.numContracte}/${estancia.anyContracte}`);
   const dataFormalitzacio = fmtDate(estancia.dataFormalitzacio);
   const entradaData = fmtDate(estancia.dataEntrada);
   const entradaHora = fmtHora(estancia.dataEntrada);

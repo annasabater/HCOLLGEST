@@ -94,7 +94,7 @@ export default async function JustificantsPage({
             <FileSignature className="h-4 w-4" /> Registre persones allotjades
           </Button>
         </a>
-        <a href="/api/plantilles-buides?doc=llibre" target="_blank" rel="noreferrer">
+        <a href="/imprimir/registre/blank" target="_blank" rel="noreferrer">
           <Button variant="outline" size="sm">
             <FileSignature className="h-4 w-4" /> Llibre registre
           </Button>
