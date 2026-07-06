@@ -31,11 +31,14 @@ const DOC_MAP: Record<string, 'NIF' | 'Pas' | 'TIE' | ''> = {
   ALTRES: '',
 };
 
-export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ estanciaId: string }> }) {
   const user = await getSessionUser();
   if (!user) redirect('/login');
 
   const { estanciaId } = await ctx.params;
+  // Filtre opcional: ?hab=principal (només el full de l'estada) o ?hab=<nom>
+  // (només el full d'aquella habitació separada).
+  const habFiltre = new URL(req.url).searchParams.get('hab');
   // Mode "plantilla en blanc": mateix formulari, sense dades d'estada (només la
   // capçalera de l'establiment). S'hi accedeix amb l'id sentinella "blank".
   const BLANK = estanciaId === 'blank';
@@ -112,27 +115,36 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: st
     arr.push(v);
     separatsMap.set(v.habitacioSeparada.nom, arr);
   }
-  const grups: { hab: string | null; viatgers: Viatger[] }[] = [];
+  let grups: { hab: string | null; numSep: string | null; viatgers: Viatger[] }[] = [];
   if (principals.length > 0 || separatsMap.size === 0) {
     for (let i = 0; i < Math.max(1, principals.length); i += 4) {
-      grups.push({ hab: null, viatgers: principals.slice(i, i + 4) });
+      grups.push({ hab: null, numSep: null, viatgers: principals.slice(i, i + 4) });
     }
   }
   for (const [nom, vs] of separatsMap) {
+    // Contracte propi del full separat (el del primer viatger que en tingui).
+    const numSep = vs.find((v) => v.numContracteSeparat)?.numContracteSeparat ?? null;
     for (let i = 0; i < vs.length; i += 4) {
-      grups.push({ hab: nom, viatgers: vs.slice(i, i + 4) });
+      grups.push({ hab: nom, numSep, viatgers: vs.slice(i, i + 4) });
     }
   }
+  if (habFiltre) {
+    grups = grups.filter((g) => (habFiltre === 'principal' ? g.hab === null : g.hab === habFiltre));
+    if (grups.length === 0) grups = [{ hab: null, numSep: null, viatgers: [] }];
+  }
 
-  function fullHtml(grup: Viatger[], habSeparada: string | null, idxGrup: number, total: number): string {
+  function fullHtml(grup: Viatger[], habSeparada: string | null, numSep: string | null, idxGrup: number, total: number): string {
     const cel = (fn: (v: Viatger | undefined) => string) => {
       let tds = '';
       for (let i = 0; i < 4; i++) tds += `<td class="vcell">${fn(grup[i])}</td>`;
       return tds;
     };
     const h = (v: Viatger | undefined) => v?.huesped;
-    // El full d'una habitació separada mostra AQUELLA habitació.
+    // El full d'una habitació separada mostra AQUELLA habitació i el SEU contracte.
     const numHabFull = habSeparada ? esc(habSeparada) : numHab;
+    const numRefFull = habSeparada
+      ? esc(`${numSep ?? estancia.numContracte}/${estancia.anyContracte}`)
+      : numRef;
 
     return `
     <div class="sheet">
@@ -208,7 +220,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: st
       <table class="contracte">
         <tr>
           <td class="ctit" rowspan="6">Contrato:</td>
-          <td class="lbl">Nº Referencia:</td><td class="val">${numRef}</td>
+          <td class="lbl">Nº Referencia:</td><td class="val">${numRefFull}</td>
           <td class="lbl">Fecha</td><td class="val">${dataFormalitzacio}</td>
         </tr>
         <tr>
@@ -263,7 +275,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: st
     </div>`;
   }
 
-  const sheets = grups.map((g, i) => fullHtml(g.viatgers, g.hab, i, grups.length)).join('');
+  const sheets = grups.map((g, i) => fullHtml(g.viatgers, g.hab, g.numSep, i, grups.length)).join('');
   const titol = esc(estancia.viatgers[0]?.huesped ? `${estancia.viatgers[0].huesped.nom} ${estancia.viatgers[0].huesped.cognom1}` : 'Registre');
 
   const html = `<!DOCTYPE html>

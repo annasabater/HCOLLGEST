@@ -16,17 +16,31 @@ export async function GET(req: Request) {
 
     if (!numero) return ok({ exists: false });
 
-    const found = await prisma.estancia.findFirst({
-      where: {
-        anyContracte: anyNum,
-        numContracte: numero,
-        deletedAt: null,
-        ...(exclou ? { id: { not: exclou } } : {}),
-      },
-      select: { id: true },
-    });
+    const [found, foundSeparat] = await Promise.all([
+      prisma.estancia.findFirst({
+        where: {
+          anyContracte: anyNum,
+          numContracte: numero,
+          deletedAt: null,
+          ...(exclou ? { id: { not: exclou } } : {}),
+        },
+        select: { id: true },
+      }),
+      // També compta si el número és d'un contracte separat (viatger).
+      prisma.estanciaViatger.findFirst({
+        where: {
+          numContracteSeparat: numero,
+          estancia: {
+            anyContracte: anyNum,
+            deletedAt: null,
+            ...(exclou ? { id: { not: exclou } } : {}),
+          },
+        },
+        select: { id: true },
+      }),
+    ]);
 
-    return ok({ exists: found != null });
+    return ok({ exists: found != null || foundSeparat != null });
   } catch (err) {
     return handleApiError(err);
   }

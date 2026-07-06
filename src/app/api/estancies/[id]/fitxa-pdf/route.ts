@@ -18,14 +18,22 @@ export async function GET(req: Request, ctx: Ctx) {
     const estancia = await prisma.estancia.findFirst({ where: { id, deletedAt: null } });
     if (!estancia) return notFound();
 
-    const [establiment, viatgers] = await Promise.all([
+    const [establiment, tots] = await Promise.all([
       prisma.establiment.findUniqueOrThrow({ where: { id: ESTABLIMENT_ID } }),
       prisma.estanciaViatger.findMany({
         where: { estanciaId: id },
-        include: { huesped: true, signatura: true },
+        include: { huesped: true, signatura: true, habitacioSeparada: { select: { nom: true } } },
         orderBy: { esTitular: 'desc' },
       }),
     ]);
+
+    // Filtre opcional ?hab=principal | ?hab=<nom>: només les fitxes d'aquell "contracte".
+    const habFiltre = new URL(req.url).searchParams.get('hab');
+    const viatgers = habFiltre
+      ? tots.filter((v) =>
+          habFiltre === 'principal' ? !v.habitacioSeparada : v.habitacioSeparada?.nom === habFiltre,
+        )
+      : tots;
 
     const pdf = await buildFitxaPdf(establiment, estancia, viatgers);
 

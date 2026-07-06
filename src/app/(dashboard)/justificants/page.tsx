@@ -15,6 +15,7 @@ import { JustificantsFiltres } from '@/components/justificants/justificants-filt
 import { buildParteFromDb } from '@/lib/mossos/build-parte';
 import { validaParteErrors } from '@/lib/mossos/fitxer';
 import { formatDate } from '@/lib/utils';
+import { ageAt } from '@/lib/dates';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,7 +60,10 @@ export default async function JustificantsPage({
       skip: (pagina - 1) * perPagina,
       take: perPagina,
       include: {
-        viatgers: { include: { huesped: true }, orderBy: { esTitular: 'desc' } },
+        viatgers: {
+          include: { huesped: true, habitacioSeparada: { select: { nom: true } } },
+          orderBy: { esTitular: 'desc' },
+        },
         enviaments: {
           where: { estat: { in: ['ENVIAT', 'ACCEPTAT'] } },
           orderBy: { createdAt: 'desc' },
@@ -75,7 +79,12 @@ export default async function JustificantsPage({
     if (establiment) {
       try { faltes = validaParteErrors(buildParteFromDb(establiment, e, e.viatgers)); } catch { faltes = []; }
     }
-    return { e, titular, faltes };
+    // Declaració IEET si hi ha algun menor de 17 anys (exempció impost turístic).
+    const refMenor = e.dataEntrada ?? new Date();
+    const teMenor = e.viatgers.some(
+      (v) => v.huesped?.dataNaixement && ageAt(v.huesped.dataNaixement, refMenor) < 17,
+    );
+    return { e, titular, faltes, teMenor };
   });
   const nPendents = fitxes.filter((f) => f.faltes.length > 0 && !f.e.avisDadesParat).length;
 
@@ -97,6 +106,11 @@ export default async function JustificantsPage({
         <a href="/imprimir/registre/blank" target="_blank" rel="noreferrer">
           <Button variant="outline" size="sm">
             <FileSignature className="h-4 w-4" /> Llibre registre
+          </Button>
+        </a>
+        <a href="/imprimir/ieet-declaracio/blank" target="_blank" rel="noreferrer">
+          <Button variant="outline" size="sm">
+            <FileSignature className="h-4 w-4" /> Declaració IEET (menor)
           </Button>
         </a>
         <span className="ml-1 text-xs text-slate-500">Enviar per correu:</span>
@@ -135,7 +149,7 @@ export default async function JustificantsPage({
                 </tr>
               </Thead>
               <tbody>
-                {fitxes.map(({ e, titular, faltes }) => {
+                {fitxes.map(({ e, titular, faltes, teMenor }) => {
                   const pendents = faltes.length > 0;
                   const mostraAvis = pendents && !e.avisDadesParat;
                   const env = e.enviaments[0]; // darrer enviament a Mossos (si n'hi ha)
@@ -190,16 +204,46 @@ export default async function JustificantsPage({
                       </Td>
                       <Td className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <a href={`/api/estancies/${e.id}/fitxa-pdf`} target="_blank" rel="noreferrer">
-                            <Button variant="outline" size="sm" className="h-auto py-1.5 whitespace-normal text-center leading-tight">
-                              <FileSignature className="h-4 w-4 shrink-0" /> Registre persones allotjades
-                            </Button>
-                          </a>
-                          <a href={`/imprimir/registre/${e.id}`} target="_blank" rel="noreferrer">
-                            <Button variant="outline" size="sm" className="h-auto py-1.5 whitespace-normal text-center leading-tight">
-                              <FileSignature className="h-4 w-4 shrink-0" /> Llibre registre
-                            </Button>
-                          </a>
+                          {(() => {
+                            // Contractes separats (viatgers amb habitació separada):
+                            // un joc de botons per contracte.
+                            const separats = [...new Map(
+                              e.viatgers
+                                .filter((v) => v.habitacioSeparada)
+                                .map((v) => [v.habitacioSeparada!.nom, { hab: v.habitacioSeparada!.nom, num: v.numContracteSeparat ?? e.numContracte }]),
+                            ).values()];
+                            if (separats.length === 0) {
+                              return (
+                                <>
+                                  <a href={`/api/estancies/${e.id}/fitxa-pdf`} target="_blank" rel="noreferrer">
+                                    <Button variant="outline" size="sm" className="h-auto py-1.5 whitespace-normal text-center leading-tight">
+                                      <FileSignature className="h-4 w-4 shrink-0" /> Registre persones allotjades
+                                    </Button>
+                                  </a>
+                                  <a href={`/imprimir/registre/${e.id}`} target="_blank" rel="noreferrer">
+                                    <Button variant="outline" size="sm" className="h-auto py-1.5 whitespace-normal text-center leading-tight">
+                                      <FileSignature className="h-4 w-4 shrink-0" /> Llibre registre
+                                    </Button>
+                                  </a>
+                                </>
+                              );
+                            }
+                            return [{ hab: 'principal', num: e.numContracte }, ...separats].map((c) => (
+                              <span key={c.hab} className="flex items-center gap-1 rounded-lg border border-slate-200 px-1 py-1">
+                                <span className="px-1 text-xs font-semibold text-slate-500">{c.num}</span>
+                                <a href={`/api/estancies/${e.id}/fitxa-pdf?hab=${encodeURIComponent(c.hab)}`} target="_blank" rel="noreferrer">
+                                  <Button variant="outline" size="sm" className="h-auto py-1.5 whitespace-normal text-center leading-tight">
+                                    <FileSignature className="h-4 w-4 shrink-0" /> Reg. persones
+                                  </Button>
+                                </a>
+                                <a href={`/imprimir/registre/${e.id}?hab=${encodeURIComponent(c.hab)}`} target="_blank" rel="noreferrer">
+                                  <Button variant="outline" size="sm" className="h-auto py-1.5 whitespace-normal text-center leading-tight">
+                                    <FileSignature className="h-4 w-4 shrink-0" /> Llibre
+                                  </Button>
+                                </a>
+                              </span>
+                            ));
+                          })()}
                           {env && (
                             <a href={`/api/enviaments/${env.id}/justificant`} target="_blank" rel="noreferrer">
                               <Button variant="outline" size="sm" className="h-auto py-1.5 whitespace-normal text-center leading-tight">

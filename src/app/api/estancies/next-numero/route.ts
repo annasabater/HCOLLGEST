@@ -13,16 +13,30 @@ export async function GET(req: Request) {
 
     const anyNum = Number(new URL(req.url).searchParams.get('any')) || new Date().getFullYear();
 
-    const estancies = await prisma.estancia.findMany({
-      where: { anyContracte: anyNum, deletedAt: null },
-      select: { numContracte: true },
-    });
+    const [estancies, separats] = await Promise.all([
+      prisma.estancia.findMany({
+        where: { anyContracte: anyNum, deletedAt: null },
+        select: { numContracte: true },
+      }),
+      // Contractes separats (viatgers amb habitació separada) del mateix any.
+      prisma.estanciaViatger.findMany({
+        where: {
+          numContracteSeparat: { not: null },
+          estancia: { anyContracte: anyNum, deletedAt: null },
+        },
+        select: { numContracteSeparat: true },
+      }),
+    ]);
 
     let max = 0;
-    for (const e of estancies) {
+    const nums = [
+      ...estancies.map((e) => e.numContracte),
+      ...separats.map((s) => s.numContracteSeparat ?? ''),
+    ];
+    for (const numStr of nums) {
       // Només números "purs" (sense punt d'ampliació) i numèrics.
-      if (e.numContracte.includes('.')) continue;
-      const n = parseInt(e.numContracte, 10);
+      if (!numStr || numStr.includes('.')) continue;
+      const n = parseInt(numStr, 10);
       if (Number.isFinite(n) && n > max) max = n;
     }
 

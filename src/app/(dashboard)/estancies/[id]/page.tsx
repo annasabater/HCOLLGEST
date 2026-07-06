@@ -80,6 +80,14 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
   const canWrite = user ? hasRole(user.role, ROLES_WRITE) : false;
   const titular = estancia.viatgers[0]?.huesped;
 
+  // Contractes separats: viatgers que als papers consten en una altra habitació
+  // amb número de contracte propi. Un per habitació separada.
+  const contractesSeparats = [...new Map(
+    estancia.viatgers
+      .filter((v) => v.habitacioSeparada)
+      .map((v) => [v.habitacioSeparada!.nom, { hab: v.habitacioSeparada!.nom, num: v.numContracteSeparat ?? estancia.numContracte }]),
+  ).values()];
+
   // Estat REAL de l'estada (per dates) — més clar que el tipus de registre Mossos.
   const avuiIso = toISODate(new Date());
   const status: { label: string; tone: 'success' | 'info' | 'warning' | 'neutral' } =
@@ -104,6 +112,12 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
           <span className="flex flex-wrap items-center gap-2">
             <span>
               Contracte {estancia.numContracte}/{estancia.anyContracte}
+              {contractesSeparats.map((c) => (
+                <span key={c.hab} className="text-slate-500">
+                  {' '}
+                  + {c.num}/{estancia.anyContracte} (Hab. {c.hab})
+                </span>
+              ))}
             </span>
             <Badge
               tone={status.tone}
@@ -119,16 +133,45 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <a href={`/api/estancies/${estancia.id}/fitxa-pdf`} target="_blank" rel="noreferrer">
-              <Button variant="outline" size="sm">
-                <FileSignature className="h-4 w-4" /> Registre persones allotjades
-              </Button>
-            </a>
-            <a href={`/imprimir/registre/${estancia.id}`} target="_blank" rel="noreferrer">
-              <Button variant="outline" size="sm">
-                <FileSignature className="h-4 w-4" /> Llibre registre
-              </Button>
-            </a>
+            {contractesSeparats.length === 0 ? (
+              <>
+                <a href={`/api/estancies/${estancia.id}/fitxa-pdf`} target="_blank" rel="noreferrer">
+                  <Button variant="outline" size="sm">
+                    <FileSignature className="h-4 w-4" /> Registre persones allotjades
+                  </Button>
+                </a>
+                <a href={`/imprimir/registre/${estancia.id}`} target="_blank" rel="noreferrer">
+                  <Button variant="outline" size="sm">
+                    <FileSignature className="h-4 w-4" /> Llibre registre
+                  </Button>
+                </a>
+              </>
+            ) : (
+              // Un joc de botons per contracte: el principal i cada habitació separada.
+              [{ hab: 'principal', num: estancia.numContracte }, ...contractesSeparats].map((c) => (
+                <span key={c.hab} className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 py-1">
+                  <span className="px-1 text-xs font-semibold text-slate-500">{c.num}</span>
+                  <a
+                    href={`/api/estancies/${estancia.id}/fitxa-pdf?hab=${encodeURIComponent(c.hab)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <Button variant="outline" size="sm">
+                      <FileSignature className="h-4 w-4" /> Registre persones allotjades
+                    </Button>
+                  </a>
+                  <a
+                    href={`/imprimir/registre/${estancia.id}?hab=${encodeURIComponent(c.hab)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <Button variant="outline" size="sm">
+                      <FileSignature className="h-4 w-4" /> Llibre registre
+                    </Button>
+                  </a>
+                </span>
+              ))
+            )}
             {canWrite && estancia.estat === 'RESERVA' && (
               <ConvertirAEnCurs estanciaId={estancia.id} numContracteActual={estancia.numContracte} />
             )}

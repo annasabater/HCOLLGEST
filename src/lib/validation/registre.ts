@@ -67,6 +67,8 @@ export const ViatgerInputSchema = z.object({
   esMenor: z.boolean().default(false),
   // Habitació "administrativa" del viatger (llibre/factura) si és diferent de la real.
   habitacioSeparadaId: optStr,
+  // Número de contracte propi del full separat (mateix any que l'estada).
+  numContracteSeparat: optStr,
 });
 
 /** Mascota opcional vinculada a l'estada (s'associa al titular). */

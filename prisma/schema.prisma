@@ -462,6 +462,8 @@ model EstanciaViatger {
   // factura) ha de constar en una habitació diferent de la real de l'estada.
   habitacioSeparadaId String?    @map("habitacio_separada_id")
   habitacioSeparada   Habitacio? @relation(fields: [habitacioSeparadaId], references: [id], onDelete: SetNull)
+  // Número de contracte propi del full separat (mateix any que l'estada).
+  numContracteSeparat String?    @map("num_contracte_separat")
   // Snapshot de les dades del viatger per a aquesta estada (es congela quan
   // l'estada passa a ser antiga >7 dies de la sortida). Si està informat, el
   // llibre/fitxa/Mossos l'usen en lloc de la fitxa viva (no reescriure el passat).

@@ -142,6 +142,7 @@ export async function createRegistre(
           parentesc: v.parentesc ?? null,
           esMenor: v.esMenor || isMenor(v.dataNaixement, estancia.dataEntrada ?? new Date()),
           habitacioSeparadaId: v.habitacioSeparadaId ?? null,
+          numContracteSeparat: v.habitacioSeparadaId ? (v.numContracteSeparat ?? null) : null,
         },
       });
     }
@@ -253,6 +254,7 @@ export async function updateRegistre(
         parentesc: v.parentesc ?? null,
         esMenor: v.esMenor || isMenor(v.dataNaixement, estancia.dataEntrada ?? new Date()),
         habitacioSeparadaId: v.habitacioSeparadaId ?? null,
+        numContracteSeparat: v.habitacioSeparadaId ? (v.numContracteSeparat ?? null) : null,
       };
       if (link) {
         await tx.estanciaViatger.update({ where: { id: link.id }, data });

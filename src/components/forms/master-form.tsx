@@ -61,6 +61,8 @@ export type ViatgerState = {
   esMenor: boolean;
   /** Habitació "administrativa" (llibre/factura) si és diferent de la real. */
   habitacioSeparadaId: string;
+  /** Número de contracte propi del full separat (mateix any que l'estada). */
+  numContracteSeparat: string;
   _recurrent?: string; // aviso de huésped recurrente (Fase 2)
   _noAcollir?: boolean;
   _anotacions?: { sentit: string; descripcio: string; noAcollir: boolean }[];
@@ -92,6 +94,7 @@ function emptyViatger(titular = false): ViatgerState {
     parentesc: '',
     esMenor: false,
     habitacioSeparadaId: '',
+    numContracteSeparat: '',
   };
 }
 
@@ -444,6 +447,7 @@ export function MasterForm({
         parentesc: (v.parentesc || undefined) as RegistreInput['viatgers'][number]['parentesc'],
         esMenor: v.esMenor,
         habitacioSeparadaId: v.habitacioSeparadaId || undefined,
+        numContracteSeparat: v.habitacioSeparadaId ? v.numContracteSeparat || undefined : undefined,
       })),
       // Només mascotes amb nom; l'espècie té un valor per defecte.
       mascotes: portaMascota
@@ -1287,7 +1291,17 @@ export function MasterForm({
                   >
                     <Select
                       value={v.habitacioSeparadaId}
-                      onChange={(e) => setV(i, { habitacioSeparadaId: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        // En activar-ho, proposa el següent número de contracte (el de
+                        // l'estada + 1) si encara no n'hi ha cap; es pot canviar.
+                        const num = Number(estancia.numContracte);
+                        const proposta =
+                          val && !v.numContracteSeparat && Number.isFinite(num) && estancia.numContracte.trim() !== ''
+                            ? String(num + 1)
+                            : v.numContracteSeparat;
+                        setV(i, { habitacioSeparadaId: val, numContracteSeparat: val ? proposta : '' });
+                      }}
                     >
                       <option value="">La de l’estada</option>
                       {habitacions.map((h) => (
@@ -1297,6 +1311,18 @@ export function MasterForm({
                       ))}
                     </Select>
                   </Field>
+                  {v.habitacioSeparadaId && (
+                    <Field
+                      label="Núm. contracte separat"
+                      hint="Contracte propi del full separat (proposat: el de l’estada + 1). Canvia’l si cal."
+                    >
+                      <Input
+                        uppercase
+                        value={v.numContracteSeparat}
+                        onChange={(e) => setV(i, { numContracteSeparat: e.target.value })}
+                      />
+                    </Field>
+                  )}
                 </>
               )}
             </CardBody>

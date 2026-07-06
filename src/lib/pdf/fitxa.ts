@@ -114,7 +114,8 @@ export async function buildFitxaPdf(
     put(page, 52, 719, establiment.idPolicial, 158);
     put(page, 215.35, 719, establiment.nom, 158);
     put(page, 378.7, 719, TIPUS_CONTRACTE[estancia.tipusRegistre] ?? estancia.tipusRegistre, 160);
-    put(page, 52, 692, `${estancia.numContracte}/${estancia.anyContracte}`, 158);
+    // El viatger amb habitació separada porta el SEU número de contracte.
+    put(page, 52, 692, `${v?.numContracteSeparat ?? estancia.numContracte}/${estancia.anyContracte}`, 158);
     put(page, 215.35, 692, formatNoDash(formatDate(estancia.dataFormalitzacio)), 158);
     put(page, 378.7, 692, formatNoDash(formatDate(estancia.dataEntrada)), 160);
     put(page, 52, 665, formatNoDash(formatDate(estancia.dataSortida)), 158);

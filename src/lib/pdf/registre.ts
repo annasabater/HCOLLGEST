@@ -44,6 +44,8 @@ interface ViatgerLite {
   signatura: { imatge: string } | null;
   /** Habitació "administrativa" del viatger (full a part), si és diferent de la real. */
   habitacioSeparada?: { nom: string } | null;
+  /** Contracte propi del full separat. */
+  numContracteSeparat?: string | null;
 }
 interface EstanciaLite {
   numContracte: string; anyContracte: number;
@@ -86,14 +88,15 @@ export async function buildRegistrePdf(
     arr.push(v);
     separatsMap.set(v.habitacioSeparada.nom, arr);
   }
-  const grups: { hab: string | null; viatgers: ViatgerLite[] }[] = [];
+  const grups: { hab: string | null; numSep: string | null; viatgers: ViatgerLite[] }[] = [];
   if (principals.length > 0 || separatsMap.size === 0) {
     for (let i = 0; i < Math.max(1, principals.length); i += 4) {
-      grups.push({ hab: null, viatgers: principals.slice(i, i + 4) });
+      grups.push({ hab: null, numSep: null, viatgers: principals.slice(i, i + 4) });
     }
   }
   for (const [nom, vs] of separatsMap) {
-    for (let i = 0; i < vs.length; i += 4) grups.push({ hab: nom, viatgers: vs.slice(i, i + 4) });
+    const numSep = vs.find((v) => v.numContracteSeparat)?.numContracteSeparat ?? null;
+    for (let i = 0; i < vs.length; i += 4) grups.push({ hab: nom, numSep, viatgers: vs.slice(i, i + 4) });
   }
 
   // Precarrega les imatges de signatura.
@@ -114,6 +117,10 @@ export async function buildRegistrePdf(
   for (let gi = 0; gi < grups.length; gi++) {
     const grup = grups[gi]?.viatgers ?? [];
     const habSeparada = grups[gi]?.hab ?? null;
+    // El full separat porta el SEU contracte (si en té) i la seva habitació.
+    const numRefFull = habSeparada
+      ? `${grups[gi]?.numSep ?? estancia.numContracte}/${estancia.anyContracte}`
+      : numRef;
     const page = doc.addPage([A4.w, A4.h]);
     let y = A4.h - M;
 
@@ -202,7 +209,7 @@ export async function buildRegistrePdf(
     text('Contrato', M, 8, bold);
     y -= 12;
     const w2 = (A4.w - M * 2) / 2;
-    cell(M, w2, 16, 'Nº Referencia', numRef); cell(M + w2, w2, 16, 'Fecha', fmtDate(estancia.dataFormalitzacio)); y -= 16;
+    cell(M, w2, 16, 'Nº Referencia', numRefFull); cell(M + w2, w2, 16, 'Fecha', fmtDate(estancia.dataFormalitzacio)); y -= 16;
     cell(M, A4.w - M * 2, 16, 'Fecha y hora de entrada', `${fmtDate(estancia.dataEntrada)} ${fmtHora(estancia.dataEntrada)}`.trim()); y -= 16;
     cell(M, A4.w - M * 2, 16, 'Fecha y hora de salida', `${fmtDate(estancia.dataSortida)} ${fmtHora(estancia.dataSortida)}`.trim()); y -= 16;
     cell(M, A4.w - M * 2, 16, 'Dirección del inmueble', emAdreca); y -= 16;
