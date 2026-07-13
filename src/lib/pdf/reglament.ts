@@ -123,14 +123,14 @@ function drawParagraph(
 
 /** Marca "HOSTAL COLL" + títol del document + regle de color (granat). */
 function drawMasthead(doc: PDFDocument, cur: Cur, bold: PDFFont, title: string): Cur {
-  cur = ensure(doc, cur, 66);
-  cur.page.drawText('HOSTAL COLL', { x: M, y: cur.y - 22, size: 22, font: bold, color: INK });
-  cur.y -= 30;
-  cur.page.drawText(title.toUpperCase(), { x: M, y: cur.y - 9, size: 9, font: bold, color: ACCENT });
-  cur.y -= 14;
+  cur = ensure(doc, cur, 52);
+  cur.page.drawText('HOSTAL COLL', { x: M, y: cur.y - 16, size: 16, font: bold, color: INK });
+  cur.y -= 24;
+  cur.page.drawText(title.toUpperCase(), { x: M, y: cur.y - 8, size: 8, font: bold, color: ACCENT });
+  cur.y -= 12;
   cur.page.drawLine({ start: { x: M, y: cur.y }, end: { x: A4.w - M, y: cur.y }, thickness: 1.2, color: INK });
   cur.page.drawLine({ start: { x: M, y: cur.y }, end: { x: M + 46, y: cur.y }, thickness: 2.6, color: ACCENT });
-  cur.y -= 22;
+  cur.y -= 16;
   return cur;
 }
 
@@ -147,9 +147,9 @@ function drawEyebrow(doc: PDFDocument, cur: Cur, text: string, bold: PDFFont): C
 
 /** Punt de llista en granat + text envoltat amb sagnia penjant. */
 function drawBullet(doc: PDFDocument, cur: Cur, text: string, font: PDFFont): Cur {
-  const size = 8.6;
-  const lineH = 12;
-  const indent = 13;
+  const size = 7;
+  const lineH = 8.3;
+  const indent = 12;
   const lines = wrap(font, text, size, A4.w - M * 2 - indent);
   lines.forEach((l, i) => {
     cur = ensure(doc, cur, lineH);
@@ -177,9 +177,9 @@ function drawCampsClient(
     acompanyants: string;
   },
 ): Cur {
-  const rowH = 30;
+  const rowH = 24;
   const padX = 14;
-  const padY = 12;
+  const padY = 9;
   // 4 files (Nombre/Apellidos · Nacionalidad/Documento · Expedición/Nacimiento ·
   // Acompañantes) → l'última fila també queda dins de la caixa marcada.
   const boxH = rowH * 4 + padY * 2;
@@ -208,7 +208,7 @@ function drawCampsClient(
   rowTop -= rowH;
   field(M + padX, w - padX * 2, rowTop, 'Acompañantes (menores)', data.acompanyants);
 
-  cur.y = top - boxH - 18;
+  cur.y = top - boxH - 12;
   return cur;
 }
 
@@ -222,10 +222,10 @@ async function drawSignatura(
   nomComplet: string,
   lloc: string,
 ): Promise<Cur> {
-  const boxH = 96;
+  const boxH = 86;
   cur = ensure(doc, cur, boxH);
   cur.page.drawLine({ start: { x: M, y: cur.y }, end: { x: A4.w - M, y: cur.y }, thickness: 0.8, color: LINE });
-  cur.y -= 16;
+  cur.y -= 14;
 
   const sigW = 230;
   const sigH = 46;
@@ -300,20 +300,20 @@ async function renderReglamentDoc(
     acompanyants,
   });
 
-  cur = drawParagraph(doc, cur, INTRO, font, 9, 12.5, 0, MUTED);
-  cur.y -= 8;
+  cur = drawParagraph(doc, cur, INTRO, font, 7.5, 9.5, 0, MUTED);
+  cur.y -= 4;
 
   cur = drawEyebrow(doc, cur, 'Normas de la casa', bold);
   for (const n of NORMES) cur = drawBullet(doc, cur, n, font);
-  cur.y -= 6;
+  cur.y -= 4;
 
   cur = drawEyebrow(doc, cur, 'Protección de datos', bold);
   const adreca =
     [establiment.adreca, establiment.codiPostal, establiment.poblacio].filter(Boolean).join(', ') || ADRECA_FALLBACK;
-  cur = drawParagraph(doc, cur, lopdParagraph(adreca), font, 8.3, 11.4);
-  cur.y -= 10;
-  cur = drawParagraph(doc, cur, CLOSING, bold, 8.6, 12.5);
-  cur.y -= 10;
+  cur = drawParagraph(doc, cur, lopdParagraph(adreca), font, 6.3, 8.2);
+  cur.y -= 5;
+  cur = drawParagraph(doc, cur, CLOSING, bold, 7, 9);
+  cur.y -= 6;
 
   const lloc = estancia
     ? [v?.signatura?.llocSignatura || establiment.poblacio || 'Calella', formatDate(v?.signatura?.data ?? estancia.dataEntrada)]
@@ -370,11 +370,12 @@ export async function buildCartellPdf(establiment: Establiment): Promise<Uint8Ar
 
   const page = doc.addPage([A4.w, A4.h]);
   let y = A4.h - M;
+  const W = A4.w - 2 * M;
 
-  // Paràgraf a amplada fixa (mou la `y` externa). No pagina: el cartell és 1 pàgina.
-  const para = (f: PDFFont, text: string, x: number, maxW: number, size: number, lineH: number, color = INK) => {
-    for (const l of wrap(f, text, size, maxW)) {
-      page.drawText(l, { x, y: y - size, size, font: f, color });
+  // Paràgraf a amplada completa (mou la `y` externa). No pagina: el cartell és 1 pàgina.
+  const para = (f: PDFFont, text: string, size: number, lineH: number, color = INK) => {
+    for (const l of wrap(f, text, size, W)) {
+      page.drawText(l, { x: M, y: y - size, size, font: f, color });
       y -= lineH;
     }
   };
@@ -388,43 +389,31 @@ export async function buildCartellPdf(establiment: Establiment): Promise<Uint8Ar
   page.drawLine({ start: { x: M, y }, end: { x: M + 40, y }, thickness: 2.4, color: ACCENT });
   y -= 13;
 
-  para(font, INTRO, M, A4.w - 2 * M, 7.5, 9.5, MUTED);
+  para(font, INTRO, 8, 10, MUTED);
   y -= 6;
 
   page.drawText('NORMAS DE LA CASA', { x: M, y: y - 8, size: 8.5, font: bold, color: ACCENT });
   y -= 13;
 
-  // Normes en 2 columnes (petites) perquè hi càpiguen totes.
-  const colGap = 18;
-  const colW = (A4.w - 2 * M - colGap) / 2;
-  const bSize = 7.2;
-  const bLineH = 8.8;
-  const indent = 9;
-  const yTop = y;
-  const drawCol = (texts: string[], x: number): number => {
-    let yy = yTop;
-    for (const t of texts) {
-      wrap(font, t, bSize, colW - indent).forEach((l, i) => {
-        if (i === 0) page.drawText('•', { x, y: yy - bSize, size: bSize, font, color: ACCENT });
-        page.drawText(l, { x: x + indent, y: yy - bSize, size: bSize, font, color: INK });
-        yy -= bLineH;
-      });
-      yy -= 2;
-    }
-    return yy;
-  };
-  const half = Math.ceil(NORMES.length / 2);
-  const yL = drawCol(NORMES.slice(0, half), M);
-  const yR = drawCol(NORMES.slice(half), M + colW + colGap);
-  y = Math.min(yL, yR) - 8;
+  // Normes en UNA columna, lletra 8pt.
+  const indent = 12;
+  for (const t of NORMES) {
+    wrap(font, t, 8, W - indent).forEach((l, i) => {
+      if (i === 0) page.drawText('•', { x: M, y: y - 8, size: 8, font, color: ACCENT });
+      page.drawText(l, { x: M + indent, y: y - 8, size: 8, font, color: INK });
+      y -= 10;
+    });
+    y -= 2;
+  }
+  y -= 4;
 
   page.drawText('PROTECCIÓN DE DATOS', { x: M, y: y - 8, size: 8.5, font: bold, color: ACCENT });
   y -= 13;
   const adreca =
     [establiment.adreca, establiment.codiPostal, establiment.poblacio].filter(Boolean).join(', ') || ADRECA_FALLBACK;
-  para(font, lopdParagraph(adreca), M, A4.w - 2 * M, 6.4, 8.2, MUTED);
+  para(font, lopdParagraph(adreca), 7, 8.6, MUTED);
   y -= 6;
-  para(bold, CLOSING, M, A4.w - 2 * M, 7, 9);
+  para(bold, CLOSING, 7.5, 9.5);
 
   const label = 'Hostal Coll · Reglamento interno de hospedaje';
   const lw = font.widthOfTextAtSize(label, 7.5);
