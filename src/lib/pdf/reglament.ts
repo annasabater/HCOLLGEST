@@ -395,13 +395,13 @@ export async function buildCartellPdf(establiment: Establiment): Promise<Uint8Ar
   page.drawText('NORMAS DE LA CASA', { x: M, y: y - 8, size: 8.5, font: bold, color: ACCENT });
   y -= 13;
 
-  // Normes en UNA columna, lletra 8pt.
+  // Normes en UNA columna, lletra 9pt.
   const indent = 12;
   for (const t of NORMES) {
-    wrap(font, t, 8, W - indent).forEach((l, i) => {
-      if (i === 0) page.drawText('•', { x: M, y: y - 8, size: 8, font, color: ACCENT });
-      page.drawText(l, { x: M + indent, y: y - 8, size: 8, font, color: INK });
-      y -= 10;
+    wrap(font, t, 9, W - indent).forEach((l, i) => {
+      if (i === 0) page.drawText('•', { x: M, y: y - 9, size: 9, font, color: ACCENT });
+      page.drawText(l, { x: M + indent, y: y - 9, size: 9, font, color: INK });
+      y -= 11;
     });
     y -= 2;
   }
