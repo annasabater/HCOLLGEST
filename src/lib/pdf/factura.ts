@@ -72,7 +72,9 @@ export async function buildFacturaPdf(factura: FacturaAmb, establiment: Establim
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const serif = await doc.embedFont(StandardFonts.TimesRomanBold);
+  // Times Roman normal (no Bold): a la web el títol "HOSTAL COLL"/"Factura" usa
+  // Georgia sense negreta; TimesRomanBold quedava massa gruixut en comparació.
+  const serif = await doc.embedFont(StandardFonts.TimesRoman);
 
   const esFiscal = factura.tipusDocument === 'FACTURA';
   const esRebut = factura.tipusDocument === 'RECIBO';
