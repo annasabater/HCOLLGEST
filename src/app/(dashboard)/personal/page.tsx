@@ -25,15 +25,13 @@ export default async function PersonalPage() {
     orderBy: [{ esEmpresa: 'desc' }, { nom: 'asc' }],
     include: { _count: { select: { absencies: true, jornades: true } } },
   });
-  const empreses = treballadors.filter((t) => t.esEmpresa).map((t) => ({ id: t.id, nom: t.nom }));
-  const empresaNom = new Map(treballadors.map((t) => [t.id, t.nom]));
 
   return (
     <div>
       <PageHeader
         title="Personal"
         subtitle={`${treballadors.length} treballadors`}
-        actions={<TreballadorForm empreses={empreses} />}
+        actions={<TreballadorForm />}
       />
 
       {treballadors.length === 0 ? (
@@ -65,9 +63,6 @@ export default async function PersonalPage() {
                     )}
                   </span>
                   {t.nomEmpresa && <div className="text-xs text-slate-500">{t.nomEmpresa}</div>}
-                  {t.empresaId && (
-                    <div className="text-xs text-slate-400">↳ {empresaNom.get(t.empresaId) ?? 'empresa'}</div>
-                  )}
                   {t.dni && <div className="text-xs text-slate-400">{t.dni}</div>}
                 </Td>
                 <Td>{t.carrec}</Td>
@@ -83,7 +78,6 @@ export default async function PersonalPage() {
                 <Td className="text-right">
                   <div className="flex items-center justify-end gap-3">
                     <TreballadorForm
-                      empreses={empreses}
                       treballador={{
                         id: t.id,
                         nom: t.nom,

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Pencil, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input, Select } from '@/components/ui/input';
+import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { Card, CardBody } from '@/components/ui/card';
 import { postJSON, patchJSON, ApiError } from '@/lib/api';
@@ -42,13 +42,7 @@ const BUIT = {
   esEmpresa: false, nomEmpresa: '', empresaId: '',
 };
 
-export function TreballadorForm({
-  treballador,
-  empreses = [],
-}: {
-  treballador?: TreballadorEditable;
-  empreses?: { id: string; nom: string }[];
-}) {
+export function TreballadorForm({ treballador }: { treballador?: TreballadorEditable }) {
   const router = useRouter();
   const isEdit = !!treballador;
   const [open, setOpen] = useState(false);
@@ -145,27 +139,14 @@ export function TreballadorForm({
           />
           És una empresa de neteja (pago a l&apos;empresa, no al treballador)
         </label>
-        <div className="mt-2 max-w-sm">
-          <Field label="Nom de l'empresa (opcional)" hint="Raó social; surt a la llista.">
-            <Input
-              value={v.nomEmpresa}
-              onChange={(e) => setV({ ...v, nomEmpresa: e.target.value })}
-              placeholder="p. ex. Neteja Barcelona SL"
-            />
-          </Field>
-        </div>
-        {!v.esEmpresa && empreses.filter((em) => em.id !== v.id).length > 0 && (
-          <div className="mt-2 max-w-xs">
-            <Field
-              label="De quina empresa de neteja és?"
-              hint="Només si aquest treballador ve d'una empresa de neteja. Si el pagues directament a ell, deixa «Cap»."
-            >
-              <Select value={v.empresaId} onChange={(e) => setV({ ...v, empresaId: e.target.value })}>
-                <option value="">— Cap (el pago directament a ell) —</option>
-                {empreses.filter((em) => em.id !== v.id).map((em) => (
-                  <option key={em.id} value={em.id}>{em.nom}</option>
-                ))}
-              </Select>
+        {v.esEmpresa && (
+          <div className="mt-2 max-w-sm">
+            <Field label="Nom de l'empresa" hint="Raó social; surt a la llista.">
+              <Input
+                value={v.nomEmpresa}
+                onChange={(e) => setV({ ...v, nomEmpresa: e.target.value })}
+                placeholder="p. ex. Neteja Barcelona SL"
+              />
             </Field>
           </div>
         )}
