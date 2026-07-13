@@ -103,11 +103,13 @@ export function FacturaPanel({
   const [rectFacturaId, setRectFacturaId] = useState('');
   const [rectImport, setRectImport] = useState('');
   const [rectMotiu, setRectMotiu] = useState('reducción de estancia');
+  const [selDevolucions, setSelDevolucions] = useState<Set<string>>(new Set());
   const [rectBusy, setRectBusy] = useState(false);
   const [rectError, setRectError] = useState<string | null>(null);
 
-  // Devolucions detectades (cobraments negatius): habiliten la rectificativa.
-  const devolucions = pagaments.filter((p) => p.import < 0);
+  // Devolucions detectades (cobraments negatius ENCARA sense factura): habiliten
+  // la rectificativa i, si es seleccionen, queden vinculades al document nou.
+  const devolucions = pagaments.filter((p) => p.import < 0 && !p.facturaId);
   const totalDevolucions = Math.abs(devolucions.reduce((a, p) => a + p.import, 0));
   const facturesSimples = factures.filter((f) => f.tipusDocument !== 'FACTURA');
   const potRectificar = factures.length > 0 && devolucions.length > 0;
@@ -117,6 +119,7 @@ export function FacturaPanel({
     // Original per defecte: la darrera factura simplificada (o qualsevol).
     const orig = facturesSimples[0] ?? factures[0];
     setRectFacturaId(orig?.id ?? '');
+    setSelDevolucions(new Set(devolucions.map((p) => p.id)));
     setRectImport(totalDevolucions ? totalDevolucions.toFixed(2) : '');
     setRectMotiu('reducción de estancia');
     setRectOpen(true);
@@ -132,7 +135,12 @@ export function FacturaPanel({
     try {
       const res = await postJSON<{ factura: { id: string } }>(
         `/api/estancies/${estanciaId}/factura-rectificativa`,
-        { facturaOriginalId: rectFacturaId, import: imp, motiu: rectMotiu.trim() || undefined },
+        {
+          facturaOriginalId: rectFacturaId,
+          import: imp,
+          motiu: rectMotiu.trim() || undefined,
+          cobramentIds: [...selDevolucions],
+        },
       );
       setRectOpen(false);
       if (res?.factura?.id) {
@@ -594,6 +602,41 @@ export function FacturaPanel({
               ))}
             </Select>
           </label>
+          {devolucions.length > 0 && (
+            <div>
+              <p className="mb-1 text-xs font-medium text-slate-500">
+                Devolucions que cobreix aquesta rectificativa (queden vinculades, ja no sortiran com &quot;a compte
+                sense factura&quot;):
+              </p>
+              <div className="space-y-1">
+                {devolucions.map((p) => (
+                  <label
+                    key={p.id}
+                    className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selDevolucions.has(p.id)}
+                      onChange={() => {
+                        const next = new Set(selDevolucions);
+                        if (next.has(p.id)) next.delete(p.id);
+                        else next.add(p.id);
+                        setSelDevolucions(next);
+                        const total = Math.abs(
+                          devolucions.filter((d) => next.has(d.id)).reduce((a, d) => a + d.import, 0),
+                        );
+                        setRectImport(total ? total.toFixed(2) : '');
+                      }}
+                    />
+                    <span className="font-medium text-slate-800">{formatEur(p.import)}</span>
+                    <span className="text-slate-400">
+                      {p.descripcio ? `· ${p.descripcio} ` : ''}· {METODE_COBRAMENT_LABELS[p.metode]} · {formatDate(p.data)}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
           <label className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-xs font-medium text-slate-500">Import de la reducció (€):</span>
             <Input

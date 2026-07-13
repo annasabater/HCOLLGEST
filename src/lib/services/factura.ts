@@ -883,13 +883,23 @@ export async function createFacturaRectificativa(
       },
     });
 
+    // Vincula les devolucions (cobraments negatius, encara sense factura) que
+    // aquesta rectificativa cobreix: així deixen de sortir com "a compte sense
+    // factura" al panell de pagaments, ja que ara les representa aquest document.
+    if (input.cobramentIds.length > 0) {
+      await tx.cobrament.updateMany({
+        where: { id: { in: input.cobramentIds }, estanciaId, facturaId: null, import: { lt: 0 } },
+        data: { facturaId: factura.id },
+      });
+    }
+
     await audit(
       {
         usuariId: actor?.id ?? null,
         accio: 'CREACIO',
         entitat: 'factura',
         entitatId: factura.id,
-        detall: { numero, total: imp, rectificaNumero: original.numero, rectificativa: true },
+        detall: { numero, total: imp, rectificaNumero: original.numero, rectificativa: true, cobraments: input.cobramentIds.length },
         ip,
       },
       tx,

@@ -125,6 +125,9 @@ export const FacturaRectificativaSchema = z.object({
   motiu: z.string().trim().min(1).optional(),
   numero: z.string().trim().min(1).optional(),
   data: z.coerce.date().optional(),
+  // Cobraments negatius (devolucions) que aquesta rectificativa "cobreix": es
+  // vinculen a la nova factura perquè deixin de sortir com "a compte sense factura".
+  cobramentIds: z.array(z.string().min(1)).default([]),
 });
 
 export type FacturaCreateInput = z.input<typeof FacturaCreateSchema>;
