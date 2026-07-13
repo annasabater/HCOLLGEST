@@ -180,7 +180,9 @@ function drawCampsClient(
   const rowH = 30;
   const padX = 14;
   const padY = 12;
-  const boxH = rowH * 3 + padY * 2;
+  // 4 files (Nombre/Apellidos · Nacionalidad/Documento · Expedición/Nacimiento ·
+  // Acompañantes) → l'última fila també queda dins de la caixa marcada.
+  const boxH = rowH * 4 + padY * 2;
   cur = ensure(doc, cur, boxH + 16);
   const top = cur.y;
   const w = A4.w - M * 2;
@@ -356,27 +358,77 @@ export async function buildReglamentBlank(establiment: Establiment): Promise<Uin
   return doc.save();
 }
 
-/** Cartell informatiu (per penjar a paret): normes + LOPD, sense dades ni firma. */
+/**
+ * Cartell informatiu (per penjar a paret): normes + LOPD, sense dades ni firma.
+ * Maquetat COMPACTE i en 2 COLUMNES perquè totes les normes càpiguen en UNA pàgina.
+ */
 export async function buildCartellPdf(establiment: Establiment): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   doc.setTitle('Cartell — Reglamento interno de hospedaje', { showInWindowTitleBar: true });
 
-  let cur = newPage(doc);
-  cur = drawMasthead(doc, cur, bold, 'Reglamento interno de hospedaje');
-  cur = drawParagraph(doc, cur, INTRO, font, 9, 12.5, 0, MUTED);
-  cur.y -= 8;
-  cur = drawEyebrow(doc, cur, 'Normas de la casa', bold);
-  for (const n of NORMES) cur = drawBullet(doc, cur, n, font);
-  cur.y -= 6;
-  cur = drawEyebrow(doc, cur, 'Protección de datos', bold);
+  const page = doc.addPage([A4.w, A4.h]);
+  let y = A4.h - M;
+
+  // Paràgraf a amplada fixa (mou la `y` externa). No pagina: el cartell és 1 pàgina.
+  const para = (f: PDFFont, text: string, x: number, maxW: number, size: number, lineH: number, color = INK) => {
+    for (const l of wrap(f, text, size, maxW)) {
+      page.drawText(l, { x, y: y - size, size, font: f, color });
+      y -= lineH;
+    }
+  };
+
+  // Capçalera compacta.
+  page.drawText('HOSTAL COLL', { x: M, y: y - 18, size: 18, font: bold, color: INK });
+  y -= 24;
+  page.drawText('REGLAMENTO INTERNO DE HOSPEDAJE', { x: M, y: y - 8, size: 8.5, font: bold, color: ACCENT });
+  y -= 12;
+  page.drawLine({ start: { x: M, y }, end: { x: A4.w - M, y }, thickness: 1, color: INK });
+  page.drawLine({ start: { x: M, y }, end: { x: M + 40, y }, thickness: 2.4, color: ACCENT });
+  y -= 13;
+
+  para(font, INTRO, M, A4.w - 2 * M, 7.5, 9.5, MUTED);
+  y -= 6;
+
+  page.drawText('NORMAS DE LA CASA', { x: M, y: y - 8, size: 8.5, font: bold, color: ACCENT });
+  y -= 13;
+
+  // Normes en 2 columnes (petites) perquè hi càpiguen totes.
+  const colGap = 18;
+  const colW = (A4.w - 2 * M - colGap) / 2;
+  const bSize = 7.2;
+  const bLineH = 8.8;
+  const indent = 9;
+  const yTop = y;
+  const drawCol = (texts: string[], x: number): number => {
+    let yy = yTop;
+    for (const t of texts) {
+      wrap(font, t, bSize, colW - indent).forEach((l, i) => {
+        if (i === 0) page.drawText('•', { x, y: yy - bSize, size: bSize, font, color: ACCENT });
+        page.drawText(l, { x: x + indent, y: yy - bSize, size: bSize, font, color: INK });
+        yy -= bLineH;
+      });
+      yy -= 2;
+    }
+    return yy;
+  };
+  const half = Math.ceil(NORMES.length / 2);
+  const yL = drawCol(NORMES.slice(0, half), M);
+  const yR = drawCol(NORMES.slice(half), M + colW + colGap);
+  y = Math.min(yL, yR) - 8;
+
+  page.drawText('PROTECCIÓN DE DATOS', { x: M, y: y - 8, size: 8.5, font: bold, color: ACCENT });
+  y -= 13;
   const adreca =
     [establiment.adreca, establiment.codiPostal, establiment.poblacio].filter(Boolean).join(', ') || ADRECA_FALLBACK;
-  cur = drawParagraph(doc, cur, lopdParagraph(adreca), font, 8.3, 11.4);
-  cur.y -= 10;
-  drawParagraph(doc, cur, CLOSING, bold, 8.6, 12.5);
+  para(font, lopdParagraph(adreca), M, A4.w - 2 * M, 6.4, 8.2, MUTED);
+  y -= 6;
+  para(bold, CLOSING, M, A4.w - 2 * M, 7, 9);
 
-  addFooters(doc, font);
+  const label = 'Hostal Coll · Reglamento interno de hospedaje';
+  const lw = font.widthOfTextAtSize(label, 7.5);
+  page.drawText(label, { x: (A4.w - lw) / 2, y: 26, size: 7.5, font, color: MUTED });
+
   return doc.save();
 }
