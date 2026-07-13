@@ -108,6 +108,16 @@ export default async function JustificantsPage({
             <FileSignature className="h-4 w-4" /> Llibre registre
           </Button>
         </a>
+        <a href="/api/plantilles-buides?doc=reglament" target="_blank" rel="noreferrer">
+          <Button variant="outline" size="sm">
+            <FileSignature className="h-4 w-4" /> Reglament intern (LOPD)
+          </Button>
+        </a>
+        <a href="/api/plantilles-buides?doc=cartell" target="_blank" rel="noreferrer">
+          <Button variant="outline" size="sm">
+            <FileSignature className="h-4 w-4" /> Cartell normes
+          </Button>
+        </a>
         <a href="/imprimir/ieet-declaracio/blank" target="_blank" rel="noreferrer">
           <Button variant="outline" size="sm">
             <FileSignature className="h-4 w-4" /> Declaració IEET (menor)
@@ -220,6 +230,11 @@ export default async function JustificantsPage({
                                       <FileSignature className="h-4 w-4 shrink-0" /> Registre persones allotjades
                                     </Button>
                                   </a>
+                                  <a href={`/api/estancies/${e.id}/reglament-pdf`} target="_blank" rel="noreferrer">
+                                    <Button variant="outline" size="sm" className="h-auto py-1.5 whitespace-normal text-center leading-tight">
+                                      <FileSignature className="h-4 w-4 shrink-0" /> Reglament (LOPD)
+                                    </Button>
+                                  </a>
                                   <a href={`/imprimir/registre/${e.id}`} target="_blank" rel="noreferrer">
                                     <Button variant="outline" size="sm" className="h-auto py-1.5 whitespace-normal text-center leading-tight">
                                       <FileSignature className="h-4 w-4 shrink-0" /> Llibre registre
@@ -234,6 +249,11 @@ export default async function JustificantsPage({
                                 <a href={`/api/estancies/${e.id}/fitxa-pdf?hab=${encodeURIComponent(c.hab)}`} target="_blank" rel="noreferrer">
                                   <Button variant="outline" size="sm" className="h-auto py-1.5 whitespace-normal text-center leading-tight">
                                     <FileSignature className="h-4 w-4 shrink-0" /> Reg. persones
+                                  </Button>
+                                </a>
+                                <a href={`/api/estancies/${e.id}/reglament-pdf?hab=${encodeURIComponent(c.hab)}`} target="_blank" rel="noreferrer">
+                                  <Button variant="outline" size="sm" className="h-auto py-1.5 whitespace-normal text-center leading-tight">
+                                    <FileSignature className="h-4 w-4 shrink-0" /> Reglament
                                   </Button>
                                 </a>
                                 <a href={`/imprimir/registre/${e.id}?hab=${encodeURIComponent(c.hab)}`} target="_blank" rel="noreferrer">

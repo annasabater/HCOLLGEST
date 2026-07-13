@@ -57,7 +57,35 @@ export async function GET(
   const emDescriptor = esc(establiment?.poblacio ? `Casa de Hostes · ${establiment.poblacio}` : 'Casa de Hostes · Calella');
   const emTelefon = esc(establiment?.telefon ? `Tel. ${establiment.telefon}` : '');
 
-  // Número: només la part seqüencial, sense l'any (2026-0001 → 0001).
+  // Titular/NIF/adreça de l'emissor: sobreescriptura de la factura si n'hi ha,
+  // si no els de l'establiment (config), si no el valor històric per defecte.
+  const emTitular = esc(factura.emissorTitular || establiment?.facturaTitular || 'Elisabet Nualart Coll');
+  const emNif = esc(factura.emissorNif || `NIF ${establiment?.facturaNif || '38835174L'}`);
+  const emAdreca = esc(factura.emissorAdreca || establiment?.adreca || 'C/ Sant Isidre, 54');
+  const emLocalitat = esc(
+    factura.emissorLocalitat ||
+      [establiment?.codiPostal, establiment?.poblacio, establiment?.provincia ? `(${establiment.provincia})` : null]
+        .filter(Boolean)
+        .join(' ') ||
+      '08370 Calella (Barcelona)',
+  );
+
+  // Client: sobreescriptura de la factura si n'hi ha, si no els de l'hoste titular.
+  const clientNom = esc(
+    factura.clientNom ?? (titular ? [titular.nom, titular.cognom1, titular.cognom2].filter(Boolean).join(' ') : ''),
+  );
+  const clientNif = esc(
+    factura.clientNif ?? (titular?.numDocument ? `${titular.tipusDocument ?? 'DNI'} ${titular.numDocument}` : ''),
+  );
+  const clientAdreca = esc(factura.clientAdreca ?? titular?.adreca ?? '');
+  const clientLocalitat = esc(
+    factura.clientLocalitat ?? [titular?.codiPostal, titular?.municipi || titular?.localitat].filter(Boolean).join(' '),
+  );
+
+  // Número: només la part seqüencial, sense l'any (2026-0001 → 0001). Guardem el
+  // prefix (si n'hi ha) en un data-attribute perquè el "Desar canvis" el recuperi.
+  const numeroMatch = factura.numero.match(/^(\d{4}-)/);
+  const numeroPrefix = esc(numeroMatch?.[1] ?? '');
   const numeroDisplay = esc(factura.numero.replace(/^\d{4}-/, ''));
 
   const habDates = esc(
@@ -65,13 +93,6 @@ export async function GET(
       ? `Del ${fmtDate(factura.estancia.dataEntrada)} al ${fmtDate(factura.estancia.dataSortida)}`
       : '',
   );
-
-  const clientNom = titular
-    ? esc([titular.nom, titular.cognom1, titular.cognom2].filter(Boolean).join(' '))
-    : '';
-  const clientNif = esc(titular?.numDocument ? `${titular.tipusDocument ?? 'DNI'} ${titular.numDocument}` : '');
-  const clientAdreca = esc(titular?.adreca ?? '');
-  const clientCpPob = esc([titular?.codiPostal, titular?.municipi || titular?.localitat].filter(Boolean).join(' '));
 
   // Línies des de la base de dades (font de veritat de l'import facturat)
   const linesHtml = factura.linies.map((l) => {
@@ -238,7 +259,7 @@ export async function GET(
   <div class="tb-brand">Hostal Coll<span class="tb-badge">${ambCustodia ? 'Factura simple amb fiança' : 'Factura simple'}</span></div>
   <div class="tb-actions">
     <button id="addLine" class="btn ghost">+ Afegir línia</button>
-    <button id="save" class="btn ghost" title="Desa les línies i imports a la factura (queda guardat per sempre)">Desar canvis</button>
+    <button id="save" class="btn ghost" title="Desa número, data, client, emissor i línies (queda guardat per sempre)">Desar canvis</button>
     <button id="print" class="btn solid">Imprimir / Guardar PDF</button>
   </div>
 </div>
@@ -252,10 +273,10 @@ export async function GET(
         <div class="brand-sub"><input class="in" aria-label="Descriptor" value="${emDescriptor}" style="width:280px"></div>
       </div>
       <div class="issuer">
-        <input class="in" aria-label="Titular" value="Elisabet Nualart Coll" style="color:var(--slate);font-weight:500"><br>
-        <input class="in" aria-label="NIF" value="NIF 38835174L"><br>
-        <input class="in" aria-label="Adreça" value="C/ Sant Isidre, 54"><br>
-        <input class="in" aria-label="CP i Localitat" value="08370 Calella (Barcelona)"><br>
+        <input id="emTitular" class="in" aria-label="Titular" value="${emTitular}" style="color:var(--slate);font-weight:500"><br>
+        <input id="emNif" class="in" aria-label="NIF" value="${emNif}"><br>
+        <input id="emAdreca" class="in" aria-label="Adreça" value="${emAdreca}"><br>
+        <input id="emLocalitat" class="in" aria-label="CP i Localitat" value="${emLocalitat}"><br>
         <input class="in" aria-label="Telèfon" value="${emTelefon}">
       </div>
     </header>
@@ -265,16 +286,16 @@ export async function GET(
     <section class="head-grid">
       <div class="bill-to">
         <div class="eyebrow">Client</div>
-        <div class="client-name"><input class="in" aria-label="Nom del client" value="${clientNom}"></div>
-        <div><input class="in" aria-label="NIF/DNI" value="${clientNif}" placeholder="NIF / DNI (opcional)"></div>
-        <div><input class="in" aria-label="Adreça" value="${clientAdreca}" placeholder="Domicili (opcional)"></div>
-        <div><input class="in" aria-label="Localitat" value="${clientCpPob}" placeholder="Localitat (opcional)"></div>
+        <div class="client-name"><input id="clientNom" class="in" aria-label="Nom del client" value="${clientNom}"></div>
+        <div><input id="clientNif" class="in" aria-label="NIF/DNI" value="${clientNif}" placeholder="NIF / DNI (opcional)"></div>
+        <div><input id="clientAdreca" class="in" aria-label="Adreça" value="${clientAdreca}" placeholder="Domicili (opcional)"></div>
+        <div><input id="clientLocalitat" class="in" aria-label="Localitat" value="${clientLocalitat}" placeholder="Localitat (opcional)"></div>
       </div>
       <div class="meta">
         <div class="meta-title">Factura</div>
         <div class="meta-badge">Simplificada</div>
-        <div class="meta-row"><span class="k">Número</span><span class="v"><input class="in" aria-label="Número" value="${numeroDisplay}"></span></div>
-        <div class="meta-row"><span class="k">Data</span><span class="v"><input class="in" aria-label="Data" value="${fmtDate(factura.data)}"></span></div>
+        <div class="meta-row"><span class="k">Número</span><span class="v"><input id="numero" class="in" aria-label="Número" value="${numeroDisplay}" data-prefix="${numeroPrefix}"></span></div>
+        <div class="meta-row"><span class="k">Data</span><span class="v"><input id="data" class="in" aria-label="Data" value="${fmtDate(factura.data)}" placeholder="dd/mm/aaaa"></span></div>
         ${factura.estancia.habitacio?.nom ? `<div class="meta-row"><span class="k">Habitació</span><span class="v"><input class="in" aria-label="Habitació" value="${esc(factura.estancia.habitacio.nom)}"></span></div>` : ''}
       </div>
     </section>
@@ -361,8 +382,19 @@ export async function GET(
     recalc();
   });
 
-  // Desa les línies (concepte + import) a la factura de la base de dades.
-  // Les files de fiança no són línies de la factura i no es desen aquí.
+  // Converteix "dd/mm/aaaa" a "aaaa-mm-dd" (ISO); si no encaixa el format, ho
+  // deixa tal qual perquè el servidor ho rebutgi amb un error clar.
+  function parseDataEs(s) {
+    const m = String(s || '').trim().match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/);
+    if (!m) return s;
+    const dd = m[1].length < 2 ? '0' + m[1] : m[1];
+    const mm = m[2].length < 2 ? '0' + m[2] : m[2];
+    return m[3] + '-' + mm + '-' + dd;
+  }
+
+  // Desa les línies (concepte + import) i la resta de camps (número, data,
+  // client, emissor) a la factura de la base de dades. Les files de fiança no
+  // són línies de la factura i no es desen aquí.
   document.getElementById('save').addEventListener('click', async () => {
     const btn = document.getElementById('save');
     const rows = Array.from(document.querySelectorAll('#items tbody tr.item')).filter(r => !r.hasAttribute('data-fianca'));
@@ -377,13 +409,30 @@ export async function GET(
     }).filter(l => l.descripcio || l.import)
       .map(l => ({ concepte: l.concepte, descripcio: l.descripcio || 'Concepte', import: l.import }));
     if (!linies.length) { alert('Cal almenys una línia amb concepte o import (les línies de fiança no es desen aquí).'); return; }
+
+    const numeroInput = document.getElementById('numero');
+    const numero = (numeroInput.dataset.prefix || '') + numeroInput.value.trim();
+    const body = {
+      linies,
+      numero,
+      data: parseDataEs(document.getElementById('data').value),
+      clientNom: document.getElementById('clientNom').value,
+      clientNif: document.getElementById('clientNif').value,
+      clientAdreca: document.getElementById('clientAdreca').value,
+      clientLocalitat: document.getElementById('clientLocalitat').value,
+      emissorTitular: document.getElementById('emTitular').value,
+      emissorNif: document.getElementById('emNif').value,
+      emissorAdreca: document.getElementById('emAdreca').value,
+      emissorLocalitat: document.getElementById('emLocalitat').value,
+    };
+
     const orig = btn.textContent;
     btn.disabled = true; btn.textContent = 'Desant…';
     try {
       const res = await fetch('/api/factures/${factura.id}', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ linies })
+        body: JSON.stringify(body)
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));

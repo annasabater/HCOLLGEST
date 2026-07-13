@@ -27,6 +27,8 @@ interface Establiment {
   telefon: string | null;
   iban: string | null;
   descriptor: string | null;
+  facturaTitular: string | null;
+  facturaNif: string | null;
   benvingudaAutomatica: boolean;
   benvingudaTothom: boolean;
   saldoInicialTresoreria: string;
@@ -65,6 +67,8 @@ export function ConfigForm() {
         telefon: e.telefon ?? '',
         iban: e.iban ?? '',
         descriptor: e.descriptor ?? '',
+        facturaTitular: e.facturaTitular ?? '',
+        facturaNif: e.facturaNif ?? '',
         benvingudaAutomatica: e.benvingudaAutomatica,
         benvingudaTothom: e.benvingudaTothom,
         saldoInicialTresoreria: e.saldoInicialTresoreria ? Number(e.saldoInicialTresoreria) : 0,
@@ -183,6 +187,26 @@ export function ConfigForm() {
               value={e.iban ?? ''}
               onChange={(ev) => setE({ ...e, iban: ev.target.value })}
               placeholder="ES00 0000 0000 0000 0000 0000"
+            />
+          </Field>
+          <Field
+            label="Titular de facturació"
+            hint="Persona física que surt com a emissora a les factures (pot ser diferent del titular policial/Mossos)."
+          >
+            <Input
+              value={e.facturaTitular ?? ''}
+              onChange={(ev) => setE({ ...e, facturaTitular: ev.target.value })}
+              placeholder="p. ex. Elisabet Nualart Coll"
+            />
+          </Field>
+          <Field
+            label="NIF de facturació"
+            hint="NIF que surt a les factures. Pot ser diferent del CIF de dalt (usat només per a Mossos)."
+          >
+            <Input
+              value={e.facturaNif ?? ''}
+              onChange={(ev) => setE({ ...e, facturaNif: ev.target.value })}
+              placeholder="p. ex. 38835174L"
             />
           </Field>
         </div>

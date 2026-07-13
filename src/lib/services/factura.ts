@@ -259,11 +259,24 @@ async function recomputaEstatFactura(tx: Prisma.TransactionClient, facturaId: st
   return estat as 'COBRADA' | 'PENDENT';
 }
 
+const OVERRIDE_FIELDS = [
+  'clientNom',
+  'clientNif',
+  'clientAdreca',
+  'clientLocalitat',
+  'emissorTitular',
+  'emissorNif',
+  'emissorAdreca',
+  'emissorLocalitat',
+] as const;
+
 /**
- * Edita les línies d'un rebut ja creat i recalcula base/IVA/total (conservant
- * el % d'IVA i la tassa actuals) i l'estat (segons el cobrat). NOMÉS per a
- * rebuts: una factura fiscal amb registre Veri*Factu no es pot editar (cal una
- * rectificativa); el guard del route ho bloqueja abans d'arribar aquí.
+ * Edita una factura ja creada: línies (recalcula base/IVA/total conservant el %
+ * d'IVA i la tassa), número, data, estat, i les sobreescriptures manuals de
+ * client/emissor editades a la impressió (buides = tornen a calcular-se soles).
+ * NOMÉS per a rebuts: una factura fiscal amb registre Veri*Factu no es pot
+ * editar (cal una rectificativa); el guard del route ho bloqueja abans d'arribar
+ * aquí.
  */
 export async function editFactura(
   facturaId: string,
@@ -289,14 +302,28 @@ export async function editFactura(
       numero = input.numero.trim();
     }
 
+    // Data i sobreescriptures de client/emissor: sempre aplicables, no depenen
+    // de si també s'editen línies. `undefined` = no es toca; `null` = neteja.
+    const overrides: Prisma.FacturaUpdateInput = {};
+    if (input.data !== undefined) overrides.data = input.data;
+    for (const f of OVERRIDE_FIELDS) {
+      const v = input[f];
+      if (v !== undefined) overrides[f] = v;
+    }
+
     // Canvi d'estat directe (sense recalcular per cobraments).
     if (input.estat && !input.linies) {
-      await tx.factura.update({ where: { id: facturaId }, data: { estat: input.estat, numero } });
+      await tx.factura.update({ where: { id: facturaId }, data: { estat: input.estat, numero, ...overrides } });
       await audit({ usuariId: actor?.id ?? null, accio: 'MODIFICACIO', entitat: 'factura', entitatId: facturaId, detall: { estat: input.estat, numero }, ip }, tx);
       return { id: facturaId, estat: input.estat };
     }
 
-    if (!input.linies) throw new Error('Cal almenys una línia');
+    if (!input.linies) {
+      // Sense línies: només número/data/overrides (p. ex. des de la impressió).
+      await tx.factura.update({ where: { id: facturaId }, data: { numero, ...overrides } });
+      await audit({ usuariId: actor?.id ?? null, accio: 'MODIFICACIO', entitat: 'factura', entitatId: facturaId, detall: { numero, editada: true }, ip }, tx);
+      return { id: facturaId };
+    }
 
     // Conserva el % d'IVA i la tassa (no editables aquí): només canvien les línies.
     const oldBase = Number(factura.base);
@@ -316,6 +343,7 @@ export async function editFactura(
         base,
         iva,
         total,
+        ...overrides,
         linies: {
           create: input.linies.map((l) => ({
             concepte: l.concepte,
@@ -698,6 +726,7 @@ export async function createFacturaSeleccio(
   const input = FacturaSeleccioSchema.parse(raw);
 
   return prisma.$transaction(async (tx) => {
+    const estancia = await tx.estancia.findUniqueOrThrow({ where: { id: estanciaId }, select: { dataEntrada: true } });
     const pagaments = await tx.cobrament.findMany({
       where: { id: { in: input.pagamentIds }, estanciaId, facturaId: null },
     });
@@ -706,6 +735,11 @@ export async function createFacturaSeleccio(
       : [];
 
     if (pagaments.length + fiances.length === 0) throw new Error('Cap element seleccionat');
+
+    // La factura porta la data d'ENTRADA de l'estada (no el dia en què es genera):
+    // sovint es factura dies després de l'estada i l'usuari vol que el document
+    // reflecteixi quan va ser l'allotjament, no quan s'ha polsat el botó.
+    const dataFactura = estancia.dataEntrada ?? new Date();
 
     const esFiscal = input.tipusDocument === 'FACTURA';
     const totalPag = round2(pagaments.reduce((a, p) => a + Number(p.import), 0));
@@ -726,12 +760,12 @@ export async function createFacturaSeleccio(
       numero = input.numero.trim();
     } else if (esFiscal) {
       // Sèrie fiscal contínua: 01/26, 02/26…
-      numero = await proximNumeroFacturaFiscal(tx, new Date().getFullYear());
+      numero = await proximNumeroFacturaFiscal(tx, dataFactura.getFullYear());
     } else {
       // Simplificada: número basat en el contracte de l'estada (26004, 26004.1…).
       numero =
         (await proximNumeroFacturaContracte(tx, estanciaId)) ||
-        (await proximNumeroFactura(tx, new Date().getFullYear()));
+        (await proximNumeroFactura(tx, dataFactura.getFullYear()));
     }
 
     const descAllot = input.descripcioAllotjament?.trim() || CONCEPTE_LINIA_LABELS.ALLOTJAMENT;
@@ -739,7 +773,7 @@ export async function createFacturaSeleccio(
       data: {
         estanciaId,
         numero,
-        data: new Date(),
+        data: dataFactura,
         base: total,
         iva: 0,
         total,
@@ -797,6 +831,7 @@ export async function createFacturaDupla(
 ) {
   const input = FacturaSeleccioSchema.parse(raw);
   return prisma.$transaction(async (tx) => {
+    const estancia = await tx.estancia.findUniqueOrThrow({ where: { id: estanciaId }, select: { dataEntrada: true } });
     const pagaments = await tx.cobrament.findMany({
       where: { id: { in: input.pagamentIds }, estanciaId, facturaId: null },
     });
@@ -811,7 +846,9 @@ export async function createFacturaDupla(
     );
     const teFianca = fiances.length > 0;
     const descAllot = input.descripcioAllotjament?.trim() || CONCEPTE_LINIA_LABELS.ALLOTJAMENT;
-    const year = new Date().getFullYear();
+    // La factura porta la data d'ENTRADA de l'estada (no el dia en què es genera).
+    const dataFactura = estancia.dataEntrada ?? new Date();
+    const year = dataFactura.getFullYear();
     const liniaData = () =>
       total > 0
         ? { create: [{ concepte: 'ALLOTJAMENT' as const, descripcio: descAllot, import: total }] }
@@ -820,7 +857,7 @@ export async function createFacturaDupla(
     const numFiscal = await proximNumeroFacturaFiscal(tx, year);
     const fiscal = await tx.factura.create({
       data: {
-        estanciaId, numero: numFiscal, data: new Date(), base: total, iva: 0, total,
+        estanciaId, numero: numFiscal, data: dataFactura, base: total, iva: 0, total,
         estat: 'COBRADA', tipusDocument: 'FACTURA',
         fiancaInclosa: teFianca ? true : undefined, linies: liniaData(),
       },
@@ -830,7 +867,7 @@ export async function createFacturaDupla(
       (await proximNumeroFacturaContracte(tx, estanciaId)) || (await proximNumeroFactura(tx, year));
     const simple = await tx.factura.create({
       data: {
-        estanciaId, numero: numSimple, data: new Date(), base: total, iva: 0, total,
+        estanciaId, numero: numSimple, data: dataFactura, base: total, iva: 0, total,
         estat: 'COBRADA', tipusDocument: 'FACTURA_SIMPLIFICADA',
         fiancaInclosa: teFianca ? true : undefined, linies: liniaData(),
       },

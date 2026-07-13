@@ -242,14 +242,18 @@ model Establiment {
   verifactuTestMode Boolean @default(true) @map("verifactu_test_mode")
 
   // Dades per a la factura impresa (emissor + pagament). Si raoSocial és buit
-  // s'usa `nom`. El CIF ja és l'identificador fiscal de l'emissor.
-  raoSocial  String? @map("rao_social")
-  adreca     String?
-  codiPostal String? @map("codi_postal")
-  poblacio   String?
-  telefon    String?
-  iban       String?
-  descriptor String? // subtítol del membret (p. ex. "Pensió · Calella")
+  // s'usa `nom`. El `cif` és l'identificador policial/Mossos, NO el de facturació:
+  // per a factures s'usa `facturaTitular`/`facturaNif` (persona física titular de
+  // l'activitat), que pot ser diferent del CIF de l'establiment.
+  raoSocial      String? @map("rao_social")
+  adreca         String?
+  codiPostal     String? @map("codi_postal")
+  poblacio       String?
+  telefon        String?
+  iban           String?
+  descriptor     String? // subtítol del membret (p. ex. "Pensió · Calella")
+  facturaTitular String? @map("factura_titular") // p. ex. "Elisabet Nualart Coll"
+  facturaNif     String? @map("factura_nif") // NIF de facturació (pot diferir del `cif` de Mossos)
 
   // Google Drive — token de refresc (xifrat) per a l'export mensual automàtic,
   // i l'id de la carpeta arrel on es desa l'estructura d'arxiu.
@@ -634,6 +638,18 @@ model Factura {
   estat         EstatFactura        @default(PENDENT)
   tipusDocument TipusDocumentFiscal @default(RECIBO) @map("tipus_document")
   fiancaInclosa Boolean?            @map("fianca_inclosa")
+
+  // Sobreescriptures manuals editades a la impressió (p. ex. facturar a una
+  // empresa en lloc del viatger, o corregir puntualment l'emissor). Si són
+  // buides, la impressió calcula els valors a partir de l'hoste/establiment.
+  clientNom        String? @map("client_nom")
+  clientNif        String? @map("client_nif")
+  clientAdreca     String? @map("client_adreca")
+  clientLocalitat  String? @map("client_localitat")
+  emissorTitular   String? @map("emissor_titular")
+  emissorNif       String? @map("emissor_nif")
+  emissorAdreca    String? @map("emissor_adreca")
+  emissorLocalitat String? @map("emissor_localitat")
 
   linies     LiniaFactura[]
   cobraments Cobrament[]

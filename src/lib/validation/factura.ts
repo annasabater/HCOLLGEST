@@ -13,6 +13,13 @@ const optStr = z.preprocess(
   z.string().trim().optional(),
 );
 
+// Camp de sobreescriptura (client/emissor a la factura): buit = neteja
+// explícitament l'override (torna a calcular-se); absent = no es toca.
+const overrideStr = z.preprocess(
+  (v) => (typeof v === 'string' && v.trim() === '' ? null : v),
+  z.string().trim().nullable().optional(),
+);
+
 export const FacturaCreateSchema = z
   .object({
     estanciaId: z.string().min(1),
@@ -46,8 +53,18 @@ export const CobramentCreateSchema = z.object({
 export const FacturaEditSchema = z.object({
   linies: z.array(LiniaInputSchema).min(1, 'Cal almenys una línia').optional(),
   numero: z.string().min(1).optional(),
+  data: z.coerce.date().optional(),
   estat: z.enum(['COBRADA', 'PENDENT']).optional(),
   fiancaInclosa: z.boolean().nullable().optional(),
+  // Sobreescriptures manuals (impressió de la factura simple/fiscal). Buit = neteja.
+  clientNom: overrideStr,
+  clientNif: overrideStr,
+  clientAdreca: overrideStr,
+  clientLocalitat: overrideStr,
+  emissorTitular: overrideStr,
+  emissorNif: overrideStr,
+  emissorAdreca: overrideStr,
+  emissorLocalitat: overrideStr,
 });
 
 export const CobramentEditSchema = z

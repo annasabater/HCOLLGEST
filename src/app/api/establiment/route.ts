@@ -52,6 +52,8 @@ const PatchSchema = z.object({
   telefon: z.string().optional(),
   iban: z.string().optional(),
   descriptor: z.string().optional(),
+  facturaTitular: z.string().optional(),
+  facturaNif: z.string().optional(),
   // Tarifes de neteja.
   preuNetejaSortida: z.coerce.number().min(0).optional(),
   preuNetejaManteniment: z.coerce.number().min(0).optional(),
@@ -61,7 +63,17 @@ const PatchSchema = z.object({
 });
 
 // Camps de text de la factura que, si arriben buits, es desen com a null.
-const CAMPS_FACTURA = ['raoSocial', 'adreca', 'codiPostal', 'poblacio', 'telefon', 'iban', 'descriptor'] as const;
+const CAMPS_FACTURA = [
+  'raoSocial',
+  'adreca',
+  'codiPostal',
+  'poblacio',
+  'telefon',
+  'iban',
+  'descriptor',
+  'facturaTitular',
+  'facturaNif',
+] as const;
 
 export async function PATCH(req: Request) {
   try {

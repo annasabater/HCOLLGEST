@@ -144,6 +144,11 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                     <FileSignature className="h-4 w-4" /> Registre persones allotjades
                   </Button>
                 </a>
+                <a href={`/api/estancies/${estancia.id}/reglament-pdf`} target="_blank" rel="noreferrer">
+                  <Button variant="outline" size="sm">
+                    <FileSignature className="h-4 w-4" /> Reglament intern (LOPD)
+                  </Button>
+                </a>
                 <a href={`/imprimir/registre/${estancia.id}`} target="_blank" rel="noreferrer">
                   <Button variant="outline" size="sm">
                     <FileSignature className="h-4 w-4" /> Llibre registre
@@ -162,6 +167,15 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   >
                     <Button variant="outline" size="sm">
                       <FileSignature className="h-4 w-4" /> Registre persones allotjades
+                    </Button>
+                  </a>
+                  <a
+                    href={`/api/estancies/${estancia.id}/reglament-pdf?hab=${encodeURIComponent(c.hab)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <Button variant="outline" size="sm">
+                      <FileSignature className="h-4 w-4" /> Reglament (LOPD)
                     </Button>
                   </a>
                   <a

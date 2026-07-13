@@ -75,6 +75,20 @@ export async function GET(
   const emIban = esc(establiment?.iban ?? '');
   const emTelefon = esc(establiment?.telefon ? `Tel. ${establiment.telefon}` : '');
 
+  // Titular/NIF/adreça de l'emissor: els de l'establiment (config) si n'hi ha,
+  // si no el valor històric per defecte. (Aquesta pantalla no té "Desar canvis":
+  // una factura fiscal no s'edita des d'aquí un cop generada.)
+  const emTitular = esc(factura.emissorTitular || establiment?.facturaTitular || 'Elisabet Nualart Coll');
+  const emNif = esc(factura.emissorNif || `NIF ${establiment?.facturaNif || '38835174L'}`);
+  const emAdreca = esc(factura.emissorAdreca || establiment?.adreca || 'C/ Sant Isidre, 54');
+  const emLocalitat = esc(
+    factura.emissorLocalitat ||
+      [establiment?.codiPostal, establiment?.poblacio, establiment?.provincia ? `(${establiment.provincia})` : null]
+        .filter(Boolean)
+        .join(' ') ||
+      '08370 Calella (Barcelona)',
+  );
+
   const clientNom = titular
     ? esc([titular.nom, titular.cognom1, titular.cognom2].filter(Boolean).join(' '))
     : '';
@@ -285,10 +299,10 @@ export async function GET(
         <div class="brand-sub"><input class="in" aria-label="Descriptor" value="${emDescriptor}" style="width:280px"></div>
       </div>
       <div class="issuer">
-        <div class="issuer-name"><input class="in" aria-label="Titular" value="Elisabet Nualart Coll"></div>
-        <input class="in" aria-label="NIF" value="NIF 38835174L"><br>
-        <input class="in" aria-label="Adreça" value="C/ Sant Isidre, 54"><br>
-        <input class="in" aria-label="CP i Localitat" value="08370 Calella (Barcelona)"><br>
+        <div class="issuer-name"><input class="in" aria-label="Titular" value="${emTitular}"></div>
+        <input class="in" aria-label="NIF" value="${emNif}"><br>
+        <input class="in" aria-label="Adreça" value="${emAdreca}"><br>
+        <input class="in" aria-label="CP i Localitat" value="${emLocalitat}"><br>
         <input class="in" aria-label="Telèfon" value="${emTelefon}">
       </div>
     </header>
