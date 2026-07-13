@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
-import { Receipt, ShieldCheck, ShieldOff, Pencil, Trash2 } from 'lucide-react';
+import { Receipt, ShieldCheck, ShieldOff, Pencil, Trash2, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -97,6 +97,54 @@ export function FacturaPanel({
   const [editLinies, setEditLinies] = useState<{ concepte: string; descripcio: string; import: string }[]>([]);
   const [editBusy, setEditBusy] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+
+  // Factura rectificativa (reducció): quan s'han retornat diners.
+  const [rectOpen, setRectOpen] = useState(false);
+  const [rectFacturaId, setRectFacturaId] = useState('');
+  const [rectImport, setRectImport] = useState('');
+  const [rectMotiu, setRectMotiu] = useState('reducción de estancia');
+  const [rectBusy, setRectBusy] = useState(false);
+  const [rectError, setRectError] = useState<string | null>(null);
+
+  // Devolucions detectades (cobraments negatius): habiliten la rectificativa.
+  const devolucions = pagaments.filter((p) => p.import < 0);
+  const totalDevolucions = Math.abs(devolucions.reduce((a, p) => a + p.import, 0));
+  const facturesSimples = factures.filter((f) => f.tipusDocument !== 'FACTURA');
+  const potRectificar = factures.length > 0 && devolucions.length > 0;
+
+  function obrirRectificativa() {
+    setRectError(null);
+    // Original per defecte: la darrera factura simplificada (o qualsevol).
+    const orig = facturesSimples[0] ?? factures[0];
+    setRectFacturaId(orig?.id ?? '');
+    setRectImport(totalDevolucions ? totalDevolucions.toFixed(2) : '');
+    setRectMotiu('reducción de estancia');
+    setRectOpen(true);
+  }
+
+  async function crearRectificativa(e: React.FormEvent) {
+    e.preventDefault();
+    const imp = Number(rectImport.replace(',', '.'));
+    if (!rectFacturaId) { setRectError('Tria la factura que es rectifica.'); return; }
+    if (!imp || imp <= 0) { setRectError("Indica l'import de la reducció (positiu)."); return; }
+    setRectBusy(true);
+    setRectError(null);
+    try {
+      const res = await postJSON<{ factura: { id: string } }>(
+        `/api/estancies/${estanciaId}/factura-rectificativa`,
+        { facturaOriginalId: rectFacturaId, import: imp, motiu: rectMotiu.trim() || undefined },
+      );
+      setRectOpen(false);
+      if (res?.factura?.id) {
+        window.open(`/imprimir/factura-simple/${res.factura.id}`, '_blank', 'noopener,noreferrer');
+      }
+      router.refresh();
+    } catch (err) {
+      setRectError(err instanceof ApiError ? err.message : 'Error creant la rectificativa');
+    } finally {
+      setRectBusy(false);
+    }
+  }
 
   // Pendents de facturar: pagaments sense factura i fiances en custòdia sense factura.
   const pagamentsLliures = pagaments.filter((p) => !p.facturaId);
@@ -524,6 +572,58 @@ export function FacturaPanel({
             </button>
           </div>
         </form>
+      ) : rectOpen ? (
+        <form onSubmit={crearRectificativa} className="space-y-3 rounded-lg border border-amber-300 bg-amber-50/40 p-3">
+          <p className="text-sm font-semibold text-slate-800">Factura rectificativa (reducció)</p>
+          <p className="text-xs text-slate-500">
+            S&apos;ha detectat una devolució de <strong>{formatEur(totalDevolucions)}</strong>. Es crearà una
+            factura simplificada amb import <strong>negatiu</strong> que redueix la factura original (número{' '}
+            <code>26001 → 26001.1</code>). No es torna a comptar cap ingrés (la devolució ja està registrada).
+          </p>
+          <label className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-xs font-medium text-slate-500">Rectifica la factura:</span>
+            <Select
+              className="h-9 max-w-64"
+              value={rectFacturaId}
+              onChange={(e) => setRectFacturaId(e.target.value)}
+            >
+              {factures.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.numero} · {TIPUS_LABEL[f.tipusDocument ?? ''] ?? 'Factura'} · {formatEur(Number(f.total))}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-xs font-medium text-slate-500">Import de la reducció (€):</span>
+            <Input
+              className="h-9 w-32 text-right"
+              inputMode="decimal"
+              value={rectImport}
+              onChange={(e) => setRectImport(e.target.value)}
+              placeholder="452,00"
+            />
+            <span className="text-xs text-slate-400">es desarà com a −{rectImport || '0'} €</span>
+          </label>
+          <label className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-xs font-medium text-slate-500">Motiu:</span>
+            <Input
+              className="h-9 flex-1 min-w-48"
+              value={rectMotiu}
+              onChange={(e) => setRectMotiu(e.target.value)}
+              placeholder="reducción de estancia"
+            />
+          </label>
+          {rectError && <p className="text-sm text-red-600">{rectError}</p>}
+          <div className="flex items-center gap-3">
+            <Button type="submit" disabled={rectBusy}>
+              {rectBusy ? 'Creant…' : 'Crear rectificativa'}
+            </Button>
+            <button type="button" className="text-sm text-slate-500 hover:underline" onClick={() => setRectOpen(false)}>
+              Cancel·lar
+            </button>
+          </div>
+        </form>
       ) : (
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => obrir('simple')}>
@@ -535,6 +635,11 @@ export function FacturaPanel({
           <Button variant="outline" size="sm" onClick={() => obrir('dupla')}>
             <Receipt className="h-4 w-4" /> Simple + Fiscal
           </Button>
+          {potRectificar && (
+            <Button variant="outline" size="sm" onClick={obrirRectificativa} title="S'han retornat diners: crea una factura de reducció">
+              <Undo2 className="h-4 w-4" /> Rectificativa (reducció)
+            </Button>
+          )}
         </div>
       )}
     </div>

@@ -18,6 +18,7 @@ import {
   CobramentEditSchema,
   DipositCreateSchema,
   FinalitzarAnticipadaSchema,
+  FacturaRectificativaSchema,
 } from '../validation/factura';
 import { CONCEPTE_LINIA_LABELS } from '../validation/enums';
 
@@ -808,6 +809,87 @@ export async function createFacturaSeleccio(
         entitat: 'factura',
         entitatId: factura.id,
         detall: { numero, total, pagaments: pagaments.length, fiances: fiances.length, perSeleccio: true },
+        ip,
+      },
+      tx,
+    );
+
+    return factura;
+  });
+}
+
+/**
+ * Crea una FACTURA RECTIFICATIVA (reducció) d'una factura simplificada anterior:
+ * una nova factura simplificada amb import NEGATIU i una única línia que explica
+ * el motiu ("Reducción de factura simplificada Nº… · Motivo: …"). El número
+ * segueix la sèrie del contracte (26001 → 26001.1). NO crea cap cobrament: la
+ * devolució de diners ja s'ha registrat com a cobrament negatiu a part, així que
+ * l'ingrés no es toca; aquesta factura és només el document fiscal de la reducció.
+ */
+export async function createFacturaRectificativa(
+  estanciaId: string,
+  raw: unknown,
+  actor: { id: string } | null,
+  ip: string | null,
+) {
+  const input = FacturaRectificativaSchema.parse(raw);
+
+  return prisma.$transaction(async (tx) => {
+    const original = await tx.factura.findFirst({
+      where: { id: input.facturaOriginalId, estanciaId, deletedAt: null },
+      select: { numero: true },
+    });
+    if (!original) throw new Error('Validación fallida: factura original no trobada');
+
+    const estancia = await tx.estancia.findUniqueOrThrow({
+      where: { id: estanciaId },
+      select: { dataEntrada: true },
+    });
+    const dataFactura = input.data ?? estancia.dataEntrada ?? new Date();
+
+    // Import negatiu (reducció) i text del motiu.
+    const imp = -Math.abs(round2(input.import));
+    const motiu = input.motiu?.trim() || 'reducción de estancia';
+    const descripcio = `Reducción de factura simplificada Nº${original.numero}. Motivo: ${motiu}`;
+
+    // Número: segueix la sèrie del contracte (26001 → 26001.1); si no n'hi ha,
+    // el següent seqüencial de l'any. Es pot forçar amb input.numero.
+    let numero: string;
+    if (input.numero?.trim()) {
+      const exist = await tx.factura.findFirst({ where: { numero: input.numero.trim() } });
+      if (exist) {
+        throw new Error(
+          `Validación fallida: el número de factura "${input.numero.trim()}" ja existeix. Canvia'l o deixa'l buit per generar-ne un de nou.`,
+        );
+      }
+      numero = input.numero.trim();
+    } else {
+      numero =
+        (await proximNumeroFacturaContracte(tx, estanciaId)) ||
+        (await proximNumeroFactura(tx, dataFactura.getFullYear()));
+    }
+
+    const factura = await tx.factura.create({
+      data: {
+        estanciaId,
+        numero,
+        data: dataFactura,
+        base: imp,
+        iva: 0,
+        total: imp,
+        estat: 'COBRADA',
+        tipusDocument: 'FACTURA_SIMPLIFICADA',
+        linies: { create: [{ concepte: 'ALLOTJAMENT' as const, descripcio, import: imp }] },
+      },
+    });
+
+    await audit(
+      {
+        usuariId: actor?.id ?? null,
+        accio: 'CREACIO',
+        entitat: 'factura',
+        entitatId: factura.id,
+        detall: { numero, total: imp, rectificaNumero: original.numero, rectificativa: true },
         ip,
       },
       tx,

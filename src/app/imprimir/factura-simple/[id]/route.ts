@@ -103,7 +103,7 @@ export async function GET(
     <tr class="item" data-concepte="${esc(l.concepte)}">
       <td class="c-qty"><input class="in qty" inputmode="decimal" aria-label="Quantitat" value="1"></td>
       <td>
-        <input class="in concept" aria-label="Concepte" value="${label}">
+        <textarea class="in concept" rows="1" aria-label="Concepte">${label}</textarea>
         ${needsDates ? `<input class="in detail" aria-label="Detall" value="${habDates}" placeholder="">` : ''}
       </td>
       <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${plain(Number(l.import))}"></td>
@@ -120,7 +120,7 @@ export async function GET(
   const dipositsHtml = diposits.length > 0 ? diposits.map((d) => `
     <tr class="item" data-fianca="1">
       <td class="c-qty"><input class="in qty" inputmode="decimal" aria-label="Quantitat" value="1"></td>
-      <td><input class="in concept" aria-label="Concepte" value="${esc((d.notes ?? 'Fiança') + ' ' + fmtDate(d.data))}"></td>
+      <td><textarea class="in concept" rows="1" aria-label="Concepte">${esc((d.notes ?? 'Fiança') + ' ' + fmtDate(d.data))}</textarea></td>
       <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${esc(plain(Number(d.import)))}"></td>
       <td class="c-amt"><input class="in amount" inputmode="decimal" aria-label="Import" value="${esc(plain(Number(d.import)))}"></td>
       <td class="it-del"><button class="del" type="button" aria-label="Eliminar línia">×</button></td>
@@ -220,6 +220,8 @@ export async function GET(
   .note{ font-family:Georgia,serif; color:var(--ink); font-size:15px; white-space:nowrap; }
   .in{ font:inherit; color:inherit; letter-spacing:inherit; border:0; background:transparent; width:100%;
        padding:2px 4px; margin:-2px -4px; border-radius:5px; }
+  textarea.in{ resize:none; overflow:hidden; line-height:1.4; white-space:pre-wrap; word-break:break-word;
+       display:block; min-height:1.4em; }
   .in:focus{ outline:none; background:var(--accent-soft); box-shadow:inset 0 0 0 1px rgba(122,31,43,.3); }
   .in::placeholder{ color:#C8BFBE; }
   .v .in{ text-align:right; }
@@ -357,9 +359,21 @@ export async function GET(
     document.getElementById('total').textContent = money(tot);
   }
 
-  document.addEventListener('DOMContentLoaded', recalc);
+  // Els conceptes són textarea: creixen amb el text perquè les línies llargues
+  // (p. ex. "Reducción de factura simplificada Nº…") es vegin senceres.
+  function autoGrow(el) {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = (el.scrollHeight) + 'px';
+  }
+  function growAll() { document.querySelectorAll('textarea.in').forEach(autoGrow); }
+
+  document.addEventListener('DOMContentLoaded', () => { recalc(); growAll(); });
+  window.addEventListener('load', growAll);
+  window.addEventListener('beforeprint', growAll);
 
   document.addEventListener('input', e => {
+    if (e.target.matches('textarea.in')) autoGrow(e.target);
     if (e.target.matches('.qty, .price')) { lineCalc(e.target.closest('.item')); recalc(); }
     else if (e.target.matches('.amount')) recalc();
   });
@@ -378,6 +392,7 @@ export async function GET(
     row.removeAttribute('data-fianca');
     row.setAttribute('data-concepte', 'EXTRA');
     tbody.appendChild(row);
+    autoGrow(row.querySelector('.concept'));
     row.querySelector('.concept').focus();
     recalc();
   });

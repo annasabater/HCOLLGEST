@@ -117,6 +117,16 @@ export const FacturaSeleccioSchema = z.object({
   { message: 'Selecciona almenys un pagament o fiança' },
 );
 
+// Factura rectificativa (reducció): nova factura simplificada amb import NEGATIU
+// que redueix una factura anterior (p. ex. per sortida anticipada amb devolució).
+export const FacturaRectificativaSchema = z.object({
+  facturaOriginalId: z.string().min(1),
+  import: z.coerce.number().positive("Indica l'import de la reducció"),
+  motiu: z.string().trim().min(1).optional(),
+  numero: z.string().trim().min(1).optional(),
+  data: z.coerce.date().optional(),
+});
+
 export type FacturaCreateInput = z.input<typeof FacturaCreateSchema>;
 export type LiniaInput = z.input<typeof LiniaInputSchema>;
 
