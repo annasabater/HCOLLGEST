@@ -26,6 +26,8 @@ const ACCENT = rgb(0.478, 0.122, 0.169);
 const MUTED = rgb(0.478, 0.408, 0.408);
 const LINE = rgb(0.898, 0.847, 0.835);
 const TINT = rgb(0.961, 0.925, 0.925);
+// Fons "paper" cremós (--paper:#FFFCF8 a la web): blanc pur no hi coincideix.
+const PAPER = rgb(1, 0.988, 0.973);
 
 function sanitize(s: string): string {
   // pdf-lib WinAnsi no admet alguns caràcters; substituïm els problemàtics.
@@ -68,6 +70,49 @@ function drawRight(page: PDFPage, text: string, xRight: number, y: number, size:
   page.drawText(t, { x: xRight - font.widthOfTextAtSize(t, size), y, size, font, color });
 }
 
+/** Amplada d'un text amb espaiat entre lletres (tracking), en punts. */
+function trackedWidth(font: PDFFont, text: string, size: number, tracking: number): number {
+  const chars = [...sanitize(text)];
+  if (chars.length === 0) return 0;
+  return font.widthOfTextAtSize(sanitize(text), size) + tracking * (chars.length - 1);
+}
+
+/**
+ * Dibuixa text amb espaiat entre lletres (com el letter-spacing CSS dels
+ * eyebrows/etiquetes majúscules de la web: no hi ha equivalent directe a
+ * pdf-lib, així que es dibuixa lletra a lletra amb un gap fix.
+ */
+function drawTracked(
+  page: PDFPage,
+  text: string,
+  x: number,
+  y: number,
+  size: number,
+  font: PDFFont,
+  color: ReturnType<typeof rgb>,
+  tracking: number,
+) {
+  let cx = x;
+  for (const ch of sanitize(text)) {
+    page.drawText(ch, { x: cx, y, size, font, color });
+    cx += font.widthOfTextAtSize(ch, size) + tracking;
+  }
+}
+
+/** Com `drawTracked`, però alineat a la dreta acabant a `xRight`. */
+function drawRightTracked(
+  page: PDFPage,
+  text: string,
+  xRight: number,
+  y: number,
+  size: number,
+  font: PDFFont,
+  color: ReturnType<typeof rgb>,
+  tracking: number,
+) {
+  drawTracked(page, text, xRight - trackedWidth(font, text, size, tracking), y, size, font, color, tracking);
+}
+
 export async function buildFacturaPdf(factura: FacturaAmb, establiment: Establiment | null): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -106,12 +151,13 @@ export async function buildFacturaPdf(factura: FacturaAmb, establiment: Establim
       : '';
 
   const page = doc.addPage([A4.w, A4.h]);
+  page.drawRectangle({ x: 0, y: 0, width: A4.w, height: A4.h, color: PAPER });
   let y = A4.h - M;
   const right = A4.w - M;
 
   // ── Masthead
   page.drawText('HOSTAL COLL', { x: M, y: y - 26, size: 30, font: serif, color: INK });
-  page.drawText(sanitize(emDescriptor.toUpperCase()), { x: M, y: y - 42, size: 8, font, color: ACCENT });
+  drawTracked(page, emDescriptor.toUpperCase(), M, y - 42, 8, font, ACCENT, 1.3);
   // Emissor a la dreta
   let ey = y - 4;
   drawRight(page, emTitular, right, ey, 9.5, bold, SLATE); ey -= 14;
@@ -127,7 +173,7 @@ export async function buildFacturaPdf(factura: FacturaAmb, establiment: Establim
 
   // ── Client (esq.) + Factura/meta (dreta)
   const topBloc = y;
-  page.drawText('CLIENT', { x: M, y: topBloc - 9, size: 9, font, color: MUTED });
+  drawTracked(page, 'CLIENT', M, topBloc - 9, 9, font, MUTED, 1);
   page.drawText(sanitize(clientNom || '—'), { x: M, y: topBloc - 26, size: 13, font: bold, color: SLATE });
   let cy = topBloc - 42;
   for (const l of [clientNif, clientAdreca, clientLocalitat].filter(Boolean)) {
@@ -138,11 +184,11 @@ export async function buildFacturaPdf(factura: FacturaAmb, establiment: Establim
   const metaTitle = esRebut ? 'Rebut' : 'Factura';
   page.drawText(metaTitle, { x: right - serif.widthOfTextAtSize(metaTitle, 26), y: topBloc - 22, size: 26, font: serif, color: INK });
   const badge = esFiscal ? 'FACTURA FISCAL' : esRebut ? 'REBUT' : 'SIMPLIFICADA';
-  drawRight(page, badge, right, topBloc - 36, 8.5, bold, ACCENT);
+  drawRightTracked(page, badge, right, topBloc - 36, 8.5, bold, ACCENT, 1.2);
   let my = topBloc - 56;
   const metaRow = (k: string, v: string) => {
     drawRight(page, v, right, my, 10, bold, SLATE);
-    drawRight(page, k.toUpperCase(), right - 110, my, 8.5, font, MUTED);
+    drawRightTracked(page, k.toUpperCase(), right - 110, my, 8.5, font, MUTED, 0.8);
     my -= 16;
   };
   metaRow('Número', numeroDisplay);
@@ -159,10 +205,10 @@ export async function buildFacturaPdf(factura: FacturaAmb, establiment: Establim
   const colImport = right;
   const colPreu = right - 92;
   const conceptRight = colPreu - 60;
-  page.drawText('CANT.', { x: M, y: y - 9, size: 8.5, font, color: MUTED });
-  page.drawText('CONCEPTE', { x: colConcept, y: y - 9, size: 8.5, font, color: MUTED });
-  drawRight(page, 'PREU (€)', colPreu, y - 9, 8.5, font, MUTED);
-  drawRight(page, 'IMPORT (€)', colImport, y - 9, 8.5, font, MUTED);
+  drawTracked(page, 'CANT.', M, y - 9, 8.5, font, MUTED, 0.7);
+  drawTracked(page, 'CONCEPTE', colConcept, y - 9, 8.5, font, MUTED, 0.7);
+  drawRightTracked(page, 'PREU (€)', colPreu, y - 9, 8.5, font, MUTED, 0.7);
+  drawRightTracked(page, 'IMPORT (€)', colImport, y - 9, 8.5, font, MUTED, 0.7);
   y -= 15;
   page.drawLine({ start: { x: M, y }, end: { x: right, y }, thickness: 1.2, color: INK });
   y -= 6;
