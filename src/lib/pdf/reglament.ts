@@ -1,6 +1,8 @@
 /**
  * Generador PDF (pdf-lib) del "Reglamento Interno de Hospedaje" + clàusula LOPD
- * pròpia del hostal (docs/Hostal Coll-NOU LOPD Reglamento interno de Hospedaje.doc).
+ * pròpia del hostal (docs/Hostal Coll-NOU LOPD Reglamento interno de Hospedaje.doc),
+ * amb l'estil visual de la marca (granat #7A1F2B, ink càlid) per fer-lo llegible
+ * i coherent amb la resta de documents de l'app.
  * Es genera UN document per cada viatger ADULT de l'estada (els menors no firmen,
  * però surten llistats com a acompanyants al document del seu adult acompanyant),
  * reutilitzant la MATEIXA firma ja capturada per al Registre de persones allotjades
@@ -15,9 +17,14 @@ import { viatgerEfectiu } from '../registre-snapshot';
 type ViatgerRow = EstanciaViatger & { huesped: Huesped; signatura: Signatura | null };
 
 const A4 = { w: 595.28, h: 841.89 };
-const M = 48;
-const INK = rgb(0.08, 0.08, 0.1);
-const GREY = rgb(0.42, 0.42, 0.42);
+const M = 50;
+
+// Paleta de marca (mateixos tons que factura-simple / web: granat + ink càlid).
+const INK = rgb(0.173, 0.094, 0.063); // #2C1810
+const ACCENT = rgb(0.478, 0.122, 0.169); // #7A1F2B
+const MUTED = rgb(0.478, 0.408, 0.408); // #7A6868
+const LINE = rgb(0.898, 0.847, 0.835); // #E5D8D5
+const FIELD_BG = rgb(0.969, 0.933, 0.925); // #F7EEEC
 
 function sanitize(s: string): string {
   return (s ?? '')
@@ -103,31 +110,58 @@ function drawParagraph(
   size: number,
   lineH: number,
   indent = 0,
+  color = INK,
 ): Cur {
   const maxW = A4.w - M * 2 - indent;
   for (const l of wrap(font, text, size, maxW)) {
     cur = ensure(doc, cur, lineH);
-    cur.page.drawText(l, { x: M + indent, y: cur.y - size, size, font, color: INK });
+    cur.page.drawText(l, { x: M + indent, y: cur.y - size, size, font, color });
     cur.y -= lineH;
   }
   return cur;
 }
 
-function drawTitle(doc: PDFDocument, cur: Cur, text: string, bold: PDFFont, size = 13): Cur {
-  cur = ensure(doc, cur, size + 14);
-  const w = bold.widthOfTextAtSize(text, size);
-  cur.page.drawText(text, { x: (A4.w - w) / 2, y: cur.y - size, size, font: bold, color: INK });
-  cur.y -= size + 14;
+/** Marca "HOSTAL COLL" + títol del document + regle de color (granat). */
+function drawMasthead(doc: PDFDocument, cur: Cur, bold: PDFFont, title: string): Cur {
+  cur = ensure(doc, cur, 66);
+  cur.page.drawText('HOSTAL COLL', { x: M, y: cur.y - 22, size: 22, font: bold, color: INK });
+  cur.y -= 30;
+  cur.page.drawText(title.toUpperCase(), { x: M, y: cur.y - 9, size: 9, font: bold, color: ACCENT });
+  cur.y -= 14;
+  cur.page.drawLine({ start: { x: M, y: cur.y }, end: { x: A4.w - M, y: cur.y }, thickness: 1.2, color: INK });
+  cur.page.drawLine({ start: { x: M, y: cur.y }, end: { x: M + 46, y: cur.y }, thickness: 2.6, color: ACCENT });
+  cur.y -= 22;
   return cur;
 }
 
-function drawSubtitle(doc: PDFDocument, cur: Cur, text: string, bold: PDFFont): Cur {
-  cur = ensure(doc, cur, 16);
-  cur.page.drawText(text, { x: M, y: cur.y - 10, size: 10, font: bold, color: INK });
-  cur.y -= 16;
+/** Petita etiqueta de secció en granat, amb un traç curt a sota (amb espai, no tocant el text). */
+function drawEyebrow(doc: PDFDocument, cur: Cur, text: string, bold: PDFFont): Cur {
+  cur = ensure(doc, cur, 26);
+  const baseline = cur.y - 9;
+  cur.page.drawText(text.toUpperCase(), { x: M, y: baseline, size: 9.5, font: bold, color: ACCENT });
+  const lineY = baseline - 5;
+  cur.page.drawLine({ start: { x: M, y: lineY }, end: { x: M + 28, y: lineY }, thickness: 1.6, color: ACCENT });
+  cur.y = lineY - 12;
   return cur;
 }
 
+/** Punt de llista en granat + text envoltat amb sagnia penjant. */
+function drawBullet(doc: PDFDocument, cur: Cur, text: string, font: PDFFont): Cur {
+  const size = 8.6;
+  const lineH = 12;
+  const indent = 13;
+  const lines = wrap(font, text, size, A4.w - M * 2 - indent);
+  lines.forEach((l, i) => {
+    cur = ensure(doc, cur, lineH);
+    if (i === 0) cur.page.drawText('•', { x: M, y: cur.y - size, size, font, color: ACCENT });
+    cur.page.drawText(l, { x: M + indent, y: cur.y - size, size, font, color: INK });
+    cur.y -= lineH;
+  });
+  cur.y -= 2.5;
+  return cur;
+}
+
+/** Targeta amb fons suau: label (majúscula, gris) + valor, en graella de 2 columnes. */
 function drawCampsClient(
   doc: PDFDocument,
   cur: Cur,
@@ -143,56 +177,91 @@ function drawCampsClient(
     acompanyants: string;
   },
 ): Cur {
-  const size = 9.5;
-  const rowH = 16;
-  const fields: [string, string][] = [
-    ['Nombre', data.nom],
-    ['Apellidos', data.cognoms],
-    ['Nacionalidad', data.nacionalitat],
-    ['Nº de DNI o Pasaporte', data.doc],
-    ['Fecha de expedición', data.expedicio],
-    ['Fecha de nacimiento', data.naixement],
-    ['Acompañantes (menores)', data.acompanyants],
-  ];
-  for (const [label, value] of fields) {
-    cur = ensure(doc, cur, rowH);
-    cur.page.drawText(`${label}:`, { x: M, y: cur.y - size, size, font: bold, color: GREY });
-    cur.page.drawText(sanitize(value) || '—', { x: M + 155, y: cur.y - size, size, font, color: INK });
-    cur.y -= rowH;
-  }
-  cur.y -= 6;
+  const rowH = 30;
+  const padX = 14;
+  const padY = 12;
+  const boxH = rowH * 3 + padY * 2;
+  cur = ensure(doc, cur, boxH + 16);
+  const top = cur.y;
+  const w = A4.w - M * 2;
+  cur.page.drawRectangle({ x: M, y: top - boxH, width: w, height: boxH, color: FIELD_BG, borderColor: LINE, borderWidth: 0.8 });
+
+  const half = (w - padX * 3) / 2;
+  const field = (x: number, colW: number, rowTop: number, label: string, value: string) => {
+    cur.page.drawText(label.toUpperCase(), { x, y: rowTop - 9, size: 6.5, font: bold, color: MUTED });
+    const v = sanitize(value) || '—';
+    const fitted = font.widthOfTextAtSize(v, 9.5) > colW ? `${v.slice(0, Math.floor((colW / font.widthOfTextAtSize(v, 9.5)) * v.length))}…` : v;
+    cur.page.drawText(fitted, { x, y: rowTop - 22, size: 9.5, font, color: INK });
+  };
+
+  let rowTop = top - padY;
+  field(M + padX, half, rowTop, 'Nombre', data.nom);
+  field(M + padX * 2 + half, half, rowTop, 'Apellidos', data.cognoms);
+  rowTop -= rowH;
+  field(M + padX, half, rowTop, 'Nacionalidad', data.nacionalitat);
+  field(M + padX * 2 + half, half, rowTop, 'Nº de DNI o pasaporte', data.doc);
+  rowTop -= rowH;
+  field(M + padX, half, rowTop, 'Fecha de expedición', data.expedicio);
+  field(M + padX * 2 + half, half, rowTop, 'Fecha de nacimiento', data.naixement);
+  rowTop -= rowH;
+  field(M + padX, w - padX * 2, rowTop, 'Acompañantes (menores)', data.acompanyants);
+
+  cur.y = top - boxH - 18;
   return cur;
 }
 
+/** Bloc de signatura: caixa amb vora granat + nom imprès + lloc i data. */
 async function drawSignatura(
   doc: PDFDocument,
   cur: Cur,
   font: PDFFont,
   bold: PDFFont,
   v: ViatgerRow | null,
+  nomComplet: string,
   lloc: string,
 ): Promise<Cur> {
-  cur = ensure(doc, cur, 90);
-  cur.page.drawText('Firma:', { x: M, y: cur.y - 9, size: 9.5, font: bold, color: GREY });
-  const sigX = M + 55;
-  const sigY = cur.y - 46;
-  const sigW = 220;
-  const sigH = 40;
-  cur.page.drawRectangle({ x: sigX, y: sigY, width: sigW, height: sigH, borderColor: rgb(0.75, 0.75, 0.75), borderWidth: 0.7 });
+  const boxH = 96;
+  cur = ensure(doc, cur, boxH);
+  cur.page.drawLine({ start: { x: M, y: cur.y }, end: { x: A4.w - M, y: cur.y }, thickness: 0.8, color: LINE });
+  cur.y -= 16;
+
+  const sigW = 230;
+  const sigH = 46;
+  const sigX = M;
+  const sigY = cur.y - 8 - sigH;
+
+  cur.page.drawText('FIRMA DEL HUÉSPED', { x: M, y: cur.y - 7, size: 7, font: bold, color: MUTED });
+  cur.page.drawRectangle({ x: sigX, y: sigY, width: sigW, height: sigH, borderColor: ACCENT, borderWidth: 1 });
   if (v?.signatura?.imatge?.startsWith('data:image')) {
     try {
       const b64 = v.signatura.imatge.split(',')[1] ?? '';
       const png = await doc.embedPng(Buffer.from(b64, 'base64'));
-      const scale = Math.min((sigW - 6) / png.width, (sigH - 6) / png.height);
-      cur.page.drawImage(png, { x: sigX + 3, y: sigY + 3, width: png.width * scale, height: png.height * scale });
+      const scale = Math.min((sigW - 8) / png.width, (sigH - 8) / png.height);
+      cur.page.drawImage(png, { x: sigX + 4, y: sigY + 4, width: png.width * scale, height: png.height * scale });
     } catch {
       /* signatura no incrustable: es deixa l'espai en blanc */
     }
   }
-  cur.y -= 54;
-  cur.page.drawText(`Lugar y fecha: ${lloc}`, { x: M, y: cur.y - 9, size: 8.5, font, color: INK });
-  cur.y -= 20;
+  if (nomComplet.trim()) {
+    cur.page.drawText(sanitize(nomComplet), { x: sigX, y: sigY - 12, size: 8, font, color: MUTED });
+  }
+
+  const metaX = sigX + sigW + 30;
+  cur.page.drawText('LUGAR Y FECHA', { x: metaX, y: cur.y - 7, size: 7, font: bold, color: MUTED });
+  cur.page.drawText(sanitize(lloc) || '—', { x: metaX, y: sigY + sigH - 14, size: 9.5, font, color: INK });
+
+  cur.y = sigY - 22;
   return cur;
+}
+
+/** Peu de pàgina discret amb el número de pàgina (aplicat un cop generat tot el document). */
+function addFooters(doc: PDFDocument, font: PDFFont): void {
+  const pages = doc.getPages();
+  pages.forEach((p, i) => {
+    const label = `Hostal Coll · Reglamento interno de hospedaje — Página ${i + 1} de ${pages.length}`;
+    const w = font.widthOfTextAtSize(label, 7.5);
+    p.drawText(label, { x: (A4.w - w) / 2, y: 26, size: 7.5, font, color: MUTED });
+  });
 }
 
 async function renderReglamentDoc(
@@ -205,9 +274,10 @@ async function renderReglamentDoc(
   allViatgers: ViatgerRow[],
 ): Promise<void> {
   let cur = newPage(doc);
-  cur = drawTitle(doc, cur, 'REGLAMENTO INTERNO DE HOSPEDAJE', bold, 13);
+  cur = drawMasthead(doc, cur, bold, 'Reglamento interno de hospedaje');
 
   const h = v ? viatgerEfectiu(v.huesped, v.dadesCongelades) : null;
+  const nomComplet = h ? [h.nom, h.cognom1, h.cognom2].filter(Boolean).join(' ') : '';
   const acompanyants = v
     ? allViatgers
         .filter((x) => x.id !== v.id && x.esMenor)
@@ -228,26 +298,27 @@ async function renderReglamentDoc(
     acompanyants,
   });
 
-  cur = drawParagraph(doc, cur, INTRO, font, 9, 12);
+  cur = drawParagraph(doc, cur, INTRO, font, 9, 12.5, 0, MUTED);
+  cur.y -= 8;
+
+  cur = drawEyebrow(doc, cur, 'Normas de la casa', bold);
+  for (const n of NORMES) cur = drawBullet(doc, cur, n, font);
   cur.y -= 6;
 
-  for (const n of NORMES) cur = drawParagraph(doc, cur, `•  ${n}`, font, 8.3, 11.2, 10);
-  cur.y -= 4;
-
-  cur = drawSubtitle(doc, cur, 'Protección de datos', bold);
+  cur = drawEyebrow(doc, cur, 'Protección de datos', bold);
   const adreca =
     [establiment.adreca, establiment.codiPostal, establiment.poblacio].filter(Boolean).join(', ') || ADRECA_FALLBACK;
-  cur = drawParagraph(doc, cur, lopdParagraph(adreca), font, 8.3, 11.2);
-  cur.y -= 8;
-  cur = drawParagraph(doc, cur, CLOSING, bold, 8.6, 12);
-  cur.y -= 14;
+  cur = drawParagraph(doc, cur, lopdParagraph(adreca), font, 8.3, 11.4);
+  cur.y -= 10;
+  cur = drawParagraph(doc, cur, CLOSING, bold, 8.6, 12.5);
+  cur.y -= 10;
 
   const lloc = estancia
     ? [v?.signatura?.llocSignatura || establiment.poblacio || 'Calella', formatDate(v?.signatura?.data ?? estancia.dataEntrada)]
         .filter(Boolean)
         .join(', ')
     : '';
-  await drawSignatura(doc, cur, font, bold, v, lloc);
+  await drawSignatura(doc, cur, font, bold, v, nomComplet, lloc);
 }
 
 /**
@@ -270,6 +341,7 @@ export async function buildReglamentPdf(
   const rows = adults.length > 0 ? adults : viatgers.length > 0 ? [viatgers[0]!] : [null];
   for (const v of rows) await renderReglamentDoc(doc, font, bold, establiment, estancia, v, viatgers);
 
+  addFooters(doc, font);
   return doc.save();
 }
 
@@ -280,6 +352,7 @@ export async function buildReglamentBlank(establiment: Establiment): Promise<Uin
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   doc.setTitle('Reglamento interno de hospedaje (en blanco)', { showInWindowTitleBar: true });
   await renderReglamentDoc(doc, font, bold, establiment, null, null, []);
+  addFooters(doc, font);
   return doc.save();
 }
 
@@ -291,17 +364,19 @@ export async function buildCartellPdf(establiment: Establiment): Promise<Uint8Ar
   doc.setTitle('Cartell — Reglamento interno de hospedaje', { showInWindowTitleBar: true });
 
   let cur = newPage(doc);
-  cur = drawTitle(doc, cur, 'REGLAMENTO INTERNO DE HOSPEDAJE', bold, 13);
-  cur = drawParagraph(doc, cur, INTRO, font, 9, 12);
+  cur = drawMasthead(doc, cur, bold, 'Reglamento interno de hospedaje');
+  cur = drawParagraph(doc, cur, INTRO, font, 9, 12.5, 0, MUTED);
+  cur.y -= 8;
+  cur = drawEyebrow(doc, cur, 'Normas de la casa', bold);
+  for (const n of NORMES) cur = drawBullet(doc, cur, n, font);
   cur.y -= 6;
-  for (const n of NORMES) cur = drawParagraph(doc, cur, `•  ${n}`, font, 8.3, 11.2, 10);
-  cur.y -= 4;
-  cur = drawSubtitle(doc, cur, 'Protección de datos', bold);
+  cur = drawEyebrow(doc, cur, 'Protección de datos', bold);
   const adreca =
     [establiment.adreca, establiment.codiPostal, establiment.poblacio].filter(Boolean).join(', ') || ADRECA_FALLBACK;
-  cur = drawParagraph(doc, cur, lopdParagraph(adreca), font, 8.3, 11.2);
-  cur.y -= 8;
-  drawParagraph(doc, cur, CLOSING, bold, 8.6, 12);
+  cur = drawParagraph(doc, cur, lopdParagraph(adreca), font, 8.3, 11.4);
+  cur.y -= 10;
+  drawParagraph(doc, cur, CLOSING, bold, 8.6, 12.5);
 
+  addFooters(doc, font);
   return doc.save();
 }
