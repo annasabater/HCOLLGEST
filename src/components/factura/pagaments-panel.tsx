@@ -412,7 +412,9 @@ export function PagamentsPanel({
               </span>
               {p.facturaId && (
                 <Link href={`/factures/${p.facturaId}`}>
-                  <Badge tone="neutral">{numContracte ? `Contracte ${numContracte}` : (p.facturaNumero ?? 'Factura')}</Badge>
+                  <Badge tone="neutral">
+                    {p.facturaNumero ? `Contracte ${p.facturaNumero}` : numContracte ? `Contracte ${numContracte}` : 'Factura'}
+                  </Badge>
                 </Link>
               )}
             </div>
@@ -427,7 +429,9 @@ export function PagamentsPanel({
               </span>
               {f.facturaId && (
                 <Link href={`/factures/${f.facturaId}`}>
-                  <Badge tone="neutral">{numContracte ? `Contracte ${numContracte}` : (f.facturaNumero ?? 'Factura')}</Badge>
+                  <Badge tone="neutral">
+                    {f.facturaNumero ? `Contracte ${f.facturaNumero}` : numContracte ? `Contracte ${numContracte}` : 'Factura'}
+                  </Badge>
                 </Link>
               )}
             </div>
