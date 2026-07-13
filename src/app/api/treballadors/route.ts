@@ -37,6 +37,8 @@ export async function POST(req: Request) {
         preuZones: data.preuZones ?? null,
         salari: data.salari ?? null,
         costEmpresa: data.costEmpresa ?? null,
+        esEmpresa: data.esEmpresa ?? false,
+        empresaId: data.empresaId ?? null,
       },
     });
     await audit({

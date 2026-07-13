@@ -27,6 +27,13 @@ export const TreballadorCreateSchema = z.object({
   preuZones: optNum,
   salari: optNum,
   costEmpresa: optNum,
+  // Empresa de neteja (a qui es paga) vs treballador membre (a qui s'envia WhatsApp).
+  esEmpresa: z.coerce.boolean().optional(),
+  // si és membre: id de l'empresa a la qual pertany (null = independent)
+  empresaId: z.preprocess(
+    (val) => (val === '' || val == null ? null : val),
+    z.string().trim().nullable().optional(),
+  ),
 });
 
 export const TreballadorUpdateSchema = TreballadorCreateSchema.partial();

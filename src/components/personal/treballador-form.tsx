@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Pencil, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { Card, CardBody } from '@/components/ui/card';
 import { postJSON, patchJSON, ApiError } from '@/lib/api';
@@ -22,6 +22,9 @@ export interface TreballadorEditable {
   preuSortida: string;
   preuManteniment: string;
   preuZones: string;
+  // Empresa de neteja / pertinença a una empresa
+  esEmpresa: boolean;
+  empresaId: string;
 }
 
 type ModePagament = 'hora' | 'tasques';
@@ -35,9 +38,16 @@ function detectMode(t?: TreballadorEditable): ModePagament {
 const BUIT = {
   nom: '', carrec: '', telefon: '', email: '', dni: '',
   preuHora: '', preuSortida: '', preuManteniment: '', preuZones: '',
+  esEmpresa: false, empresaId: '',
 };
 
-export function TreballadorForm({ treballador }: { treballador?: TreballadorEditable }) {
+export function TreballadorForm({
+  treballador,
+  empreses = [],
+}: {
+  treballador?: TreballadorEditable;
+  empreses?: { id: string; nom: string }[];
+}) {
   const router = useRouter();
   const isEdit = !!treballador;
   const [open, setOpen] = useState(false);
@@ -67,6 +77,8 @@ export function TreballadorForm({ treballador }: { treballador?: TreballadorEdit
         preuSortida: mode === 'tasques' ? (v.preuSortida || undefined) : null,
         preuManteniment: mode === 'tasques' ? (v.preuManteniment || undefined) : null,
         preuZones: mode === 'tasques' ? (v.preuZones || undefined) : null,
+        esEmpresa: v.esEmpresa,
+        empresaId: v.esEmpresa ? null : (v.empresaId || null),
       };
       if (isEdit) {
         await patchJSON(`/api/treballadors/${treballador.id}`, payload);
@@ -122,7 +134,33 @@ export function TreballadorForm({ treballador }: { treballador?: TreballadorEdit
       </div>
 
       <div className="border-t border-slate-100 pt-3">
-        <p className="mb-2 text-sm font-medium text-slate-700">Mode de pagament</p>
+        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
+          <input
+            type="checkbox"
+            checked={v.esEmpresa}
+            onChange={(e) => setV({ ...v, esEmpresa: e.target.checked, empresaId: e.target.checked ? '' : v.empresaId })}
+            className="accent-brand-700"
+          />
+          És una empresa de neteja (pago a l&apos;empresa, no al treballador)
+        </label>
+        {!v.esEmpresa && empreses.filter((em) => em.id !== v.id).length > 0 && (
+          <div className="mt-2 max-w-xs">
+            <Field label="Pertany a l'empresa" hint="Els membres reben WhatsApp i queden al registre de qui ha netejat.">
+              <Select value={v.empresaId} onChange={(e) => setV({ ...v, empresaId: e.target.value })}>
+                <option value="">— Independent —</option>
+                {empreses.filter((em) => em.id !== v.id).map((em) => (
+                  <option key={em.id} value={em.id}>{em.nom}</option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+        )}
+      </div>
+
+      <div className="border-t border-slate-100 pt-3">
+        <p className="mb-2 text-sm font-medium text-slate-700">
+          {v.esEmpresa ? 'Mode de pagament (a l’empresa)' : 'Mode de pagament'}
+        </p>
         <div className="flex gap-4">
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input

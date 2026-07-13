@@ -22,16 +22,18 @@ export default async function PersonalPage() {
 
   const treballadors = await prisma.treballador.findMany({
     where: { deletedAt: null },
-    orderBy: { nom: 'asc' },
+    orderBy: [{ esEmpresa: 'desc' }, { nom: 'asc' }],
     include: { _count: { select: { absencies: true, jornades: true } } },
   });
+  const empreses = treballadors.filter((t) => t.esEmpresa).map((t) => ({ id: t.id, nom: t.nom }));
+  const empresaNom = new Map(treballadors.map((t) => [t.id, t.nom]));
 
   return (
     <div>
       <PageHeader
         title="Personal"
         subtitle={`${treballadors.length} treballadors`}
-        actions={<TreballadorForm />}
+        actions={<TreballadorForm empreses={empreses} />}
       />
 
       {treballadors.length === 0 ? (
@@ -52,9 +54,19 @@ export default async function PersonalPage() {
             {treballadors.map((t) => (
               <Tr key={t.id}>
                 <Td>
-                  <Link href={`/personal/${t.id}`} className="font-medium text-slate-900">
-                    {t.nom}
-                  </Link>
+                  <span className="flex items-center gap-2">
+                    <Link href={`/personal/${t.id}`} className="font-medium text-slate-900">
+                      {t.nom}
+                    </Link>
+                    {t.esEmpresa && (
+                      <span className="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-brand-700">
+                        Empresa
+                      </span>
+                    )}
+                  </span>
+                  {t.empresaId && (
+                    <div className="text-xs text-slate-400">↳ {empresaNom.get(t.empresaId) ?? 'empresa'}</div>
+                  )}
                   {t.dni && <div className="text-xs text-slate-400">{t.dni}</div>}
                 </Td>
                 <Td>{t.carrec}</Td>
@@ -70,6 +82,7 @@ export default async function PersonalPage() {
                 <Td className="text-right">
                   <div className="flex items-center justify-end gap-3">
                     <TreballadorForm
+                      empreses={empreses}
                       treballador={{
                         id: t.id,
                         nom: t.nom,
@@ -81,6 +94,8 @@ export default async function PersonalPage() {
                         telefon: t.telefon ?? '',
                         email: t.email ?? '',
                         dni: t.dni ?? '',
+                        esEmpresa: t.esEmpresa,
+                        empresaId: t.empresaId ?? '',
                       }}
                     />
                     <EliminarTreballador id={t.id} nom={t.nom} />

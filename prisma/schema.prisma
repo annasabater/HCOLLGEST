@@ -934,6 +934,13 @@ model Treballador {
   salari           Decimal?  @db.Decimal(10, 2)
   costEmpresa      Decimal?  @map("cost_empresa") @db.Decimal(10, 2)
 
+  // Empresa de neteja: un treballador pot ser una EMPRESA (a qui es paga) i tenir
+  // treballadors MEMBRES (a qui s'envia WhatsApp i de qui es registra qui ha vingut).
+  esEmpresa Boolean @default(false) @map("es_empresa")
+  empresaId String? @map("empresa_id")
+  empresa   Treballador?  @relation("EmpresaMembres", fields: [empresaId], references: [id], onDelete: SetNull)
+  membres   Treballador[] @relation("EmpresaMembres")
+
   absencies     Absencia[]
   nomines       Nomina[]
   jornades      Jornada[]
@@ -943,6 +950,7 @@ model Treballador {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
+  @@index([empresaId])
   @@map("treballador")
 }
 
