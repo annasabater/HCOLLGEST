@@ -78,7 +78,6 @@ export async function buildFacturaPdf(factura: FacturaAmb, establiment: Establim
   const esRebut = factura.tipusDocument === 'RECIBO';
 
   // Emissor (amb sobreescriptures de la factura o config de l'establiment).
-  const emNom = establiment?.raoSocial || establiment?.nom || 'Hostal Coll';
   const emDescriptor = establiment?.poblacio ? `Casa de Hostes · ${establiment.poblacio}` : 'Casa de Hostes · Calella';
   const emTitular = factura.emissorTitular || establiment?.facturaTitular || 'Elisabet Nualart Coll';
   const emNif = factura.emissorNif || `NIF ${establiment?.facturaNif || '38835174L'}`;
@@ -193,10 +192,6 @@ export async function buildFacturaPdf(factura: FacturaAmb, establiment: Establim
     drawRight(page, `Base ${plain(Number(factura.base))} € · IVA ${plain(Number(factura.iva))} €`, right, y, 9, font, MUTED);
     y -= 16;
   }
-
-  // ── Peu
-  const label = `${emNom} · ${emNif}`;
-  page.drawText(sanitize(label), { x: M, y: 40, size: 8, font, color: MUTED });
 
   return doc.save();
 }
