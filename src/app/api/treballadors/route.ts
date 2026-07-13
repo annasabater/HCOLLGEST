@@ -38,6 +38,7 @@ export async function POST(req: Request) {
         salari: data.salari ?? null,
         costEmpresa: data.costEmpresa ?? null,
         esEmpresa: data.esEmpresa ?? false,
+        nomEmpresa: data.nomEmpresa ?? null,
         empresaId: data.empresaId ?? null,
       },
     });

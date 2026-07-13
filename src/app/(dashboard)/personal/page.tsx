@@ -64,6 +64,7 @@ export default async function PersonalPage() {
                       </span>
                     )}
                   </span>
+                  {t.nomEmpresa && <div className="text-xs text-slate-500">{t.nomEmpresa}</div>}
                   {t.empresaId && (
                     <div className="text-xs text-slate-400">↳ {empresaNom.get(t.empresaId) ?? 'empresa'}</div>
                   )}
@@ -95,6 +96,7 @@ export default async function PersonalPage() {
                         email: t.email ?? '',
                         dni: t.dni ?? '',
                         esEmpresa: t.esEmpresa,
+                        nomEmpresa: t.nomEmpresa ?? '',
                         empresaId: t.empresaId ?? '',
                       }}
                     />

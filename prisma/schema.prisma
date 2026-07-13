@@ -936,10 +936,11 @@ model Treballador {
 
   // Empresa de neteja: un treballador pot ser una EMPRESA (a qui es paga) i tenir
   // treballadors MEMBRES (a qui s'envia WhatsApp i de qui es registra qui ha vingut).
-  esEmpresa Boolean @default(false) @map("es_empresa")
-  empresaId String? @map("empresa_id")
-  empresa   Treballador?  @relation("EmpresaMembres", fields: [empresaId], references: [id], onDelete: SetNull)
-  membres   Treballador[] @relation("EmpresaMembres")
+  esEmpresa  Boolean @default(false) @map("es_empresa")
+  nomEmpresa String? @map("nom_empresa") // raó social de l'empresa (text lliure)
+  empresaId  String? @map("empresa_id")
+  empresa    Treballador?  @relation("EmpresaMembres", fields: [empresaId], references: [id], onDelete: SetNull)
+  membres    Treballador[] @relation("EmpresaMembres")
 
   absencies     Absencia[]
   nomines       Nomina[]

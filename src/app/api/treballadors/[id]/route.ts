@@ -39,6 +39,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
         ...(data.costEmpresa !== undefined && { costEmpresa: data.costEmpresa ?? null }),
         ...(data.dataContractacio !== undefined && { dataContractacio: data.dataContractacio }),
         ...(data.esEmpresa !== undefined && { esEmpresa: data.esEmpresa }),
+        ...(data.nomEmpresa !== undefined && { nomEmpresa: data.nomEmpresa ?? null }),
         ...(data.empresaId !== undefined && { empresaId: data.empresaId ?? null }),
       },
     });

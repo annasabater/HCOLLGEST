@@ -24,6 +24,7 @@ export interface TreballadorEditable {
   preuZones: string;
   // Empresa de neteja / pertinença a una empresa
   esEmpresa: boolean;
+  nomEmpresa: string;
   empresaId: string;
 }
 
@@ -38,7 +39,7 @@ function detectMode(t?: TreballadorEditable): ModePagament {
 const BUIT = {
   nom: '', carrec: '', telefon: '', email: '', dni: '',
   preuHora: '', preuSortida: '', preuManteniment: '', preuZones: '',
-  esEmpresa: false, empresaId: '',
+  esEmpresa: false, nomEmpresa: '', empresaId: '',
 };
 
 export function TreballadorForm({
@@ -78,6 +79,7 @@ export function TreballadorForm({
         preuManteniment: mode === 'tasques' ? (v.preuManteniment || undefined) : null,
         preuZones: mode === 'tasques' ? (v.preuZones || undefined) : null,
         esEmpresa: v.esEmpresa,
+        nomEmpresa: v.nomEmpresa || undefined,
         empresaId: v.esEmpresa ? null : (v.empresaId || null),
       };
       if (isEdit) {
@@ -143,6 +145,15 @@ export function TreballadorForm({
           />
           És una empresa de neteja (pago a l&apos;empresa, no al treballador)
         </label>
+        <div className="mt-2 max-w-sm">
+          <Field label="Nom de l'empresa (opcional)" hint="Raó social; surt a la llista.">
+            <Input
+              value={v.nomEmpresa}
+              onChange={(e) => setV({ ...v, nomEmpresa: e.target.value })}
+              placeholder="p. ex. Neteja Barcelona SL"
+            />
+          </Field>
+        </div>
         {!v.esEmpresa && empreses.filter((em) => em.id !== v.id).length > 0 && (
           <div className="mt-2 max-w-xs">
             <Field label="Pertany a l'empresa" hint="Els membres reben WhatsApp i queden al registre de qui ha netejat.">
