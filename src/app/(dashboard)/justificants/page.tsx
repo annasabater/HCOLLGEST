@@ -1,4 +1,4 @@
-import { FileSignature, FileCheck, AlertTriangle } from 'lucide-react';
+import { FileSignature, FileCheck, AlertTriangle, FileText } from 'lucide-react';
 import type { Prisma } from '@prisma/client';
 import { Paginacio } from '@/components/ui/paginacio';
 import { prisma } from '@/lib/db';
@@ -121,6 +121,16 @@ export default async function JustificantsPage({
         <a href="/imprimir/ieet-declaracio/blank" target="_blank" rel="noreferrer">
           <Button variant="outline" size="sm">
             <FileSignature className="h-4 w-4" /> Declaració IEET (menor)
+          </Button>
+        </a>
+        <a href="/api/plantilles-factura?doc=simple" rel="noreferrer" download>
+          <Button variant="outline" size="sm">
+            <FileText className="h-4 w-4" /> Plantilla factura simplificada (Word)
+          </Button>
+        </a>
+        <a href="/api/plantilles-factura?doc=fiscal" rel="noreferrer" download>
+          <Button variant="outline" size="sm">
+            <FileText className="h-4 w-4" /> Plantilla factura fiscal (Word)
           </Button>
         </a>
         <span className="ml-1 text-xs text-slate-500">Enviar per correu:</span>
