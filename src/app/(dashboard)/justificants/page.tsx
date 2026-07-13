@@ -153,7 +153,6 @@ export default async function JustificantsPage({
                 <tr>
                   <Th>Titular / contracte</Th>
                   <Th>Dates</Th>
-                  <Th>Fitxer Mossos</Th>
                   <Th>Estat</Th>
                   <Th className="text-right">Documents</Th>
                 </tr>
@@ -186,15 +185,6 @@ export default async function JustificantsPage({
                           <span className="text-slate-400">–</span>
                           <span>{formatDate(e.dataSortida)}</span>
                         </div>
-                      </Td>
-                      <Td className="whitespace-nowrap text-sm">
-                        {env ? (
-                          <span className="font-medium text-slate-700">
-                            {env.fitxerNom.replace(/^[^.]+\./, '')}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">— no comunicat</span>
-                        )}
                       </Td>
                       <Td>
                         {!pendents ? (
