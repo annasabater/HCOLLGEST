@@ -377,12 +377,24 @@ export async function GET(
     if (e.target.matches('.qty, .price')) { lineCalc(e.target.closest('.item')); recalc(); }
     else if (e.target.matches('.amount')) recalc();
   });
-  document.addEventListener('blur', e => {
-    if (e.target.matches('.price, .amount')) {
-      const n = num(e.target.value);
-      e.target.value = n ? plain(n) : '';
+  // En sortir del camp (o en 'change'): recomputa la línia si cal, reformata i
+  // torna a sumar el total. És una xarxa de seguretat perquè el total sempre
+  // quedi correcte encara que algun event 'input' no s'hagi disparat (mòbils,
+  // enganxar, autocompletar…).
+  function settle(el) {
+    if (!el || !el.matches) return;
+    if (el.matches('.qty, .price, .amount')) {
+      const row = el.closest('.item');
+      if (row && el.matches('.qty, .price')) lineCalc(row);
+      if (el.matches('.price, .amount')) {
+        const n = num(el.value);
+        el.value = n ? plain(n) : '';
+      }
+      recalc();
     }
-  }, true);
+  }
+  document.addEventListener('blur', e => settle(e.target), true);
+  document.addEventListener('change', e => settle(e.target));
 
   document.getElementById('addLine').addEventListener('click', () => {
     const tbody = document.querySelector('#items tbody');
@@ -476,6 +488,9 @@ export async function GET(
 </html>`;
 
   return new Response(html, {
-    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store, must-revalidate',
+    },
   });
 }
