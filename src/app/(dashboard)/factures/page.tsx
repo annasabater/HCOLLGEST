@@ -6,17 +6,35 @@ import { FinancesNav } from '@/components/balanc/finances-nav';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { Eur, HideAmountsButton } from '@/components/finances/amounts-visibility';
 import { EstatFacturaToggle, EliminarFacturaIcona } from '@/components/factura/factures-llista-accions';
+import { FacturaFiltreTipus } from '@/components/factura/factura-filtre-tipus';
+import { EnviarCorreuButton } from '@/components/justificants/enviar-correu-button';
 import { FitxaExpandible } from '@/components/justificants/fitxa-expandible';
 import { formatDate } from '@/lib/utils';
+import { estatFacturaLabel } from '@/lib/factura-display';
+import type { Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
-export default async function FacturesPage() {
+export default async function FacturesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tipus?: string }>;
+}) {
   const user = await getSessionUser();
   const restringit = teVistaRestringida(user);
 
+  // Filtre per tipus: simplificades (i rebuts) / fiscals / totes.
+  const sp = await searchParams;
+  const tipusParam = sp.tipus === 'simples' || sp.tipus === 'fiscals' ? sp.tipus : 'totes';
+  const filtreTipus: Prisma.FacturaWhereInput =
+    tipusParam === 'fiscals'
+      ? { tipusDocument: 'FACTURA' }
+      : tipusParam === 'simples'
+      ? { tipusDocument: { not: 'FACTURA' } }
+      : {};
+
   const totes = await prisma.factura.findMany({
-    where: { deletedAt: null },
+    where: { deletedAt: null, ...filtreTipus },
     orderBy: { data: 'desc' },
     take: 100,
     include: {
@@ -49,8 +67,16 @@ export default async function FacturesPage() {
 
       <FinancesNav />
 
+      <FacturaFiltreTipus actual={tipusParam} />
+
       {factures.length === 0 ? (
-        <EmptyState>Encara no hi ha factures. Crea’n una des d’una estada.</EmptyState>
+        <EmptyState>
+          {tipusParam === 'fiscals'
+            ? 'Cap factura fiscal.'
+            : tipusParam === 'simples'
+            ? 'Cap factura simplificada.'
+            : 'Encara no hi ha factures. Crea’n una des d’una estada.'}
+        </EmptyState>
       ) : (
         <Table>
           <Thead>
@@ -94,6 +120,11 @@ export default async function FacturesPage() {
                         Sense fiança
                       </span>
                     )}
+                    {Number(f.total) < 0 && (
+                      <span className="ml-1 inline-flex items-center rounded-full bg-rose-50 px-1.5 py-0.5 text-[10px] font-medium text-rose-700 ring-1 ring-rose-200">
+                        Devolució
+                      </span>
+                    )}
                   </Td>
                   <Td>
                     {t ? (
@@ -119,13 +150,16 @@ export default async function FacturesPage() {
                   <Td className="font-medium"><Eur value={Number(f.total)} /></Td>
                   <Td>
                     {restringit ? (
-                      <span>{f.estat === 'COBRADA' ? 'Cobrada' : 'Pendent'}</span>
+                      <span>{estatFacturaLabel(f.estat, Number(f.total))}</span>
                     ) : (
-                      <EstatFacturaToggle id={f.id} estat={f.estat} />
+                      <EstatFacturaToggle id={f.id} estat={f.estat} total={Number(f.total)} />
                     )}
                   </Td>
                   <Td className="text-right">
-                    {!restringit && <EliminarFacturaIcona id={f.id} numero={f.numero} />}
+                    <div className="flex items-center justify-end gap-2">
+                      <EnviarCorreuButton apiUrl={`/api/factures/${f.id}/email`} />
+                      {!restringit && <EliminarFacturaIcona id={f.id} numero={f.numero} />}
+                    </div>
                   </Td>
                 </Tr>
               );

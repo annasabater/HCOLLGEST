@@ -9,6 +9,7 @@ import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { formatEur, formatDate } from '@/lib/utils';
 import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
+import { tipusDocumentLabel, estatFacturaLabel } from '@/lib/factura-display';
 
 function tipusHabitacio(nom: string | null | undefined): string {
   if (!nom) return 'Habitació';
@@ -46,12 +47,6 @@ interface FiancaLite {
   estat: string;
   facturaId: string | null;
 }
-
-const TIPUS_LABEL: Record<string, string> = {
-  RECIBO: 'Rebut',
-  FACTURA_SIMPLIFICADA: 'Factura simplificada',
-  FACTURA: 'Factura fiscal',
-};
 
 export function FacturaPanel({
   estanciaId,
@@ -347,7 +342,7 @@ export function FacturaPanel({
               <Receipt className="h-4 w-4 shrink-0 text-slate-400" /> {f.numero}
               {f.tipusDocument && (
                 <span className="truncate text-xs font-normal text-slate-400">
-                  {TIPUS_LABEL[f.tipusDocument] ?? f.tipusDocument}
+                  {tipusDocumentLabel(f.tipusDocument, Number(f.total))}
                 </span>
               )}
             </a>
@@ -360,7 +355,7 @@ export function FacturaPanel({
                 className="cursor-pointer"
               >
                 <Badge tone={f.estat === 'COBRADA' ? 'success' : 'warning'}>
-                  {f.estat === 'COBRADA' ? 'Cobrada' : 'Pendent'}
+                  {estatFacturaLabel(f.estat, Number(f.total))}
                 </Badge>
               </button>
               <button
@@ -582,7 +577,7 @@ export function FacturaPanel({
         </form>
       ) : rectOpen ? (
         <form onSubmit={crearRectificativa} className="space-y-3 rounded-lg border border-amber-300 bg-amber-50/40 p-3">
-          <p className="text-sm font-semibold text-slate-800">Factura rectificativa (reducció)</p>
+          <p className="text-sm font-semibold text-slate-800">Factura simple devolució</p>
           <p className="text-xs text-slate-500">
             S&apos;ha detectat una devolució de <strong>{formatEur(totalDevolucions)}</strong>. Es crearà una
             factura simplificada amb import <strong>negatiu</strong> que redueix la factura original (número{' '}
@@ -597,7 +592,7 @@ export function FacturaPanel({
             >
               {factures.map((f) => (
                 <option key={f.id} value={f.id}>
-                  {f.numero} · {TIPUS_LABEL[f.tipusDocument ?? ''] ?? 'Factura'} · {formatEur(Number(f.total))}
+                  {f.numero} · {f.tipusDocument ? tipusDocumentLabel(f.tipusDocument, Number(f.total)) : 'Factura'} · {formatEur(Number(f.total))}
                 </option>
               ))}
             </Select>
@@ -680,7 +675,7 @@ export function FacturaPanel({
           </Button>
           {potRectificar && (
             <Button variant="outline" size="sm" onClick={obrirRectificativa} title="S'han retornat diners: crea una factura de reducció">
-              <Undo2 className="h-4 w-4" /> Rectificativa (reducció)
+              <Undo2 className="h-4 w-4" /> Factura simple devolució
             </Button>
           )}
         </div>

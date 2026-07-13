@@ -4,9 +4,18 @@ import { useRouter } from 'next/navigation';
 import { Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { patchJSON, delJSON, ApiError } from '@/lib/api';
+import { estatFacturaLabel } from '@/lib/factura-display';
 
-/** Badge d'estat clicable: alterna Cobrada ↔ Pendent. */
-export function EstatFacturaToggle({ id, estat }: { id: string; estat: 'PENDENT' | 'COBRADA' }) {
+/** Badge d'estat clicable: alterna Cobrada ↔ Pendent (mostra "Devolta" si el total és negatiu). */
+export function EstatFacturaToggle({
+  id,
+  estat,
+  total,
+}: {
+  id: string;
+  estat: 'PENDENT' | 'COBRADA';
+  total: number;
+}) {
   const router = useRouter();
   async function toggle() {
     try {
@@ -18,9 +27,7 @@ export function EstatFacturaToggle({ id, estat }: { id: string; estat: 'PENDENT'
   }
   return (
     <button type="button" onClick={toggle} title="Canviar entre Cobrada i Pendent" className="cursor-pointer">
-      <Badge tone={estat === 'COBRADA' ? 'success' : 'warning'}>
-        {estat === 'COBRADA' ? 'Cobrada' : 'Pendent'}
-      </Badge>
+      <Badge tone={estat === 'COBRADA' ? 'success' : 'warning'}>{estatFacturaLabel(estat, total)}</Badge>
     </button>
   );
 }

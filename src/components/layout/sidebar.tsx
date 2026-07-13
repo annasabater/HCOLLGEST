@@ -15,6 +15,7 @@ import {
   PiggyBank,
   UserCog,
   Truck,
+  Receipt,
 } from 'lucide-react';
 import type { Role } from '@prisma/client';
 import { cn } from '@/lib/utils';
@@ -54,6 +55,7 @@ const GROUPS: NavGroup[] = [
       { href: '/serveis', label: 'Proveïdors i serveis', icon: Truck },
 { href: '/personal', label: 'Treballadors', icon: UserCog, roles: ['ADMIN'], hideRestringit: true },
       { href: '/balanc', label: 'Comptabilitat', icon: PiggyBank, roles: ['ADMIN'] },
+      { href: '/factures', label: 'Facturació', icon: Receipt },
       { href: '/justificants', label: 'Justificants', icon: FileCheck },
     ],
   },
