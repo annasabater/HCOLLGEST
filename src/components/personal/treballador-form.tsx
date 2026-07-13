@@ -156,9 +156,12 @@ export function TreballadorForm({
         </div>
         {!v.esEmpresa && empreses.filter((em) => em.id !== v.id).length > 0 && (
           <div className="mt-2 max-w-xs">
-            <Field label="Pertany a l'empresa" hint="Els membres reben WhatsApp i queden al registre de qui ha netejat.">
+            <Field
+              label="De quina empresa de neteja és?"
+              hint="Només si aquest treballador ve d'una empresa de neteja. Si el pagues directament a ell, deixa «Cap»."
+            >
               <Select value={v.empresaId} onChange={(e) => setV({ ...v, empresaId: e.target.value })}>
-                <option value="">— Independent —</option>
+                <option value="">— Cap (el pago directament a ell) —</option>
                 {empreses.filter((em) => em.id !== v.id).map((em) => (
                   <option key={em.id} value={em.id}>{em.nom}</option>
                 ))}
