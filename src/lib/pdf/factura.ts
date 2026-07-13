@@ -26,8 +26,8 @@ const ACCENT = rgb(0.478, 0.122, 0.169);
 const MUTED = rgb(0.478, 0.408, 0.408);
 const LINE = rgb(0.898, 0.847, 0.835);
 const TINT = rgb(0.961, 0.925, 0.925);
-// Fons "paper" cremós (--paper:#FFFCF8 a la web): blanc pur no hi coincideix.
-const PAPER = rgb(1, 0.988, 0.973);
+// Fons de la factura: blanc pur (el to cremós subtil de la web es notava massa al PDF).
+const PAPER = rgb(1, 1, 1);
 
 function sanitize(s: string): string {
   // pdf-lib WinAnsi no admet alguns caràcters; substituïm els problemàtics.
