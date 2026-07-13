@@ -181,13 +181,13 @@ export async function buildFacturaPdf(factura: FacturaAmb, establiment: Establim
     page.drawLine({ start: { x: M, y: y + 4 }, end: { x: right, y: y + 4 }, thickness: 0.6, color: LINE });
   }
 
-  // ── Total
-  y -= 16;
+  // ── Total (més espai respecte l'última línia, com el marge de la web)
+  y -= 32;
   const boxX = right - 300;
   page.drawRectangle({ x: boxX, y: y - 30, width: 300, height: 42, color: TINT });
   page.drawLine({ start: { x: boxX, y: y + 12 }, end: { x: right, y: y + 12 }, thickness: 2, color: ACCENT });
   page.drawText('Total', { x: boxX + 16, y: y - 12, size: 15, font: serif, color: INK });
-  drawRight(page, money(Number(factura.total)), right - 16, y - 14, 17, bold, INK);
+  drawRight(page, money(Number(factura.total)), right - 16, y - 14, 17, font, INK);
   y -= 48;
 
   if (esFiscal && Number(factura.iva) > 0) {
