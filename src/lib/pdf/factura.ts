@@ -151,9 +151,13 @@ export async function buildFacturaPdf(factura: FacturaAmb, establiment: Establim
   y = Math.min(cy, my) - 18;
 
   // ── Capçalera de la taula
+  // Columnes amb separació clara: el concepte s'ajusta fins a `conceptRight`,
+  // deixant espai suficient abans del número de la columna PREU (evita que el
+  // text del concepte es solapi amb l'import).
   const colConcept = M + 46;
-  const colPreu = right - 200;
   const colImport = right;
+  const colPreu = right - 92;
+  const conceptRight = colPreu - 60;
   page.drawText('CANT.', { x: M, y: y - 9, size: 8.5, font, color: MUTED });
   page.drawText('CONCEPTE', { x: colConcept, y: y - 9, size: 8.5, font, color: MUTED });
   drawRight(page, 'PREU (€)', colPreu, y - 9, 8.5, font, MUTED);
@@ -166,7 +170,7 @@ export async function buildFacturaPdf(factura: FacturaAmb, establiment: Establim
   for (const l of factura.linies) {
     let desc = sanitize(l.descripcio ?? l.concepte);
     if (l.concepte === 'ALLOTJAMENT' && habDates && !desc.includes('Del ')) desc = `${desc} · ${habDates}`;
-    const lines = wrap(font, desc, 10, colPreu - colConcept - 14);
+    const lines = wrap(font, desc, 10, conceptRight - colConcept);
     const rowH = Math.max(lines.length * 13 + 8, 22);
     page.drawText('1', { x: M + 6, y: y - 12, size: 10, font, color: SLATE });
     lines.forEach((ln, i) => page.drawText(ln, { x: colConcept, y: y - 12 - i * 13, size: 10, font, color: SLATE }));
