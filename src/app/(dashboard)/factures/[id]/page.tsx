@@ -11,6 +11,7 @@ import { EditarNumeroFactura } from '@/components/factura/editar-numero-factura'
 import { FiancaTogglePrint } from '@/components/factura/fianca-toggle-print';
 import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 import { formatEur } from '@/lib/utils';
+import { estatFacturaLabel } from '@/lib/factura-display';
 
 export const dynamic = 'force-dynamic';
 
@@ -126,7 +127,7 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
                 <span className="text-xs font-medium uppercase tracking-wide text-slate-400">Estat</span>
                 <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ${cobrada ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
                   {cobrada
-                    ? <><CheckCircle className="h-3.5 w-3.5" /> Cobrada</>
+                    ? <><CheckCircle className="h-3.5 w-3.5" /> {estatFacturaLabel(factura.estat, total)}</>
                     : <><Clock className="h-3.5 w-3.5" /> Pendent</>}
                 </span>
               </div>
