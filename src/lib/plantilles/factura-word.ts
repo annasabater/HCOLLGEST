@@ -58,13 +58,13 @@ export function buildFacturaWord(establiment: Establiment | null, tipus: 'fiscal
     `<td style="text-align:right;padding:3px 0;font-family:Arial,sans-serif;font-size:11pt;color:${INK};border-bottom:1px solid ${LINE};min-width:120px">&nbsp;</td>` +
     `</tr>`;
 
-  const filesBuides = Array.from({ length: 2 }, () => filaBuida(esFiscal ? BLAU : GRANAT)).join('');
+  const filesBuides = Array.from({ length: 7 }, () => filaBuida(esFiscal ? BLAU : GRANAT)).join('');
 
-  // Bloc de totals (fiscal: Base + IVA + Total; simple: només Total). Sense línies.
+  // Bloc de totals (fiscal: Base + IVA + Total; simple: només Total).
   const totalFila = (label: string, big: boolean, fons: string) =>
     `<tr>` +
     `<td style="background:${fons};padding:${big ? '12px' : '7px'} 14px;font-family:Georgia,'Times New Roman',serif;font-size:${big ? '15pt' : '10.5pt'};color:${INK}">${label}</td>` +
-    `<td style="background:${fons};padding:${big ? '12px' : '7px'} 14px;text-align:right;font-family:Arial,sans-serif;font-weight:bold;font-size:${big ? '15pt' : '11pt'};color:${INK}">&nbsp;€</td>` +
+    `<td style="background:${fons};padding:${big ? '12px' : '7px'} 14px;text-align:right;font-family:Arial,sans-serif;font-weight:bold;font-size:${big ? '15pt' : '11pt'};color:${INK};border-bottom:1px solid ${LINE}">&nbsp;€</td>` +
     `</tr>`;
   const totals = esFiscal
     ? totalFila('Base imposable', false, '#ffffff') +
@@ -128,9 +128,6 @@ export function buildFacturaWord(establiment: Establiment | null, tipus: 'fiscal
   </tr>
 </table>
 
-<!-- Espai entre el bloc del client i els conceptes -->
-<div style="height:34px;line-height:34px;font-size:1px">&nbsp;</div>
-
 <!-- Conceptes -->
 <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
   <tr>
@@ -143,7 +140,7 @@ export function buildFacturaWord(establiment: Establiment | null, tipus: 'fiscal
 </table>
 
 <!-- Totals (alineats a la dreta de manera fiable a Word: cel·la buida + bloc) -->
-<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:26px">
+<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:18px">
   <tr>
     <td>&nbsp;</td>
     <td width="320">
