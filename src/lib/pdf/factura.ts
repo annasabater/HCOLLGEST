@@ -40,11 +40,13 @@ function sanitize(s: string): string {
     .replace(/ /g, ' ');
 }
 
+// `useGrouping` explícit: sense això, alguns entorns Node no separen els
+// milers amb "." (surt "1170,00" en lloc de "1.170,00").
 function money(n: number): string {
-  return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true }) + ' €';
 }
 function plain(n: number): string {
-  return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true });
 }
 
 function wrap(font: PDFFont, text: string, size: number, maxWidth: number): string[] {

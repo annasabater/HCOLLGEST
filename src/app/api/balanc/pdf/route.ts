@@ -7,7 +7,8 @@ import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 import { teVistaRestringida } from '@/lib/auth/restriccions';
 
 const MESOS = ['Gen', 'Feb', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Des'];
-const eur = (n: number) => `${n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR`;
+const eur = (n: number) =>
+  `${n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true })} EUR`;
 const marge = (b: number, i: number) => (i > 0 ? `${Math.round((b / i) * 100)}%` : '—');
 const metodeKv = (perMetode: Record<string, number>): [string, string][] =>
   Object.entries(perMetode)

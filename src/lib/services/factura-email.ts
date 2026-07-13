@@ -48,7 +48,7 @@ export async function enviaFacturaEmail(
   const result = await sendEmail({
     to: HOSTAL_EMAIL,
     subject: `${tipus} ${factura.numero} — ${nom}`,
-    html: `<p>Hola,</p><p>Adjuntem la <strong>${tipus.toLowerCase()}</strong> núm. <strong>${factura.numero}</strong> de <strong>${nom}</strong> (total ${Number(factura.total).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €).</p><p>Hostal Coll</p>`,
+    html: `<p>Hola,</p><p>Adjuntem la <strong>${tipus.toLowerCase()}</strong> núm. <strong>${factura.numero}</strong> de <strong>${nom}</strong> (total ${Number(factura.total).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true })} €).</p><p>Hostal Coll</p>`,
     attachments: [{ filename, content: Buffer.from(pdf).toString('base64') }],
   });
   if (!result.ok) return { ok: false, error: result.error };
