@@ -119,7 +119,7 @@ export function buildFacturaWord(establiment: Establiment | null, tipus: 'fiscal
     <td width="45%" style="vertical-align:top;text-align:right">
       <div style="font-family:Georgia,'Times New Roman',serif;font-size:24pt;color:${INK}">${titolDoc}</div>
       <div style="font-family:Arial,sans-serif;font-size:8.5pt;color:${ACCENT};letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">${badge}</div>
-      <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-left:auto">
+      <table cellpadding="0" cellspacing="0" align="right" style="border-collapse:collapse">
         ${metaFila('Número')}
         ${metaFila('Data')}
         ${metaFila('Habitació')}
@@ -139,9 +139,16 @@ export function buildFacturaWord(establiment: Establiment | null, tipus: 'fiscal
   ${filesBuides}
 </table>
 
-<!-- Totals -->
-<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:18px 0 0 auto;width:320px">
-  ${totals}
+<!-- Totals (alineats a la dreta de manera fiable a Word: cel·la buida + bloc) -->
+<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:18px">
+  <tr>
+    <td>&nbsp;</td>
+    <td width="320">
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+        ${totals}
+      </table>
+    </td>
+  </tr>
 </table>
 
 ${
