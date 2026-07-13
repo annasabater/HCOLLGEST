@@ -8,11 +8,11 @@
 import 'server-only';
 import type { Establiment } from '@prisma/client';
 
-const ACCENT = '#7A1F2B';
-const INK = '#2C1810';
-const MUTED = '#7A6868';
-const LINE = '#E5D8D5';
-const TINT = '#F7EEEC';
+// Paleta granat (simplificada) i blava (fiscal) — la fiscal replica el blau de
+// la impressió web /imprimir/factura.
+interface Paleta { accent: string; ink: string; muted: string; line: string; tint: string }
+const GRANAT: Paleta = { accent: '#7A1F2B', ink: '#2C1810', muted: '#7A6868', line: '#E5D8D5', tint: '#F7EEEC' };
+const BLAU: Paleta = { accent: '#1D3E6E', ink: '#16233A', muted: '#6B7688', line: '#D8DEE8', tint: '#EDF2F9' };
 
 function esc(s: string | null | undefined): string {
   if (!s) return '';
@@ -20,14 +20,15 @@ function esc(s: string | null | undefined): string {
 }
 
 /** Fila buida de la taula de conceptes (per omplir a mà a Word). */
-function filaBuida(): string {
+function filaBuida(c: Paleta): string {
   const cell = (align: string) =>
-    `<td style="border-bottom:1px solid ${LINE};padding:10px 6px;font-family:Arial,sans-serif;font-size:11pt;color:${INK};text-align:${align};height:26px">&nbsp;</td>`;
+    `<td style="border-bottom:1px solid ${c.line};padding:10px 6px;font-family:Arial,sans-serif;font-size:11pt;color:${c.ink};text-align:${align};height:26px">&nbsp;</td>`;
   return `<tr>${cell('center')}${cell('left')}${cell('right')}${cell('right')}</tr>`;
 }
 
 export function buildFacturaWord(establiment: Establiment | null, tipus: 'fiscal' | 'simple'): string {
   const esFiscal = tipus === 'fiscal';
+  const { accent: ACCENT, ink: INK, muted: MUTED, line: LINE, tint: TINT } = esFiscal ? BLAU : GRANAT;
 
   const emNom = esc(establiment?.raoSocial || establiment?.nom || 'Hostal Coll');
   const emDescriptor = esc(
@@ -57,7 +58,7 @@ export function buildFacturaWord(establiment: Establiment | null, tipus: 'fiscal
     `<td style="text-align:right;padding:3px 0;font-family:Arial,sans-serif;font-size:11pt;color:${INK};border-bottom:1px solid ${LINE};min-width:120px">&nbsp;</td>` +
     `</tr>`;
 
-  const filesBuides = Array.from({ length: 7 }, filaBuida).join('');
+  const filesBuides = Array.from({ length: 7 }, () => filaBuida(esFiscal ? BLAU : GRANAT)).join('');
 
   // Bloc de totals (fiscal: Base + IVA + Total; simple: només Total).
   const totalFila = (label: string, big: boolean, fons: string) =>
