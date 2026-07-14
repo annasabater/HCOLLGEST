@@ -53,6 +53,7 @@ export function ConfigForm() {
     setMsg(null);
     try {
       await patchJSON('/api/establiment', {
+        cif: e.cif,
         fileIdentifier: e.fileIdentifier ?? '',
         encoding: e.encoding,
         ieetImportPersonaNit: e.ieetImportPersonaNit ? Number(e.ieetImportPersonaNit) : undefined,
@@ -105,8 +106,8 @@ export function ConfigForm() {
           <Field label="Id policial">
             <Input value={e.idPolicial} disabled />
           </Field>
-          <Field label="CIF">
-            <Input value={e.cif} disabled />
+          <Field label="CIF" hint="Identificador de l'establiment (llibre de registre, exportació mensual). No s'envia a Mossos.">
+            <Input value={e.cif} onChange={(ev) => setE({ ...e, cif: ev.target.value })} />
           </Field>
         </div>
       </CollapsibleCard>

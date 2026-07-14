@@ -30,6 +30,9 @@ export async function GET() {
 }
 
 const PatchSchema = z.object({
+  // Identificador de l'establiment (llibre de registre, exportació mensual).
+  // NO forma part del fitxer massiu de Mossos (que no porta cap NIF/CIF).
+  cif: z.string().trim().min(1, 'Cal el CIF').optional(),
   fileIdentifier: z
     .string()
     .regex(/^[A-Za-z0-9]{9,10}$/, 'Ha de tenir 9-10 caràcters alfanumèrics (§9.2)')
