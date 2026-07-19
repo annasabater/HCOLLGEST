@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Plus, Trash2, Paperclip, Filter, Camera, Upload, X, Users } from 'lucide-react';
+import { Plus, Trash2, Paperclip, Filter, Camera, Upload, X, Users, ShieldCheck, ShieldOff } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { FinancesNav } from '@/components/balanc/finances-nav';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ interface Gasto {
   descripcio: string;
   metodePagament: keyof typeof METODE_COBRAMENT_LABELS;
   adjuntPath: string | null;
+  esFianca: boolean;
   categoria: { nom: string };
   proveidor: { nom: string } | null;
   habitacio: { nom: string } | null;
@@ -306,7 +307,7 @@ function GastosVariablesTab() {
   const [fCat, setFCat] = useState('');
 
   const [showForm, setShowForm] = useState(false);
-  const [nova, setNova] = useState({ data: toISODate(new Date()), import: '', categoriaId: '', proveidorId: '', habitacioId: '', metodePagament: 'TARGETA', descripcio: '' });
+  const [nova, setNova] = useState({ data: toISODate(new Date()), import: '', categoriaId: '', proveidorId: '', habitacioId: '', metodePagament: 'TARGETA', descripcio: '', esFianca: false });
   const [file, setFile] = useState<File | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -341,8 +342,8 @@ function GastosVariablesTab() {
         if (!up.ok) throw new ApiError('No s\'ha pogut pujar l\'adjunt', up.status);
         adjuntPath = (await up.json()).path;
       }
-      await postJSON('/api/gastos', { data: nova.data, import: Number(nova.import), categoriaId: nova.categoriaId, proveidorId: nova.proveidorId || undefined, habitacioId: nova.habitacioId || undefined, metodePagament: nova.metodePagament, descripcio: nova.descripcio, adjuntPath });
-      setNova({ data: toISODate(new Date()), import: '', categoriaId: '', proveidorId: '', habitacioId: '', metodePagament: 'TARGETA', descripcio: '' });
+      await postJSON('/api/gastos', { data: nova.data, import: Number(nova.import), categoriaId: nova.categoriaId, proveidorId: nova.proveidorId || undefined, habitacioId: nova.habitacioId || undefined, metodePagament: nova.metodePagament, descripcio: nova.descripcio, adjuntPath, esFianca: nova.esFianca });
+      setNova({ data: toISODate(new Date()), import: '', categoriaId: '', proveidorId: '', habitacioId: '', metodePagament: 'TARGETA', descripcio: '', esFianca: false });
       setFile(null); setShowForm(false); load();
     } catch (err) { setError(err instanceof ApiError ? err.message : 'Error desant la despesa'); } finally { setSaving(false); }
   }
@@ -350,6 +351,20 @@ function GastosVariablesTab() {
   async function esborrar(id: string) {
     if (!confirm('Segur que vols eliminar aquesta despesa?')) return;
     await fetch(`/api/gastos/${id}`, { method: 'DELETE' }); load();
+  }
+
+  async function toggleFianca(g: Gasto) {
+    const nouEsFianca = !g.esFianca;
+    const msg = nouEsFianca
+      ? 'Marcar com a fiança/dipòsit? No comptarà al balanç.'
+      : 'Marcar com a despesa real? Comptarà al balanç.';
+    if (!confirm(msg)) return;
+    try {
+      await patchJSON(`/api/gastos/${g.id}`, { esFianca: nouEsFianca });
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error actualitzant');
+    }
   }
 
   return (
@@ -406,6 +421,20 @@ function GastosVariablesTab() {
                 </div>
               </Field>
               <Field label="Descripció" required className="sm:col-span-3"><Input value={nova.descripcio} onChange={(e) => setNova({ ...nova, descripcio: e.target.value })} /></Field>
+              <label className="sm:col-span-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 accent-amber-600"
+                  checked={nova.esFianca}
+                  onChange={(e) => setNova({ ...nova, esFianca: e.target.checked })}
+                />
+                <span>
+                  <span className="font-medium text-amber-800">És una fiança / dipòsit (recuperable)</span>
+                  <span className="block text-xs text-amber-700/80">
+                    No es comptarà com a despesa al balanç. Quan la vulguis declarar, desmarca-la (passa a despesa real).
+                  </span>
+                </span>
+              </label>
               <div className="sm:col-span-3 flex items-center gap-3">
                 <Button type="submit" disabled={saving}>{saving ? 'Desant…' : 'Desar despesa'}</Button>
                 {error && <span className="text-sm text-red-600">{error}</span>}
@@ -442,18 +471,32 @@ function GastosVariablesTab() {
           </Thead>
           <tbody>
             {gastos.map((g) => (
-              <Tr key={g.id}>
+              <Tr key={g.id} className={g.esFianca ? 'bg-amber-50/40' : undefined}>
                 <Td>{formatDate(g.data)}</Td>
                 <Td className="font-medium text-slate-800">
                   {g.descripcio}
+                  {g.esFianca && (
+                    <Badge tone="warning" className="ml-2 align-middle">Fiança</Badge>
+                  )}
                   {g.adjuntPath && <a href={`/api/files?path=${encodeURIComponent(g.adjuntPath)}`} target="_blank" rel="noreferrer" className="ml-2 inline-flex text-brand-600" title="Veure adjunt"><Paperclip className="h-3.5 w-3.5" /></a>}
                 </Td>
                 <Td>{g.categoria.nom}</Td>
                 <Td>{g.habitacio?.nom ? `Hab. ${g.habitacio.nom}` : 'General'}</Td>
                 <Td>{g.proveidor?.nom ?? '—'}</Td>
                 <Td>{METODE_COBRAMENT_LABELS[g.metodePagament]}</Td>
-                <Td className="text-right font-medium"><Eur value={Number(g.import)} /></Td>
-                <Td><button className="text-slate-400 hover:text-red-600" onClick={() => esborrar(g.id)}><Trash2 className="h-4 w-4" /></button></Td>
+                <Td className={cn('text-right font-medium', g.esFianca && 'text-amber-700')}><Eur value={Number(g.import)} /></Td>
+                <Td>
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      className={g.esFianca ? 'text-amber-600 hover:text-slate-600' : 'text-slate-400 hover:text-amber-600'}
+                      onClick={() => toggleFianca(g)}
+                      title={g.esFianca ? 'Marcar com a despesa real (comptarà al balanç)' : 'Marcar com a fiança/dipòsit (no comptarà al balanç)'}
+                    >
+                      {g.esFianca ? <ShieldOff className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+                    </button>
+                    <button className="text-slate-400 hover:text-red-600" onClick={() => esborrar(g.id)}><Trash2 className="h-4 w-4" /></button>
+                  </div>
+                </Td>
               </Tr>
             ))}
           </tbody>

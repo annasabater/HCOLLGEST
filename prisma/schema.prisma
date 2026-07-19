@@ -219,15 +219,15 @@ enum FrequenciaServei {
 // ----------------------------------------------------------------------------
 
 model Establiment {
-  id             String  @id @default(cuid())
-  idPolicial     String  @map("id_policial") // 000000550
-  fileIdentifier String? @map("file_identifier") // §9.2 — 9-10 car., NO es el id policial
-  nom            String
-  cif            String
-  provincia      String
-  encoding       String  @default("latin1") // §9.3
-  mossosUser     String? @map("mossos_user")
-  mossosPassEnc  String? @map("mossos_pass_enc") // cifrado AES-256-GCM
+  id                String  @id @default(cuid())
+  idPolicial        String  @map("id_policial") // 000000550
+  fileIdentifier    String? @map("file_identifier") // §9.2 — 9-10 car., NO es el id policial
+  nom               String
+  cif               String
+  provincia         String
+  encoding          String  @default("latin1") // §9.3
+  mossosUser        String? @map("mossos_user")
+  mossosPassEnc     String? @map("mossos_pass_enc") // cifrado AES-256-GCM
   teInternetDefault Boolean @default(true) @map("te_internet_default")
 
   // RGPD — plazos de retención parametrizables (§7)
@@ -283,12 +283,12 @@ model Establiment {
 }
 
 model Usuari {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String   @map("password_hash")
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String    @map("password_hash")
   nom          String
-  role         Role     @default(CONSULTA)
-  actiu        Boolean  @default(true)
+  role         Role      @default(CONSULTA)
+  actiu        Boolean   @default(true)
   failedLogins Int       @default(0) @map("failed_logins")
   lockedUntil  DateTime? @map("locked_until")
 
@@ -330,12 +330,12 @@ model Huesped {
   id String @id @default(cuid())
 
   // Personales
-  nom          String
-  cognom1      String
-  cognom2      String?
-  sexe         Sexe?
+  nom           String
+  cognom1       String
+  cognom2       String?
+  sexe          Sexe?
   dataNaixement DateTime? @map("data_naixement")
-  nacionalitat String?
+  nacionalitat  String?
 
   // Identificación
   tipusDocument TipusDocument? @map("tipus_document")
@@ -393,36 +393,36 @@ model DocumentoPujat {
 }
 
 model Estancia {
-  id            String        @id @default(cuid())
-  establimentId String        @map("establiment_id")
-  establiment   Establiment   @relation(fields: [establimentId], references: [id])
+  id            String      @id @default(cuid())
+  establimentId String      @map("establiment_id")
+  establiment   Establiment @relation(fields: [establimentId], references: [id])
 
-  tipusRegistre     TipusRegistre @map("tipus_registre")
-  numContracte      String        @map("num_contracte")
-  anyContracte      Int           @map("any_contracte")
-  dataFormalitzacio DateTime      @map("data_formalitzacio")
-  dataEntrada       DateTime?     @map("data_entrada")
-  dataSortida       DateTime?     @map("data_sortida")
+  tipusRegistre       TipusRegistre @map("tipus_registre")
+  numContracte        String        @map("num_contracte")
+  anyContracte        Int           @map("any_contracte")
+  dataFormalitzacio   DateTime      @map("data_formalitzacio")
+  dataEntrada         DateTime?     @map("data_entrada")
+  dataSortida         DateTime?     @map("data_sortida")
   // Sortida anticipada: marca que l'estada va finalitzar abans del previst i guarda
   // la sortida original per poder desfer-ho (tornar a allotjat) si va ser per error.
-  sortidaAnticipada    Boolean   @default(false) @map("sortida_anticipada")
-  dataSortidaPrevista  DateTime? @map("data_sortida_prevista")
-  numViatgers       Int           @map("num_viatgers")
-  tipusPagament     TipusPagament @map("tipus_pagament")
-  numHabitacions    Int?          @map("num_habitacions")
-  teInternet        Boolean?      @map("te_internet")
-  observacions      String?
-  idioma            String?       @default("ca") // ca / es / en / fr
-  estat             EstatEstancia @default(RESERVA)
+  sortidaAnticipada   Boolean       @default(false) @map("sortida_anticipada")
+  dataSortidaPrevista DateTime?     @map("data_sortida_prevista")
+  numViatgers         Int           @map("num_viatgers")
+  tipusPagament       TipusPagament @map("tipus_pagament")
+  numHabitacions      Int?          @map("num_habitacions")
+  teInternet          Boolean?      @map("te_internet")
+  observacions        String?
+  idioma              String?       @default("ca") // ca / es / en / fr
+  estat               EstatEstancia @default(RESERVA)
   // Registre desat amb dades incompletes (§2.3): editable, però no es pot pujar a
   // Mossos fins completar-lo. Es neteja automàticament quan el fitxer es genera bé.
-  esBorrany         Boolean       @default(false) @map("es_borrany")
+  esBorrany           Boolean       @default(false) @map("es_borrany")
   // Silencia l'avís de "dades pendents (*)" a Justificants per a aquesta estada.
-  avisDadesParat    Boolean       @default(false) @map("avis_dades_parat")
+  avisDadesParat      Boolean       @default(false) @map("avis_dades_parat")
   // Descarta l'avís del termini de Mossos (24 h) al tauler per a aquesta estada.
-  avisMossosParat   Boolean       @default(false) @map("avis_mossos_parat")
+  avisMossosParat     Boolean       @default(false) @map("avis_mossos_parat")
   // Benvinguda (WhatsApp) ja enviada/gestionada → treu l'avís del tauler.
-  benvingudaEnviada Boolean       @default(false) @map("benvinguda_enviada")
+  benvingudaEnviada   Boolean       @default(false) @map("benvinguda_enviada")
 
   habitacioId String?    @map("habitacio_id")
   habitacio   Habitacio? @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
@@ -432,14 +432,14 @@ model Estancia {
   origen           Estancia?  @relation("Ampliacions", fields: [estanciaOrigenId], references: [id], onDelete: SetNull)
   ampliacions      Estancia[] @relation("Ampliacions")
 
-  viatgers      EstanciaViatger[]
-  enviaments    EnviamentMossos[]
-  factures      Factura[]
-  cobraments    Cobrament[]
+  viatgers         EstanciaViatger[]
+  enviaments       EnviamentMossos[]
+  factures         Factura[]
+  cobraments       Cobrament[]
   tasesTuristiques TasaTuristica[]
-  anotacions    AnotacioHuesped[]
-  tasquesNeteja TascaNeteja[]
-  diposits      Diposit[]
+  anotacions       AnotacioHuesped[]
+  tasquesNeteja    TascaNeteja[]
+  diposits         Diposit[]
   emailsProgramats EmailProgramat[]
 
   createdAt DateTime  @default(now()) @map("created_at")
@@ -454,14 +454,14 @@ model Estancia {
 }
 
 model EstanciaViatger {
-  id         String     @id @default(cuid())
-  estanciaId String     @map("estancia_id")
-  estancia   Estancia   @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
-  huespedId  String     @map("huesped_id")
-  huesped    Huesped    @relation(fields: [huespedId], references: [id])
-  esTitular  Boolean    @default(false) @map("es_titular")
-  parentesc  Parentesc?
-  esMenor    Boolean    @default(false) @map("es_menor")
+  id                  String     @id @default(cuid())
+  estanciaId          String     @map("estancia_id")
+  estancia            Estancia   @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+  huespedId           String     @map("huesped_id")
+  huesped             Huesped    @relation(fields: [huespedId], references: [id])
+  esTitular           Boolean    @default(false) @map("es_titular")
+  parentesc           Parentesc?
+  esMenor             Boolean    @default(false) @map("es_menor")
   // Habitació "administrativa" del viatger quan als papers (llibre de registre,
   // factura) ha de constar en una habitació diferent de la real de l'estada.
   habitacioSeparadaId String?    @map("habitacio_separada_id")
@@ -471,7 +471,7 @@ model EstanciaViatger {
   // Snapshot de les dades del viatger per a aquesta estada (es congela quan
   // l'estada passa a ser antiga >7 dies de la sortida). Si està informat, el
   // llibre/fitxa/Mossos l'usen en lloc de la fitxa viva (no reescriure el passat).
-  dadesCongelades Json? @map("dades_congelades")
+  dadesCongelades     Json?      @map("dades_congelades")
 
   signatura Signatura?
 
@@ -552,19 +552,19 @@ model AnotacioHuesped {
 // ----------------------------------------------------------------------------
 
 model Habitacio {
-  id        String  @id @default(cuid())
-  nom       String // num/nom (p.ej. "1", "6")
-  tipus     String? // tipus d'habitació (Individual, Doble…) per a tarifes per tipus
+  id         String  @id @default(cuid())
+  nom        String // num/nom (p.ej. "1", "6")
+  tipus      String? // tipus d'habitació (Individual, Doble…) per a tarifes per tipus
   descripcio String?
-  capacitat Int?
-  estat     String?
+  capacitat  Int?
+  estat      String?
 
-  estancies     Estancia[]
-  actius        Actiu[]
-  gastos        Gasto[]
-  tasquesNeteja TascaNeteja[]
-  tarifes       Tarifa[]
-  incidencies   Incidencia[]
+  estancies        Estancia[]
+  actius           Actiu[]
+  gastos           Gasto[]
+  tasquesNeteja    TascaNeteja[]
+  tarifes          Tarifa[]
+  incidencies      Incidencia[]
   viatgersSeparats EstanciaViatger[]
 
   createdAt DateTime  @default(now()) @map("created_at")
@@ -575,17 +575,17 @@ model Habitacio {
 }
 
 model TascaNeteja {
-  id          String      @id @default(cuid())
-  data        DateTime
-  habitacioId String?     @map("habitacio_id")
-  habitacio   Habitacio?  @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
-  tipus       TipusNeteja
-  estat       EstatTasca  @default(PENDENT)
-  assignadaA  String?     @map("assignada_a")
-  treballador Treballador? @relation(fields: [assignadaA], references: [id], onDelete: SetNull)
-  vinculadaSortidaId String? @map("vinculada_sortida_id")
-  vinculadaSortida   Estancia? @relation(fields: [vinculadaSortidaId], references: [id], onDelete: SetNull)
-  notes       String?
+  id                 String       @id @default(cuid())
+  data               DateTime
+  habitacioId        String?      @map("habitacio_id")
+  habitacio          Habitacio?   @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
+  tipus              TipusNeteja
+  estat              EstatTasca   @default(PENDENT)
+  assignadaA         String?      @map("assignada_a")
+  treballador        Treballador? @relation(fields: [assignadaA], references: [id], onDelete: SetNull)
+  vinculadaSortidaId String?      @map("vinculada_sortida_id")
+  vinculadaSortida   Estancia?    @relation(fields: [vinculadaSortidaId], references: [id], onDelete: SetNull)
+  notes              String?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -627,9 +627,9 @@ model Animal {
 // ----------------------------------------------------------------------------
 
 model Factura {
-  id         String       @id @default(cuid())
-  estanciaId String       @map("estancia_id")
-  estancia   Estancia     @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+  id            String              @id @default(cuid())
+  estanciaId    String              @map("estancia_id")
+  estancia      Estancia            @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
   numero        String              @unique
   data          DateTime
   base          Decimal             @db.Decimal(10, 2)
@@ -665,12 +665,12 @@ model Factura {
 }
 
 model LiniaFactura {
-  id        String        @id @default(cuid())
-  facturaId String        @map("factura_id")
-  factura   Factura       @relation(fields: [facturaId], references: [id], onDelete: Cascade)
-  concepte  ConcepteLinia
+  id         String        @id @default(cuid())
+  facturaId  String        @map("factura_id")
+  factura    Factura       @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+  concepte   ConcepteLinia
   descripcio String
-  import    Decimal       @db.Decimal(10, 2)
+  import     Decimal       @db.Decimal(10, 2)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -680,12 +680,12 @@ model LiniaFactura {
 }
 
 model TasaTuristica {
-  id              String   @id @default(cuid())
-  estanciaId      String   @map("estancia_id")
-  estancia        Estancia @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
-  nits            Int
-  importPersonaNit Decimal @map("import_persona_nit") @db.Decimal(10, 2)
-  total           Decimal  @db.Decimal(10, 2)
+  id               String   @id @default(cuid())
+  estanciaId       String   @map("estancia_id")
+  estancia         Estancia @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+  nits             Int
+  importPersonaNit Decimal  @map("import_persona_nit") @db.Decimal(10, 2)
+  total            Decimal  @db.Decimal(10, 2)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -697,17 +697,24 @@ model TasaTuristica {
 // Cobrament (pagament) d'una estada. Pot estar "a compte" (sense factura,
 // facturaId null) i, en fer la factura, s'hi assigna. Compta com a ingrés sempre.
 model Cobrament {
-  id         String          @id @default(cuid())
-  estanciaId String          @map("estancia_id")
-  estancia   Estancia        @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
-  facturaId  String?         @map("factura_id")
-  factura    Factura?        @relation(fields: [facturaId], references: [id], onDelete: SetNull)
+  id           String          @id @default(cuid())
+  estanciaId   String          @map("estancia_id")
+  estancia     Estancia        @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+  facturaId    String?         @map("factura_id")
+  factura      Factura?        @relation(fields: [facturaId], references: [id], onDelete: SetNull)
   concepte     ConcepteLinia   @default(ALLOTJAMENT)
   descripcio   String?
   observacions String?
   metode       MetodeCobrament
   import       Decimal         @db.Decimal(10, 2)
   data         DateTime
+
+  // Desglossament manual per període d'estada (p. ex. un pagament del 5/7 que
+  // cobreix juliol i agost es reparteix en 2 línies amb l'import de cada mes),
+  // perquè la comptabilitat mensual compti l'ingrés en el mes que correspon
+  // en lloc del mes en què es va cobrar. Buit = comporta't com sempre (compta
+  // tot l'import al mes de `data`).
+  periodes CobramentPeriode[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -717,21 +724,39 @@ model Cobrament {
   @@map("cobrament")
 }
 
+model CobramentPeriode {
+  id          String    @id @default(cuid())
+  cobramentId String    @map("cobrament_id")
+  cobrament   Cobrament @relation(fields: [cobramentId], references: [id], onDelete: Cascade)
+  dataInici   DateTime  @map("data_inici")
+  dataFi      DateTime  @map("data_fi")
+  import      Decimal   @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([cobramentId])
+  @@map("cobrament_periode")
+}
+
 // Dipòsit/fiança de garantia d'una estada. NO és ingrés mentre està en custòdia.
 model Diposit {
-  id            String       @id @default(cuid())
-  estanciaId    String       @map("estancia_id")
-  estancia      Estancia     @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
-  facturaId     String?      @map("factura_id")
-  factura       Factura?     @relation(fields: [facturaId], references: [id], onDelete: SetNull)
-  import        Decimal      @db.Decimal(10, 2)
+  id            String          @id @default(cuid())
+  estanciaId    String          @map("estancia_id")
+  estancia      Estancia        @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+  facturaId     String?         @map("factura_id")
+  factura       Factura?        @relation(fields: [facturaId], references: [id], onDelete: SetNull)
+  import        Decimal         @db.Decimal(10, 2)
   data          DateTime
   metode        MetodeCobrament
-  estat         EstatDiposit @default(EN_CUSTODIA)
+  estat         EstatDiposit    @default(EN_CUSTODIA)
   motiu         String? // motiu de la retenció (desperfecte…)
   notes         String?
   observacions  String?
-  dataResolucio DateTime?    @map("data_resolucio") // quan es torna o es retén
+  dataResolucio DateTime?       @map("data_resolucio") // quan es torna o es retén
+
+  // Mateix desglossament per període que Cobrament (§ CobramentPeriode), per
+  // si la fiança retinguda ha de comptar com a ingrés repartit en diversos mesos.
+  periodes DipositPeriode[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -742,34 +767,48 @@ model Diposit {
   @@map("diposit")
 }
 
+model DipositPeriode {
+  id        String   @id @default(cuid())
+  dipositId String   @map("diposit_id")
+  diposit   Diposit  @relation(fields: [dipositId], references: [id], onDelete: Cascade)
+  dataInici DateTime @map("data_inici")
+  dataFi    DateTime @map("data_fi")
+  import    Decimal  @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([dipositId])
+  @@map("diposit_periode")
+}
+
 // Registre de facturació "alta" Veri*Factu (AEAT). Encadenat per `huella`.
 model RegistreVerifactu {
-  id              String                @id @default(cuid())
-  facturaId       String                @unique @map("factura_id")
-  factura         Factura               @relation(fields: [facturaId], references: [id], onDelete: Cascade)
-  tipusFactura    TipusFacturaVerifactu @map("tipus_factura")
-  serie           String
-  numero          String
-  numSerieFactura String                @map("num_serie_factura") // serie+numero (entra a la huella)
-  dataExpedicio   DateTime              @map("data_expedicio")
-  nifEmisor       String                @map("nif_emisor")
-  nomEmisor       String                @map("nom_emisor")
-  nifDestinatari  String?               @map("nif_destinatari")
-  nomDestinatari  String?               @map("nom_destinatari")
-  descripcio      String
-  baseImposable   Decimal               @map("base_imposable") @db.Decimal(10, 2)
-  tipusIva        Decimal               @map("tipus_iva") @db.Decimal(5, 2)
-  quotaIva        Decimal               @map("quota_iva") @db.Decimal(10, 2)
-  importNoSubjecte Decimal              @default(0) @map("import_no_subjecte") @db.Decimal(10, 2)
-  quotaTotal      Decimal               @map("quota_total") @db.Decimal(10, 2)
-  importTotal     Decimal               @map("import_total") @db.Decimal(10, 2)
-  huella          String // SHA-256 hex MAJÚSCULES d'aquest registre
-  huellaAnterior  String                @map("huella_anterior") // '' si és el primer
-  fechaHoraHuso   String                @map("fecha_hora_huso") // ISO 8601 amb offset (entra a la huella)
-  qrUrl           String                @map("qr_url")
-  registreJson    Json                  @map("registre_json") // RegistroAlta complet
-  softwareJson    Json                  @map("software_json")
-  estat           EstatVerifactu        @default(GENERAT)
+  id               String                @id @default(cuid())
+  facturaId        String                @unique @map("factura_id")
+  factura          Factura               @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+  tipusFactura     TipusFacturaVerifactu @map("tipus_factura")
+  serie            String
+  numero           String
+  numSerieFactura  String                @map("num_serie_factura") // serie+numero (entra a la huella)
+  dataExpedicio    DateTime              @map("data_expedicio")
+  nifEmisor        String                @map("nif_emisor")
+  nomEmisor        String                @map("nom_emisor")
+  nifDestinatari   String?               @map("nif_destinatari")
+  nomDestinatari   String?               @map("nom_destinatari")
+  descripcio       String
+  baseImposable    Decimal               @map("base_imposable") @db.Decimal(10, 2)
+  tipusIva         Decimal               @map("tipus_iva") @db.Decimal(5, 2)
+  quotaIva         Decimal               @map("quota_iva") @db.Decimal(10, 2)
+  importNoSubjecte Decimal               @default(0) @map("import_no_subjecte") @db.Decimal(10, 2)
+  quotaTotal       Decimal               @map("quota_total") @db.Decimal(10, 2)
+  importTotal      Decimal               @map("import_total") @db.Decimal(10, 2)
+  huella           String // SHA-256 hex MAJÚSCULES d'aquest registre
+  huellaAnterior   String                @map("huella_anterior") // '' si és el primer
+  fechaHoraHuso    String                @map("fecha_hora_huso") // ISO 8601 amb offset (entra a la huella)
+  qrUrl            String                @map("qr_url")
+  registreJson     Json                  @map("registre_json") // RegistroAlta complet
+  softwareJson     Json                  @map("software_json")
+  estat            EstatVerifactu        @default(GENERAT)
 
   // Resposta de l'AEAT (servei web Veri*Factu)
   dataEnviament DateTime? @map("data_enviament")
@@ -859,22 +898,25 @@ model ServeiRecurrent {
 }
 
 model Gasto {
-  id             String          @id @default(cuid())
-  data           DateTime
-  import         Decimal         @db.Decimal(10, 2)
-  categoriaId    String          @map("categoria_id")
-  categoria      CategoriaGasto  @relation(fields: [categoriaId], references: [id])
-  proveidorId    String?         @map("proveidor_id")
-  proveidor      Proveidor?      @relation(fields: [proveidorId], references: [id], onDelete: SetNull)
-  habitacioId    String?         @map("habitacio_id")
-  habitacio      Habitacio?      @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
-  animalId       String?         @map("animal_id")
-  animal         Animal?         @relation(fields: [animalId], references: [id], onDelete: SetNull)
-  serveiRecurrentId String?      @map("servei_recurrent_id")
+  id                String           @id @default(cuid())
+  data              DateTime
+  import            Decimal          @db.Decimal(10, 2)
+  categoriaId       String           @map("categoria_id")
+  categoria         CategoriaGasto   @relation(fields: [categoriaId], references: [id])
+  proveidorId       String?          @map("proveidor_id")
+  proveidor         Proveidor?       @relation(fields: [proveidorId], references: [id], onDelete: SetNull)
+  habitacioId       String?          @map("habitacio_id")
+  habitacio         Habitacio?       @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
+  animalId          String?          @map("animal_id")
+  animal            Animal?          @relation(fields: [animalId], references: [id], onDelete: SetNull)
+  serveiRecurrentId String?          @map("servei_recurrent_id")
   serveiRecurrent   ServeiRecurrent? @relation(fields: [serveiRecurrentId], references: [id], onDelete: SetNull)
-  descripcio     String
-  metodePagament MetodeCobrament @map("metode_pagament")
-  adjuntPath     String?         @map("adjunt_path")
+  descripcio        String
+  metodePagament    MetodeCobrament  @map("metode_pagament")
+  adjuntPath        String?          @map("adjunt_path")
+  // Fiança/dipòsit pagat (recuperable): no és una despesa real, així que NO compta
+  // al balanç ni al P&L fins que es desmarqui (llavors passa a ser despesa real).
+  esFianca          Boolean          @default(false) @map("es_fianca")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -890,20 +932,20 @@ model Gasto {
 // ----------------------------------------------------------------------------
 
 model Actiu {
-  id          String     @id @default(cuid())
-  nom         String
-  categoria   String
-  dataCompra  DateTime   @map("data_compra")
-  cost        Decimal    @db.Decimal(10, 2)
-  proveidorId String?    @map("proveidor_id")
-  proveidor   Proveidor? @relation(fields: [proveidorId], references: [id], onDelete: SetNull)
-  habitacioId String?    @map("habitacio_id")
-  habitacio   Habitacio? @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
-  garantiaFins DateTime? @map("garantia_fins")
-  ubicacio    String?
-  numSerie    String?    @map("num_serie")
-  facturaPath String?    @map("factura_path")
-  estat       EstatActiu @default(NOU)
+  id           String     @id @default(cuid())
+  nom          String
+  categoria    String
+  dataCompra   DateTime   @map("data_compra")
+  cost         Decimal    @db.Decimal(10, 2)
+  proveidorId  String?    @map("proveidor_id")
+  proveidor    Proveidor? @relation(fields: [proveidorId], references: [id], onDelete: SetNull)
+  habitacioId  String?    @map("habitacio_id")
+  habitacio    Habitacio? @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
+  garantiaFins DateTime?  @map("garantia_fins")
+  ubicacio     String?
+  numSerie     String?    @map("num_serie")
+  facturaPath  String?    @map("factura_path")
+  estat        EstatActiu @default(NOU)
 
   historial ActiuHistorial[]
 
@@ -936,25 +978,25 @@ model ActiuHistorial {
 // ----------------------------------------------------------------------------
 
 model Treballador {
-  id               String    @id @default(cuid())
+  id               String   @id @default(cuid())
   nom              String
-  dni              String?   // opcional
+  dni              String? // opcional
   telefon          String?
   email            String?
-  dataContractacio DateTime  @map("data_contractacio")
+  dataContractacio DateTime @map("data_contractacio")
   carrec           String
-  preuHora         Decimal?  @map("preu_hora") @db.Decimal(10, 2) // €/hora (pagament per hores)
-  preuSortida      Decimal?  @map("preu_sortida") @db.Decimal(10, 2) // €/sortida (mode per tasques)
-  preuManteniment  Decimal?  @map("preu_manteniment") @db.Decimal(10, 2) // €/manteniment
-  preuZones        Decimal?  @map("preu_zones") @db.Decimal(10, 2) // €/pack zones comunes
-  salari           Decimal?  @db.Decimal(10, 2)
-  costEmpresa      Decimal?  @map("cost_empresa") @db.Decimal(10, 2)
+  preuHora         Decimal? @map("preu_hora") @db.Decimal(10, 2) // €/hora (pagament per hores)
+  preuSortida      Decimal? @map("preu_sortida") @db.Decimal(10, 2) // €/sortida (mode per tasques)
+  preuManteniment  Decimal? @map("preu_manteniment") @db.Decimal(10, 2) // €/manteniment
+  preuZones        Decimal? @map("preu_zones") @db.Decimal(10, 2) // €/pack zones comunes
+  salari           Decimal? @db.Decimal(10, 2)
+  costEmpresa      Decimal? @map("cost_empresa") @db.Decimal(10, 2)
 
   // Empresa de neteja: un treballador pot ser una EMPRESA (a qui es paga) i tenir
   // treballadors MEMBRES (a qui s'envia WhatsApp i de qui es registra qui ha vingut).
-  esEmpresa  Boolean @default(false) @map("es_empresa")
-  nomEmpresa String? @map("nom_empresa") // raó social de l'empresa (text lliure)
-  empresaId  String? @map("empresa_id")
+  esEmpresa  Boolean       @default(false) @map("es_empresa")
+  nomEmpresa String?       @map("nom_empresa") // raó social de l'empresa (text lliure)
+  empresaId  String?       @map("empresa_id")
   empresa    Treballador?  @relation("EmpresaMembres", fields: [empresaId], references: [id], onDelete: SetNull)
   membres    Treballador[] @relation("EmpresaMembres")
 
@@ -1036,15 +1078,15 @@ enum GravetatAvis {
 }
 
 model Avis {
-  id        String       @id @default(cuid())
-  nom       String
-  telefon   String?
-  email     String?
-  motiu     String
-  gravetat  GravetatAvis @default(MITJA)
-  notes     String?
-  actiu     Boolean      @default(true)
-  usuariId  String?      @map("usuari_id")
+  id       String       @id @default(cuid())
+  nom      String
+  telefon  String?
+  email    String?
+  motiu    String
+  gravetat GravetatAvis @default(MITJA)
+  notes    String?
+  actiu    Boolean      @default(true)
+  usuariId String?      @map("usuari_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1061,9 +1103,9 @@ model Avis {
 model Tarifa {
   id             String     @id @default(cuid())
   nom            String
-  temporada      String?    @map("temporada")           // ALTA | MITJA | BAIXA
-  preuNit        Decimal    @db.Decimal(10, 2) @map("preu_nit")
-  preuMensual    Decimal?   @db.Decimal(10, 2) @map("preu_mensual")
+  temporada      String?    @map("temporada") // ALTA | MITJA | BAIXA
+  preuNit        Decimal    @map("preu_nit") @db.Decimal(10, 2)
+  preuMensual    Decimal?   @map("preu_mensual") @db.Decimal(10, 2)
   tipusHabitacio String?    @map("tipus_habitacio")
   habitacioId    String?    @map("habitacio_id")
   habitacio      Habitacio? @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
@@ -1123,14 +1165,14 @@ model Incidencia {
 // ----------------------------------------------------------------------------
 
 model Valoracio {
-  id         String   @id @default(cuid())
-  puntuacio  Int                              // 1..5 estrelles
+  id         String  @id @default(cuid())
+  puntuacio  Int // 1..5 estrelles
   comentari  String?
-  nom        String?                          // nom de l'hoste (del propi enllaç)
-  habitacio  String?                          // habitació (del propi enllaç)
-  idioma     String?                          // ca / es / en / fr
-  estanciaId String?  @map("estancia_id")     // enllaç opcional a l'estada
-  vista      Boolean  @default(false)         // si ja l'has llegida al panell
+  nom        String? // nom de l'hoste (del propi enllaç)
+  habitacio  String? // habitació (del propi enllaç)
+  idioma     String? // ca / es / en / fr
+  estanciaId String? @map("estancia_id") // enllaç opcional a l'estada
+  vista      Boolean @default(false) // si ja l'has llegida al panell
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1145,8 +1187,8 @@ model EmailProgramat {
   id             String    @id @default(cuid())
   estanciaId     String    @map("estancia_id")
   estancia       Estancia  @relation(fields: [estanciaId], references: [id])
-  tipus          String    // 'gracies' | 'benvinguda'
-  a              String    // adreça destinatari
+  tipus          String // 'gracies' | 'benvinguda'
+  a              String // adreça destinatari
   nomDestinatari String?   @map("nom_destinatari")
   asumpte        String
   cos            String    @db.Text // HTML

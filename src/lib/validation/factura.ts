@@ -20,6 +20,38 @@ const overrideStr = z.preprocess(
   z.string().trim().nullable().optional(),
 );
 
+// Desglossament manual d'un pagament/fiança per període d'estada (p. ex. un
+// pagament que cobreix juliol i agost es parteix en 2 línies), perquè la
+// comptabilitat mensual compti l'ingrés en el mes que correspon.
+export const PeriodeInputSchema = z
+  .object({
+    dataInici: z.coerce.date(),
+    dataFi: z.coerce.date(),
+    import: z.coerce.number(),
+  })
+  .refine((p) => p.dataFi >= p.dataInici, {
+    message: 'La data de fi ha de ser igual o posterior a la d\'inici',
+    path: ['dataFi'],
+  });
+
+/** La suma dels períodes (si n'hi ha) ha de coincidir amb l'import total del pagament/fiança. */
+function validaPeriodes(
+  periodes: { import: number }[] | undefined,
+  importTotal: number,
+  ctx: z.RefinementCtx,
+) {
+  if (!periodes || periodes.length === 0) return;
+  const suma = Math.round(periodes.reduce((a, p) => a + p.import, 0) * 100) / 100;
+  const total = Math.round(importTotal * 100) / 100;
+  if (Math.abs(suma - total) > 0.01) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['periodes'],
+      message: `La suma dels períodes (${suma.toFixed(2)} €) no coincideix amb l'import total (${total.toFixed(2)} €)`,
+    });
+  }
+}
+
 export const FacturaCreateSchema = z
   .object({
     estanciaId: z.string().min(1),
@@ -77,15 +109,18 @@ export const CobramentEditSchema = z
     message: 'Res a modificar',
   });
 
-export const PagamentEstadaSchema = z.object({
-  import: z.coerce.number().positive("L'import ha de ser positiu"),
-  metode: z.enum(metodeCobramentValues),
-  concepte: z.enum(concepteLiniaValues).default('ALLOTJAMENT'),
-  descripcio: optStr,
-  observacions: optStr,
-  data: z.coerce.date().optional(),
-  facturaId: z.string().optional(),
-});
+export const PagamentEstadaSchema = z
+  .object({
+    import: z.coerce.number().positive("L'import ha de ser positiu"),
+    metode: z.enum(metodeCobramentValues),
+    concepte: z.enum(concepteLiniaValues).default('ALLOTJAMENT'),
+    descripcio: optStr,
+    observacions: optStr,
+    data: z.coerce.date().optional(),
+    facturaId: z.string().optional(),
+    periodes: z.array(PeriodeInputSchema).optional(),
+  })
+  .superRefine((d, ctx) => validaPeriodes(d.periodes, d.import, ctx));
 
 export const FinalitzarAnticipadaSchema = z
   .object({
@@ -133,14 +168,17 @@ export const FacturaRectificativaSchema = z.object({
 export type FacturaCreateInput = z.input<typeof FacturaCreateSchema>;
 export type LiniaInput = z.input<typeof LiniaInputSchema>;
 
-export const DipositCreateSchema = z.object({
-  import: z.coerce.number().positive("L'import ha de ser positiu"),
-  data: z.coerce.date().optional(),
-  metode: z.enum(metodeCobramentValues),
-  notes: optStr,
-  observacions: optStr,
-  destinacio: z.enum(['CUSTODIA', 'INGRES']).default('CUSTODIA'),
-});
+export const DipositCreateSchema = z
+  .object({
+    import: z.coerce.number().positive("L'import ha de ser positiu"),
+    data: z.coerce.date().optional(),
+    metode: z.enum(metodeCobramentValues),
+    notes: optStr,
+    observacions: optStr,
+    destinacio: z.enum(['CUSTODIA', 'INGRES']).default('CUSTODIA'),
+    periodes: z.array(PeriodeInputSchema).optional(),
+  })
+  .superRefine((d, ctx) => validaPeriodes(d.periodes, d.import, ctx));
 
 export const DipositResolSchema = z.object({
   estat: z.enum(['TORNAT', 'RETINGUT', 'EN_CUSTODIA']),

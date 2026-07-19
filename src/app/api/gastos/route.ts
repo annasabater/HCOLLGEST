@@ -31,9 +31,12 @@ export async function GET(req: Request) {
     include: { categoria: true, proveidor: true, habitacio: true, animal: true },
   });
 
-  const total = gastos.reduce((a, g) => a + Number(g.import), 0);
+  // El total i el desglossament per categoria NOMÉS compten les despeses reals
+  // (les fiances/dipòsits no són despesa). La llista, però, les inclou (amb badge).
+  const reals = gastos.filter((g) => !g.esFianca);
+  const total = reals.reduce((a, g) => a + Number(g.import), 0);
   const perCategoria: Record<string, number> = {};
-  for (const g of gastos) {
+  for (const g of reals) {
     perCategoria[g.categoria.nom] = (perCategoria[g.categoria.nom] ?? 0) + Number(g.import);
   }
 
@@ -59,6 +62,7 @@ export async function POST(req: Request) {
         descripcio: data.descripcio,
         metodePagament: data.metodePagament,
         adjuntPath: data.adjuntPath ?? null,
+        esFianca: data.esFianca ?? false,
       },
     });
 

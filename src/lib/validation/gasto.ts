@@ -17,6 +17,8 @@ export const GastoCreateSchema = z.object({
   descripcio: z.string().trim().min(1, 'Cal una descripció'),
   metodePagament: z.enum(metodeCobramentValues),
   adjuntPath: optStr,
+  // Fiança/dipòsit pagat (recuperable): no compta al balanç fins que es desmarqui.
+  esFianca: z.coerce.boolean().optional(),
 });
 
 export const GastoUpdateSchema = GastoCreateSchema.partial();

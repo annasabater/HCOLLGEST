@@ -487,6 +487,9 @@ export async function addPagamentEstada(
       metode: input.metode,
       import: input.import,
       data: input.data ?? new Date(),
+      periodes: input.periodes
+        ? { create: input.periodes.map((p) => ({ dataInici: p.dataInici, dataFi: p.dataFi, import: p.import })) }
+        : undefined,
     },
   });
 
@@ -538,6 +541,9 @@ export async function addDiposit(
       observacions: input.observacions ?? null,
       estat: esIngres ? 'RETINGUT' : 'EN_CUSTODIA',
       dataResolucio: esIngres ? (input.data ?? new Date()) : null,
+      periodes: input.periodes
+        ? { create: input.periodes.map((p) => ({ dataInici: p.dataInici, dataFi: p.dataFi, import: p.import })) }
+        : undefined,
     },
   });
   await audit({

@@ -16,6 +16,12 @@ import {
   CONCEPTE_LINIA_LABELS,
 } from '@/lib/validation/enums';
 
+export interface PeriodeCobrament {
+  dataInici: string;
+  dataFi: string;
+  import: number;
+}
+
 export interface Pagament {
   id: string;
   import: number;
@@ -25,6 +31,7 @@ export interface Pagament {
   data: string;
   facturaId: string | null;
   facturaNumero: string | null;
+  periodes?: PeriodeCobrament[];
 }
 
 export interface Fianca {
@@ -38,6 +45,14 @@ export interface Fianca {
   observacions: string | null;
   facturaId: string | null;
   facturaNumero: string | null;
+  periodes?: PeriodeCobrament[];
+}
+
+/** "5 jul – 31 jul: 700,00 € · 1 ago – 20 ago: 470,00 €" */
+function periodesResum(periodes: PeriodeCobrament[] | undefined): string | null {
+  if (!periodes || periodes.length === 0) return null;
+  const fmt = (d: string) => formatDate(d).replace(/\/\d{4}$/, '');
+  return periodes.map((p) => `${fmt(p.dataInici)} – ${fmt(p.dataFi)}: ${formatEur(p.import)}`).join(' · ');
 }
 
 const FIANCA_ESTAT_LABEL: Record<Fianca['estat'], string> = {
@@ -74,6 +89,17 @@ export function PagamentsPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Desglossament manual per període d'estada (p. ex. un pagament que cobreix
+  // juliol i agost es reparteix en 2 línies), perquè la comptabilitat mensual
+  // compti l'ingrés en el mes que correspon i no en el dia que es cobra.
+  const [desglossar, setDesglossar] = useState(false);
+  const [periodes, setPeriodes] = useState<{ dataInici: string; dataFi: string; import: string }[]>([]);
+  const sumaPeriodes = periodes.reduce((a, p) => a + (Number(p.import) || 0), 0);
+  const afegirPeriode = () => setPeriodes((p) => [...p, { dataInici: '', dataFi: '', import: '' }]);
+  const actualitzaPeriode = (i: number, patch: Partial<{ dataInici: string; dataFi: string; import: string }>) =>
+    setPeriodes((p) => p.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
+  const treuPeriode = (i: number) => setPeriodes((p) => p.filter((_, idx) => idx !== i));
+
   // Expanded fiances section
   const [fiancaOberta, setFiancaOberta] = useState(false);
   // Edit pagament inline
@@ -105,6 +131,8 @@ export function PagamentsPanel({
     setObservacions('');
     setImport('');
     setAltreText('');
+    setDesglossar(false);
+    setPeriodes([]);
     setError(null);
     setOpen(true);
   }
@@ -166,29 +194,45 @@ export function PagamentsPanel({
   // ── Afegir pagament / fiança ───────────────────────────────────────────────
   async function afegir(e: React.FormEvent) {
     e.preventDefault();
-    if (!importVal) return;
+    const importFinal = desglossar ? sumaPeriodes : Number(importVal);
+    if (!importFinal) return;
+    if (desglossar) {
+      if (periodes.length === 0) {
+        setError('Afegeix almenys un període.');
+        return;
+      }
+      if (periodes.some((p) => !p.dataInici || !p.dataFi || !p.import)) {
+        setError('Cada període necessita data d\'inici, data de fi i import.');
+        return;
+      }
+    }
     setBusy(true);
     setError(null);
     try {
       const notesVal = etapa === 'Altre' ? (altreText || undefined) : etapa;
+      const periodesBody = desglossar
+        ? periodes.map((p) => ({ dataInici: p.dataInici, dataFi: p.dataFi, import: Number(p.import) }))
+        : undefined;
       if (tipus === 'FIANCA') {
         await postJSON(`/api/estancies/${estanciaId}/diposits`, {
-          import: Number(importVal),
+          import: importFinal,
           metode,
           destinacio: 'CUSTODIA',
           notes: notesVal,
           observacions: observacions || undefined,
           data: dataCobrament || undefined,
+          periodes: periodesBody,
         });
       } else {
         await postJSON(`/api/estancies/${estanciaId}/pagaments`, {
-          import: Number(importVal),
+          import: importFinal,
           metode,
           concepte: 'ALLOTJAMENT',
           descripcio: notesVal,
           observacions: observacions || undefined,
           data: dataCobrament || undefined,
           facturaId: facturaIdDest || undefined,
+          periodes: periodesBody,
         });
       }
       setImport('');
@@ -196,6 +240,8 @@ export function PagamentsPanel({
       setObservacions('');
       setFacturaIdDest('');
       setDataCobrament(new Date().toISOString().slice(0, 10));
+      setDesglossar(false);
+      setPeriodes([]);
       setOpen(false);
       router.refresh();
     } catch (err) {
@@ -282,33 +328,35 @@ export function PagamentsPanel({
                 </div>
               </div>
             ) : (
-              <div
-                key={p.id}
-                className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              >
-                <span className="font-medium text-slate-800">{formatEur(p.import)}</span>
-                <span className="text-slate-400">
-                  {p.descripcio ? ` · ${p.descripcio}` : ''} · {METODE_COBRAMENT_LABELS[p.metode]} ·{' '}
-                  {formatDate(p.data)}
-                </span>
-                <div className="ml-auto flex items-center gap-1">
-                  <button
-                    type="button"
-                    className="text-slate-400 hover:text-brand-600"
-                    onClick={(e) => { e.preventDefault(); startEditPag(p); }}
-                    title="Editar"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    className="text-slate-400 hover:text-red-600"
-                    onClick={(e) => { e.preventDefault(); eliminarPagament(p.id); }}
-                    title="Eliminar"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+              <div key={p.id} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-slate-800">{formatEur(p.import)}</span>
+                  <span className="text-slate-400">
+                    {p.descripcio ? ` · ${p.descripcio}` : ''} · {METODE_COBRAMENT_LABELS[p.metode]} ·{' '}
+                    {formatDate(p.data)}
+                  </span>
+                  <div className="ml-auto flex items-center gap-1">
+                    <button
+                      type="button"
+                      className="text-slate-400 hover:text-brand-600"
+                      onClick={(e) => { e.preventDefault(); startEditPag(p); }}
+                      title="Editar"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      className="text-slate-400 hover:text-red-600"
+                      onClick={(e) => { e.preventDefault(); eliminarPagament(p.id); }}
+                      title="Eliminar"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
+                {periodesResum(p.periodes) && (
+                  <p className="mt-0.5 text-xs text-slate-400">{periodesResum(p.periodes)}</p>
+                )}
               </div>
             )
           )}
@@ -477,8 +525,10 @@ export function PagamentsPanel({
               type="number"
               step="0.01"
               placeholder="Import €"
-              value={importVal}
+              value={desglossar ? sumaPeriodes.toFixed(2) : importVal}
               onChange={(e) => setImport(e.target.value)}
+              disabled={desglossar}
+              title={desglossar ? 'Es calcula sumant els períodes de sota' : undefined}
             />
             <Select value={metode} onChange={(e) => setMetode(e.target.value)}>
               {optionsFrom(metodeCobramentValues, METODE_COBRAMENT_LABELS).map((o) => (
@@ -520,9 +570,67 @@ export function PagamentsPanel({
               </Select>
             )}
           </div>
+
+          <label className="flex items-center gap-2 text-xs text-slate-600">
+            <input type="checkbox" checked={desglossar} onChange={(e) => { setDesglossar(e.target.checked); if (e.target.checked && periodes.length === 0) afegirPeriode(); }} />
+            Repartir per període d&apos;estada (perquè a comptabilitat compti cada mes per separat)
+          </label>
+
+          {desglossar && (
+            <div className="space-y-1.5 rounded-lg bg-slate-50 p-2">
+              {periodes.map((p, i) => (
+                <div key={i} className="flex flex-wrap items-center gap-1.5">
+                  <Input
+                    type="date"
+                    value={p.dataInici}
+                    onChange={(e) => actualitzaPeriode(i, { dataInici: e.target.value })}
+                    className="w-36"
+                    aria-label="Data inici del període"
+                  />
+                  <span className="text-xs text-slate-400">a</span>
+                  <Input
+                    type="date"
+                    value={p.dataFi}
+                    onChange={(e) => actualitzaPeriode(i, { dataFi: e.target.value })}
+                    className="w-36"
+                    aria-label="Data fi del període"
+                  />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Import €"
+                    value={p.import}
+                    onChange={(e) => actualitzaPeriode(i, { import: e.target.value })}
+                    className="w-24"
+                  />
+                  <button
+                    type="button"
+                    className="text-slate-400 hover:text-red-600"
+                    onClick={() => treuPeriode(i)}
+                    title="Treure aquest període"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              <div className="flex items-center justify-between pt-1">
+                <Button type="button" size="sm" variant="ghost" onClick={afegirPeriode}>
+                  <Plus className="h-4 w-4" /> Afegir període
+                </Button>
+                <span className="text-xs text-slate-500">
+                  Total períodes: <strong>{formatEur(sumaPeriodes)}</strong>
+                </span>
+              </div>
+            </div>
+          )}
+
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-2">
-            <Button type="submit" size="sm" disabled={busy || !importVal}>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={busy || (desglossar ? periodes.length === 0 || sumaPeriodes <= 0 : !importVal)}
+            >
               {tipus === 'FIANCA' ? 'Desar fiança' : 'Desar pagament'}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>

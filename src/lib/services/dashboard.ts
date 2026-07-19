@@ -21,6 +21,93 @@ function metodeFiltre(opts?: FinanceOpts): { metode?: { not: 'ALTRES' } } {
   return opts?.excloureMetodeAltres ? { metode: { not: 'ALTRES' } } : {};
 }
 
+interface EfectiuRow {
+  import: number;
+  metode: string;
+  estancia: {
+    id: string;
+    viatgers: { huesped: { nom: string; cognom1: string } | null }[];
+  } | null;
+}
+
+const titularSelDash = {
+  select: {
+    id: true,
+    viatgers: {
+      where: { esTitular: true },
+      take: 1,
+      select: { huesped: { select: { nom: true, cognom1: true } } },
+    },
+  },
+} as const;
+
+/**
+ * Cobraments "efectius" d'un rang de dates: si un cobrament té desglossament
+ * manual per període (CobramentPeriode — p. ex. un pagament del 5/7 que cobreix
+ * juliol i agost), només compta la part dels períodes que se superposen amb
+ * el rang consultat; si no en té, compta tot l'import quan `data` hi cau (com
+ * sempre). Així la comptabilitat mensual reflecteix el mes de l'estada, no el
+ * dia en què es va cobrar.
+ */
+async function cobramentsEfectius(start: Date, end: Date, opts?: FinanceOpts): Promise<EfectiuRow[]> {
+  const rows = await prisma.cobrament.findMany({
+    where: {
+      estancia: { deletedAt: null },
+      OR: [{ facturaId: null }, { factura: { deletedAt: null } }],
+      ...metodeFiltre(opts),
+      AND: [
+        {
+          OR: [
+            { periodes: { none: {} }, data: { gte: start, lte: end } },
+            { periodes: { some: { dataInici: { lte: end }, dataFi: { gte: start } } } },
+          ],
+        },
+      ],
+    },
+    select: { import: true, metode: true, periodes: { select: { dataInici: true, dataFi: true, import: true } }, estancia: titularSelDash },
+  });
+  return rows
+    .map((c) => ({
+      import:
+        c.periodes.length > 0
+          ? c.periodes.filter((p) => p.dataInici <= end && p.dataFi >= start).reduce((a, p) => a + Number(p.import), 0)
+          : Number(c.import),
+      metode: c.metode,
+      estancia: c.estancia,
+    }))
+    .filter((c) => c.import !== 0);
+}
+
+/** Igual que `cobramentsEfectius`, però per als dipòsits RETINGUTS (que compten com a ingrés). */
+async function dipositsRetingutsEfectius(start: Date, end: Date, opts?: FinanceOpts): Promise<EfectiuRow[]> {
+  const rows = await prisma.diposit.findMany({
+    where: {
+      estat: 'RETINGUT',
+      estancia: { deletedAt: null },
+      ...metodeFiltre(opts),
+      AND: [
+        {
+          OR: [
+            { periodes: { none: {} }, dataResolucio: { gte: start, lte: end } },
+            { periodes: { some: { dataInici: { lte: end }, dataFi: { gte: start } } } },
+          ],
+        },
+      ],
+    },
+    select: { import: true, metode: true, periodes: { select: { dataInici: true, dataFi: true, import: true } }, estancia: titularSelDash },
+  });
+  return rows
+    .map((d) => ({
+      import:
+        d.periodes.length > 0
+          ? d.periodes.filter((p) => p.dataInici <= end && p.dataFi >= start).reduce((a, p) => a + Number(p.import), 0)
+          : Number(d.import),
+      metode: d.metode,
+      estancia: d.estancia,
+    }))
+    .filter((d) => d.import !== 0);
+}
+
 export async function getResum(opts?: FinanceOpts) {
   const now = new Date();
   const in7 = new Date(now.getTime() + 7 * 86_400_000);
@@ -109,8 +196,8 @@ export async function getResum(opts?: FinanceOpts) {
       _sum: { import: true },
       where: { data: { gte: yearStart, lte: yearEnd }, estancia: { deletedAt: null }, OR: [{ facturaId: null }, { factura: { deletedAt: null } }], ...metodeFiltre(opts) },
     }),
-    prisma.gasto.aggregate({ _sum: { import: true }, where: { deletedAt: null, data: { gte: monthStart, lte: monthEnd } } }),
-    prisma.gasto.aggregate({ _sum: { import: true }, where: { deletedAt: null, data: { gte: yearStart, lte: yearEnd } } }),
+    prisma.gasto.aggregate({ _sum: { import: true }, where: { deletedAt: null, esFianca: false, data: { gte: monthStart, lte: monthEnd } } }),
+    prisma.gasto.aggregate({ _sum: { import: true }, where: { deletedAt: null, esFianca: false, data: { gte: yearStart, lte: yearEnd } } }),
     prisma.factura.findMany({ where: { deletedAt: null, estat: 'PENDENT' }, select: { total: true } }),
     prisma.actiu.findMany({
       where: { deletedAt: null },
@@ -292,27 +379,16 @@ export type Resum = Awaited<ReturnType<typeof getResum>>;
  * retencions en custòdia, i el total amb retencions, més despeses i benefici.
  */
 export async function getBalanc(monthStart: Date, monthEnd: Date, opts?: FinanceOpts) {
-  const [cobramentsAgg, retingutsAgg, custodiaAgg, despesesAgg, personalAgg] = await Promise.all([
-    prisma.cobrament.aggregate({
-      _sum: { import: true },
-      where: { data: { gte: monthStart, lte: monthEnd }, estancia: { deletedAt: null }, OR: [{ facturaId: null }, { factura: { deletedAt: null } }], ...metodeFiltre(opts) },
-    }),
-    prisma.diposit.aggregate({
-      _sum: { import: true },
-      where: {
-        estat: 'RETINGUT',
-        dataResolucio: { gte: monthStart, lte: monthEnd },
-        estancia: { deletedAt: null },
-        ...metodeFiltre(opts),
-      },
-    }),
+  const [cobramentsRows, retingutsRows, custodiaAgg, despesesAgg, personalAgg] = await Promise.all([
+    cobramentsEfectius(monthStart, monthEnd, opts),
+    dipositsRetingutsEfectius(monthStart, monthEnd, opts),
     prisma.diposit.aggregate({
       _sum: { import: true },
       where: { estat: 'EN_CUSTODIA', data: { gte: monthStart, lte: monthEnd }, estancia: { deletedAt: null } },
     }),
     prisma.gasto.aggregate({
       _sum: { import: true },
-      where: { deletedAt: null, data: { gte: monthStart, lte: monthEnd } },
+      where: { deletedAt: null, esFianca: false, data: { gte: monthStart, lte: monthEnd } },
     }),
     prisma.jornada.aggregate({ _sum: { import: true }, where: { data: { gte: monthStart, lte: monthEnd } } }),
   ]);
@@ -320,8 +396,8 @@ export async function getBalanc(monthStart: Date, monthEnd: Date, opts?: Finance
   const num = (d: { _sum: { import: unknown } }) => Number(d._sum.import ?? 0);
   const r2 = (n: number) => Math.round(n * 100) / 100;
 
-  const cobraments = num(cobramentsAgg);
-  const retinguts = num(retingutsAgg); // dipòsits retinguts → ja són ingrés
+  const cobraments = r2(cobramentsRows.reduce((a, c) => a + c.import, 0));
+  const retinguts = r2(retingutsRows.reduce((a, d) => a + d.import, 0)); // dipòsits retinguts → ja són ingrés
   const retencions = num(custodiaAgg); // dipòsits en custòdia (no són ingrés)
   const ingressos = r2(cobraments + retinguts);
   const despeses = num(despesesAgg);
@@ -380,38 +456,15 @@ export type Balanc = Awaited<ReturnType<typeof getBalanc>>;
 export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts) {
   const num = (v: unknown) => Number(v ?? 0);
   const endExcl = new Date(end.getTime() + 1);
-  const titularSel = {
-    select: {
-      id: true,
-      viatgers: {
-        where: { esTitular: true },
-        take: 1,
-        select: { huesped: { select: { nom: true, cognom1: true } } },
-      },
-    },
-  } as const;
-  const [base, cobMetode, dipMetode, gastoCat, categories, habCount, estades, roomRevAgg, cobsPersona, retsPersona] =
+  const [base, cobramentsRows, retingutsRows, gastoCat, categories, habCount, estades, roomRevAgg] =
     await Promise.all([
       getBalanc(start, end, opts),
-      prisma.cobrament.groupBy({
-        by: ['metode'],
-        _sum: { import: true },
-        where: { data: { gte: start, lte: end }, estancia: { deletedAt: null }, OR: [{ facturaId: null }, { factura: { deletedAt: null } }], ...metodeFiltre(opts) },
-      }),
-      prisma.diposit.groupBy({
-        by: ['metode'],
-        _sum: { import: true },
-        where: {
-          estat: 'RETINGUT',
-          dataResolucio: { gte: start, lte: end },
-          estancia: { deletedAt: null },
-          ...metodeFiltre(opts),
-        },
-      }),
+      cobramentsEfectius(start, end, opts),
+      dipositsRetingutsEfectius(start, end, opts),
       prisma.gasto.groupBy({
         by: ['categoriaId'],
         _sum: { import: true },
-        where: { deletedAt: null, data: { gte: start, lte: end } },
+        where: { deletedAt: null, esFianca: false, data: { gte: start, lte: end } },
       }),
       prisma.categoriaGasto.findMany({ select: { id: true, nom: true } }),
       prisma.habitacio.count({ where: { deletedAt: null } }),
@@ -422,16 +475,6 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
       prisma.liniaFactura.aggregate({
         _sum: { import: true },
         where: { concepte: 'ALLOTJAMENT', factura: { deletedAt: null, data: { gte: start, lte: end } } },
-      }),
-      // Moviments per persona: cobraments (positius i devolucions) del període…
-      prisma.cobrament.findMany({
-        where: { data: { gte: start, lte: end }, estancia: { deletedAt: null }, OR: [{ facturaId: null }, { factura: { deletedAt: null } }], ...metodeFiltre(opts) },
-        select: { import: true, estancia: titularSel },
-      }),
-      // …i dipòsits retinguts (també són ingrés).
-      prisma.diposit.findMany({
-        where: { estat: 'RETINGUT', dataResolucio: { gte: start, lte: end }, estancia: { deletedAt: null }, ...metodeFiltre(opts) },
-        select: { import: true, estancia: titularSel },
       }),
     ]);
 
@@ -456,9 +499,8 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
   // Vista restringida: el mètode ALTRES no apareix ni al desglossament.
   const metodes = opts?.excloureMetodeAltres ? metodesBase.filter((m) => m !== 'ALTRES') : metodesBase;
   const ingressosPerMetode: Record<string, number> = Object.fromEntries(metodes.map((m) => [m, 0]));
-  for (const c of cobMetode) ingressosPerMetode[c.metode] = num(c._sum.import);
-  for (const d of dipMetode)
-    ingressosPerMetode[d.metode] = (ingressosPerMetode[d.metode] ?? 0) + num(d._sum.import);
+  for (const c of cobramentsRows) ingressosPerMetode[c.metode] = (ingressosPerMetode[c.metode] ?? 0) + c.import;
+  for (const d of retingutsRows) ingressosPerMetode[d.metode] = (ingressosPerMetode[d.metode] ?? 0) + d.import;
 
   const catMap = new Map(categories.map((c) => [c.id, c.nom]));
   const despesesPerCategoria = gastoCat
@@ -467,9 +509,8 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
     .sort((a, b) => b.import - a.import);
 
   // Agrupa els moviments per estada/titular: ingressos (+) i devolucions (−).
-  type EstTit = { id: string; viatgers: { huesped: { nom: string; cognom1: string } | null }[] } | null;
   const perPersona = new Map<string, { estanciaId: string | null; titular: string; ingressos: number; devolucions: number }>();
-  const afegeixMov = (estancia: EstTit, imp: number) => {
+  const afegeixMov = (estancia: EfectiuRow['estancia'], imp: number) => {
     const key = estancia?.id ?? '—';
     const h = estancia?.viatgers[0]?.huesped;
     const cur = perPersona.get(key) ?? {
@@ -482,8 +523,8 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
     else cur.devolucions = r2(cur.devolucions + Math.abs(imp));
     perPersona.set(key, cur);
   };
-  for (const c of cobsPersona) afegeixMov(c.estancia, Number(c.import));
-  for (const d of retsPersona) afegeixMov(d.estancia, Number(d.import));
+  for (const c of cobramentsRows) afegeixMov(c.estancia, c.import);
+  for (const d of retingutsRows) afegeixMov(d.estancia, d.import);
   const movimentsPerPersona = [...perPersona.values()].sort(
     (a, b) => b.ingressos - b.devolucions - (a.ingressos - a.devolucions),
   );
@@ -600,7 +641,7 @@ export async function getBalancSituacio(start: Date, end: Date, opts?: { inclour
     // Despeses pagades dins del període.
     prisma.gasto.aggregate({
       _sum: { import: true },
-      where: { data: periode },
+      where: { esFianca: false, data: periode },
     }),
     // Cost de personal del període.
     prisma.jornada.aggregate({

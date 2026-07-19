@@ -57,8 +57,8 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
       enviaments: { orderBy: { createdAt: 'desc' } },
       habitacio: true,
       factures: { where: { deletedAt: null }, orderBy: { data: 'desc' } },
-      cobraments: { include: { factura: { select: { numero: true } } }, orderBy: { data: 'asc' } },
-      diposits: { include: { factura: { select: { numero: true } } }, orderBy: { createdAt: 'desc' } },
+      cobraments: { include: { factura: { select: { numero: true } }, periodes: true }, orderBy: { data: 'asc' } },
+      diposits: { include: { factura: { select: { numero: true } }, periodes: true }, orderBy: { createdAt: 'desc' } },
       origen: { select: { id: true, numContracte: true, anyContracte: true } },
       ampliacions: {
         where: { deletedAt: null },
@@ -393,6 +393,11 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   data: c.data.toISOString(),
                   facturaId: c.facturaId,
                   facturaNumero: c.factura?.numero ?? null,
+                  periodes: c.periodes.map((p) => ({
+                    dataInici: p.dataInici.toISOString(),
+                    dataFi: p.dataFi.toISOString(),
+                    import: Number(p.import),
+                  })),
                 }))}
                 fiances={estancia.diposits.map((d) => ({
                   id: d.id,
@@ -405,6 +410,11 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   observacions: d.observacions ?? null,
                   facturaId: d.facturaId ?? null,
                   facturaNumero: d.factura?.numero ?? null,
+                  periodes: d.periodes.map((p) => ({
+                    dataInici: p.dataInici.toISOString(),
+                    dataFi: p.dataFi.toISOString(),
+                    import: Number(p.import),
+                  })),
                 }))}
               />
             </CollapsibleCard>

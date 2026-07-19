@@ -27,7 +27,8 @@ export async function buildIngressosDespesesXlsx(
       orderBy: { data: 'asc' },
     }),
     prisma.gasto.findMany({
-      where: { data: { gte: monthStart, lte: monthEnd } },
+      // Les fiances/dipòsits pagats (esFianca) no són despesa: fora del P&L.
+      where: { esFianca: false, data: { gte: monthStart, lte: monthEnd } },
       include: { categoria: { select: { nom: true } }, proveidor: { select: { nom: true } } },
       orderBy: { data: 'asc' },
     }),
