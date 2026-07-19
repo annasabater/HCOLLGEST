@@ -24,8 +24,12 @@ function metodeFiltre(opts?: FinanceOpts): { metode?: { not: 'ALTRES' } } {
 interface EfectiuRow {
   import: number;
   metode: string;
+  data: Date; // data del cobrament/dipòsit (quan van pagar)
   estancia: {
     id: string;
+    dataEntrada: Date | null;
+    dataSortida: Date | null;
+    habitacio: { nom: string } | null;
     viatgers: { huesped: { nom: string; cognom1: string } | null }[];
   } | null;
 }
@@ -33,6 +37,9 @@ interface EfectiuRow {
 const titularSelDash = {
   select: {
     id: true,
+    dataEntrada: true,
+    dataSortida: true,
+    habitacio: { select: { nom: true } },
     viatgers: {
       where: { esTitular: true },
       take: 1,
@@ -64,7 +71,7 @@ async function cobramentsEfectius(start: Date, end: Date, opts?: FinanceOpts): P
         },
       ],
     },
-    select: { import: true, metode: true, periodes: { select: { dataInici: true, dataFi: true, import: true } }, estancia: titularSelDash },
+    select: { import: true, metode: true, data: true, periodes: { select: { dataInici: true, dataFi: true, import: true } }, estancia: titularSelDash },
   });
   return rows
     .map((c) => ({
@@ -73,6 +80,7 @@ async function cobramentsEfectius(start: Date, end: Date, opts?: FinanceOpts): P
           ? c.periodes.filter((p) => p.dataInici <= end && p.dataFi >= start).reduce((a, p) => a + Number(p.import), 0)
           : Number(c.import),
       metode: c.metode,
+      data: c.data,
       estancia: c.estancia,
     }))
     .filter((c) => c.import !== 0);
@@ -94,7 +102,7 @@ async function dipositsRetingutsEfectius(start: Date, end: Date, opts?: FinanceO
         },
       ],
     },
-    select: { import: true, metode: true, periodes: { select: { dataInici: true, dataFi: true, import: true } }, estancia: titularSelDash },
+    select: { import: true, metode: true, data: true, periodes: { select: { dataInici: true, dataFi: true, import: true } }, estancia: titularSelDash },
   });
   return rows
     .map((d) => ({
@@ -103,6 +111,7 @@ async function dipositsRetingutsEfectius(start: Date, end: Date, opts?: FinanceO
           ? d.periodes.filter((p) => p.dataInici <= end && p.dataFi >= start).reduce((a, p) => a + Number(p.import), 0)
           : Number(d.import),
       metode: d.metode,
+      data: d.data,
       estancia: d.estancia,
     }))
     .filter((d) => d.import !== 0);
@@ -508,23 +517,47 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
     .filter((x) => x.import !== 0)
     .sort((a, b) => b.import - a.import);
 
-  // Agrupa els moviments per estada/titular: ingressos (+) i devolucions (−).
-  const perPersona = new Map<string, { estanciaId: string | null; titular: string; ingressos: number; devolucions: number }>();
-  const afegeixMov = (estancia: EfectiuRow['estancia'], imp: number) => {
-    const key = estancia?.id ?? '—';
-    const h = estancia?.viatgers[0]?.huesped;
-    const cur = perPersona.get(key) ?? {
-      estanciaId: estancia?.id ?? null,
-      titular: h ? `${h.nom} ${h.cognom1}` : 'Sense titular',
-      ingressos: 0,
-      devolucions: 0,
-    };
-    if (imp >= 0) cur.ingressos = r2(cur.ingressos + imp);
-    else cur.devolucions = r2(cur.devolucions + Math.abs(imp));
+  // Agrupa els moviments per estada/titular: ingressos (+) i devolucions (−),
+  // amb l'habitació, el període d'estada i les dates en què van pagar.
+  interface MovPersona {
+    estanciaId: string | null;
+    titular: string;
+    ingressos: number;
+    devolucions: number;
+    habitacio: string | null;
+    dataEntrada: string | null;
+    dataSortida: string | null;
+    datesPagament: string[]; // ISO, dates dels ingressos (sense devolucions)
+  }
+  const perPersona = new Map<string, MovPersona>();
+  const afegeixMov = (row: EfectiuRow) => {
+    const est = row.estancia;
+    const key = est?.id ?? '—';
+    const h = est?.viatgers[0]?.huesped;
+    const cur =
+      perPersona.get(key) ??
+      ({
+        estanciaId: est?.id ?? null,
+        titular: h ? `${h.nom} ${h.cognom1}` : 'Sense titular',
+        ingressos: 0,
+        devolucions: 0,
+        habitacio: est?.habitacio?.nom ?? null,
+        dataEntrada: est?.dataEntrada ? est.dataEntrada.toISOString() : null,
+        dataSortida: est?.dataSortida ? est.dataSortida.toISOString() : null,
+        datesPagament: [],
+      } satisfies MovPersona);
+    if (row.import >= 0) {
+      cur.ingressos = r2(cur.ingressos + row.import);
+      const dia = row.data.toISOString().slice(0, 10);
+      if (!cur.datesPagament.some((d) => d.slice(0, 10) === dia)) cur.datesPagament.push(row.data.toISOString());
+    } else {
+      cur.devolucions = r2(cur.devolucions + Math.abs(row.import));
+    }
     perPersona.set(key, cur);
   };
-  for (const c of cobramentsRows) afegeixMov(c.estancia, c.import);
-  for (const d of retingutsRows) afegeixMov(d.estancia, d.import);
+  for (const c of cobramentsRows) afegeixMov(c);
+  for (const d of retingutsRows) afegeixMov(d);
+  for (const m of perPersona.values()) m.datesPagament.sort();
   const movimentsPerPersona = [...perPersona.values()].sort(
     (a, b) => b.ingressos - b.devolucions - (a.ingressos - a.devolucions),
   );

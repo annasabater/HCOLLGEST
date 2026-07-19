@@ -30,13 +30,27 @@ import { TrimestreIvaCard } from '@/components/balanc/trimestre-iva-card';
 import { Eur, HideAmountsButton, HideAmountsOnMount } from '@/components/finances/amounts-visibility';
 import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 
+/** Data curta "dd/mm/aa" a partir d'un ISO string. */
+function dataCurta(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
 interface Breakdowns {
   ingressosPerMetode: Record<string, number>;
   despesesPerCategoria: { categoria: string; import: number }[];
   ocupacio: number;
   adr: number;
   revpar: number;
-  movimentsPerPersona?: { estanciaId: string | null; titular: string; ingressos: number; devolucions: number }[];
+  movimentsPerPersona?: {
+    estanciaId: string | null;
+    titular: string;
+    ingressos: number;
+    devolucions: number;
+    habitacio?: string | null;
+    dataEntrada?: string | null;
+    dataSortida?: string | null;
+    datesPagament?: string[];
+  }[];
 }
 interface CustodiaItem {
   id: string;
@@ -297,6 +311,9 @@ function BreakdownsSection({ data }: { data: Breakdowns }) {
               <Thead>
                 <tr>
                   <Th>Titular</Th>
+                  <Th>Habitació</Th>
+                  <Th>Estada</Th>
+                  <Th>Pagat el</Th>
                   <Th className="text-right">Ingressos</Th>
                   <Th className="text-right">Devolucions</Th>
                   <Th className="text-right">Net</Th>
@@ -313,6 +330,17 @@ function BreakdownsSection({ data }: { data: Breakdowns }) {
                       ) : (
                         m.titular
                       )}
+                    </Td>
+                    <Td className="text-slate-600">{m.habitacio ? `Hab. ${m.habitacio}` : '—'}</Td>
+                    <Td className="whitespace-nowrap text-slate-600">
+                      {m.dataEntrada && m.dataSortida
+                        ? `${dataCurta(m.dataEntrada)} → ${dataCurta(m.dataSortida)}`
+                        : '—'}
+                    </Td>
+                    <Td className="whitespace-nowrap text-slate-600">
+                      {m.datesPagament && m.datesPagament.length > 0
+                        ? m.datesPagament.map(dataCurta).join(', ')
+                        : '—'}
                     </Td>
                     <Td className="text-right text-green-700"><Eur value={m.ingressos} /></Td>
                     <Td className="text-right text-red-700">
