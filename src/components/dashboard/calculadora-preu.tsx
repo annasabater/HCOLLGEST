@@ -37,17 +37,17 @@ export function CalculadoraPreu() {
   const [entrada, setEntrada] = useState(avui());
   const [sortida, setSortida] = useState(avui(1));
   const [grup, setGrup] = useState<GrupTarifa>('DOBLE');
-  const [temporadaId, setTemporadaId] = useState(''); // '' = automàtica (per temporada)
   const [res, setRes] = useState<Resultat | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function calcular(temp = temporadaId) {
+  async function calcular() {
     setLoading(true);
     setError(null);
     try {
+      // La temporada SEMPRE surt de les dates (partint per temporada si l'estada
+      // creua mesos): no s'envia cap temporada forçada.
       const p = new URLSearchParams({ grup, entrada, sortida });
-      if (temp) p.set('temporadaId', temp);
       const r = await getJSON<Resultat>(`/api/tarifes-tipus/calcular?${p.toString()}`);
       if (!r.ok) { setError(r.error ?? 'No s\'ha pogut calcular'); setRes(null); }
       else setRes(r);
@@ -58,13 +58,7 @@ export function CalculadoraPreu() {
     }
   }
 
-  function canviarTemporada(id: string) {
-    setTemporadaId(id);
-    void calcular(id);
-  }
-
   function onCanviBase() {
-    setTemporadaId('');
     setRes(null);
   }
 
@@ -107,14 +101,10 @@ export function CalculadoraPreu() {
           <div className="rounded-xl border border-slate-200 p-4">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <span className="text-sm text-slate-500">{res.nits} {res.nits === 1 ? 'nit' : 'nits'}</span>
-              {res.temporades.length > 0 && (
-                <label className="flex items-center gap-1.5 text-xs text-slate-500">
-                  Temporada:
-                  <Select className="h-8 py-0 text-xs" value={temporadaId} onChange={(e) => canviarTemporada(e.target.value)}>
-                    <option value="">Automàtica (per temporada)</option>
-                    {res.temporades.map((t) => <option key={t.id} value={t.id}>{t.etiqueta}</option>)}
-                  </Select>
-                </label>
+              {!multi && res.segments[0] && (
+                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600" title="Temporada segons les dates">
+                  {res.segments[0].etiqueta}
+                </span>
               )}
             </div>
 
