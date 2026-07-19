@@ -12,25 +12,19 @@ import { TIPUS_DOCUMENT_LABELS } from '@/lib/validation/enums';
 
 export const dynamic = 'force-dynamic';
 
-const COLORS = [
-  'bg-brand-100 text-brand-700',
-  'bg-violet-100 text-violet-700',
-  'bg-emerald-100 text-emerald-700',
-  'bg-sky-100 text-sky-700',
-  'bg-amber-100 text-amber-700',
-  'bg-rose-100 text-rose-700',
-];
+// El color de l'avatar indica l'estat actual del client:
+//  verd = hi és ara · taronja = hi és amb fiança (no oficial) · vermell = no hi és.
+const STATUS_COLOR = {
+  verd: 'bg-emerald-100 text-emerald-700',
+  taronja: 'bg-amber-100 text-amber-700',
+  vermell: 'bg-rose-100 text-rose-700',
+} as const;
+type EstatClient = keyof typeof STATUS_COLOR;
 
-function avatarColor(nom: string) {
-  const code = nom.charCodeAt(0) + (nom.charCodeAt(1) || 0);
-  return COLORS[code % COLORS.length];
-}
-
-function Inicials({ nom, cognom }: { nom: string; cognom: string }) {
+function Inicials({ nom, cognom, estat }: { nom: string; cognom: string; estat: EstatClient }) {
   const ini = (nom[0] ?? '') + (cognom[0] ?? '');
-  const color = avatarColor(cognom);
   return (
-    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold uppercase ${color}`}>
+    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold uppercase ${STATUS_COLOR[estat]}`}>
       {ini}
     </span>
   );
@@ -59,6 +53,7 @@ export default async function HuespedesPage({
   const perPagina = [10, 25, 50].includes(Number(perPaginaStr)) ? Number(perPaginaStr) : 25;
   const pagina = Math.max(1, Number(paginaStr) || 1);
   const total = await prisma.huesped.count({ where });
+  const now = new Date();
 
   const huespedes = await prisma.huesped.findMany({
     where,
@@ -69,6 +64,14 @@ export default async function HuespedesPage({
       _count: { select: { estancies: { where: { estancia: { deletedAt: null } } } } },
       anotacions: { where: { noAcollir: true, deletedAt: null }, select: { id: true }, take: 1 },
       animals: { where: { deletedAt: null }, select: { id: true }, take: 1 },
+      // Estades que cobreixen AVUI (per pintar l'estat: verd/taronja/vermell) +
+      // si tenen una fiança en custòdia (→ "no oficial", taronja).
+      estancies: {
+        where: {
+          estancia: { deletedAt: null, estat: { not: 'CANCELLADA' }, dataEntrada: { lte: now }, dataSortida: { gt: now } },
+        },
+        select: { estancia: { select: { diposits: { where: { estat: 'EN_CUSTODIA' }, select: { id: true }, take: 1 } } } },
+      },
     },
   });
 
@@ -101,6 +104,13 @@ export default async function HuespedesPage({
         </label>
       </form>
 
+      {/* Llegenda del color de l'avatar */}
+      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /> Hi és ara</span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> Hi és, amb fiança (no oficial)</span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-400" /> No hi és</span>
+      </div>
+
       {huespedes.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 py-16 text-center">
           <User className="h-10 w-10 text-slate-300" />
@@ -108,10 +118,14 @@ export default async function HuespedesPage({
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {huespedes.map((h) => (
+          {huespedes.map((h) => {
+            const estaAra = h.estancies.length > 0;
+            const teFianca = h.estancies.some((ev) => ev.estancia.diposits.length > 0);
+            const estat: EstatClient = estaAra ? (teFianca ? 'taronja' : 'verd') : 'vermell';
+            return (
             <Link key={h.id} href={`/huespedes/${h.id}`}
               className="group flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition-all hover:border-brand-300 hover:shadow-md">
-              <Inicials nom={h.nom} cognom={h.cognom1} />
+              <Inicials nom={h.nom} cognom={h.cognom1} estat={estat} />
               <div className="flex-1 min-w-0">
                 <p className="truncate font-semibold text-slate-900 group-hover:text-brand-700">
                   {h.cognom1} {h.cognom2 ?? ''}, {h.nom}
@@ -136,7 +150,8 @@ export default async function HuespedesPage({
                 </div>
               </div>
             </Link>
-          ))}
+            );
+          })}
         </div>
       )}
       <Paginacio total={total} pagina={pagina} perPagina={perPagina} />
