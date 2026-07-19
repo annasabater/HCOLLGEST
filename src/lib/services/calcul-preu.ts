@@ -16,6 +16,7 @@ import { GRUP_TARIFA, type GrupTarifa } from '../validation/tarifa-tipus';
 const n = (d: unknown) => (d == null ? null : Number(d));
 const r2 = (x: number) => Math.round((x + Number.EPSILON) * 100) / 100;
 const addDies = (d: Date, dies: number) => { const x = new Date(d); x.setDate(x.getDate() + dies); return x; };
+const MESOS_CA = ['gener', 'febrer', 'març', 'abril', 'maig', 'juny', 'juliol', 'agost', 'setembre', 'octubre', 'novembre', 'desembre'];
 
 export interface LiniaCalcul {
   concepte: string;
@@ -199,5 +200,110 @@ export async function calcularPreu(opts: {
       total: habitacions.length,
       habitacions,
     },
+  };
+}
+
+export interface PeriodeProposat {
+  etiqueta: string; // "Juliol 2026"
+  dataInici: string; // ISO (primera nit del mes dins l'estada)
+  dataFi: string; // ISO (última nit del mes dins l'estada)
+  nits: number;
+  import: number;
+}
+
+export interface PropostaPeriodes {
+  ok: boolean;
+  error?: string;
+  entrada: string;
+  sortida: string;
+  nits: number;
+  grup: GrupTarifa;
+  calculadoraTotal: number; // preu que proposaria la calculadora
+  importRepartit: number; // = l'import que ha posat l'usuari (suma dels períodes)
+  coincideix: boolean; // si l'import ≈ el de la calculadora
+  diferencia: number; // import − calculadoraTotal
+  periodes: PeriodeProposat[];
+}
+
+/**
+ * Proposa repartir un IMPORT (el que posa l'usuari de pagament/fiança) entre els
+ * MESOS naturals de l'estada, segons el pes de cada mes a la calculadora de preus
+ * (preu/nit efectiu × nits del mes). El total repartit sempre és l'import de
+ * l'usuari; la calculadora només serveix per pesar i per avisar si no quadra.
+ */
+export async function proposaPeriodesPerMes(estanciaId: string, importe: number): Promise<PropostaPeriodes> {
+  const fail = (error: string): PropostaPeriodes => ({
+    ok: false, error, entrada: '', sortida: '', nits: 0, grup: 'DOBLE',
+    calculadoraTotal: 0, importRepartit: 0, coincideix: false, diferencia: 0, periodes: [],
+  });
+
+  const est = await prisma.estancia.findFirst({
+    where: { id: estanciaId, deletedAt: null },
+    select: { dataEntrada: true, dataSortida: true, numViatgers: true, habitacio: { select: { tipus: true } } },
+  });
+  if (!est?.dataEntrada || !est?.dataSortida) return fail("L'estada no té dates d'entrada i sortida");
+  const entrada = est.dataEntrada;
+  const sortida = est.dataSortida;
+  const nitsTotal = nights(entrada, sortida);
+  if (nitsTotal <= 0) return fail('Dates no vàlides');
+
+  // Tipus d'habitació → grup de tarifa.
+  const tipus = est.habitacio?.tipus ?? '';
+  const grup: GrupTarifa = /ndividual/i.test(tipus)
+    ? 'INDIVIDUAL'
+    : (est.numViatgers ?? 2) <= 1 ? 'DOBLE_1P' : 'DOBLE';
+
+  const calc = await calcularPreu({ grup, entrada, sortida });
+  const calculadoraTotal = calc.total;
+
+  // Preu/nit efectiu de cada nit segons el segment (temporada/tram) que la cobreix.
+  const perNightDe = (dataISO: string): number => {
+    const seg = calc.segments.find((s) => dataISO >= s.desde && dataISO < s.fins);
+    if (!seg || seg.nits <= 0) return 1;
+    return seg.subtotal / seg.nits;
+  };
+
+  // Acumula per mes natural: pes (preu/nit × nits), nits, i primera/última nit.
+  const mesos = new Map<string, { any: number; mes: number; pes: number; nits: number; primera: Date; ultima: Date }>();
+  for (let i = 0; i < nitsTotal; i++) {
+    const d = addDies(entrada, i);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    const pes = perNightDe(toISODate(d));
+    const cur = mesos.get(key);
+    if (cur) { cur.pes += pes; cur.nits += 1; cur.ultima = d; }
+    else mesos.set(key, { any: d.getFullYear(), mes: d.getMonth(), pes, nits: 1, primera: d, ultima: d });
+  }
+
+  const ordenats = [...mesos.values()].sort((a, b) => (a.any - b.any) || (a.mes - b.mes));
+  const pesTotal = ordenats.reduce((a, m) => a + m.pes, 0) || 1;
+
+  // Reparteix EXACTAMENT `importe` segons el pes; l'últim mes absorbeix el residu
+  // d'arrodoniment perquè la suma quadri al cèntim.
+  const imp = r2(importe);
+  let acumulat = 0;
+  const periodes: PeriodeProposat[] = ordenats.map((m, idx) => {
+    const isUltim = idx === ordenats.length - 1;
+    const valor = isUltim ? r2(imp - acumulat) : r2((imp * m.pes) / pesTotal);
+    acumulat = r2(acumulat + valor);
+    return {
+      etiqueta: `${MESOS_CA[m.mes]} ${m.any}`,
+      dataInici: toISODate(m.primera),
+      dataFi: toISODate(m.ultima),
+      nits: m.nits,
+      import: valor,
+    };
+  });
+
+  return {
+    ok: true,
+    entrada: toISODate(entrada),
+    sortida: toISODate(sortida),
+    nits: nitsTotal,
+    grup,
+    calculadoraTotal,
+    importRepartit: imp,
+    coincideix: Math.abs(imp - calculadoraTotal) <= 0.5,
+    diferencia: r2(imp - calculadoraTotal),
+    periodes,
   };
 }

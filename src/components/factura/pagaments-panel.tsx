@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Trash2, Undo2, ShieldCheck, ChevronDown, Pencil, Check, X } from 'lucide-react';
+import { Plus, Trash2, Undo2, ShieldCheck, ChevronDown, Pencil, Check, X, CalendarRange } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
+import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { formatEur, formatDate } from '@/lib/utils';
 import {
   optionsFrom,
@@ -94,7 +94,38 @@ export function PagamentsPanel({
   // compti l'ingrés en el mes que correspon i no en el dia que es cobra.
   const [desglossar, setDesglossar] = useState(false);
   const [periodes, setPeriodes] = useState<{ dataInici: string; dataFi: string; import: string }[]>([]);
+  const [proposant, setProposant] = useState(false);
+  const [propostaMsg, setPropostaMsg] = useState<string | null>(null);
   const sumaPeriodes = periodes.reduce((a, p) => a + (Number(p.import) || 0), 0);
+
+  // Proposa repartir l'import (el que has posat) entre els mesos de l'estada,
+  // segons el pes de la calculadora de preus. Omple els períodes editables.
+  async function proposarPerMesos() {
+    const imp = Number(importVal);
+    if (!imp || imp <= 0) { setError("Posa primer l'import a repartir."); return; }
+    setProposant(true);
+    setError(null);
+    setPropostaMsg(null);
+    try {
+      const r = await getJSON<{
+        ok: boolean; error?: string; nits: number; calculadoraTotal: number; coincideix: boolean; diferencia: number;
+        periodes: { etiqueta: string; dataInici: string; dataFi: string; nits: number; import: number }[];
+      }>(`/api/estancies/${estanciaId}/proposta-periodes?import=${encodeURIComponent(imp)}`);
+      if (!r.ok || r.periodes.length === 0) { setError(r.error ?? 'No s\'ha pogut proposar el repartiment.'); return; }
+      setDesglossar(true);
+      setPeriodes(r.periodes.map((p) => ({ dataInici: p.dataInici, dataFi: p.dataFi, import: p.import.toFixed(2) })));
+      const calc = r.calculadoraTotal.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      setPropostaMsg(
+        r.coincideix
+          ? `Repartit en ${r.periodes.length} mes(os) segons la calculadora (que dóna ${calc} €, quadra amb el que has posat).`
+          : `Repartit en ${r.periodes.length} mes(os). Atenció: la calculadora donaria ${calc} € (${r.diferencia >= 0 ? '+' : ''}${r.diferencia.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € de diferència amb el que has posat). S'ha repartit EL TEU import; revisa'l si cal.`,
+      );
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Error proposant el repartiment');
+    } finally {
+      setProposant(false);
+    }
+  }
   const afegirPeriode = () => setPeriodes((p) => [...p, { dataInici: '', dataFi: '', import: '' }]);
   const actualitzaPeriode = (i: number, patch: Partial<{ dataInici: string; dataFi: string; import: string }>) =>
     setPeriodes((p) => p.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
@@ -133,6 +164,7 @@ export function PagamentsPanel({
     setAltreText('');
     setDesglossar(false);
     setPeriodes([]);
+    setPropostaMsg(null);
     setError(null);
     setOpen(true);
   }
@@ -591,13 +623,21 @@ export function PagamentsPanel({
             )}
           </div>
 
-          <label className="flex items-center gap-2 text-xs text-slate-600">
-            <input type="checkbox" checked={desglossar} onChange={(e) => { setDesglossar(e.target.checked); if (e.target.checked && periodes.length === 0) afegirPeriode(); }} />
-            Repartir per període d&apos;estada (perquè a comptabilitat compti cada mes per separat)
-          </label>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label className="flex items-center gap-2 text-xs text-slate-600">
+              <input type="checkbox" checked={desglossar} onChange={(e) => { setDesglossar(e.target.checked); if (e.target.checked && periodes.length === 0) afegirPeriode(); }} />
+              Repartir per període d&apos;estada (perquè a comptabilitat compti cada mes per separat)
+            </label>
+            <Button type="button" size="sm" variant="outline" onClick={proposarPerMesos} disabled={proposant || !importVal}>
+              <CalendarRange className="h-4 w-4" /> {proposant ? 'Calculant…' : 'Proposar per mesos'}
+            </Button>
+          </div>
 
           {desglossar && (
             <div className="space-y-1.5 rounded-lg bg-slate-50 p-2">
+              {propostaMsg && (
+                <p className="rounded-md bg-brand-50 px-2 py-1.5 text-xs text-brand-800">{propostaMsg}</p>
+              )}
               {periodes.map((p, i) => (
                 <div key={i} className="flex flex-wrap items-center gap-1.5">
                   <Input
