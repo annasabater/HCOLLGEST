@@ -26,6 +26,7 @@ import { BalancChart } from '@/components/balanc/balanc-chart';
 import { BalancLineChart } from '@/components/balanc/balanc-line-chart';
 import { Donut } from '@/components/balanc/donut';
 import { FinancesNav } from '@/components/balanc/finances-nav';
+import { TrimestreIvaCard } from '@/components/balanc/trimestre-iva-card';
 import { Eur, HideAmountsButton, HideAmountsOnMount } from '@/components/finances/amounts-visibility';
 import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 
@@ -552,6 +553,8 @@ export default function BalancPage() {
       />
 
       <FinancesNav />
+
+      {!restringit && <TrimestreIvaCard />}
 
       {mode === 'mes' ? (
         <div className="space-y-6">
