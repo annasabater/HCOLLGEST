@@ -429,7 +429,7 @@ function GastosVariablesTab() {
                   onChange={(e) => setNova({ ...nova, esFianca: e.target.checked })}
                 />
                 <span>
-                  <span className="font-medium text-amber-800">És una fiança / dipòsit (recuperable)</span>
+                  <span className="font-medium text-amber-800">És una fiança</span>
                   <span className="block text-xs text-amber-700/80">
                     No es comptarà com a despesa al balanç. Quan la vulguis declarar, desmarca-la (passa a despesa real).
                   </span>
