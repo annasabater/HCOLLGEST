@@ -1146,6 +1146,27 @@ model TarifaTipus {
   @@map("tarifa_tipus")
 }
 
+// Llibre d'IVA trimestral (ingressos) DESAT: instantània editable d'un trimestre.
+// Es genera de les factures, l'usuari el pot editar a la impressió i desar-lo;
+// queda un registre de tots els trimestres desats (un per període, s'actualitza).
+model LlibreIvaTrimestre {
+  id         String   @id @default(cuid())
+  periode    String   @unique // "2026-3"
+  any        Int
+  trimestre  Int
+  etiqueta   String
+  files      Json // files editades (array de FilaIngres)
+  totalBase  Decimal  @db.Decimal(12, 2)
+  totalIva   Decimal  @db.Decimal(12, 2)
+  totalTotal Decimal  @db.Decimal(12, 2)
+  usuariId   String?  @map("usuari_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("llibre_iva_trimestre")
+}
+
 // ----------------------------------------------------------------------------
 // K. MANTENIMENT (incidències / avaries per habitació)
 // ----------------------------------------------------------------------------
