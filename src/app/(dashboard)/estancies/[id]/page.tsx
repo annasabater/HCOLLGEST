@@ -314,7 +314,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 const h = ev.huesped;
                 return (
                   <div key={ev.id} className="rounded-lg border border-slate-200 p-4">
-                    <div className="mb-3 flex items-center justify-between">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                       <Link href={`/huespedes/${h.id}`} className="font-medium text-slate-900 hover:underline">
                         {h.nom} {h.cognom1} {h.cognom2 ?? ''}
                         {ev.esTitular && <Badge tone="info" className="ml-2">Titular</Badge>}

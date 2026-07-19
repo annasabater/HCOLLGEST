@@ -162,42 +162,47 @@ export function EmailsPanel({
 
   return (
     <div className="space-y-4">
-      {/* Botons principals */}
+      {/* Botons principals — a mòbil ocupen tota l'amplada i s'apilen; a partir de
+          `sm` flueixen en fila i fan salt de línia si cal. */}
       {form === null && (
-        <div className="flex flex-wrap gap-2">
-          {/* Benvinguda → WhatsApp directe */}
-          <div className="flex items-center gap-2">
-            <Select
-              value={lang}
-              onChange={(e) => setLang(e.target.value as LangEmail)}
-              className="h-8 w-28 text-xs"
-            >
-              {LANGS.map((l) => (
-                <option key={l.code} value={l.code}>{l.label}</option>
-              ))}
-            </Select>
-            <Button
-              type="button"
-              size="sm"
-              disabled={!titularTelefon}
-              title={titularTelefon ? undefined : 'El titular no té telèfon'}
-              onClick={openWhatsAppBenvinguda}
-              className="bg-green-600 hover:bg-green-700 text-white border-green-600"
-            >
-              <MessageCircle className="h-4 w-4" /> Benvinguda WhatsApp
-            </Button>
-          </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <Select
+            value={lang}
+            onChange={(e) => setLang(e.target.value as LangEmail)}
+            className="h-9 w-full text-xs sm:w-28"
+            aria-label="Idioma del missatge"
+          >
+            {LANGS.map((l) => (
+              <option key={l.code} value={l.code}>{l.label}</option>
+            ))}
+          </Select>
+          <Button
+            type="button"
+            size="sm"
+            disabled={!titularTelefon}
+            title={titularTelefon ? undefined : 'El titular no té telèfon'}
+            onClick={openWhatsAppBenvinguda}
+            className="w-full justify-center bg-green-600 hover:bg-green-700 text-white border-green-600 sm:w-auto"
+          >
+            <MessageCircle className="h-4 w-4" /> Benvinguda WhatsApp
+          </Button>
           <Button
             type="button"
             size="sm"
             disabled={!titularTelefon}
             title={titularTelefon ? undefined : 'El titular no té telèfon'}
             onClick={openWhatsAppGracies}
-            className="bg-green-600 hover:bg-green-700 text-white border-green-600"
+            className="w-full justify-center bg-green-600 hover:bg-green-700 text-white border-green-600 sm:w-auto"
           >
             <MessageCircle className="h-4 w-4" /> Gràcies WhatsApp
           </Button>
-          <Button type="button" size="sm" variant="outline" onClick={() => openForm('gracies')}>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => openForm('gracies')}
+            className="w-full justify-center sm:w-auto"
+          >
             <Plus className="h-4 w-4" /> Email de gràcies
           </Button>
         </div>
