@@ -12,6 +12,7 @@ import { teVistaRestringida } from '@/lib/auth/restriccions';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BenvingudesPendents } from '@/components/dashboard/benvingudes-pendents';
+import { CalculadoraPreu } from '@/components/dashboard/calculadora-preu';
 import { GlobalSearch } from '@/components/layout/global-search';
 import { DescartarAvisMossos } from '@/components/estancia/descartar-avis-mossos';
 import { formatDate, formatEur } from '@/lib/utils';
@@ -86,6 +87,8 @@ export default async function DashboardPage() {
         </div>
         <GlobalSearch />
       </div>
+
+      <CalculadoraPreu />
 
       <BenvingudesPendents
         pendents={resum.benvingudes.pendents}
