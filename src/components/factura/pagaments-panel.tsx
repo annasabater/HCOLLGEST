@@ -261,7 +261,7 @@ export function PagamentsPanel({
     }
   }
 
-  async function resoldreFianca(id: string, estat: 'TORNAT' | 'RETINGUT') {
+  async function resoldreFianca(id: string, estat: 'TORNAT' | 'RETINGUT' | 'EN_CUSTODIA') {
     const motiu =
       estat === 'RETINGUT' ? (window.prompt('Motiu de la retenció (opcional):') ?? undefined) : undefined;
     try {
@@ -505,13 +505,31 @@ export function PagamentsPanel({
           {fiancaOberta && (
             <div className="mt-2 space-y-1">
               {fiances.filter((f) => f.estat !== 'EN_CUSTODIA').map((f) => (
-                <div key={f.id} className="flex items-center justify-between rounded-lg px-3 py-1.5 text-sm text-slate-500">
+                <div key={f.id} className="flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-sm text-slate-500">
                   <span>
                     {formatEur(f.import)}{f.notes ? ` · ${f.notes}` : ''} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
                   </span>
-                  <Badge tone={f.estat === 'RETINGUT' ? 'success' : 'neutral'}>
-                    {FIANCA_ESTAT_LABEL[f.estat]}
-                  </Badge>
+                  <div className="flex items-center gap-1.5">
+                    <Badge tone={f.estat === 'RETINGUT' ? 'success' : 'neutral'}>
+                      {FIANCA_ESTAT_LABEL[f.estat]}
+                    </Badge>
+                    <button
+                      type="button"
+                      className="text-slate-400 hover:text-amber-700"
+                      title="Tornar a custòdia (desfer la resolució; deixa de comptar com a ingrés)"
+                      onClick={(e) => { e.preventDefault(); resoldreFianca(f.id, 'EN_CUSTODIA'); }}
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      className="text-slate-400 hover:text-red-600"
+                      title="Eliminar aquesta fiança"
+                      onClick={(e) => { e.preventDefault(); eliminarFianca(f.id); }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
