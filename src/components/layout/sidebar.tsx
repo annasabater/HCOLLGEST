@@ -16,6 +16,8 @@ import {
   UserCog,
   Truck,
   Receipt,
+  Tag,
+  Wallet,
 } from 'lucide-react';
 import type { Role } from '@prisma/client';
 import { cn } from '@/lib/utils';
@@ -52,10 +54,12 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: '/plantilles', label: 'Plantilles', icon: MessageCircle },
       { href: '/valoracions', label: 'Valoracions', icon: Star },
-      { href: '/serveis', label: 'Proveïdors i serveis', icon: Truck },
-{ href: '/personal', label: 'Treballadors', icon: UserCog, roles: ['ADMIN'], hideRestringit: true },
-      { href: '/balanc', label: 'Comptabilitat', icon: PiggyBank, roles: ['ADMIN'] },
+      { href: '/personal', label: 'Treballadors', icon: UserCog, roles: ['ADMIN'], hideRestringit: true },
+      { href: '/balanc', label: 'Balanç', icon: PiggyBank, roles: ['ADMIN'] },
       { href: '/factures', label: 'Facturació', icon: Receipt },
+      { href: '/tarifes', label: 'Tarifes', icon: Tag, roles: ['ADMIN'] },
+      { href: '/gastos', label: 'Despeses', icon: Wallet },
+      { href: '/serveis', label: 'Proveïdors i serveis', icon: Truck },
       { href: '/justificants', label: 'Justificants', icon: FileCheck },
     ],
   },
