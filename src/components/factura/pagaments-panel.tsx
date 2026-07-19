@@ -414,32 +414,34 @@ export function PagamentsPanel({
                 </div>
               </div>
             ) : (
-              <div
-                key={f.id}
-                className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2 text-sm"
-              >
-                <span className="font-medium text-slate-800">{formatEur(f.import)}</span>
-                <span className="text-slate-400">
-                  · {f.notes ?? 'Fiança'} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
-                </span>
-                <div className="ml-auto flex items-center gap-1">
-                  <button
-                    type="button"
-                    className="text-slate-400 hover:text-brand-600"
-                    onClick={(e) => { e.preventDefault(); startEditFianca(f); }}
-                    title="Editar"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    className="text-slate-400 hover:text-red-600"
-                    onClick={(e) => { e.preventDefault(); eliminarFianca(f.id); }}
-                    title="Eliminar"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+              <div key={f.id} className="rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-slate-800">{formatEur(f.import)}</span>
+                  <span className="text-slate-400">
+                    · {f.notes ?? 'Fiança'} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
+                  </span>
+                  <div className="ml-auto flex items-center gap-1">
+                    <button
+                      type="button"
+                      className="text-slate-400 hover:text-brand-600"
+                      onClick={(e) => { e.preventDefault(); startEditFianca(f); }}
+                      title="Editar"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      className="text-slate-400 hover:text-red-600"
+                      onClick={(e) => { e.preventDefault(); eliminarFianca(f.id); }}
+                      title="Eliminar"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
+                {periodesResum(f.periodes) && (
+                  <p className="mt-0.5 text-xs text-amber-700/70">{periodesResum(f.periodes)}</p>
+                )}
               </div>
             )
           )}
