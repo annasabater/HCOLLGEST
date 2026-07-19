@@ -9,14 +9,16 @@ import { formatEur } from '@/lib/utils';
 import { GRUP_TARIFA, GRUP_TARIFA_LABELS, type GrupTarifa } from '@/lib/validation/tarifa-tipus';
 
 interface Linia { concepte: string; quantitat: number; preuUnitat: number; subtotal: number }
+interface Segment { etiqueta: string; desde: string; fins: string; nits: number; linies: Linia[]; subtotal: number }
 interface Resultat {
   ok: boolean;
   error?: string;
   nits: number;
+  grup: GrupTarifa;
   grupUsat: GrupTarifa;
-  temporada: { id: string; etiqueta: string } | null;
   temporades: { id: string; etiqueta: string }[];
-  linies: Linia[];
+  temporadaForcada: string | null;
+  segments: Segment[];
   total: number;
   nota: string | null;
   disponibilitat: { tipus: string; lliures: number; total: number; habitacions: { nom: string; lliure: boolean; ocupadaPer: string | null }[] } | null;
@@ -27,26 +29,28 @@ function avui(offset = 0): string {
   d.setDate(d.getDate() + offset);
   return d.toISOString().slice(0, 10);
 }
+function fmt(iso: string): string {
+  return new Date(iso + 'T12:00:00').toLocaleDateString('ca-ES', { day: '2-digit', month: '2-digit' });
+}
 
 export function CalculadoraPreu() {
   const [entrada, setEntrada] = useState(avui());
   const [sortida, setSortida] = useState(avui(1));
   const [grup, setGrup] = useState<GrupTarifa>('DOBLE');
-  const [temporadaId, setTemporadaId] = useState('');
+  const [temporadaId, setTemporadaId] = useState(''); // '' = automàtica (per temporada)
   const [res, setRes] = useState<Resultat | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function calcular(tempOverride?: string) {
+  async function calcular(temp = temporadaId) {
     setLoading(true);
     setError(null);
     try {
       const p = new URLSearchParams({ grup, entrada, sortida });
-      const t = tempOverride ?? temporadaId;
-      if (t) p.set('temporadaId', t);
+      if (temp) p.set('temporadaId', temp);
       const r = await getJSON<Resultat>(`/api/tarifes-tipus/calcular?${p.toString()}`);
       if (!r.ok) { setError(r.error ?? 'No s\'ha pogut calcular'); setRes(null); }
-      else { setRes(r); if (!tempOverride && r.temporada) setTemporadaId(r.temporada.id); }
+      else setRes(r);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Error calculant el preu');
     } finally {
@@ -56,14 +60,15 @@ export function CalculadoraPreu() {
 
   function canviarTemporada(id: string) {
     setTemporadaId(id);
-    void calcular(id || undefined);
+    void calcular(id);
   }
 
   function onCanviBase() {
-    // Canviar dates o tipus reinicia la temporada a "automàtica".
     setTemporadaId('');
     setRes(null);
   }
+
+  const multi = (res?.segments.length ?? 0) > 1;
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -106,28 +111,44 @@ export function CalculadoraPreu() {
                 <label className="flex items-center gap-1.5 text-xs text-slate-500">
                   Temporada:
                   <Select className="h-8 py-0 text-xs" value={temporadaId} onChange={(e) => canviarTemporada(e.target.value)}>
+                    <option value="">Automàtica (per temporada)</option>
                     {res.temporades.map((t) => <option key={t.id} value={t.id}>{t.etiqueta}</option>)}
                   </Select>
                 </label>
               )}
             </div>
-            <table className="w-full text-sm">
-              <tbody>
-                {res.linies.map((l, i) => (
-                  <tr key={i} className="border-b border-slate-100 last:border-0">
-                    <td className="py-1.5 text-slate-700">{l.concepte}</td>
-                    <td className="py-1.5 text-center text-slate-400">×{l.quantitat}</td>
-                    <td className="py-1.5 text-right text-slate-500">{formatEur(l.preuUnitat)}</td>
-                    <td className="py-1.5 text-right font-medium text-slate-800">{formatEur(l.subtotal)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+            {res.segments.map((s, si) => (
+              <div key={si} className={multi ? 'mb-2 rounded-lg bg-slate-50 p-2' : ''}>
+                {multi && (
+                  <div className="mb-1 flex items-center justify-between text-xs">
+                    <span className="font-medium text-brand-700">{s.etiqueta}</span>
+                    <span className="text-slate-400">Del {fmt(s.desde)} al {fmt(s.fins)} · {s.nits} {s.nits === 1 ? 'nit' : 'nits'}</span>
+                  </div>
+                )}
+                <table className="w-full text-sm">
+                  <tbody>
+                    {s.linies.map((l, i) => (
+                      <tr key={i} className="border-b border-slate-100 last:border-0">
+                        <td className="py-1.5 text-slate-700">{l.concepte}</td>
+                        <td className="py-1.5 text-center text-slate-400">×{l.quantitat}</td>
+                        <td className="py-1.5 text-right text-slate-500">{formatEur(l.preuUnitat)}</td>
+                        <td className="py-1.5 text-right font-medium text-slate-800">{formatEur(l.subtotal)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {multi && (
+                  <div className="mt-1 text-right text-xs text-slate-500">Subtotal: <strong>{formatEur(s.subtotal)}</strong></div>
+                )}
+              </div>
+            ))}
+
             <div className="mt-2 flex items-center justify-between border-t-2 border-brand-700 pt-2">
               <span className="font-serif text-base text-slate-800">Total</span>
               <span className="text-xl font-bold text-brand-800">{formatEur(res.total)}</span>
             </div>
-            {res.grupUsat !== grup && (
+            {res.grupUsat !== res.grup && (
               <p className="mt-1 text-xs text-amber-700">Aplicant tarifa d&apos;Habitació Doble.</p>
             )}
             {res.nota && <p className="mt-1 text-xs text-slate-400">{res.nota}</p>}
