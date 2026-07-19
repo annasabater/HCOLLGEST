@@ -388,7 +388,7 @@ export type Resum = Awaited<ReturnType<typeof getResum>>;
  * retencions en custòdia, i el total amb retencions, més despeses i benefici.
  */
 export async function getBalanc(monthStart: Date, monthEnd: Date, opts?: FinanceOpts) {
-  const [cobramentsRows, retingutsRows, custodiaAgg, despesesAgg, personalAgg] = await Promise.all([
+  const [cobramentsRows, retingutsRows, custodiaAgg, despesesAgg, despesesFiancaAgg, personalAgg] = await Promise.all([
     cobramentsEfectius(monthStart, monthEnd, opts),
     dipositsRetingutsEfectius(monthStart, monthEnd, opts),
     prisma.diposit.aggregate({
@@ -398,6 +398,11 @@ export async function getBalanc(monthStart: Date, monthEnd: Date, opts?: Finance
     prisma.gasto.aggregate({
       _sum: { import: true },
       where: { deletedAt: null, esFianca: false, data: { gte: monthStart, lte: monthEnd } },
+    }),
+    // Fiances/dipòsits PAGATS (esFianca): despeses recuperables, fora del benefici real.
+    prisma.gasto.aggregate({
+      _sum: { import: true },
+      where: { deletedAt: null, esFianca: true, data: { gte: monthStart, lte: monthEnd } },
     }),
     prisma.jornada.aggregate({ _sum: { import: true }, where: { data: { gte: monthStart, lte: monthEnd } } }),
   ]);
@@ -410,6 +415,7 @@ export async function getBalanc(monthStart: Date, monthEnd: Date, opts?: Finance
   const retencions = num(custodiaAgg); // dipòsits en custòdia (no són ingrés)
   const ingressos = r2(cobraments + retinguts);
   const despeses = num(despesesAgg);
+  const despesesFianca = num(despesesFiancaAgg); // fiances pagades (recuperables)
   const personal = num(personalAgg);
 
   // Detall dels dipòsits en custòdia del mes: de qui són i de quina estada.
@@ -448,6 +454,7 @@ export async function getBalanc(monthStart: Date, monthEnd: Date, opts?: Finance
     retencions, // el que es reté (en custòdia)
     ingressosAmbRetencions,
     despeses,
+    despesesFianca, // fiances/dipòsits pagats (recuperables, fora del benefici real)
     personal,
     // Benefici real = Ingressos − Despeses (personal inclòs). La versió "+ fiança"
     // es mostra a part (benefici + retencions) perquè la fiança és retornable.
@@ -588,6 +595,7 @@ export async function getBalancAny(year: number, opts?: FinanceOpts) {
       retencions: sum('retencions'),
       ingressosAmbRetencions: sum('ingressosAmbRetencions'),
       despeses: sum('despeses'),
+      despesesFianca: sum('despesesFianca'),
       personal: sum('personal'),
       benefici: sum('benefici'),
     },

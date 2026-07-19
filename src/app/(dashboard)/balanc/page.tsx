@@ -66,6 +66,7 @@ interface Balanc extends Breakdowns {
   retencions: number;
   ingressosAmbRetencions: number;
   despeses: number;
+  despesesFianca: number;
   personal: number;
   benefici: number;
   custodiaDetall: CustodiaItem[];
@@ -76,6 +77,7 @@ interface MesRow {
   retencions: number;
   ingressosAmbRetencions: number;
   despeses: number;
+  despesesFianca: number;
   personal: number;
   benefici: number;
 }
@@ -607,6 +609,7 @@ export default function BalancPage() {
                 {!restringit && (
                   <>
                     <Kpi label="Ingressos + fiança" value={<Eur value={mes.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
+                    <Kpi label="Despeses + fiança" value={<Eur value={mes.despeses + mes.personal + mes.despesesFianca} />} icon={TrendingDown} color="text-red-600" />
                     <Kpi
                       label="Benefici + fiança"
                       value={<Eur value={mes.benefici + mes.retencions} />}
@@ -692,6 +695,7 @@ export default function BalancPage() {
                 {!restringit && (
                   <>
                     <Kpi label="Ingressos + fiança" value={<Eur value={rang.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
+                    <Kpi label="Despeses + fiança" value={<Eur value={rang.despeses + rang.personal + rang.despesesFianca} />} icon={TrendingDown} color="text-red-600" />
                     <Kpi label="Benefici + fiança" value={<Eur value={rang.benefici + rang.retencions} />} icon={Wallet} color={rang.benefici + rang.retencions >= 0 ? 'text-green-600' : 'text-red-600'} big />
                   </>
                 )}
@@ -743,6 +747,7 @@ export default function BalancPage() {
                 {!restringit && (
                   <>
                     <Kpi label="Ingressos + fiança" value={<Eur value={any.totals.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
+                    <Kpi label="Despeses + fiança" value={<Eur value={any.totals.despeses + any.totals.personal + any.totals.despesesFianca} />} icon={TrendingDown} color="text-red-600" />
                     <Kpi label="Benefici + fiança" value={<Eur value={any.totals.benefici + any.totals.retencions} />} icon={Wallet} color={any.totals.benefici + any.totals.retencions >= 0 ? 'text-green-600' : 'text-red-600'} big />
                   </>
                 )}
