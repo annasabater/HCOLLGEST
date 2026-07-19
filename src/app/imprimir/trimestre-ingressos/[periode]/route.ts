@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
-import { getLlibreIngressos, type FilaIngres } from '@/lib/services/llibre-iva';
+import { getLlibreIngressos, getGastosSoportats, type FilaIngres, type FilaGasto } from '@/lib/services/llibre-iva';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +20,10 @@ interface FilaEdit {
   data: string; numeroSimple: string; numeroFiscal: string; client: string; periode: string;
   base: number; ivaPercent: number; iva: number; total: number;
 }
+interface FilaGastoEdit {
+  data: string; nif: string; proveidor: string; numFactura: string;
+  base: number; ivaPercent: number; iva: number; total: number;
+}
 
 export async function GET(_req: Request, ctx: { params: Promise<{ periode: string }> }) {
   const user = await getSessionUser();
@@ -36,6 +40,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   const desat = await prisma.llibreIvaTrimestre.findUnique({ where: { periode } });
   let etiqueta: string;
   let rows: FilaEdit[];
+  let gastos: FilaGastoEdit[];
   if (desat) {
     etiqueta = desat.etiqueta;
     rows = (desat.files as unknown as FilaEdit[]).map((f) => ({
@@ -43,12 +48,29 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       client: String(f.client ?? ''), periode: String(f.periode ?? ''),
       base: Number(f.base ?? 0), ivaPercent: Number(f.ivaPercent ?? 0), iva: Number(f.iva ?? 0), total: Number(f.total ?? 0),
     }));
+    // Si ja s'havien desat gastos, es carreguen; si no (llibre desat abans que
+    // existís la part de despeses), es generen dels gastos del trimestre.
+    const gDesat = desat.gastos as unknown as FilaGastoEdit[] | null;
+    gastos = gDesat
+      ? gDesat.map((g) => ({
+          data: String(g.data ?? ''), nif: String(g.nif ?? ''), proveidor: String(g.proveidor ?? ''),
+          numFactura: String(g.numFactura ?? ''), base: Number(g.base ?? 0), ivaPercent: Number(g.ivaPercent ?? 0),
+          iva: Number(g.iva ?? 0), total: Number(g.total ?? 0),
+        }))
+      : (await getGastosSoportats(year, trimestre)).map((g: FilaGasto) => ({
+          data: fmtData(g.data), nif: g.nif, proveidor: g.proveidor, numFactura: g.numFactura,
+          base: g.base, ivaPercent: g.ivaPercent, iva: g.iva, total: g.total,
+        }));
   } else {
     const llibre = await getLlibreIngressos(year, trimestre);
     etiqueta = llibre.etiqueta;
     rows = llibre.files.map((f: FilaIngres) => ({
       data: fmtData(f.data), numeroSimple: f.numeroSimple, numeroFiscal: f.numeroFiscal, client: f.client,
       periode: f.periode, base: f.base, ivaPercent: f.ivaPercent, iva: f.iva, total: f.total,
+    }));
+    gastos = (await getGastosSoportats(year, trimestre)).map((g: FilaGasto) => ({
+      data: fmtData(g.data), nif: g.nif, proveidor: g.proveidor, numFactura: g.numFactura,
+      base: g.base, ivaPercent: g.ivaPercent, iva: g.iva, total: g.total,
     }));
   }
   const desatAt = desat ? fmtData(desat.updatedAt.toISOString()) : '';
@@ -66,6 +88,20 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       <td class="c-n"><input class="in n f-ivap" inputmode="decimal" value="${f.ivaPercent}"></td>
       <td class="c-n"><input class="in n f-iva" inputmode="decimal" value="${num(f.iva)}"></td>
       <td class="c-n"><input class="in n f-total" inputmode="decimal" value="${num(f.total)}"></td>
+      <td class="c-del"><button class="del" type="button" title="Eliminar fila">×</button></td>
+    </tr>`;
+
+  // Fila editable de "Facturas recibidas · soportadas" (despeses).
+  const filaGasto = (g: FilaGastoEdit) => `
+    <tr class="gitem">
+      <td><input class="in g-data" value="${esc(g.data)}"></td>
+      <td><input class="in g-nif" value="${esc(g.nif)}"></td>
+      <td><input class="in g-prov" value="${esc(g.proveidor)}"></td>
+      <td><input class="in g-numf" value="${esc(g.numFactura)}"></td>
+      <td class="c-n"><input class="in n g-base" inputmode="decimal" value="${num(g.base)}"></td>
+      <td class="c-n"><input class="in n g-ivap" inputmode="decimal" value="${g.ivaPercent}"></td>
+      <td class="c-n"><input class="in n g-iva" inputmode="decimal" value="${num(g.iva)}"></td>
+      <td class="c-n"><input class="in n g-total" inputmode="decimal" value="${num(g.total)}"></td>
       <td class="c-del"><button class="del" type="button" title="Eliminar fila">×</button></td>
     </tr>`;
 
@@ -201,8 +237,70 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       <div class="resum-row"><span>IVA repercutido (10%)</span><span id="r-iva">0,00 €</span></div>
       <div class="resum-row grand"><span>Total ingresos</span><span id="r-total">0,00 €</span></div>
     </div>
-    <p class="note">IVA repercutido del trimestre: <span id="r-iva2">0,00</span> €. El IVA soportado (facturas
-    recibidas) y el resultado a ingresar/compensar se calcularán cuando los gastos incluyan el desglose de IVA.</p>
+  </div>
+
+  <!-- ── Facturas recibidas - soportadas (EDITABLE) ──────────────────── -->
+  <div class="sheet">
+    <div class="brand">HOSTAL COLL</div>
+    <div class="brand-sub">Casa de Hostes · Calella</div>
+    <div class="rule"></div>
+    <div class="period">${esc(etiqueta)}</div>
+    <div class="doc-title">Facturas recibidas · Soportadas</div>
+    <table id="gastos">
+      <thead>
+        <tr>
+          <th>Fecha</th><th>NIF</th><th>Proveedor</th><th>Nº factura</th>
+          <th class="n">Base imponible</th><th class="n">% IVA</th><th class="n">IVA</th><th class="n">Total</th><th></th>
+        </tr>
+      </thead>
+      <tbody>${gastos.map(filaGasto).join('')}</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4" class="lab">Total…</td>
+          <td class="c-n" id="g-base">0,00</td>
+          <td></td>
+          <td class="c-n" id="g-iva">0,00</td>
+          <td class="c-n" id="g-total">0,00</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+    <div class="add"><button id="addGasto" type="button">+ Afegir despesa</button></div>
+    <p class="note">Per defecte les despeses es calculen amb IVA 21% inclòs. Si alguna és al 10%, exempta o
+    sense IVA, corregeix el %IVA i l'IVA a la mateixa fila. El nº de factura del proveïdor s'omple a mà.</p>
+  </div>
+
+  <!-- ── Resumen IVA: Repercutido / Soportado → a ingresar ───────────── -->
+  <div class="sheet">
+    <div class="brand">HOSTAL COLL</div>
+    <div class="brand-sub">Casa de Hostes · Calella</div>
+    <div class="rule"></div>
+    <div class="period">${esc(etiqueta)}</div>
+    <div class="doc-title">Liquidación de IVA · Repercutido / Soportado</div>
+    <table>
+      <thead>
+        <tr><th>Concepto</th><th class="n">Base imponible</th><th class="n">IVA</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="roC">IVA repercutido (facturas emitidas)</td>
+          <td class="roN" id="s-rep-base">0,00</td>
+          <td class="roN" id="s-rep-iva">0,00</td>
+        </tr>
+        <tr>
+          <td class="roC">IVA soportado (facturas recibidas)</td>
+          <td class="roN" id="s-sop-base">0,00</td>
+          <td class="roN" id="s-sop-iva">0,00</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="resum">
+      <div class="resum-row"><span>IVA repercutido</span><span id="s-rep">0,00 €</span></div>
+      <div class="resum-row"><span>IVA soportado</span><span id="s-sop">0,00 €</span></div>
+      <div class="resum-row grand"><span id="s-lab">Resultado a ingresar</span><span id="s-res">0,00 €</span></div>
+    </div>
+    <p class="note">Resultado = IVA repercutido − IVA soportado. Si sale positivo es a <strong>ingresar</strong>
+    a Hacienda; si sale negativo, a <strong>compensar/devolver</strong> (modelo 303).</p>
   </div>
 
 </div>
@@ -236,6 +334,19 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     }));
   }
 
+  function readGastos() {
+    return Array.from(document.querySelectorAll('#gastos tbody tr.gitem')).map(r => ({
+      data: r.querySelector('.g-data').value.trim(),
+      nif: r.querySelector('.g-nif').value.trim(),
+      proveidor: r.querySelector('.g-prov').value.trim(),
+      numFactura: r.querySelector('.g-numf').value.trim(),
+      base: num(r.querySelector('.g-base').value),
+      ivaPercent: num(r.querySelector('.g-ivap').value),
+      iva: num(r.querySelector('.g-iva').value),
+      total: num(r.querySelector('.g-total').value),
+    }));
+  }
+
   function render() {
     const rows = readRows();
     let tb = 0, ti = 0, tt = 0;
@@ -260,7 +371,23 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     document.getElementById('r-base').textContent = plain(tb) + ' €';
     document.getElementById('r-iva').textContent = plain(ti) + ' €';
     document.getElementById('r-total').textContent = plain(tt) + ' €';
-    document.getElementById('r-iva2').textContent = plain(ti);
+
+    // Despeses (facturas soportadas) + liquidació d'IVA
+    const gastos = readGastos();
+    let gb = 0, gi = 0, gt = 0;
+    for (const g of gastos) { gb += g.base; gi += g.iva; gt += g.total; }
+    document.getElementById('g-base').textContent = plain(gb);
+    document.getElementById('g-iva').textContent = plain(gi);
+    document.getElementById('g-total').textContent = plain(gt);
+    document.getElementById('s-rep-base').textContent = plain(tb);
+    document.getElementById('s-rep-iva').textContent = plain(ti);
+    document.getElementById('s-sop-base').textContent = plain(gb);
+    document.getElementById('s-sop-iva').textContent = plain(gi);
+    document.getElementById('s-rep').textContent = plain(ti) + ' €';
+    document.getElementById('s-sop').textContent = plain(gi) + ' €';
+    const resultat = Math.round((ti - gi) * 100) / 100;
+    document.getElementById('s-lab').textContent = resultat >= 0 ? 'Resultado a ingresar' : 'Resultado a compensar/devolver';
+    document.getElementById('s-res').textContent = plain(Math.abs(resultat)) + ' €';
   }
 
   function novaFila() {
@@ -278,13 +405,46 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     tbody.appendChild(row); render(); row.querySelector('.f-cli').focus();
   }
 
+  function novaGasto() {
+    const tbody = document.querySelector('#gastos tbody');
+    const first = document.querySelector('#gastos tbody tr.gitem');
+    let row;
+    if (first) { row = first.cloneNode(true); row.querySelectorAll('input').forEach(i => i.value = ''); }
+    else {
+      row = document.createElement('tr'); row.className = 'gitem';
+      row.innerHTML = '<td><input class="in g-data"></td><td><input class="in g-nif"></td><td><input class="in g-prov"></td>' +
+        '<td><input class="in g-numf"></td><td class="c-n"><input class="in n g-base"></td>' +
+        '<td class="c-n"><input class="in n g-ivap"></td><td class="c-n"><input class="in n g-iva"></td>' +
+        '<td class="c-n"><input class="in n g-total"></td><td class="c-del"><button class="del" type="button">×</button></td>';
+    }
+    tbody.appendChild(row); render(); row.querySelector('.g-prov').focus();
+  }
+
+  // Auto-càlcul a les despeses: en escriure el TOTAL o el %IVA, la base i l'IVA
+  // es calculen sols (IVA inclòs): base = total/(1+%/100), IVA = total − base.
+  function autoGasto(input) {
+    const row = input.closest('#gastos tbody tr.gitem');
+    if (!row) return;
+    if (!input.classList.contains('g-total') && !input.classList.contains('g-ivap')) return;
+    const total = num(row.querySelector('.g-total').value);
+    const p = num(row.querySelector('.g-ivap').value);
+    if (total === 0) return;
+    const base = Math.round((total / (1 + p / 100)) * 100) / 100;
+    row.querySelector('.g-base').value = plain(base);
+    row.querySelector('.g-iva').value = plain(Math.round((total - base) * 100) / 100);
+  }
+
   document.addEventListener('DOMContentLoaded', render);
-  document.addEventListener('input', e => { if (e.target.closest('#emeses tbody')) render(); });
+  document.addEventListener('input', e => {
+    if (e.target.closest('#gastos tbody')) autoGasto(e.target);
+    if (e.target.closest('#emeses tbody') || e.target.closest('#gastos tbody')) render();
+  });
   document.addEventListener('click', e => {
     if (e.target.classList.contains('del')) { e.target.closest('tr').remove(); render(); }
   });
   document.getElementById('addRow').addEventListener('click', novaFila);
   document.getElementById('addRow2').addEventListener('click', novaFila);
+  document.getElementById('addGasto').addEventListener('click', novaGasto);
   document.getElementById('print').addEventListener('click', () => window.print());
 
   document.getElementById('save').addEventListener('click', async () => {
@@ -293,7 +453,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     try {
       const res = await fetch('/api/llibre-iva/' + encodeURIComponent(PERIODE), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ etiqueta: ETIQUETA, files: readRows() }),
+        body: JSON.stringify({ etiqueta: ETIQUETA, files: readRows(), gastos: readGastos() }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Error desant'); }
       const d = await res.json();

@@ -1126,8 +1126,8 @@ model Tarifa {
 // exportable a PDF i base per a la calculadora de preus del taulell.
 model TarifaTipus {
   id              String   @id @default(cuid())
-  grup            String   // 'INDIVIDUAL' | 'DOBLE_1P' | 'DOBLE'
-  etiqueta        String   // nom de la temporada (columna): 'INVIERNO', 'MAYO'…
+  grup            String // 'INDIVIDUAL' | 'DOBLE_1P' | 'DOBLE'
+  etiqueta        String // nom de la temporada (columna): 'INVIERNO', 'MAYO'…
   ordre           Int      @default(0)
   mesos           Int[]    @default([]) // mesos (1..12) per detectar la temporada
   preuDia         Decimal? @map("preu_dia") @db.Decimal(10, 2)
@@ -1136,7 +1136,7 @@ model TarifaTipus {
   preuDosSetmanes Decimal? @map("preu_dos_setmanes") @db.Decimal(10, 2)
   preuMes         Decimal? @map("preu_mes") @db.Decimal(10, 2)
   reserva         Decimal? @db.Decimal(10, 2) // import de reserva (si escau)
-  nota            String?  // p. ex. "70 € a partir del 4t dia"
+  nota            String? // p. ex. "70 € a partir del 4t dia"
   actiu           Boolean  @default(true)
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -1150,16 +1150,17 @@ model TarifaTipus {
 // Es genera de les factures, l'usuari el pot editar a la impressió i desar-lo;
 // queda un registre de tots els trimestres desats (un per període, s'actualitza).
 model LlibreIvaTrimestre {
-  id         String   @id @default(cuid())
-  periode    String   @unique // "2026-3"
+  id         String  @id @default(cuid())
+  periode    String  @unique // "2026-3"
   any        Int
   trimestre  Int
   etiqueta   String
-  files      Json // files editades (array de FilaIngres)
-  totalBase  Decimal  @db.Decimal(12, 2)
-  totalIva   Decimal  @db.Decimal(12, 2)
-  totalTotal Decimal  @db.Decimal(12, 2)
-  usuariId   String?  @map("usuari_id")
+  files      Json // files d'ingressos editades (array de FilaIngres)
+  gastos     Json? // files de despeses/facturas soportadas editades (array de FilaGasto)
+  totalBase  Decimal @db.Decimal(12, 2)
+  totalIva   Decimal @db.Decimal(12, 2)
+  totalTotal Decimal @db.Decimal(12, 2)
+  usuariId   String? @map("usuari_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

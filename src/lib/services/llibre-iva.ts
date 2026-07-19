@@ -69,18 +69,64 @@ export function rangTrimestre(year: number, trimestre: number): { start: Date; e
   };
 }
 
+/** IVA general de les despeses (proveïdors): 21%, sol venir IVA inclòs al total. */
+const IVA_DESPESA = 21;
+
+export interface FilaGasto {
+  data: string; // ISO
+  nif: string;
+  proveidor: string;
+  numFactura: string;
+  base: number;
+  ivaPercent: number;
+  iva: number;
+  total: number;
+}
+
+/**
+ * Despeses del trimestre com a "facturas recibidas / soportadas". Els gastos es
+ * guarden amb el TOTAL però sense desglossament d'IVA ni nº de factura del
+ * proveïdor; per defecte assumim IVA 21% inclòs (base = total/1,21) — a la
+ * impressió tot és editable, així que si una despesa és al 10% o exempta es
+ * corregeix a mà. Exclou les fiances/dipòsits (esFianca) i les despeses sense
+ * IVA reals es poden ajustar posant %IVA = 0.
+ */
+export async function getGastosSoportats(year: number, trimestre: number): Promise<FilaGasto[]> {
+  const { start, end } = rangTrimestre(year, trimestre);
+  const gastos = await prisma.gasto.findMany({
+    where: { deletedAt: null, esFianca: false, data: { gte: start, lte: end } },
+    orderBy: [{ data: 'asc' }],
+    include: { proveidor: { select: { nom: true, cif: true } } },
+  });
+  return gastos.map((g) => {
+    const total = Number(g.import);
+    const base = round2(total / (1 + IVA_DESPESA / 100));
+    return {
+      data: g.data.toISOString(),
+      nif: g.proveidor?.cif ?? '',
+      proveidor: g.proveidor?.nom ?? g.descripcio,
+      numFactura: '',
+      base,
+      ivaPercent: IVA_DESPESA,
+      iva: round2(total - base),
+      total,
+    };
+  });
+}
+
 export async function getLlibreIngressos(year: number, trimestre: number): Promise<LlibreIngressos> {
   const { start, end } = rangTrimestre(year, trimestre);
 
   // Només documents que són factura fiscal: FACTURA (F1) i FACTURA_SIMPLIFICADA (F2).
-  // Els RECIBO no són factures i no entren al llibre d'IVA.
+  // Els RECIBO no són factures i no entren al llibre d'IVA. Ordre per número perquè
+  // els abonos (26001.1) surtin just després de la seva factura (26001).
   const factures = await prisma.factura.findMany({
     where: {
       deletedAt: null,
       data: { gte: start, lte: end },
       tipusDocument: { in: ['FACTURA', 'FACTURA_SIMPLIFICADA'] },
     },
-    orderBy: [{ data: 'asc' }, { numero: 'asc' }],
+    orderBy: [{ numero: 'asc' }],
     include: {
       estancia: {
         select: {
