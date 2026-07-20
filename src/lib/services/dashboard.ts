@@ -531,13 +531,14 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
     titular: string;
     ingressos: number;
     devolucions: number;
+    fianca: number; // part de l'ingrés que ve d'una fiança retinguda
     habitacio: string | null;
     dataEntrada: string | null;
     dataSortida: string | null;
     datesPagament: string[]; // ISO, dates dels ingressos (sense devolucions)
   }
   const perPersona = new Map<string, MovPersona>();
-  const afegeixMov = (row: EfectiuRow) => {
+  const afegeixMov = (row: EfectiuRow, esFianca = false) => {
     const est = row.estancia;
     const key = est?.id ?? '—';
     const h = est?.viatgers[0]?.huesped;
@@ -548,6 +549,7 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
         titular: h ? `${h.nom} ${h.cognom1}` : 'Sense titular',
         ingressos: 0,
         devolucions: 0,
+        fianca: 0,
         habitacio: est?.habitacio?.nom ?? null,
         dataEntrada: est?.dataEntrada ? est.dataEntrada.toISOString() : null,
         dataSortida: est?.dataSortida ? est.dataSortida.toISOString() : null,
@@ -555,6 +557,7 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
       } satisfies MovPersona);
     if (row.import >= 0) {
       cur.ingressos = r2(cur.ingressos + row.import);
+      if (esFianca) cur.fianca = r2(cur.fianca + row.import);
       const dia = row.data.toISOString().slice(0, 10);
       if (!cur.datesPagament.some((d) => d.slice(0, 10) === dia)) cur.datesPagament.push(row.data.toISOString());
     } else {
@@ -563,7 +566,7 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
     perPersona.set(key, cur);
   };
   for (const c of cobramentsRows) afegeixMov(c);
-  for (const d of retingutsRows) afegeixMov(d);
+  for (const d of retingutsRows) afegeixMov(d, true); // dipòsits retinguts = fiança
   for (const m of perPersona.values()) m.datesPagament.sort();
   const movimentsPerPersona = [...perPersona.values()].sort(
     (a, b) => b.ingressos - b.devolucions - (a.ingressos - a.devolucions),

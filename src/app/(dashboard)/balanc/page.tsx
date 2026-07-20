@@ -46,6 +46,7 @@ interface Breakdowns {
     titular: string;
     ingressos: number;
     devolucions: number;
+    fianca?: number;
     habitacio?: string | null;
     dataEntrada?: string | null;
     dataSortida?: string | null;
@@ -324,15 +325,25 @@ function BreakdownsSection({ data }: { data: Breakdowns }) {
               </Thead>
               <tbody>
                 {moviments.map((m, i) => (
-                  <Tr key={i}>
+                  <Tr key={i} className={m.fianca && m.fianca > 0 ? 'bg-amber-50/60' : undefined}>
                     <Td>
-                      {m.estanciaId ? (
-                        <a href={`/estancies/${m.estanciaId}`} className="font-medium text-brand-700 hover:underline">
-                          {m.titular}
-                        </a>
-                      ) : (
-                        m.titular
-                      )}
+                      <span className="flex items-center gap-1.5">
+                        {m.estanciaId ? (
+                          <a href={`/estancies/${m.estanciaId}`} className="font-medium text-brand-700 hover:underline">
+                            {m.titular}
+                          </a>
+                        ) : (
+                          m.titular
+                        )}
+                        {m.fianca && m.fianca > 0 ? (
+                          <span
+                            className="inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200"
+                            title={`Inclou una fiança retinguda de ${m.fianca.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}
+                          >
+                            Fiança
+                          </span>
+                        ) : null}
+                      </span>
                     </Td>
                     <Td className="text-slate-600">{m.habitacio ? `Hab. ${m.habitacio}` : '—'}</Td>
                     <Td className="whitespace-nowrap text-slate-600">
