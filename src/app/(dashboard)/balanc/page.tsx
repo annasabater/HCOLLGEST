@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Scale,
+  X,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -163,17 +164,21 @@ function ambPersonal<T extends Breakdowns>(d: T, personal: number): Breakdowns {
   };
 }
 
-function Kpi({ label, value, icon: Icon, color, big, delta, deltaInvert }: { label: string; value: React.ReactNode; icon: React.ComponentType<{ className?: string }>; color: string; big?: boolean; delta?: string | null; deltaInvert?: boolean }) {
+function Kpi({ label, value, icon: Icon, color, big, delta, deltaInvert, onSelect }: { label: string; value: React.ReactNode; icon: React.ComponentType<{ className?: string }>; color: string; big?: boolean; delta?: string | null; deltaInvert?: boolean; onSelect?: () => void }) {
   const down = delta?.startsWith('-');
   const deltaGood = deltaInvert ? down : !down;
   return (
-    <Card className={big ? 'ring-1 ring-brand-200' : ''}>
+    <Card
+      className={cn(big ? 'ring-1 ring-brand-200' : '', onSelect && 'cursor-pointer transition-shadow hover:shadow-md')}
+      onClick={onSelect}
+      title={onSelect ? 'Veure el desglossament' : undefined}
+    >
       <CardBody className="flex items-center gap-4">
         <div className="rounded-lg bg-slate-100 p-3">
           <Icon className={`h-6 w-6 ${color}`} />
         </div>
-        <div>
-          <p className={`font-bold text-slate-900 ${big ? 'text-2xl' : 'text-xl'}`}>{value}</p>
+        <div className="min-w-0">
+          <p className="text-2xl font-bold text-slate-900">{value}</p>
           <p className="text-xs text-slate-500">{label}</p>
           {delta && (
             <p className={cn('text-xs font-medium', deltaGood ? 'text-green-600' : 'text-red-600')}>
@@ -181,9 +186,47 @@ function Kpi({ label, value, icon: Icon, color, big, delta, deltaInvert }: { lab
             </p>
           )}
         </div>
+        {onSelect && <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-slate-300" />}
       </CardBody>
     </Card>
   );
+}
+
+// Construeix el desglossament exacte d'un KPI a partir de les dades del període.
+interface VistaBalanc {
+  ingressos: number; despeses: number; personal: number; benefici: number;
+  ingressosAmbRetencions: number; despesesFianca: number; retencions: number;
+  ingressosPerMetode: Record<string, number>;
+  despesesPerCategoria: { categoria: string; import: number }[];
+}
+interface Desglos { title: string; rows: { label: string; value: number }[]; total: number }
+function desglos(metric: string, v: VistaBalanc): Desglos {
+  const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+  const met = metodeItems(v.ingressosPerMetode).map((m) => ({ label: m.label, value: m.value }));
+  const cat = v.despesesPerCategoria.map((d) => ({ label: d.categoria, value: d.import }));
+  const desp = r2(v.despeses + v.personal);
+  // Fila de compensació: els ingressos poden incloure dipòsits retinguts que no
+  // surten a `ingressosPerMetode` (que només són cobraments). Així el total quadra.
+  const balanc = (rows: { label: string; value: number }[], total: number, label: string) => {
+    const resta = r2(total - rows.reduce((a, m) => a + m.value, 0));
+    return Math.abs(resta) >= 0.005 ? [...rows, { label, value: resta }] : rows;
+  };
+  switch (metric) {
+    case 'ingressos':
+      return { title: 'Ingressos · per mètode de cobrament', rows: balanc(met, v.ingressos, 'Fiances retingudes (ingrés)'), total: v.ingressos };
+    case 'despeses':
+      return { title: 'Despeses · per categoria', rows: cat, total: desp };
+    case 'benefici':
+      return { title: 'Benefici = Ingressos − Despeses', rows: [{ label: 'Ingressos', value: v.ingressos }, { label: 'Despeses', value: -desp }], total: v.benefici };
+    case 'ingressos-fianca':
+      return { title: 'Ingressos + fiança', rows: balanc(met, v.ingressosAmbRetencions, 'Fiances (retingudes + custòdia)'), total: v.ingressosAmbRetencions };
+    case 'despeses-fianca':
+      return { title: 'Despeses + fiança', rows: [...cat, ...(v.despesesFianca ? [{ label: 'Fiances pagades', value: v.despesesFianca }] : [])], total: r2(desp + v.despesesFianca) };
+    case 'benefici-fianca':
+      return { title: 'Benefici + fiança', rows: [{ label: 'Benefici', value: v.benefici }, { label: 'Fiances netes', value: v.retencions }], total: r2(v.benefici + v.retencions) };
+    default:
+      return { title: 'Desglossament', rows: [], total: 0 };
+  }
 }
 
 function BsRow({ label, value, level = 0, strong, total }: { label: string; value: number; level?: number; strong?: boolean; total?: boolean }) {
@@ -267,7 +310,7 @@ function SituacioView({ data }: { data: BalancSituacio }) {
   );
 }
 
-function BreakdownsSection({ data }: { data: Breakdowns }) {
+function BreakdownsSection({ data, despesesFianca = 0 }: { data: Breakdowns; despesesFianca?: number }) {
   const metodes = metodeItems(data.ingressosPerMetode);
   const moviments = data.movimentsPerPersona ?? [];
   return (
@@ -279,6 +322,17 @@ function BreakdownsSection({ data }: { data: Breakdowns }) {
           </CardHeader>
           <CardBody>
             <Donut items={data.despesesPerCategoria.map((d) => ({ label: d.categoria, value: d.import }))} />
+            {despesesFianca > 0 && (
+              <div className="mt-3 flex items-center justify-between rounded-lg bg-amber-50 px-3 py-2 text-sm ring-1 ring-amber-200">
+                <span className="flex items-center gap-1.5 text-amber-800">
+                  <span className="inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200">
+                    Fiança
+                  </span>
+                  Fiances pagades (recuperable)
+                </span>
+                <span className="font-medium text-amber-800"><Eur value={despesesFianca} /></span>
+              </div>
+            )}
           </CardBody>
         </Card>
         <Card>
@@ -436,6 +490,7 @@ export default function BalancPage() {
   // Sèrie mensual per a les gràfiques: a Mes, els últims 12 mesos fins al mes
   // triat; a Trimestre/rang, els mesos del rang seleccionat.
   const [serie, setSerie] = useState<SerieMes[] | null>(null);
+  const [breakdown, setBreakdown] = useState<Desglos | null>(null);
   const serieDesde =
     mode === 'mes'
       ? (() => { const d = addMonths(anchor, -11); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })()
@@ -615,19 +670,20 @@ export default function BalancPage() {
           {mes && (
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <Kpi label="Ingressos" value={<Eur value={mes.ingressos} />} icon={TrendingUp} color="text-green-600" big />
-                <Kpi label="Despeses" value={<Eur value={mes.despeses + mes.personal} />} icon={TrendingDown} color="text-red-600" />
-                <Kpi label="Benefici" value={<Eur value={mes.benefici} />} icon={Wallet} color={mes.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big />
+                <Kpi label="Ingressos" value={<Eur value={mes.ingressos} />} icon={TrendingUp} color="text-green-600" big onSelect={() => setBreakdown(desglos('ingressos', mes))} />
+                <Kpi label="Despeses" value={<Eur value={mes.despeses + mes.personal} />} icon={TrendingDown} color="text-red-600" onSelect={() => setBreakdown(desglos('despeses', mes))} />
+                <Kpi label="Benefici" value={<Eur value={mes.benefici} />} icon={Wallet} color={mes.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big onSelect={() => setBreakdown(desglos('benefici', mes))} />
                 {!restringit && (
                   <>
-                    <Kpi label="Ingressos + fiança" value={<Eur value={mes.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
-                    <Kpi label="Despeses + fiança" value={<Eur value={mes.despeses + mes.personal + mes.despesesFianca} />} icon={TrendingDown} color="text-red-600" />
+                    <Kpi label="Ingressos + fiança" value={<Eur value={mes.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" onSelect={() => setBreakdown(desglos('ingressos-fianca', mes))} />
+                    <Kpi label="Despeses + fiança" value={<Eur value={mes.despeses + mes.personal + mes.despesesFianca} />} icon={TrendingDown} color="text-red-600" onSelect={() => setBreakdown(desglos('despeses-fianca', mes))} />
                     <Kpi
                       label="Benefici + fiança"
                       value={<Eur value={mes.benefici + mes.retencions} />}
                       icon={Wallet}
                       color={mes.benefici + mes.retencions >= 0 ? 'text-green-600' : 'text-red-600'}
                       big
+                      onSelect={() => setBreakdown(desglos('benefici-fianca', mes))}
                     />
                   </>
                 )}
@@ -657,7 +713,7 @@ export default function BalancPage() {
                 </div>
               )}
 
-              <BreakdownsSection data={ambPersonal(mes, mes.personal)} />
+              <BreakdownsSection data={ambPersonal(mes, mes.personal)} despesesFianca={mes.despesesFianca} />
             </>
           )}
         </div>
@@ -701,14 +757,14 @@ export default function BalancPage() {
           {rang && (
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <Kpi label="Ingressos" value={<Eur value={rang.ingressos} />} icon={TrendingUp} color="text-green-600" big />
-                <Kpi label="Despeses" value={<Eur value={rang.despeses + rang.personal} />} icon={TrendingDown} color="text-red-600" />
-                <Kpi label="Benefici" value={<Eur value={rang.benefici} />} icon={Wallet} color={rang.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big />
+                <Kpi label="Ingressos" value={<Eur value={rang.ingressos} />} icon={TrendingUp} color="text-green-600" big onSelect={() => setBreakdown(desglos('ingressos', rang))} />
+                <Kpi label="Despeses" value={<Eur value={rang.despeses + rang.personal} />} icon={TrendingDown} color="text-red-600" onSelect={() => setBreakdown(desglos('despeses', rang))} />
+                <Kpi label="Benefici" value={<Eur value={rang.benefici} />} icon={Wallet} color={rang.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big onSelect={() => setBreakdown(desglos('benefici', rang))} />
                 {!restringit && (
                   <>
-                    <Kpi label="Ingressos + fiança" value={<Eur value={rang.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
-                    <Kpi label="Despeses + fiança" value={<Eur value={rang.despeses + rang.personal + rang.despesesFianca} />} icon={TrendingDown} color="text-red-600" />
-                    <Kpi label="Benefici + fiança" value={<Eur value={rang.benefici + rang.retencions} />} icon={Wallet} color={rang.benefici + rang.retencions >= 0 ? 'text-green-600' : 'text-red-600'} big />
+                    <Kpi label="Ingressos + fiança" value={<Eur value={rang.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" onSelect={() => setBreakdown(desglos('ingressos-fianca', rang))} />
+                    <Kpi label="Despeses + fiança" value={<Eur value={rang.despeses + rang.personal + rang.despesesFianca} />} icon={TrendingDown} color="text-red-600" onSelect={() => setBreakdown(desglos('despeses-fianca', rang))} />
+                    <Kpi label="Benefici + fiança" value={<Eur value={rang.benefici + rang.retencions} />} icon={Wallet} color={rang.benefici + rang.retencions >= 0 ? 'text-green-600' : 'text-red-600'} big onSelect={() => setBreakdown(desglos('benefici-fianca', rang))} />
                   </>
                 )}
               </div>
@@ -735,7 +791,7 @@ export default function BalancPage() {
                 </div>
               )}
 
-              <BreakdownsSection data={ambPersonal(rang, rang.personal)} />
+              <BreakdownsSection data={ambPersonal(rang, rang.personal)} despesesFianca={rang.despesesFianca} />
             </>
           )}
         </div>
@@ -753,14 +809,14 @@ export default function BalancPage() {
           {any && (
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <Kpi label="Ingressos" value={<Eur value={any.totals.ingressos} />} icon={TrendingUp} color="text-green-600" big delta={variacio(any.totals.ingressos, any.anterior.ingressos)} />
-                <Kpi label="Despeses" value={<Eur value={any.totals.despeses + any.totals.personal} />} icon={TrendingDown} color="text-red-600" delta={variacio(any.totals.despeses + any.totals.personal, any.anterior.despeses + any.anterior.personal)} deltaInvert />
-                <Kpi label="Benefici" value={<Eur value={any.totals.benefici} />} icon={Wallet} color={any.totals.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big delta={variacio(any.totals.benefici, any.anterior.benefici)} />
+                <Kpi label="Ingressos" value={<Eur value={any.totals.ingressos} />} icon={TrendingUp} color="text-green-600" big delta={variacio(any.totals.ingressos, any.anterior.ingressos)} onSelect={() => setBreakdown(desglos('ingressos', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria }))} />
+                <Kpi label="Despeses" value={<Eur value={any.totals.despeses + any.totals.personal} />} icon={TrendingDown} color="text-red-600" delta={variacio(any.totals.despeses + any.totals.personal, any.anterior.despeses + any.anterior.personal)} deltaInvert onSelect={() => setBreakdown(desglos('despeses', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria }))} />
+                <Kpi label="Benefici" value={<Eur value={any.totals.benefici} />} icon={Wallet} color={any.totals.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big delta={variacio(any.totals.benefici, any.anterior.benefici)} onSelect={() => setBreakdown(desglos('benefici', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria }))} />
                 {!restringit && (
                   <>
-                    <Kpi label="Ingressos + fiança" value={<Eur value={any.totals.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" />
-                    <Kpi label="Despeses + fiança" value={<Eur value={any.totals.despeses + any.totals.personal + any.totals.despesesFianca} />} icon={TrendingDown} color="text-red-600" />
-                    <Kpi label="Benefici + fiança" value={<Eur value={any.totals.benefici + any.totals.retencions} />} icon={Wallet} color={any.totals.benefici + any.totals.retencions >= 0 ? 'text-green-600' : 'text-red-600'} big />
+                    <Kpi label="Ingressos + fiança" value={<Eur value={any.totals.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" onSelect={() => setBreakdown(desglos('ingressos-fianca', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria }))} />
+                    <Kpi label="Despeses + fiança" value={<Eur value={any.totals.despeses + any.totals.personal + any.totals.despesesFianca} />} icon={TrendingDown} color="text-red-600" onSelect={() => setBreakdown(desglos('despeses-fianca', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria }))} />
+                    <Kpi label="Benefici + fiança" value={<Eur value={any.totals.benefici + any.totals.retencions} />} icon={Wallet} color={any.totals.benefici + any.totals.retencions >= 0 ? 'text-green-600' : 'text-red-600'} big onSelect={() => setBreakdown(desglos('benefici-fianca', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria }))} />
                   </>
                 )}
               </div>
@@ -802,7 +858,7 @@ export default function BalancPage() {
                 </tbody>
               </Table>
 
-              <BreakdownsSection data={ambPersonal(any, any.totals.personal)} />
+              <BreakdownsSection data={ambPersonal(any, any.totals.personal)} despesesFianca={any.totals.despesesFianca} />
             </>
           )}
         </div>
@@ -870,6 +926,41 @@ export default function BalancPage() {
           El <strong>Benefici</strong> és Ingressos − Despeses (el real); el <strong>Benefici + fiança</strong>
           hi suma les fiances en custòdia (diners retornables). Exporta-ho tot a CSV per a la gestoria.
         </p>
+      )}
+
+      {/* Modal de desglossament d'un KPI */}
+      {breakdown && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-20"
+          onClick={() => setBreakdown(null)}
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <h3 className="font-serif text-lg font-semibold text-slate-800">{breakdown.title}</h3>
+              <button onClick={() => setBreakdown(null)} className="shrink-0 text-slate-400 hover:text-slate-700" aria-label="Tancar">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            {breakdown.rows.length === 0 ? (
+              <p className="text-sm italic text-slate-400">Sense desglossament per a aquest període.</p>
+            ) : (
+              <div>
+                {breakdown.rows.map((r, i) => (
+                  <div key={i} className="flex items-center justify-between border-b border-slate-100 py-1.5 text-sm last:border-0">
+                    <span className="text-slate-600">{r.label}</span>
+                    <span className={cn('font-medium', r.value < 0 ? 'text-red-600' : 'text-slate-800')}>
+                      <Eur value={r.value} />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-2 flex items-center justify-between border-t-2 border-slate-300 pt-2 font-bold">
+              <span className="text-slate-900">Total</span>
+              <span className="text-brand-800"><Eur value={breakdown.total} /></span>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
