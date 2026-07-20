@@ -877,6 +877,11 @@ model ServeiRecurrent {
   categoria      CategoriaGasto?  @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
   frequencia     FrequenciaServei @default(ANUAL)
   importPrevist  Decimal?         @map("import_previst") @db.Decimal(10, 2)
+  // Desglossament fiscal opcional (lloguer amb IVA/IRPF): es copia als gastos
+  // generats. `importPrevist` és el TOTAL pagat (= base + IVA − IRPF).
+  baseImposable  Decimal?         @map("base_imposable") @db.Decimal(10, 2)
+  ivaPercent     Decimal?         @map("iva_percent") @db.Decimal(5, 2)
+  irpfPercent    Decimal?         @map("irpf_percent") @db.Decimal(5, 2)
   metodePagament MetodeCobrament  @default(TRANSFERENCIA) @map("metode_pagament")
   properaData    DateTime         @map("propera_data") // propera visita/renovació/pagament
   vigenciaInici  DateTime?        @map("vigencia_inici")
@@ -913,6 +918,12 @@ model Gasto {
   serveiRecurrent   ServeiRecurrent? @relation(fields: [serveiRecurrentId], references: [id], onDelete: SetNull)
   descripcio        String
   numFactura        String?          @map("num_factura") // nº de factura del proveïdor (llibre d'IVA)
+  // Desglossament fiscal opcional (per a lloguers/serveis amb retenció). Si és
+  // null, el llibre d'IVA deriva la base del total al 21% inclòs. `import` sempre
+  // és el TOTAL pagat (= base + IVA − IRPF).
+  baseImposable     Decimal?         @map("base_imposable") @db.Decimal(10, 2)
+  ivaPercent        Decimal?         @map("iva_percent") @db.Decimal(5, 2)
+  irpfPercent       Decimal?         @map("irpf_percent") @db.Decimal(5, 2)
   metodePagament    MetodeCobrament  @map("metode_pagament")
   adjuntPath        String?          @map("adjunt_path")
   // Fiança/dipòsit pagat (recuperable): no és una despesa real, així que NO compta

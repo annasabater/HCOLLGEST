@@ -102,6 +102,25 @@ export async function getGastosSoportats(year: number, trimestre: number): Promi
   });
   return gastos.map((g) => {
     const total = Number(g.import);
+    // Si el gasto porta desglossament fiscal explícit (lloguer amb IVA/IRPF),
+    // s'usa tal qual; si no, es deriva la base del total al 21% inclòs (IVA soportat).
+    if (g.baseImposable != null) {
+      const base = Number(g.baseImposable);
+      const ivaPercent = g.ivaPercent != null ? Number(g.ivaPercent) : 0;
+      const irpfPercent = g.irpfPercent != null ? Number(g.irpfPercent) : 0;
+      return {
+        data: g.data.toISOString(),
+        nif: g.proveidor?.cif ?? '',
+        proveidor: g.proveidor?.nom ?? g.descripcio,
+        numFactura: g.numFactura ?? '',
+        base,
+        ivaPercent,
+        iva: round2(base * (ivaPercent / 100)),
+        irpfPercent,
+        irpf: round2(base * (irpfPercent / 100)),
+        total,
+      };
+    }
     const base = round2(total / (1 + IVA_DESPESA / 100));
     return {
       data: g.data.toISOString(),

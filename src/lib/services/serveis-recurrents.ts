@@ -41,6 +41,11 @@ async function crearDespesaServei(s: ServeiRow, data: Date, import_: number, cat
       proveidorId: s.proveidorId,
       serveiRecurrentId: s.id,
       descripcio: `Servei: ${s.activitat}`,
+      // Copia el desglossament fiscal (lloguer amb IVA/IRPF) al gasto generat,
+      // perquè el llibre d'IVA el mostri correctament sense derivar-lo.
+      baseImposable: s.baseImposable,
+      ivaPercent: s.ivaPercent,
+      irpfPercent: s.irpfPercent,
       metodePagament: s.metodePagament,
     },
   });
