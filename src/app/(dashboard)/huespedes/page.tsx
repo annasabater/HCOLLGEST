@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Search, AlertTriangle, Ban, PawPrint, User } from 'lucide-react';
+import { Search, AlertTriangle, Ban, PawPrint, User, Star } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import type { Prisma } from '@prisma/client';
 import { PageHeader } from '@/components/ui/page-header';
@@ -81,11 +81,18 @@ export default async function HuespedesPage({
         title="Clients"
         subtitle={`${total} persones registrades`}
         actions={
-          <Link href="/avisos">
-            <Button variant="outline" size="sm">
-              <AlertTriangle className="h-4 w-4" /> Avisos interns
-            </Button>
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href="/valoracions">
+              <Button variant="outline" size="sm">
+                <Star className="h-4 w-4" /> Valoracions
+              </Button>
+            </Link>
+            <Link href="/avisos">
+              <Button variant="outline" size="sm">
+                <AlertTriangle className="h-4 w-4" /> Avisos interns
+              </Button>
+            </Link>
+          </div>
         }
       />
 

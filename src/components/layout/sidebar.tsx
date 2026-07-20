@@ -11,7 +11,6 @@ import {
   FileCheck,
   Sparkles,
   MessageCircle,
-  Star,
   PiggyBank,
   UserCog,
   Truck,
@@ -53,7 +52,6 @@ const GROUPS: NavGroup[] = [
     title: 'Gestió',
     items: [
       { href: '/plantilles', label: 'Plantilles', icon: MessageCircle },
-      { href: '/valoracions', label: 'Valoracions', icon: Star },
       { href: '/personal', label: 'Treballadors', icon: UserCog, roles: ['ADMIN'], hideRestringit: true },
       { href: '/balanc', label: 'Balanç', icon: PiggyBank, roles: ['ADMIN'] },
       { href: '/factures', label: 'Facturació', icon: Receipt },
@@ -69,7 +67,7 @@ export function Sidebar({ role, restringit = false }: { role: Role; restringit?:
   const pathname = usePathname();
 
   return (
-    <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
+    <nav className="scrollbar-hide flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
       {GROUPS.map((group, gi) => {
         const items = group.items.filter(
           (i) => (!i.roles || i.roles.includes(role)) && !(restringit && i.hideRestringit),

@@ -46,3 +46,12 @@ body {
 * {
   scrollbar-width: thin;
 }
+
+/* Amaga la barra de scroll però permet fer scroll (dit/roda). */
+.scrollbar-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge antic */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Edge */
+}
