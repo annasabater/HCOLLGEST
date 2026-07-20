@@ -91,6 +91,18 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       <td class="c-del"><button class="del" type="button" title="Eliminar fila">×</button></td>
     </tr>`;
 
+  // Fila EDITABLE del "Libro de ingresos" (sincronitzada amb "Facturas emitidas").
+  const filaIngres = (f: FilaEdit) => `
+    <tr class="litem">
+      <td><input class="in l-data" value="${esc(f.data)}"></td>
+      <td><input class="in l-ns" value="${esc(f.numeroSimple)}"></td>
+      <td><input class="in l-nf" value="${esc(f.numeroFiscal)}"></td>
+      <td><input class="in l-cli" value="${esc(f.client)}"></td>
+      <td class="c-n"><input class="in n l-imp" inputmode="decimal" value="${num(f.total)}"></td>
+      <td class="c-n"><input class="in n l-base" inputmode="decimal" value="${num(f.base)}"></td>
+      <td class="c-n"><input class="in n l-iva" inputmode="decimal" value="${num(f.iva)}"></td>
+    </tr>`;
+
   // Fila editable de "Facturas recibidas · soportadas" (despeses).
   const filaGasto = (g: FilaGastoEdit) => `
     <tr class="gitem">
@@ -236,7 +248,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
           <th class="n">Importe<span class="resizer"></span></th><th class="n">Base imponible<span class="resizer"></span></th><th class="n">IVA 10%</th>
         </tr>
       </thead>
-      <tbody></tbody>
+      <tbody>${rows.map(filaIngres).join('')}</tbody>
       <tfoot>
         <tr>
           <td colspan="4" class="lab">Total suma…</td>
@@ -309,13 +321,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       <tbody>
         <tr>
           <td class="roC">IVA repercutido (facturas emitidas)</td>
-          <td class="roN" id="s-rep-base">0,00</td>
-          <td class="roN" id="s-rep-iva">0,00</td>
+          <td class="c-n"><input class="in n liq" id="s-rep-base" inputmode="decimal" value="0,00"></td>
+          <td class="c-n"><input class="in n liq" id="s-rep-iva" inputmode="decimal" value="0,00"></td>
         </tr>
         <tr>
           <td class="roC">IVA soportado (facturas recibidas)</td>
-          <td class="roN" id="s-sop-base">0,00</td>
-          <td class="roN" id="s-sop-iva">0,00</td>
+          <td class="c-n"><input class="in n liq" id="s-sop-base" inputmode="decimal" value="0,00"></td>
+          <td class="c-n"><input class="in n liq" id="s-sop-iva" inputmode="decimal" value="0,00"></td>
         </tr>
       </tbody>
     </table>
@@ -374,6 +386,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     }));
   }
 
+  // Liquidació editable: s'omple des dels totals només si NO s'ha tocat a mà.
+  const liqTocat = new Set();
+  const setLiq = (id, v) => { if (!liqTocat.has(id)) document.getElementById(id).value = plain(v); };
+
   function render() {
     const rows = readRows();
     let tb = 0, ti = 0, tt = 0;
@@ -381,17 +397,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     document.getElementById('t1-base').textContent = plain(tb);
     document.getElementById('t1-iva').textContent = plain(ti);
     document.getElementById('t1-total').textContent = plain(tt);
-    // Reconstrueix "Libro de ingresos"
-    const body = rows.map(r => '<tr>' +
-      '<td class="ro">' + esc(r.data) + '</td>' +
-      '<td class="ro">' + esc(r.numeroSimple) + '</td>' +
-      '<td class="ro">' + esc(r.numeroFiscal) + '</td>' +
-      '<td class="roC">' + esc(r.client) + '</td>' +
-      '<td class="roN">' + plain(r.total) + '</td>' +
-      '<td class="roN">' + plain(r.base) + '</td>' +
-      '<td class="roN">' + plain(r.iva) + '</td>' +
-    '</tr>').join('');
-    document.querySelector('#ingressos tbody').innerHTML = body;
+    // El "Libro de ingresos" és editable i està sincronitzat (no es reconstrueix);
+    // aquí només actualitzem els totals del peu.
     document.getElementById('t2-total').textContent = plain(tt);
     document.getElementById('t2-base').textContent = plain(tb);
     document.getElementById('t2-iva').textContent = plain(ti);
@@ -408,18 +415,36 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     document.getElementById('g-irpf').textContent = plain(girpf);
     document.getElementById('g-total').textContent = plain(gt);
     document.getElementById('g-irpf2').textContent = plain(girpf);
-    document.getElementById('s-rep-base').textContent = plain(tb);
-    document.getElementById('s-rep-iva').textContent = plain(ti);
-    document.getElementById('s-sop-base').textContent = plain(gb);
-    document.getElementById('s-sop-iva').textContent = plain(gi);
-    document.getElementById('s-rep').textContent = plain(ti) + ' €';
-    document.getElementById('s-sop').textContent = plain(gi) + ' €';
-    const resultat = Math.round((ti - gi) * 100) / 100;
+    setLiq('s-rep-base', tb); setLiq('s-rep-iva', ti); setLiq('s-sop-base', gb); setLiq('s-sop-iva', gi);
+    const repIva = num(document.getElementById('s-rep-iva').value);
+    const sopIva = num(document.getElementById('s-sop-iva').value);
+    document.getElementById('s-rep').textContent = plain(repIva) + ' €';
+    document.getElementById('s-sop').textContent = plain(sopIva) + ' €';
+    const resultat = Math.round((repIva - sopIva) * 100) / 100;
     document.getElementById('s-lab').textContent = resultat >= 0 ? 'Resultado a ingresar' : 'Resultado a compensar/devolver';
     document.getElementById('s-res').textContent = plain(Math.abs(resultat)) + ' €';
   }
 
+  // Sincronització bidireccional Facturas emitidas ↔ Libro de ingresos (per índex).
+  const MIRROR = { 'f-data':'l-data','f-ns':'l-ns','f-nf':'l-nf','f-cli':'l-cli','f-base':'l-base','f-iva':'l-iva','f-total':'l-imp' };
+  const MIRROR_REV = { 'l-data':'f-data','l-ns':'f-ns','l-nf':'f-nf','l-cli':'f-cli','l-base':'f-base','l-iva':'f-iva','l-imp':'f-total' };
+  function syncEmesesToLibro(input) {
+    const cls = [...input.classList].find(c => MIRROR[c]); if (!cls) return;
+    const tr = input.closest('#emeses tbody tr.item');
+    const i = [...document.querySelectorAll('#emeses tbody tr.item')].indexOf(tr);
+    const dest = document.querySelectorAll('#ingressos tbody tr.litem')[i]; if (!dest) return;
+    const t = dest.querySelector('.' + MIRROR[cls]); if (t) t.value = input.value;
+  }
+  function syncLibroToEmeses(input) {
+    const cls = [...input.classList].find(c => MIRROR_REV[c]); if (!cls) return;
+    const tr = input.closest('#ingressos tbody tr.litem');
+    const i = [...document.querySelectorAll('#ingressos tbody tr.litem')].indexOf(tr);
+    const dest = document.querySelectorAll('#emeses tbody tr.item')[i]; if (!dest) return;
+    const t = dest.querySelector('.' + MIRROR_REV[cls]); if (t) t.value = input.value;
+  }
+
   function novaFila() {
+    // Fila a "Facturas emitidas"
     const tbody = document.querySelector('#emeses tbody');
     const first = document.querySelector('#emeses tbody tr.item');
     let row;
@@ -431,7 +456,20 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
         '<td class="c-n"><input class="in n f-ivap"></td><td class="c-n"><input class="in n f-iva"></td>' +
         '<td class="c-n"><input class="in n f-total"></td><td class="c-del"><button class="del" type="button">×</button></td>';
     }
-    tbody.appendChild(row); render(); row.querySelector('.f-cli').focus();
+    tbody.appendChild(row);
+    // Fila aparellada al "Libro de ingresos" (mateix índex)
+    const tbodyL = document.querySelector('#ingressos tbody');
+    const firstL = document.querySelector('#ingressos tbody tr.litem');
+    let rowL;
+    if (firstL) { rowL = firstL.cloneNode(true); rowL.querySelectorAll('input').forEach(i => i.value = ''); }
+    else {
+      rowL = document.createElement('tr'); rowL.className = 'litem';
+      rowL.innerHTML = '<td><input class="in l-data"></td><td><input class="in l-ns"></td><td><input class="in l-nf"></td>' +
+        '<td><input class="in l-cli"></td><td class="c-n"><input class="in n l-imp"></td>' +
+        '<td class="c-n"><input class="in n l-base"></td><td class="c-n"><input class="in n l-iva"></td>';
+    }
+    tbodyL.appendChild(rowL);
+    render(); row.querySelector('.f-cli').focus();
   }
 
   function novaGasto() {
@@ -484,10 +522,23 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   document.addEventListener('DOMContentLoaded', render);
   document.addEventListener('input', e => {
     if (e.target.closest('#gastos tbody')) autoGasto(e.target);
-    if (e.target.closest('#emeses tbody') || e.target.closest('#gastos tbody')) render();
+    if (e.target.closest('#emeses tbody')) syncEmesesToLibro(e.target);
+    if (e.target.closest('#ingressos tbody')) syncLibroToEmeses(e.target);
+    if (e.target.classList && e.target.classList.contains('liq')) liqTocat.add(e.target.id);
+    if (e.target.closest('#emeses tbody') || e.target.closest('#gastos tbody') || e.target.closest('#ingressos tbody') || (e.target.classList && e.target.classList.contains('liq'))) render();
   });
   document.addEventListener('click', e => {
-    if (e.target.classList.contains('del')) { e.target.closest('tr').remove(); render(); }
+    if (e.target.classList.contains('del')) {
+      const tr = e.target.closest('tr');
+      // Si esborrem una fila de "Facturas emitidas", esborrem també la seva
+      // aparellada del "Libro de ingresos".
+      if (tr.closest('#emeses tbody')) {
+        const i = [...document.querySelectorAll('#emeses tbody tr.item')].indexOf(tr);
+        const lib = document.querySelectorAll('#ingressos tbody tr.litem')[i];
+        if (lib) lib.remove();
+      }
+      tr.remove(); render();
+    }
   });
   document.getElementById('addRow').addEventListener('click', novaFila);
   document.getElementById('addRow2').addEventListener('click', novaFila);
