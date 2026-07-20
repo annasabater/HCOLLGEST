@@ -29,6 +29,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
         ...(d.vigenciaInici !== undefined ? { vigenciaInici: d.vigenciaInici ?? null } : {}),
         ...(d.vigenciaFi !== undefined ? { vigenciaFi: d.vigenciaFi ?? null } : {}),
         ...(d.generaDespesa !== undefined ? { generaDespesa: d.generaDespesa } : {}),
+        ...(d.esFix !== undefined ? { esFix: d.esFix } : {}),
         ...(d.observacions !== undefined ? { observacions: d.observacions ?? null } : {}),
         ...(d.actiu !== undefined ? { actiu: d.actiu } : {}),
       },

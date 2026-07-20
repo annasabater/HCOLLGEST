@@ -59,6 +59,7 @@ export const ServeiCreateSchema = z.object({
   vigenciaInici: optDate,
   vigenciaFi: optDate,
   generaDespesa: z.coerce.boolean().default(true),
+  esFix: z.coerce.boolean().default(false), // apareix també a "Despeses fixes"
   observacions: optStr,
   actiu: z.coerce.boolean().default(true),
 });

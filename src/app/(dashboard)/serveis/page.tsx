@@ -46,6 +46,7 @@ interface Servei {
   vigenciaInici: string | null;
   vigenciaFi: string | null;
   generaDespesa: boolean;
+  esFix: boolean;
   observacions: string | null;
   actiu: boolean;
   proveidor: { id: string; nom: string } | null;
@@ -63,6 +64,7 @@ const emptyServei = {
   vigenciaInici: '',
   vigenciaFi: '',
   generaDespesa: true,
+  esFix: false,
   observacions: '',
 };
 const emptyProv = {
@@ -128,6 +130,7 @@ export default function ServeisPage() {
       vigenciaInici: s.vigenciaInici ? toISODate(new Date(s.vigenciaInici)) : '',
       vigenciaFi: s.vigenciaFi ? toISODate(new Date(s.vigenciaFi)) : '',
       generaDespesa: s.generaDespesa,
+      esFix: s.esFix,
       observacions: s.observacions ?? '',
     });
     setServeiErr(null);
@@ -151,6 +154,7 @@ export default function ServeisPage() {
         vigenciaInici: serveiForm.vigenciaInici || undefined,
         vigenciaFi: serveiForm.vigenciaFi || undefined,
         generaDespesa: serveiForm.generaDespesa,
+        esFix: serveiForm.esFix,
         observacions: serveiForm.observacions || undefined,
       };
       if (editServeiId) {
@@ -366,6 +370,15 @@ export default function ServeisPage() {
                   onChange={(e) => setServeiForm({ ...serveiForm, generaDespesa: e.target.checked })}
                 />
                 Generar la despesa automàticament cada cop que venci (es comptabilitza l’import previst)
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-700 lg:col-span-3">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300"
+                  checked={serveiForm.esFix}
+                  onChange={(e) => setServeiForm({ ...serveiForm, esFix: e.target.checked })}
+                />
+                És una despesa fixa (apareix també a «Despeses fixes»)
               </label>
               <div className="flex items-center gap-3 lg:col-span-3">
                 <Button type="submit" disabled={savingServei}>

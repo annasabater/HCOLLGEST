@@ -46,6 +46,7 @@ export async function POST(req: Request) {
         vigenciaInici: data.vigenciaInici ?? null,
         vigenciaFi: data.vigenciaFi ?? null,
         generaDespesa: data.generaDespesa,
+        esFix: data.esFix,
         observacions: data.observacions ?? null,
         actiu: data.actiu,
       },
