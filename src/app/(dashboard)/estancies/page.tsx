@@ -29,11 +29,20 @@ const BORDER_COLOR: Record<EstatEstancia, string> = {
   CANCELLADA:  'border-l-slate-300',
 };
 
-function Initials({ nom }: { nom: string }) {
+// El color de l'avatar indica si l'hoste hi és ara:
+//  verd = hi és · taronja = hi és amb fiança · vermell = no hi és.
+const STATUS_AVATAR = {
+  verd: 'bg-emerald-100 text-emerald-700',
+  taronja: 'bg-amber-100 text-amber-700',
+  vermell: 'bg-rose-100 text-rose-700',
+} as const;
+type EstatEstada = keyof typeof STATUS_AVATAR;
+
+function Initials({ nom, estat }: { nom: string; estat: EstatEstada }) {
   const parts = nom.trim().split(' ');
   const ini = (parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '');
   return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold uppercase text-brand-700">
+    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold uppercase ${STATUS_AVATAR[estat]}`}>
       {ini}
     </span>
   );
@@ -54,6 +63,7 @@ export default async function EstanciesPage({
   const pagina = Math.max(1, Number(paginaStr) || 1);
   const where = { deletedAt: null as null, ...(estatFilter ? { estat: estatFilter } : {}) };
   const total = await prisma.estancia.count({ where });
+  const now = new Date();
 
   const estancies = await prisma.estancia.findMany({
     where,
@@ -64,6 +74,7 @@ export default async function EstanciesPage({
       viatgers: { include: { huesped: true }, orderBy: { esTitular: 'desc' } },
       enviaments: { orderBy: { createdAt: 'desc' }, take: 1 },
       habitacio: true,
+      diposits: { where: { estat: 'EN_CUSTODIA' }, select: { id: true }, take: 1 },
     },
   });
 
@@ -117,6 +128,13 @@ export default async function EstanciesPage({
         })}
       </div>
 
+      {/* Llegenda del color de l'avatar */}
+      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /> Hi és ara</span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> Hi és amb fiança</span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-400" /> No hi és</span>
+      </div>
+
       {estancies.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 py-16 text-center">
           <BedDouble className="h-10 w-10 text-slate-300" />
@@ -136,12 +154,16 @@ export default async function EstanciesPage({
               .map((v) => `${v.huesped!.nom} ${v.huesped!.cognom1}${v.huesped!.cognom2 ? ` ${v.huesped!.cognom2}` : ''}`);
             const env = e.enviaments[0];
             const cfg = ESTAT_CONFIG[e.estat];
+            // Hi és ara si les dates cobreixen avui i no està cancel·lada.
+            const estaAra =
+              e.estat !== 'CANCELLADA' && !!e.dataEntrada && !!e.dataSortida && e.dataEntrada <= now && e.dataSortida > now;
+            const estatColor: EstatEstada = estaAra ? (e.diposits.length > 0 ? 'taronja' : 'verd') : 'vermell';
 
             return (
               <Link key={e.id} href={`/estancies/${e.id}`}
                 className={`group flex items-center gap-4 rounded-2xl border border-l-4 border-slate-200 bg-white px-4 py-3.5 transition-all hover:shadow-md hover:border-slate-300 ${BORDER_COLOR[e.estat]}`}>
 
-                <Initials nom={nomTitular} />
+                <Initials nom={nomTitular} estat={estatColor} />
 
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
