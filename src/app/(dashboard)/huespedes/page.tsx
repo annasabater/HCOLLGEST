@@ -107,7 +107,7 @@ export default async function HuespedesPage({
       {/* Llegenda del color de l'avatar */}
       <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
         <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /> Hi és ara</span>
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> Hi és, amb fiança (no oficial)</span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> Hi és amb fiança</span>
         <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-400" /> No hi és</span>
       </div>
 
