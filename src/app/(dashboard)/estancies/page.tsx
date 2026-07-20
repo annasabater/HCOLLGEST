@@ -153,11 +153,23 @@ export default async function EstanciesPage({
               .filter((v) => v.huespedId !== titularRow?.huespedId && v.huesped)
               .map((v) => `${v.huesped!.nom} ${v.huesped!.cognom1}${v.huesped!.cognom2 ? ` ${v.huesped!.cognom2}` : ''}`);
             const env = e.enviaments[0];
-            const cfg = ESTAT_CONFIG[e.estat];
             // Hi és ara si les dates cobreixen avui i no està cancel·lada.
             const estaAra =
               e.estat !== 'CANCELLADA' && !!e.dataEntrada && !!e.dataSortida && e.dataEntrada <= now && e.dataSortida > now;
             const estatColor: EstatEstada = estaAra ? (e.diposits.length > 0 ? 'taronja' : 'verd') : 'vermell';
+            // Estat EFECTIU: si consta EN_CURS però la data de sortida ja ha passat,
+            // en realitat ja ha finalitzat (l'estat guardat pot quedar desactualitzat).
+            const estatEfectiu: EstatEstancia =
+              e.estat === 'EN_CURS' && !!e.dataSortida && e.dataSortida <= now ? 'FINALITZADA' : e.estat;
+            const cfg = ESTAT_CONFIG[estatEfectiu];
+            // Color del badge coordinat amb l'avatar: verd hi és · taronja amb fiança ·
+            // vermell no hi és (reserva futura en blau, cancel·lada en neutre).
+            const badgeTone: 'neutral' | 'info' | 'success' | 'warning' | 'danger' =
+              estatEfectiu === 'RESERVA' ? 'info'
+              : estatEfectiu === 'CANCELLADA' ? 'neutral'
+              : estatColor === 'verd' ? 'success'
+              : estatColor === 'taronja' ? 'warning'
+              : 'danger';
 
             return (
               <Link key={e.id} href={`/estancies/${e.id}`}
@@ -173,7 +185,7 @@ export default async function EstanciesPage({
                     <span className="text-xs text-slate-400">
                       {e.numContracte}/{e.anyContracte}
                     </span>
-                    <Badge tone={cfg.tone}>{cfg.label}</Badge>
+                    <Badge tone={badgeTone}>{cfg.label}</Badge>
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500">
                     <span className="flex items-center gap-1">
