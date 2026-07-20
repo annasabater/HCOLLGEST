@@ -5,9 +5,10 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Paginacio } from '@/components/ui/paginacio';
+import { EstanciesOrdre } from '@/components/estancia/estancies-ordre';
 import { formatDate } from '@/lib/utils';
 import { ESTAT_ENVIAMENT_LABELS } from '@/lib/validation/enums';
-import type { EstatEnviament, EstatEstancia } from '@prisma/client';
+import type { EstatEnviament, EstatEstancia, Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,12 +49,22 @@ function Initials({ nom, estat }: { nom: string; estat: EstatEstada }) {
   );
 }
 
+const ORDRE_MAP: Record<string, Prisma.EstanciaOrderByWithRelationInput | Prisma.EstanciaOrderByWithRelationInput[]> = {
+  'entrada-desc': { dataEntrada: 'desc' },
+  'entrada-asc': { dataEntrada: 'asc' },
+  'sortida-desc': { dataSortida: 'desc' },
+  'sortida-asc': { dataSortida: 'asc' },
+  'contracte-desc': [{ anyContracte: 'desc' }, { numContracte: 'desc' }],
+  'creacio-desc': { createdAt: 'desc' },
+};
+
 export default async function EstanciesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ estat?: string; pagina?: string; perPagina?: string }>;
+  searchParams: Promise<{ estat?: string; pagina?: string; perPagina?: string; ordre?: string }>;
 }) {
-  const { estat, pagina: paginaStr, perPagina: perPaginaStr } = await searchParams;
+  const { estat, pagina: paginaStr, perPagina: perPaginaStr, ordre: ordreStr } = await searchParams;
+  const ordre = ordreStr && ORDRE_MAP[ordreStr] ? ordreStr : 'entrada-desc';
 
   const estatFilter = estat && ['RESERVA', 'EN_CURS', 'FINALITZADA', 'CANCELLADA'].includes(estat)
     ? (estat as EstatEstancia)
@@ -67,7 +78,7 @@ export default async function EstanciesPage({
 
   const estancies = await prisma.estancia.findMany({
     where,
-    orderBy: { dataEntrada: 'desc' },
+    orderBy: ORDRE_MAP[ordre],
     skip: (pagina - 1) * perPagina,
     take: perPagina,
     include: {
@@ -105,11 +116,15 @@ export default async function EstanciesPage({
         }
       />
 
-      {/* Tabs de filtre */}
-      <div className="mb-6 flex flex-wrap gap-2">
+      {/* Tabs de filtre + ordenació */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
         {tabs.map((tab) => {
           const isActive = (estat ?? '') === tab.key;
-          const href = tab.key ? `/estancies?estat=${tab.key}` : '/estancies';
+          const qs = new URLSearchParams();
+          if (tab.key) qs.set('estat', tab.key);
+          if (ordre !== 'entrada-desc') qs.set('ordre', ordre);
+          const href = qs.toString() ? `/estancies?${qs.toString()}` : '/estancies';
           return (
             <Link key={tab.key} href={href}
               className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -126,6 +141,8 @@ export default async function EstanciesPage({
             </Link>
           );
         })}
+        </div>
+        <EstanciesOrdre actual={ordre} />
       </div>
 
       {/* Llegenda del color de l'avatar */}
