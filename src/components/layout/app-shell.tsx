@@ -56,9 +56,6 @@ export function AppShell({
         <div className="flex items-center justify-between border-b border-brand-800 px-5 py-5">
           <div>
             <p className="font-serif text-2xl font-semibold tracking-wide">Hostal Coll</p>
-            <p className="mt-0.5 text-[10px] uppercase tracking-[0.22em] text-brand-300">
-              Gestió integral
-            </p>
           </div>
           <button
             type="button"
