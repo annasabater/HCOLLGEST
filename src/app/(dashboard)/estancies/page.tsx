@@ -22,13 +22,6 @@ const ENV_TONE: Record<EstatEnviament, 'neutral' | 'info' | 'success' | 'warning
   PENDENT: 'warning', ENVIAT: 'info', ACCEPTAT: 'success', REBUTJAT: 'danger', ERROR: 'danger',
 };
 
-const BORDER_COLOR: Record<EstatEstancia, string> = {
-  RESERVA:     'border-l-sky-400',
-  EN_CURS:     'border-l-amber-400',
-  FINALITZADA: 'border-l-green-400',
-  CANCELLADA:  'border-l-slate-300',
-};
-
 // El color de l'avatar indica si l'hoste hi és ara:
 //  verd = hi és · taronja = hi és amb fiança · vermell = no hi és.
 const STATUS_AVATAR = {
@@ -37,6 +30,13 @@ const STATUS_AVATAR = {
   vermell: 'bg-rose-100 text-rose-700',
 } as const;
 type EstatEstada = keyof typeof STATUS_AVATAR;
+
+// Vora esquerra de la targeta amb el mateix codi: verd hi és / taronja amb fiança / vermell no hi és.
+const STATUS_BORDER: Record<EstatEstada, string> = {
+  verd: 'border-l-emerald-400',
+  taronja: 'border-l-amber-400',
+  vermell: 'border-l-rose-400',
+};
 
 function Initials({ nom, estat }: { nom: string; estat: EstatEstada }) {
   const parts = nom.trim().split(' ');
@@ -161,7 +161,7 @@ export default async function EstanciesPage({
 
             return (
               <Link key={e.id} href={`/estancies/${e.id}`}
-                className={`group flex items-center gap-4 rounded-2xl border border-l-4 border-slate-200 bg-white px-4 py-3.5 transition-all hover:shadow-md hover:border-slate-300 ${BORDER_COLOR[e.estat]}`}>
+                className={`group flex items-center gap-4 rounded-2xl border border-l-4 border-slate-200 bg-white px-4 py-3.5 transition-all hover:shadow-md hover:border-slate-300 ${STATUS_BORDER[estatColor]}`}>
 
                 <Initials nom={nomTitular} estat={estatColor} />
 
