@@ -34,13 +34,22 @@ function taulaGrup(grup: GrupTarifa, rows: Row[]): string {
   if (rows.length === 0) return '';
   const cols = rows;
   const head = cols.map((c) => `<th>${esc(c.etiqueta)}</th>`).join('');
-  const cos = TRAMS.map((t) => {
-    // Amaga la fila si cap columna té valor per a aquest tram.
-    if (cols.every((c) => c[t.key] == null)) return '';
-    const cells = cols.map((c) => `<td>${eur(c[t.key])}</td>`).join('');
+  // Columnes SENSE cap preu però amb nota (p. ex. "VERANO" de Doble 1 persona):
+  // en comptes de deixar-les en blanc, hi posem la nota (cel·la que ocupa totes
+  // les files de trams visibles).
+  const noteOnly = cols.map((c) => (TRAMS.every((t) => c[t.key] == null) && c.nota ? c.nota : null));
+  const tramsVisibles = TRAMS.filter((t) => cols.some((c) => c[t.key] != null));
+  const cos = tramsVisibles.map((t, ri) => {
+    const cells = cols.map((c, ci) => {
+      if (noteOnly[ci]) {
+        return ri === 0 ? `<td class="note-cell" rowspan="${tramsVisibles.length}">${esc(noteOnly[ci])}</td>` : '';
+      }
+      return `<td>${eur(c[t.key])}</td>`;
+    }).join('');
     return `<tr><th class="rowlab">${t.label}</th>${cells}</tr>`;
   }).join('');
-  const notes = cols.filter((c) => c.nota).map((c) => `<li><strong>${esc(c.etiqueta)}:</strong> ${esc(c.nota)}</li>`).join('');
+  // A la llista de notes de sota, no repetim les que ja surten dins la taula.
+  const notes = cols.filter((c, ci) => c.nota && !noteOnly[ci]).map((c) => `<li><strong>${esc(c.etiqueta)}:</strong> ${esc(c.nota)}</li>`).join('');
   return `
   <section class="grup">
     <h2>${GRUP_TARIFA_LABELS[grup]}</h2>
@@ -105,6 +114,7 @@ export async function GET(req: Request) {
   table.tarifes th.corner{ background:transparent; border:0; }
   table.tarifes th.rowlab{ background:#FBF6F4; text-align:left; color:var(--muted); font-weight:600; white-space:nowrap; }
   table.tarifes td{ color:var(--ink); }
+  table.tarifes td.note-cell{ font-style:italic; color:var(--muted); vertical-align:middle; padding:8px 12px; line-height:1.4; }
   .notes{ margin:10px 0 0; padding-left:18px; color:var(--muted); font-size:11.5px; }
   .notes li{ margin:2px 0; }
   .foot{ margin-top:24px; padding-top:12px; border-top:1px solid var(--line); color:var(--muted); font-size:11px; text-align:center; }
