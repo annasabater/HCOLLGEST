@@ -22,6 +22,8 @@ export const FilaGastoSchema = z.object({
   base: z.coerce.number().default(0),
   ivaPercent: z.coerce.number().default(0),
   iva: z.coerce.number().default(0),
+  irpfPercent: z.coerce.number().default(0),
+  irpf: z.coerce.number().default(0),
   total: z.coerce.number().default(0),
 });
 

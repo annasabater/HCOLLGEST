@@ -80,7 +80,9 @@ export interface FilaGasto {
   base: number;
   ivaPercent: number;
   iva: number;
-  total: number;
+  irpfPercent: number; // retenció d'IRPF (p. ex. lloguer de local 19%); 0 si no en té
+  irpf: number;
+  total: number; // base + IVA − IRPF (el que es paga de veritat)
 }
 
 /**
@@ -109,6 +111,10 @@ export async function getGastosSoportats(year: number, trimestre: number): Promi
       base,
       ivaPercent: IVA_DESPESA,
       iva: round2(total - base),
+      // Sense retenció d'IRPF per defecte (només l'aplica el lloguer i alguns
+      // serveis professionals; s'ajusta a mà a la fila corresponent).
+      irpfPercent: 0,
+      irpf: 0,
       total,
     };
   });
