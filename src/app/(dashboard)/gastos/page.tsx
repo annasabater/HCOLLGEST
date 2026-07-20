@@ -1,8 +1,8 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Plus, Trash2, Paperclip, Filter, Camera, Upload, X, Users, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Plus, Trash2, Paperclip, Filter, Camera, Upload, X, Users, ShieldCheck, ShieldOff, Pencil, Check } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { FinancesNav } from '@/components/balanc/finances-nav';
 import { Button } from '@/components/ui/button';
@@ -30,9 +30,18 @@ interface Gasto {
   metodePagament: keyof typeof METODE_COBRAMENT_LABELS;
   adjuntPath: string | null;
   esFianca: boolean;
+  numFactura: string | null;
+  categoriaId: string;
+  proveidorId: string | null;
+  habitacioId: string | null;
   categoria: { nom: string };
   proveidor: { nom: string } | null;
   habitacio: { nom: string } | null;
+}
+
+interface EditForm {
+  data: string; import: string; categoriaId: string; proveidorId: string; habitacioId: string;
+  metodePagament: string; descripcio: string; numFactura: string;
 }
 
 interface GasFix {
@@ -314,6 +323,11 @@ function GastosVariablesTab() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Edició inline d'una despesa existent.
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<EditForm>({ data: '', import: '', categoriaId: '', proveidorId: '', habitacioId: '', metodePagament: 'TARGETA', descripcio: '', numFactura: '' });
+  const [editSaving, setEditSaving] = useState(false);
+
   const load = useCallback(async () => {
     const p = new URLSearchParams();
     if (fDesde) p.set('desde', fDesde);
@@ -364,6 +378,44 @@ function GastosVariablesTab() {
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error actualitzant');
+    }
+  }
+
+  function startEdit(g: Gasto) {
+    setError(null);
+    setEditId(g.id);
+    setEditForm({
+      data: g.data.slice(0, 10),
+      import: String(Number(g.import)),
+      categoriaId: g.categoriaId,
+      proveidorId: g.proveidorId ?? '',
+      habitacioId: g.habitacioId ?? '',
+      metodePagament: g.metodePagament,
+      descripcio: g.descripcio,
+      numFactura: g.numFactura ?? '',
+    });
+  }
+
+  async function desarEdit(id: string) {
+    if (!editForm.categoriaId || !editForm.import) { setError('Cal categoria i import.'); return; }
+    setEditSaving(true); setError(null);
+    try {
+      await patchJSON(`/api/gastos/${id}`, {
+        data: editForm.data,
+        import: Number(editForm.import),
+        categoriaId: editForm.categoriaId,
+        proveidorId: editForm.proveidorId,
+        habitacioId: editForm.habitacioId,
+        metodePagament: editForm.metodePagament,
+        descripcio: editForm.descripcio,
+        numFactura: editForm.numFactura,
+      });
+      setEditId(null);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error desant la despesa');
+    } finally {
+      setEditSaving(false);
     }
   }
 
@@ -471,7 +523,8 @@ function GastosVariablesTab() {
           </Thead>
           <tbody>
             {gastos.map((g) => (
-              <Tr key={g.id} className={g.esFianca ? 'bg-amber-50/40' : undefined}>
+              <Fragment key={g.id}>
+              <Tr className={g.esFianca ? 'bg-amber-50/40' : undefined}>
                 <Td>{formatDate(g.data)}</Td>
                 <Td className="font-medium text-slate-800">
                   {g.descripcio}
@@ -488,6 +541,13 @@ function GastosVariablesTab() {
                 <Td>
                   <div className="flex items-center justify-end gap-1">
                     <button
+                      className="text-slate-400 hover:text-brand-600"
+                      onClick={() => (editId === g.id ? setEditId(null) : startEdit(g))}
+                      title="Editar despesa"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
                       className={g.esFianca ? 'text-amber-600 hover:text-slate-600' : 'text-slate-400 hover:text-amber-600'}
                       onClick={() => toggleFianca(g)}
                       title={g.esFianca ? 'Marcar com a despesa real (comptarà al balanç)' : 'Marcar com a fiança/dipòsit (no comptarà al balanç)'}
@@ -498,6 +558,46 @@ function GastosVariablesTab() {
                   </div>
                 </Td>
               </Tr>
+              {editId === g.id && (
+                <tr className="bg-brand-50/40">
+                  <td colSpan={8} className="px-4 py-3">
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <Field label="Data"><Input type="date" value={editForm.data} onChange={(e) => setEditForm({ ...editForm, data: e.target.value })} /></Field>
+                      <Field label="Import €"><Input type="number" step="0.01" value={editForm.import} onChange={(e) => setEditForm({ ...editForm, import: e.target.value })} /></Field>
+                      <Field label="Categoria">
+                        <Select value={editForm.categoriaId} onChange={(e) => setEditForm({ ...editForm, categoriaId: e.target.value })}>
+                          <option value="">—</option>
+                          {categories.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}
+                        </Select>
+                      </Field>
+                      <Field label="Proveïdor">
+                        <Select value={editForm.proveidorId} onChange={(e) => setEditForm({ ...editForm, proveidorId: e.target.value })}>
+                          <option value="">—</option>
+                          {proveidors.map((p) => <option key={p.id} value={p.id}>{p.nom}</option>)}
+                        </Select>
+                      </Field>
+                      <Field label="Habitació">
+                        <Select value={editForm.habitacioId} onChange={(e) => setEditForm({ ...editForm, habitacioId: e.target.value })}>
+                          <option value="">General</option>
+                          {habitacions.map((h) => <option key={h.id} value={h.id}>{h.nom}</option>)}
+                        </Select>
+                      </Field>
+                      <Field label="Mètode de pagament">
+                        <Select value={editForm.metodePagament} onChange={(e) => setEditForm({ ...editForm, metodePagament: e.target.value })}>
+                          {optionsFrom(metodeCobramentValues, METODE_COBRAMENT_LABELS).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </Select>
+                      </Field>
+                      <Field label="Núm. factura (proveïdor)"><Input value={editForm.numFactura} onChange={(e) => setEditForm({ ...editForm, numFactura: e.target.value })} /></Field>
+                      <Field label="Descripció" className="sm:col-span-2"><Input value={editForm.descripcio} onChange={(e) => setEditForm({ ...editForm, descripcio: e.target.value })} /></Field>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <Button size="sm" onClick={() => desarEdit(g.id)} disabled={editSaving}><Check className="h-4 w-4" /> {editSaving ? 'Desant…' : 'Desar'}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditId(null)} disabled={editSaving}>Cancel·lar</Button>
+                    </div>
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             ))}
           </tbody>
         </Table>

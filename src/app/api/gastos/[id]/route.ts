@@ -26,6 +26,12 @@ export async function PATCH(req: Request, ctx: Ctx) {
     if (input.esFianca !== undefined) data.esFianca = input.esFianca;
     if (input.categoriaId !== undefined) data.categoria = { connect: { id: input.categoriaId } };
 
+    // Proveïdor i habitació: es llegeixen del body cru per poder-los CANVIAR o
+    // BUIDAR ('' → sense proveïdor/general). L'esquema optStr no distingeix buit.
+    const raw = (body ?? {}) as Record<string, unknown>;
+    if ('proveidorId' in raw) data.proveidor = raw.proveidorId ? { connect: { id: String(raw.proveidorId) } } : { disconnect: true };
+    if ('habitacioId' in raw) data.habitacio = raw.habitacioId ? { connect: { id: String(raw.habitacioId) } } : { disconnect: true };
+
     const gasto = await prisma.gasto.update({ where: { id }, data });
     await audit({
       usuariId: auth.id,
