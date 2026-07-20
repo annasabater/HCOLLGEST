@@ -30,7 +30,7 @@ export async function GET(req: Request) {
     orderBy: { dataEntrada: 'desc' },
     take: 100,
     include: {
-      viatgers: { include: { huesped: true } },
+      viatgers: { include: { huesped: { include: { animals: { where: { deletedAt: null }, select: { especie: true, nom: true } } } } } },
       enviaments: { orderBy: { createdAt: 'desc' }, take: 1 },
       habitacio: true,
     },

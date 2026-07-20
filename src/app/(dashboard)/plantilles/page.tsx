@@ -155,6 +155,24 @@ function MeuWhatsApp() {
   );
 }
 
+// Estada amb els animals de companyia dels seus viatgers (per avisar la neteja).
+type EstanciaMascota = {
+  estat: string;
+  dataEntrada: string;
+  dataSortida: string | null;
+  habitacio: { nom: string } | null;
+  viatgers: { huesped: { animals: { especie: string; nom: string }[] } | null }[];
+};
+
+// "un gat", "un gos i un gat"… a partir de les espècies dels animals de l'habitació.
+function descriuMascota(especies: string[], lang: Lang): string {
+  const list = especies.map((e) => e.trim().toLowerCase()).filter(Boolean);
+  if (!list.length) return '';
+  const art = { ca: 'un', es: 'un', fr: 'un', en: 'a' }[lang];
+  const join = { ca: ' i ', es: ' y ', fr: ' et ', en: ' and ' }[lang];
+  return list.map((e) => `${art} ${e}`).join(join);
+}
+
 // --- Plantilla per a la dona de neteja --------------------------------------
 function NetejaCard() {
   const [data, setData] = useState(toISODate(addDays(new Date(), 1)));
@@ -185,6 +203,28 @@ function NetejaCard() {
     getJSON<{ tasques: Tasca[] }>(`/api/tasques-neteja?desde=${data}&fins=${data}`).then((r) =>
       setTasques(r.tasques),
     );
+  }, [data]);
+
+  // Mapa habitació → animals de companyia (espècies) de l'estada present aquell dia.
+  const [mascotesPerHab, setMascotesPerHab] = useState<Record<string, string[]>>({});
+  useEffect(() => {
+    getJSON<{ estancies: EstanciaMascota[] }>('/api/estancies')
+      .then((r) => {
+        const m: Record<string, string[]> = {};
+        for (const e of r.estancies) {
+          const hab = e.habitacio?.nom;
+          if (!hab) continue;
+          const entrada = e.dataEntrada.slice(0, 10);
+          const sortida = e.dataSortida ? e.dataSortida.slice(0, 10) : null;
+          // Estada present el dia de neteja (entrada ≤ dia ≤ sortida, o encara oberta).
+          if (entrada > data) continue;
+          if (sortida && sortida < data) continue;
+          const especies = e.viatgers.flatMap((v) => v.huesped?.animals.map((a) => a.especie) ?? []);
+          if (especies.length) m[hab] = [...(m[hab] ?? []), ...especies];
+        }
+        setMascotesPerHab(m);
+      })
+      .catch(() => setMascotesPerHab({}));
   }, [data]);
 
   const treballador = treballadors.find((t) => t.id === treballadorId);
@@ -223,7 +263,11 @@ function NetejaCard() {
           nom: treballador?.nom ?? '',
           data: formatDate(data),
           habitacions: descriuTasques(
-            meves.map((t) => ({ habitacio: t.habitacio?.nom ?? null, tipus: t.tipus, notes: t.notes })),
+            meves.map((t) => {
+              const hab = t.habitacio?.nom ?? null;
+              const animal = hab ? descriuMascota(mascotesPerHab[hab] ?? [], lang) : '';
+              return { habitacio: hab, tipus: t.tipus, notes: t.notes, animal };
+            }),
             lang,
           ),
           // Zones comunes combinades en una sola frase ("También el pasillo, el patio y la acera.").
@@ -238,7 +282,7 @@ function NetejaCard() {
         }),
       ),
     );
-  }, [tpls, lang, treballador, data, tasques, pasillo, pati, vorera, mostrarHora, hora]);
+  }, [tpls, lang, treballador, data, tasques, mascotesPerHab, pasillo, pati, vorera, mostrarHora, hora]);
 
   // Canvia el tipus d'una habitació (salida/repàs) i ho desa a la tasca.
   async function setTipus(id: string, tipus: 'CANVI_COMPLET' | 'REPAS') {

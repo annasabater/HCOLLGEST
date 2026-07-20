@@ -29,8 +29,8 @@ describe('waLink', () => {
   });
 });
 
-describe('descriuTasques (agrupades per tipus, multilínia)', () => {
-  it('agrupa mantenimiento i salida en línies separades (castellà)', () => {
+describe('descriuTasques (una línia per habitació)', () => {
+  it('una línia per habitació amb guió (castellà)', () => {
     expect(
       descriuTasques(
         [
@@ -40,29 +40,18 @@ describe('descriuTasques (agrupades per tipus, multilínia)', () => {
         ],
         'es',
       ),
-    ).toBe('las habitaciones Nº1 y la Nº4: mantenimiento\nla habitación Nº5: salida');
+    ).toBe('- Núm. 1: mantenimiento.\n- Núm. 4: mantenimiento.\n- Núm. 5: salida.');
   });
-  it('tres habitacions del mateix tipus', () => {
+  it('afegeix la nota d’animal (català)', () => {
     expect(
-      descriuTasques(
-        [
-          { habitacio: '1', tipus: 'REPAS' },
-          { habitacio: '2', tipus: 'REPAS' },
-          { habitacio: '4', tipus: 'REPAS' },
-        ],
-        'es',
-      ),
-    ).toBe('las habitaciones Nº1, la Nº2 y la Nº4: mantenimiento');
+      descriuTasques([{ habitacio: '2', tipus: 'REPAS', animal: 'un gat' }], 'ca'),
+    ).toBe('- Núm. 2: manteniment. Hi ha un animal de companyia, un gat.');
   });
   it('descriu en català', () => {
-    expect(
-      descriuTasques([{ habitacio: '3', tipus: 'CANVI_COMPLET' }], 'ca'),
-    ).toBe('l’habitació Nº3: sortida');
+    expect(descriuTasques([{ habitacio: '3', tipus: 'CANVI_COMPLET' }], 'ca')).toBe('- Núm. 3: sortida.');
   });
   it('descriu en anglès', () => {
-    expect(
-      descriuTasques([{ habitacio: '4', tipus: 'REPAS' }], 'en'),
-    ).toBe('room Nº4: maintenance');
+    expect(descriuTasques([{ habitacio: '4', tipus: 'REPAS' }], 'en')).toBe('- Room 4: maintenance.');
   });
   it('sense tasques', () => {
     expect(descriuTasques([], 'es')).toBe('no hay habitaciones asignadas');
@@ -70,13 +59,15 @@ describe('descriuTasques (agrupades per tipus, multilínia)', () => {
 });
 
 describe('zonesComunesTxt', () => {
-  it('combina les tres zones en una frase', () => {
+  it('combina les tres zones en una frase (recordatori diari)', () => {
     expect(zonesComunesTxt('es', { pasillo: true, pati: true, vorera: true })).toBe(
-      'También el pasillo, el patio y la acera.',
+      'Ten en cuenta que cada día también habrá que hacer el pasillo, el patio y la acera.',
     );
   });
   it('dues zones', () => {
-    expect(zonesComunesTxt('es', { pasillo: true, pati: true })).toBe('También el pasillo y el patio.');
+    expect(zonesComunesTxt('es', { pasillo: true, pati: true })).toBe(
+      'Ten en cuenta que cada día también habrá que hacer el pasillo y el patio.',
+    );
   });
   it('cap zona → buit', () => {
     expect(zonesComunesTxt('es', {})).toBe('');
@@ -97,18 +88,20 @@ describe('plantilla de neteja (multilínia)', () => {
     const msg = netejaLinies(
       fillTemplate(PLANTILLA_NETEJA.es, {
         nom: 'Rossy',
-        data: '06/07/2026',
         habitacions,
         zones: zonesComunesTxt('es', { pasillo: true, pati: true, vorera: true }),
         hora: fillTemplate(HORA_NETEJA_TXT.es, { hora: '11:00' }),
       }),
     );
     expect(msg).toBe(
-      '¡Hola Rossy! 😊 Para mañana (06/07/2026) tendríamos:\n' +
-        'las habitaciones Nº1 y la Nº4: mantenimiento\n' +
-        'la habitación Nº5: salida\n' +
-        'También el pasillo, el patio y la acera. Puedes venir sobre las 11:00.\n' +
-        '¡Muchísimas gracias!',
+      '¡Hola Rossy! 😊\n' +
+        'Te paso el trabajo de mañana:\n' +
+        '🛏️ Habitaciones:\n' +
+        '- Núm. 1: mantenimiento.\n' +
+        '- Núm. 4: mantenimiento.\n' +
+        '- Núm. 5: salida.\n' +
+        'Ten en cuenta que cada día también habrá que hacer el pasillo, el patio y la acera. Puedes venir sobre las 11:00.\n' +
+        '¡Muchas gracias!',
     );
   });
 
@@ -116,14 +109,13 @@ describe('plantilla de neteja (multilínia)', () => {
     const msg = netejaLinies(
       fillTemplate(PLANTILLA_NETEJA.es, {
         nom: 'Rossy',
-        data: '06/07/2026',
         habitacions: descriuTasques([{ habitacio: '1', tipus: 'CANVI_COMPLET' }], 'es'),
         zones: '',
         hora: '',
       }),
     );
     expect(msg).toBe(
-      '¡Hola Rossy! 😊 Para mañana (06/07/2026) tendríamos:\nla habitación Nº1: salida\n¡Muchísimas gracias!',
+      '¡Hola Rossy! 😊\nTe paso el trabajo de mañana:\n🛏️ Habitaciones:\n- Núm. 1: salida.\n¡Muchas gracias!',
     );
   });
 });
