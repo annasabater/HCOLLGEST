@@ -144,10 +144,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   .in{ font:inherit; color:inherit; border:0; background:transparent; width:100%; padding:4px 5px; border-radius:5px; }
   .in:focus{ outline:none; background:var(--accent-soft); box-shadow:inset 0 0 0 1px rgba(122,31,43,.3); }
   .in.n{ text-align:right; font-variant-numeric:tabular-nums; }
-  /* Amplades mínimes perquè el text/nombres no es tallin dins dels inputs. */
-  .in.f-data,.in.g-data{ min-width:82px; } .in.f-ns,.in.f-nf,.in.g-nif,.in.g-numf{ min-width:78px; }
-  .in.f-cli,.in.g-prov{ min-width:150px; } .in.f-per{ min-width:150px; }
-  .in.n{ min-width:70px; }
+  /* Taules amb columnes REDIMENSIONABLES: amplada fixa per columna (colgroup) i
+     una nansa a la vora dreta de cada capçalera per arrossegar-la. */
+  table.rz{ table-layout:fixed; width:auto; }
+  table.rz th{ position:relative; overflow:hidden; }
+  .resizer{ position:absolute; top:0; right:0; width:8px; height:100%; cursor:col-resize; z-index:3; }
+  .resizer:hover{ background:rgba(122,31,43,.3); }
   .del{ border:0; background:transparent; cursor:pointer; color:#C2BFB6; font-size:17px; line-height:1; width:22px; height:22px; border-radius:6px; }
   .del:hover{ background:#F1E4E0; color:#A23A2B; }
   tfoot td{ border-top:1.5px solid var(--ink); border-bottom:none; font-weight:700; color:var(--ink); padding-top:9px; }
@@ -164,7 +166,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   .add button{ font:inherit; font-size:12px; color:var(--accent); background:#fff; border:1px dashed var(--accent); border-radius:8px; padding:6px 12px; cursor:pointer; }
   @page{ size:A4 landscape; margin:12mm; }
   @media print{
-    body{ background:#fff; } .toolbar,.c-del,.del,.add{ display:none !important; } .app{ padding:0; }
+    body{ background:#fff; } .toolbar,.c-del,.del,.add,.resizer{ display:none !important; } .app{ padding:0; }
     .sheet{ box-shadow:none; border:none; border-radius:0; max-width:none; padding:0; }
     .sheet + .sheet{ page-break-before:always; }
     .in:focus{ background:transparent; box-shadow:none; }
@@ -191,12 +193,15 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <div class="rule"></div>
     <div class="period">${esc(etiqueta)}</div>
     <div class="doc-title">Facturas emitidas · Repercutidas</div>
-    <table id="emeses">
+    <table id="emeses" class="rz">
+      <colgroup>
+        <col style="width:88px"><col style="width:95px"><col style="width:95px"><col style="width:205px"><col style="width:150px"><col style="width:88px"><col style="width:50px"><col style="width:85px"><col style="width:92px"><col style="width:28px">
+      </colgroup>
       <thead>
         <tr>
-          <th>Fecha</th><th>Nº Factura S.</th><th>Nº Factura F.</th><th>Cliente</th>
-          <th>Período de estancia</th><th class="n">Base imponible</th><th class="n">% IVA</th>
-          <th class="n">IVA</th><th class="n">Total</th><th></th>
+          <th>Fecha<span class="resizer"></span></th><th>Nº Factura S.<span class="resizer"></span></th><th>Nº Factura F.<span class="resizer"></span></th><th>Cliente<span class="resizer"></span></th>
+          <th>Período de estancia<span class="resizer"></span></th><th class="n">Base imponible<span class="resizer"></span></th><th class="n">% IVA<span class="resizer"></span></th>
+          <th class="n">IVA<span class="resizer"></span></th><th class="n">Total<span class="resizer"></span></th><th></th>
         </tr>
       </thead>
       <tbody>${rows.map(filaEmesa).join('')}</tbody>
@@ -252,12 +257,15 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <div class="rule"></div>
     <div class="period">${esc(etiqueta)}</div>
     <div class="doc-title">Facturas recibidas · Soportadas</div>
-    <table id="gastos">
+    <table id="gastos" class="rz">
+      <colgroup>
+        <col style="width:88px"><col style="width:92px"><col style="width:180px"><col style="width:130px"><col style="width:88px"><col style="width:50px"><col style="width:82px"><col style="width:50px"><col style="width:82px"><col style="width:90px"><col style="width:28px">
+      </colgroup>
       <thead>
         <tr>
-          <th>Fecha</th><th>NIF</th><th>Proveedor</th><th>Nº factura</th>
-          <th class="n">Base imponible</th><th class="n">% IVA</th><th class="n">IVA</th>
-          <th class="n">% IRPF</th><th class="n">IRPF</th><th class="n">Total</th><th></th>
+          <th>Fecha<span class="resizer"></span></th><th>NIF<span class="resizer"></span></th><th>Proveedor<span class="resizer"></span></th><th>Nº factura<span class="resizer"></span></th>
+          <th class="n">Base imponible<span class="resizer"></span></th><th class="n">% IVA<span class="resizer"></span></th><th class="n">IVA<span class="resizer"></span></th>
+          <th class="n">% IRPF<span class="resizer"></span></th><th class="n">IRPF<span class="resizer"></span></th><th class="n">Total<span class="resizer"></span></th><th></th>
         </tr>
       </thead>
       <tbody>${gastos.map(filaGasto).join('')}</tbody>
@@ -479,6 +487,25 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   document.getElementById('addRow2').addEventListener('click', novaFila);
   document.getElementById('addGasto').addEventListener('click', novaGasto);
   document.getElementById('print').addEventListener('click', () => window.print());
+
+  // Columnes redimensionables: arrossega la nansa de la vora dreta de cada
+  // capçalera per fer la columna més ampla o més estreta (les que no es veuen bé,
+  // p. ex. Nº factura o Client; i encongir les de % IVA / IVA / % IRPF / IRPF).
+  document.querySelectorAll('table.rz th .resizer').forEach((rz) => {
+    rz.addEventListener('mousedown', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const th = rz.closest('th'); const table = rz.closest('table');
+      const cols = table.querySelectorAll('colgroup col');
+      const idx = Array.prototype.indexOf.call(th.parentNode.children, th);
+      const col = cols[idx]; if (!col) return;
+      const startX = e.pageX; const w0 = th.offsetWidth;
+      const move = (ev) => { col.style.width = Math.max(40, w0 + (ev.pageX - startX)) + 'px'; };
+      const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); document.body.style.cursor = ''; };
+      document.body.style.cursor = 'col-resize';
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    });
+  });
 
   document.getElementById('save').addEventListener('click', async () => {
     const btn = document.getElementById('save');
