@@ -146,7 +146,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   .in.n{ text-align:right; font-variant-numeric:tabular-nums; }
   /* Taules amb columnes REDIMENSIONABLES: amplada fixa per columna (colgroup) i
      una nansa a la vora dreta de cada capçalera per arrossegar-la. */
-  table.rz{ table-layout:fixed; width:auto; }
+  table.rz{ table-layout:fixed; width:100%; }
   table.rz th{ position:relative; overflow:hidden; }
   .resizer{ position:absolute; top:0; right:0; width:8px; height:100%; cursor:col-resize; z-index:3; }
   .resizer:hover{ background:rgba(122,31,43,.3); }
@@ -226,11 +226,14 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <div class="rule"></div>
     <div class="period">${esc(etiqueta)}</div>
     <div class="doc-title">Libro de ingresos</div>
-    <table id="ingressos">
+    <table id="ingressos" class="rz">
+      <colgroup>
+        <col style="width:110px"><col style="width:130px"><col style="width:130px"><col style="width:300px"><col style="width:140px"><col style="width:140px"><col style="width:140px">
+      </colgroup>
       <thead>
         <tr>
-          <th>Fecha</th><th>Nº Factura S.</th><th>Nº Factura F.</th><th>Cliente</th>
-          <th class="n">Importe</th><th class="n">Base imponible</th><th class="n">IVA 10%</th>
+          <th>Fecha<span class="resizer"></span></th><th>Nº Factura S.<span class="resizer"></span></th><th>Nº Factura F.<span class="resizer"></span></th><th>Cliente<span class="resizer"></span></th>
+          <th class="n">Importe<span class="resizer"></span></th><th class="n">Base imponible<span class="resizer"></span></th><th class="n">IVA 10%</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -296,9 +299,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <div class="rule"></div>
     <div class="period">${esc(etiqueta)}</div>
     <div class="doc-title">Liquidación de IVA · Repercutido / Soportado</div>
-    <table>
+    <table class="rz">
+      <colgroup>
+        <col style="width:700px"><col style="width:195px"><col style="width:195px">
+      </colgroup>
       <thead>
-        <tr><th>Concepto</th><th class="n">Base imponible</th><th class="n">IVA</th></tr>
+        <tr><th>Concepto<span class="resizer"></span></th><th class="n">Base imponible<span class="resizer"></span></th><th class="n">IVA</th></tr>
       </thead>
       <tbody>
         <tr>
@@ -498,8 +504,16 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       const cols = table.querySelectorAll('colgroup col');
       const idx = Array.prototype.indexOf.call(th.parentNode.children, th);
       const col = cols[idx]; if (!col) return;
-      const startX = e.pageX; const w0 = th.offsetWidth;
-      const move = (ev) => { col.style.width = Math.max(40, w0 + (ev.pageX - startX)) + 'px'; };
+      const nextCol = cols[idx + 1];
+      const ths = table.querySelectorAll('thead th');
+      const startX = e.pageX; const w0 = th.offsetWidth; const wNext0 = ths[idx + 1] ? ths[idx + 1].offsetWidth : 0;
+      // Amplada total constant: el que creix una columna, l'encongeix la del costat
+      // (així les taules segueixen ocupant tota l'amplada).
+      const move = (ev) => {
+        const d = ev.pageX - startX;
+        col.style.width = Math.max(40, w0 + d) + 'px';
+        if (nextCol) nextCol.style.width = Math.max(40, wNext0 - d) + 'px';
+      };
       const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); document.body.style.cursor = ''; };
       document.body.style.cursor = 'col-resize';
       document.addEventListener('mousemove', move);
