@@ -22,7 +22,7 @@ interface FilaEdit {
 }
 interface FilaGastoEdit {
   data: string; nif: string; proveidor: string; numFactura: string;
-  base: number; ivaPercent: number; iva: number; total: number;
+  base: number; ivaPercent: number; iva: number; irpfPercent: number; irpf: number; total: number;
 }
 
 export async function GET(_req: Request, ctx: { params: Promise<{ periode: string }> }) {
@@ -55,11 +55,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       ? gDesat.map((g) => ({
           data: String(g.data ?? ''), nif: String(g.nif ?? ''), proveidor: String(g.proveidor ?? ''),
           numFactura: String(g.numFactura ?? ''), base: Number(g.base ?? 0), ivaPercent: Number(g.ivaPercent ?? 0),
-          iva: Number(g.iva ?? 0), total: Number(g.total ?? 0),
+          iva: Number(g.iva ?? 0), irpfPercent: Number(g.irpfPercent ?? 0), irpf: Number(g.irpf ?? 0), total: Number(g.total ?? 0),
         }))
       : (await getGastosSoportats(year, trimestre)).map((g: FilaGasto) => ({
           data: fmtData(g.data), nif: g.nif, proveidor: g.proveidor, numFactura: g.numFactura,
-          base: g.base, ivaPercent: g.ivaPercent, iva: g.iva, total: g.total,
+          base: g.base, ivaPercent: g.ivaPercent, iva: g.iva, irpfPercent: g.irpfPercent, irpf: g.irpf, total: g.total,
         }));
   } else {
     const llibre = await getLlibreIngressos(year, trimestre);
@@ -70,7 +70,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     }));
     gastos = (await getGastosSoportats(year, trimestre)).map((g: FilaGasto) => ({
       data: fmtData(g.data), nif: g.nif, proveidor: g.proveidor, numFactura: g.numFactura,
-      base: g.base, ivaPercent: g.ivaPercent, iva: g.iva, total: g.total,
+      base: g.base, ivaPercent: g.ivaPercent, iva: g.iva, irpfPercent: g.irpfPercent, irpf: g.irpf, total: g.total,
     }));
   }
   const desatAt = desat ? fmtData(desat.updatedAt.toISOString()) : '';
@@ -101,6 +101,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       <td class="c-n"><input class="in n g-base" inputmode="decimal" value="${num(g.base)}"></td>
       <td class="c-n"><input class="in n g-ivap" inputmode="decimal" value="${g.ivaPercent}"></td>
       <td class="c-n"><input class="in n g-iva" inputmode="decimal" value="${num(g.iva)}"></td>
+      <td class="c-n"><input class="in n g-irpfp" inputmode="decimal" value="${g.irpfPercent}"></td>
+      <td class="c-n"><input class="in n g-irpf" inputmode="decimal" value="${num(g.irpf)}"></td>
       <td class="c-n"><input class="in n g-total" inputmode="decimal" value="${num(g.total)}"></td>
       <td class="c-del"><button class="del" type="button" title="Eliminar fila">×</button></td>
     </tr>`;
@@ -125,7 +127,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   .btn.ghost{ background:#fff; color:var(--ink); border-color:var(--ink); }
   .btn.solid{ background:var(--accent); color:#fff; border-color:var(--accent); }
   .app{ padding:22px 16px 48px; }
-  .sheet{ width:100%; max-width:940px; margin:0 auto 22px; background:var(--paper);
+  .sheet{ width:100%; max-width:1180px; margin:0 auto 22px; background:var(--paper); overflow-x:auto;
     padding:36px 40px; border:1px solid #EDE5E2; border-radius:3px; box-shadow:0 10px 34px rgba(44,24,16,.08); }
   .brand{ font-family:Georgia,serif; font-size:28px; color:var(--ink); letter-spacing:.5px; }
   .brand-sub{ font-size:10px; letter-spacing:2.5px; text-transform:uppercase; color:var(--accent); margin-top:6px; }
@@ -142,6 +144,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   .in{ font:inherit; color:inherit; border:0; background:transparent; width:100%; padding:4px 5px; border-radius:5px; }
   .in:focus{ outline:none; background:var(--accent-soft); box-shadow:inset 0 0 0 1px rgba(122,31,43,.3); }
   .in.n{ text-align:right; font-variant-numeric:tabular-nums; }
+  /* Amplades mínimes perquè el text/nombres no es tallin dins dels inputs. */
+  .in.f-data,.in.g-data{ min-width:82px; } .in.f-ns,.in.f-nf,.in.g-nif,.in.g-numf{ min-width:78px; }
+  .in.f-cli,.in.g-prov{ min-width:150px; } .in.f-per{ min-width:150px; }
+  .in.n{ min-width:70px; }
   .del{ border:0; background:transparent; cursor:pointer; color:#C2BFB6; font-size:17px; line-height:1; width:22px; height:22px; border-radius:6px; }
   .del:hover{ background:#F1E4E0; color:#A23A2B; }
   tfoot td{ border-top:1.5px solid var(--ink); border-bottom:none; font-weight:700; color:var(--ink); padding-top:9px; }
@@ -250,7 +256,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       <thead>
         <tr>
           <th>Fecha</th><th>NIF</th><th>Proveedor</th><th>Nº factura</th>
-          <th class="n">Base imponible</th><th class="n">% IVA</th><th class="n">IVA</th><th class="n">Total</th><th></th>
+          <th class="n">Base imponible</th><th class="n">% IVA</th><th class="n">IVA</th>
+          <th class="n">% IRPF</th><th class="n">IRPF</th><th class="n">Total</th><th></th>
         </tr>
       </thead>
       <tbody>${gastos.map(filaGasto).join('')}</tbody>
@@ -260,14 +267,18 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
           <td class="c-n" id="g-base">0,00</td>
           <td></td>
           <td class="c-n" id="g-iva">0,00</td>
+          <td></td>
+          <td class="c-n" id="g-irpf">0,00</td>
           <td class="c-n" id="g-total">0,00</td>
           <td></td>
         </tr>
       </tfoot>
     </table>
     <div class="add"><button id="addGasto" type="button">+ Afegir despesa</button></div>
-    <p class="note">Per defecte les despeses es calculen amb IVA 21% inclòs. Si alguna és al 10%, exempta o
-    sense IVA, corregeix el %IVA i l'IVA a la mateixa fila. El nº de factura del proveïdor s'omple a mà.</p>
+    <p class="note">Per defecte les despeses es calculen amb IVA 21% inclòs (escrivint el total). Per a un
+    LLOGUER o servei amb retenció, escriu la <strong>base</strong>, el <strong>% IVA</strong> (21) i el
+    <strong>% IRPF</strong> (19): l'IVA, l'IRPF i el total (base + IVA − IRPF) es calculen sols. El nº de
+    factura s'omple a mà. IRPF total del trimestre: <span id="g-irpf2">0,00</span> € (per al model 115).</p>
   </div>
 
   <!-- ── Resumen IVA: Repercutido / Soportado → a ingresar ───────────── -->
@@ -343,6 +354,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       base: num(r.querySelector('.g-base').value),
       ivaPercent: num(r.querySelector('.g-ivap').value),
       iva: num(r.querySelector('.g-iva').value),
+      irpfPercent: num(r.querySelector('.g-irpfp').value),
+      irpf: num(r.querySelector('.g-irpf').value),
       total: num(r.querySelector('.g-total').value),
     }));
   }
@@ -374,11 +387,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
 
     // Despeses (facturas soportadas) + liquidació d'IVA
     const gastos = readGastos();
-    let gb = 0, gi = 0, gt = 0;
-    for (const g of gastos) { gb += g.base; gi += g.iva; gt += g.total; }
+    let gb = 0, gi = 0, girpf = 0, gt = 0;
+    for (const g of gastos) { gb += g.base; gi += g.iva; girpf += g.irpf; gt += g.total; }
     document.getElementById('g-base').textContent = plain(gb);
     document.getElementById('g-iva').textContent = plain(gi);
+    document.getElementById('g-irpf').textContent = plain(girpf);
     document.getElementById('g-total').textContent = plain(gt);
+    document.getElementById('g-irpf2').textContent = plain(girpf);
     document.getElementById('s-rep-base').textContent = plain(tb);
     document.getElementById('s-rep-iva').textContent = plain(ti);
     document.getElementById('s-sop-base').textContent = plain(gb);
@@ -415,23 +430,41 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       row.innerHTML = '<td><input class="in g-data"></td><td><input class="in g-nif"></td><td><input class="in g-prov"></td>' +
         '<td><input class="in g-numf"></td><td class="c-n"><input class="in n g-base"></td>' +
         '<td class="c-n"><input class="in n g-ivap"></td><td class="c-n"><input class="in n g-iva"></td>' +
+        '<td class="c-n"><input class="in n g-irpfp"></td><td class="c-n"><input class="in n g-irpf"></td>' +
         '<td class="c-n"><input class="in n g-total"></td><td class="c-del"><button class="del" type="button">×</button></td>';
     }
     tbody.appendChild(row); render(); row.querySelector('.g-prov').focus();
   }
 
-  // Auto-càlcul a les despeses: en escriure el TOTAL o el %IVA, la base i l'IVA
-  // es calculen sols (IVA inclòs): base = total/(1+%/100), IVA = total − base.
+  // Auto-càlcul a les despeses. Dos camins:
+  //  · Escrivint el TOTAL (i %IVA), sense IRPF: base = total/(1+%IVA/100), IVA = total − base
+  //    (cas ràpid d'una compra amb IVA inclòs, com Grupsupeco/Vodafone).
+  //  · Escrivint la BASE (i %IVA i %IRPF): IVA = base·%IVA, IRPF = base·%IRPF,
+  //    Total = base + IVA − IRPF (cas del LLOGUER amb retenció).
   function autoGasto(input) {
     const row = input.closest('#gastos tbody tr.gitem');
     if (!row) return;
-    if (!input.classList.contains('g-total') && !input.classList.contains('g-ivap')) return;
-    const total = num(row.querySelector('.g-total').value);
-    const p = num(row.querySelector('.g-ivap').value);
-    if (total === 0) return;
-    const base = Math.round((total / (1 + p / 100)) * 100) / 100;
-    row.querySelector('.g-base').value = plain(base);
-    row.querySelector('.g-iva').value = plain(Math.round((total - base) * 100) / 100);
+    const r2 = n => Math.round(n * 100) / 100;
+    const ivap = num(row.querySelector('.g-ivap').value);
+    const irpfp = num(row.querySelector('.g-irpfp').value);
+    if (input.classList.contains('g-total')) {
+      // Camí "total inclòs" (nomes si no hi ha IRPF; amb IRPF cal escriure la base).
+      const total = num(row.querySelector('.g-total').value);
+      if (total === 0) return;
+      const base = r2(total / (1 + ivap / 100));
+      row.querySelector('.g-base').value = plain(base);
+      row.querySelector('.g-iva').value = plain(r2(total - base));
+      return;
+    }
+    if (input.classList.contains('g-base') || input.classList.contains('g-ivap') || input.classList.contains('g-irpfp')) {
+      const base = num(row.querySelector('.g-base').value);
+      if (base === 0) return;
+      const iva = r2(base * ivap / 100);
+      const irpf = r2(base * irpfp / 100);
+      row.querySelector('.g-iva').value = plain(iva);
+      row.querySelector('.g-irpf').value = plain(irpf);
+      row.querySelector('.g-total').value = plain(r2(base + iva - irpf));
+    }
   }
 
   document.addEventListener('DOMContentLoaded', render);
