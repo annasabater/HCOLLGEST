@@ -17,7 +17,7 @@ function eur(n: unknown): string {
 }
 
 type Row = {
-  grup: string; etiqueta: string; nota: string | null;
+  grup: string; etiqueta: string; nota: string | null; mesos: number[];
   preuDia: unknown; preuDia4: unknown; preuSetmana: unknown; preuDosSetmanes: unknown; preuMes: unknown; reserva: unknown;
 };
 
@@ -30,7 +30,7 @@ const TRAMS: { key: keyof Row; label: string }[] = [
   { key: 'reserva', label: 'Reserva' },
 ];
 
-function taulaGrup(grup: GrupTarifa, rows: Row[]): string {
+function taulaGrup(grup: GrupTarifa, rows: Row[], extraNota?: string): string {
   if (rows.length === 0) return '';
   const cols = rows;
   const head = cols.map((c) => `<th>${esc(c.etiqueta)}</th>`).join('');
@@ -49,7 +49,9 @@ function taulaGrup(grup: GrupTarifa, rows: Row[]): string {
     return `<tr><th class="rowlab">${t.label}</th>${cells}</tr>`;
   }).join('');
   // A la llista de notes de sota, no repetim les que ja surten dins la taula.
-  const notes = cols.filter((c, ci) => c.nota && !noteOnly[ci]).map((c) => `<li><strong>${esc(c.etiqueta)}:</strong> ${esc(c.nota)}</li>`).join('');
+  const notesLis = cols.filter((c, ci) => c.nota && !noteOnly[ci]).map((c) => `<li><strong>${esc(c.etiqueta)}:</strong> ${esc(c.nota)}</li>`);
+  if (extraNota) notesLis.unshift(`<li>${esc(extraNota)}</li>`);
+  const notes = notesLis.join('');
   return `
   <section class="grup">
     <h2>${GRUP_TARIFA_LABELS[grup]}</h2>
@@ -63,6 +65,30 @@ function taulaGrup(grup: GrupTarifa, rows: Row[]): string {
   </section>`;
 }
 
+/**
+ * Columnes efectives d'un grup. Per a "Doble 1 persona", les temporades sense
+ * preus propis (VERANO) s'expandeixen a les columnes REALS de l'Habitació Doble
+ * que cobreixen aquells mesos (perquè surtin els preus de veritat, no una nota).
+ */
+function colsForGrup(grup: GrupTarifa, all: Row[]): Row[] {
+  const own = all.filter((f) => f.grup === grup);
+  if (grup !== 'DOBLE_1P') return own;
+  const doble = all.filter((f) => f.grup === 'DOBLE');
+  const result: Row[] = [];
+  const vistes = new Set<string>();
+  for (const c of own) {
+    const senseCap = TRAMS.every((t) => c[t.key] == null);
+    if (senseCap && c.mesos.length && doble.length) {
+      for (const d of doble.filter((x) => x.mesos.some((m) => c.mesos.includes(m)))) {
+        if (!vistes.has(d.etiqueta)) { result.push(d); vistes.add(d.etiqueta); }
+      }
+    } else {
+      result.push(c);
+    }
+  }
+  return result;
+}
+
 export async function GET(req: Request) {
   const user = await getSessionUser();
   if (!user) redirect('/login');
@@ -70,13 +96,18 @@ export async function GET(req: Request) {
   const grupParam = new URL(req.url).searchParams.get('grup');
   const grups = grupParam && ORDRE_GRUP.includes(grupParam as GrupTarifa) ? [grupParam as GrupTarifa] : ORDRE_GRUP;
 
-  const files = await prisma.tarifaTipus.findMany({
-    where: { grup: { in: grups } },
+  // Es carreguen TOTES les tarifes (no només les del grup filtrat) perquè, per a
+  // Doble 1 persona, cal accedir als preus reals de l'Habitació Doble.
+  const files = (await prisma.tarifaTipus.findMany({
     orderBy: [{ grup: 'asc' }, { ordre: 'asc' }],
-  });
+  })) as unknown as Row[];
 
   const seccions = grups
-    .map((g) => taulaGrup(g, files.filter((f) => f.grup === g) as unknown as Row[]))
+    .map((g) => taulaGrup(
+      g,
+      colsForGrup(g, files),
+      g === 'DOBLE_1P' ? 'Les tarifes de maig a setembre corresponen a l\'Habitació Doble.' : undefined,
+    ))
     .join('');
 
   const titol = grupParam ? `Tarifes · ${GRUP_TARIFA_LABELS[grupParam as GrupTarifa]}` : 'Tarifes';
