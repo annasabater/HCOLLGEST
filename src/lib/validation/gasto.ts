@@ -15,6 +15,7 @@ export const GastoCreateSchema = z.object({
   habitacioId: optStr,
   animalId: optStr,
   descripcio: z.string().trim().min(1, 'Cal una descripció'),
+  numFactura: optStr, // nº de factura del proveïdor (per al llibre d'IVA)
   metodePagament: z.enum(metodeCobramentValues),
   adjuntPath: optStr,
   // Fiança/dipòsit pagat (recuperable): no compta al balanç fins que es desmarqui.

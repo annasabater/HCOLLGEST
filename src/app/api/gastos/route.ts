@@ -60,6 +60,7 @@ export async function POST(req: Request) {
         habitacioId: data.habitacioId ?? null,
         animalId: data.animalId ?? null,
         descripcio: data.descripcio,
+        numFactura: data.numFactura ?? null,
         metodePagament: data.metodePagament,
         adjuntPath: data.adjuntPath ?? null,
         esFianca: data.esFianca ?? false,

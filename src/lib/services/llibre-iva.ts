@@ -105,7 +105,7 @@ export async function getGastosSoportats(year: number, trimestre: number): Promi
       data: g.data.toISOString(),
       nif: g.proveidor?.cif ?? '',
       proveidor: g.proveidor?.nom ?? g.descripcio,
-      numFactura: '',
+      numFactura: g.numFactura ?? '',
       base,
       ivaPercent: IVA_DESPESA,
       iva: round2(total - base),

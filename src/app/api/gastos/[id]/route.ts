@@ -21,6 +21,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     if (input.data !== undefined) data.data = input.data;
     if (input.import !== undefined) data.import = input.import;
     if (input.descripcio !== undefined) data.descripcio = input.descripcio;
+    if (input.numFactura !== undefined) data.numFactura = input.numFactura ?? null;
     if (input.metodePagament !== undefined) data.metodePagament = input.metodePagament;
     if (input.esFianca !== undefined) data.esFianca = input.esFianca;
     if (input.categoriaId !== undefined) data.categoria = { connect: { id: input.categoriaId } };

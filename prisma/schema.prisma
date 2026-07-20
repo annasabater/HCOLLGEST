@@ -912,6 +912,7 @@ model Gasto {
   serveiRecurrentId String?          @map("servei_recurrent_id")
   serveiRecurrent   ServeiRecurrent? @relation(fields: [serveiRecurrentId], references: [id], onDelete: SetNull)
   descripcio        String
+  numFactura        String?          @map("num_factura") // nº de factura del proveïdor (llibre d'IVA)
   metodePagament    MetodeCobrament  @map("metode_pagament")
   adjuntPath        String?          @map("adjunt_path")
   // Fiança/dipòsit pagat (recuperable): no és una despesa real, així que NO compta
