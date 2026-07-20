@@ -95,6 +95,7 @@ interface SerieMes {
   retencions: number;
   ingressosAmbRetencions: number;
   despeses: number;
+  despesesFianca: number;
   personal: number;
   benefici: number;
 }
@@ -634,9 +635,9 @@ export default function BalancPage() {
                   {!restringit && (
                     <BalancLineChart
                       titol="Amb fiança (últims 12 mesos)"
-                      punts={seriePunts(serie).map((s) => ({ label: s.label, barA: s.ingressosAmbRetencions, barB: s.despeses + s.personal, linia: s.benefici + s.retencions }))}
+                      punts={seriePunts(serie).map((s) => ({ label: s.label, barA: s.ingressosAmbRetencions, barB: s.despeses + s.personal + s.despesesFianca, linia: s.benefici + s.retencions }))}
                       nomA="Ingressos + fiança"
-                      nomB="Despeses"
+                      nomB="Despeses + fiança"
                       nomLinia="Benefici + fiança"
                       colorA="#f97316"
                       colorLinia="#c2410c"
@@ -712,9 +713,9 @@ export default function BalancPage() {
                   {!restringit && (
                     <BalancLineChart
                       titol="Amb fiança (mesos del període)"
-                      punts={seriePunts(serie).map((s) => ({ label: s.label, barA: s.ingressosAmbRetencions, barB: s.despeses + s.personal, linia: s.benefici + s.retencions }))}
+                      punts={seriePunts(serie).map((s) => ({ label: s.label, barA: s.ingressosAmbRetencions, barB: s.despeses + s.personal + s.despesesFianca, linia: s.benefici + s.retencions }))}
                       nomA="Ingressos + fiança"
-                      nomB="Despeses"
+                      nomB="Despeses + fiança"
                       nomLinia="Benefici + fiança"
                       colorA="#f97316"
                       colorLinia="#c2410c"

@@ -33,6 +33,7 @@ export async function GET(req: Request) {
       retencions: b.retencions,
       ingressosAmbRetencions: b.ingressosAmbRetencions,
       despeses: b.despeses,
+      despesesFianca: b.despesesFianca,
       personal: b.personal,
       benefici: b.benefici,
     });
