@@ -985,34 +985,32 @@ function ResumGastos() {
 function GastosContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const tab = searchParams.get('tab') ?? 'variables';
+  const tab = searchParams.get('tab') ?? 'resum';
 
   return (
     <div>
       <PageHeader title="Despeses" subtitle="Gestió de despeses del hostal" />
       <FinancesNav />
 
-      <ResumGastos />
-
-      {/* Sub-pestanyes Variables / Fixes / Personal */}
-      <div className="mb-6 flex gap-1 border-b border-slate-200">
-        {(['variables', 'fixes', 'personal'] as const).map((t) => (
+      {/* Sub-pestanyes Resum / Variables / Fixes / Personal */}
+      <div className="mb-6 flex gap-1 overflow-x-auto border-b border-slate-200">
+        {(['resum', 'variables', 'fixes', 'personal'] as const).map((t) => (
           <button
             key={t}
-            onClick={() => router.replace(t === 'variables' ? '/gastos' : `/gastos?tab=${t}`)}
+            onClick={() => router.replace(t === 'resum' ? '/gastos' : `/gastos?tab=${t}`)}
             className={cn(
-              '-mb-px border-b-2 px-4 py-2 text-sm font-medium capitalize transition-colors',
+              '-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors',
               tab === t ? 'border-brand-700 text-brand-800' : 'border-transparent text-slate-500 hover:text-slate-800',
             )}
           >
-            {t === 'variables' ? 'Variables' : t === 'fixes' ? 'Fixes' : (
+            {t === 'resum' ? 'Resum despeses' : t === 'variables' ? 'Variables' : t === 'fixes' ? 'Fixes' : (
               <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> Personal</span>
             )}
           </button>
         ))}
       </div>
 
-      {tab === 'fixes' ? <GastosFixesTab /> : tab === 'personal' ? <PersonalTab /> : <GastosVariablesTab />}
+      {tab === 'resum' ? <ResumGastos /> : tab === 'fixes' ? <GastosFixesTab /> : tab === 'personal' ? <PersonalTab /> : <GastosVariablesTab />}
     </div>
   );
 }
