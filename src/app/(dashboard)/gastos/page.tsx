@@ -936,6 +936,7 @@ function ResumGastos() {
             </div>
           ))}
         </div>
+        <p className="text-xs text-slate-400">Inclou despeses variables, fixes i nòmines del personal. No compta les fiances.</p>
       </CardBody>
     </Card>
   );

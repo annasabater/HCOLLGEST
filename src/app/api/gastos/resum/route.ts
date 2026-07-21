@@ -16,15 +16,26 @@ export async function GET(req: Request) {
     const start = new Date(Date.UTC(year, 0, 1));
     const end = new Date(Date.UTC(year + 1, 0, 1));
 
-    const gastos = await prisma.gasto.findMany({
-      where: { deletedAt: null, esFianca: false, data: { gte: start, lt: end } },
-      select: { data: true, import: true },
-    });
+    const [gastos, nomines] = await Promise.all([
+      prisma.gasto.findMany({
+        where: { deletedAt: null, esFianca: false, data: { gte: start, lt: end } },
+        select: { data: true, import: true },
+      }),
+      // Nòmines del personal (periode 'YYYY-MM'): també són despesa real.
+      prisma.nomina.findMany({
+        where: { periode: { startsWith: `${year}-` } },
+        select: { periode: true, total: true },
+      }),
+    ]);
 
     const mesos = Array<number>(12).fill(0);
     for (const g of gastos) {
       const m = g.data.getUTCMonth();
       mesos[m] = (mesos[m] ?? 0) + Number(g.import);
+    }
+    for (const n of nomines) {
+      const m = Number(n.periode.slice(5, 7)) - 1; // 'YYYY-MM' → 0-11
+      if (m >= 0 && m <= 11) mesos[m] = (mesos[m] ?? 0) + Number(n.total);
     }
     const trimestres = [0, 0, 0, 0];
     mesos.forEach((v, i) => {
