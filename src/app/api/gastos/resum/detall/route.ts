@@ -36,7 +36,13 @@ export async function GET(req: Request) {
     const [gastos, nomines] = await Promise.all([
       prisma.gasto.findMany({
         where: { deletedAt: null, data: { gte: start, lt: end } },
-        select: { import: true, esFianca: true, categoria: { select: { nom: true } } },
+        select: {
+          import: true,
+          esFianca: true,
+          descripcio: true,
+          categoria: { select: { nom: true } },
+          proveidor: { select: { nom: true } },
+        },
       }),
       prisma.nomina.findMany({
         where: { periode: { startsWith: `${year}-` } },
@@ -44,18 +50,24 @@ export async function GET(req: Request) {
       }),
     ]);
 
-    // Agrupa per categoria, separant despesa real (sense) de fiança.
-    const perCat = new Map<string, { sense: number; fianca: number }>();
+    // Despeses reals: per categoria. Fiances: per PROVEÏDOR (per identificar-les).
+    const perCat = new Map<string, number>();
+    const perProvFianca = new Map<string, number>();
     for (const g of gastos) {
-      const nom = g.categoria?.nom ?? 'Sense categoria';
-      const acc = perCat.get(nom) ?? { sense: 0, fianca: 0 };
-      if (g.esFianca) acc.fianca += Number(g.import);
-      else acc.sense += Number(g.import);
-      perCat.set(nom, acc);
+      if (g.esFianca) {
+        const prov = g.proveidor?.nom ?? g.descripcio ?? 'Sense proveïdor';
+        perProvFianca.set(prov, (perProvFianca.get(prov) ?? 0) + Number(g.import));
+      } else {
+        const nom = g.categoria?.nom ?? 'Sense categoria';
+        perCat.set(nom, (perCat.get(nom) ?? 0) + Number(g.import));
+      }
     }
     const categories = [...perCat.entries()]
-      .map(([nom, v]) => ({ nom, sense: v.sense, fianca: v.fianca }))
-      .sort((a, b) => b.sense + b.fianca - (a.sense + a.fianca));
+      .map(([nom, sense]) => ({ nom, sense }))
+      .sort((a, b) => b.sense - a.sense);
+    const fiances = [...perProvFianca.entries()]
+      .map(([proveidor, total]) => ({ proveidor, import: total }))
+      .sort((a, b) => b.import - a.import);
 
     // Nòmines del personal dins el rang de mesos.
     let personal = 0;
@@ -64,7 +76,7 @@ export async function GET(req: Request) {
       if (m >= mesInici && m < mesFi) personal += Number(n.total);
     }
 
-    return ok({ categories, personal });
+    return ok({ categories, fiances, personal });
   } catch (err) {
     return handleApiError(err);
   }
