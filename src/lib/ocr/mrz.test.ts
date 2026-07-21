@@ -76,6 +76,24 @@ describe('findMrzLines + Spanish DNI', () => {
   it('retorna null si no hi ha MRZ', () => {
     expect(parseMrz(['HOLA MON', 'SENSE MRZ'])).toBeNull();
   });
+
+  it('DNI espanyol: número real al camp opcional, suport (IDESP) al camp document', () => {
+    // Al DNI espanyol la MRZ posa el nº de SUPORT (BAA000589) al camp "document
+    // number" (pos 5-13) i el DNI/NIF real (12345678Z) al camp opcional (pos 15-29).
+    const dni = [
+      'IDESPBAA000589512345678Z<<<<<<',
+      '8001014M3001019ESP<<<<<<<<<<<0',
+      'GARCIA<LOPEZ<<JOAN<<<<<<<<<<<<',
+    ];
+    const r = parseMrz(dni)!;
+    expect(r.valid).toBe(true);
+    expect(r.numDocument).toBe('12345678Z'); // DNI/NIF real, no el suport
+    expect(r.numSuport).toBe('BAA000589'); // número de suport (IDESP)
+    const v = mrzToViatger(r);
+    expect(v.tipusDocument).toBe('DNI_NIF');
+    expect(v.numDocument).toBe('12345678Z');
+    expect(v.numSuport).toBe('BAA000589');
+  });
 });
 
 describe('dniCheckLetter', () => {

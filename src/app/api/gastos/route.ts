@@ -15,6 +15,9 @@ export async function GET(req: Request) {
   const desde = url.searchParams.get('desde');
   const fins = url.searchParams.get('fins');
   const categoriaId = url.searchParams.get('categoriaId');
+  // Vista "Variables": exclou les despeses generades per un servei recurrent
+  // (aquestes es gestionen a la pestanya "Fixes").
+  const nomesVariables = url.searchParams.get('variables') === '1';
 
   const where: Prisma.GastoWhereInput = { deletedAt: null };
   if (desde || fins) {
@@ -23,6 +26,7 @@ export async function GET(req: Request) {
     if (fins) where.data.lte = new Date(fins);
   }
   if (categoriaId) where.categoriaId = categoriaId;
+  if (nomesVariables) where.serveiRecurrentId = null;
 
   const gastos = await prisma.gasto.findMany({
     where,

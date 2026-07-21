@@ -141,22 +141,36 @@ export function parseMrz(lines: string[]): MrzResult | null {
     const l1 = pad(td1[0]!, 30);
     const l2 = pad(td1[1]!, 30);
     const l3 = pad(td1[2]!, 30);
-    const numDocumentRaw = l1.slice(5, 14);
+    // Camp "document number" ICAO (pos 5-13) + el seu dígit de control (pos 14).
+    const docFieldRaw = l1.slice(5, 14).replace(/</g, '');
     const birth = l2.slice(0, 6);
     const expiry = l2.slice(8, 14);
     const name = parseName(l3);
     const valid =
-      checkDigit(numDocumentRaw) === Number(l1[14]) &&
+      checkDigit(l1.slice(5, 14)) === Number(l1[14]) &&
       checkDigit(birth) === Number(l2[6]) &&
       checkDigit(expiry) === Number(l2[14]);
-    // Camp opcional línia 1 (pos 15-29): IDESP / número de suport del DNI espanyol.
-    const numSuportRaw = l1.slice(15, 29).replace(/</g, '').trim();
+    // Camp opcional línia 1 (pos 15-29).
+    const optFieldRaw = l1.slice(15, 29).replace(/</g, '').trim();
+
+    // DNI espanyol: el camp "document number" (pos 5-13) porta el NÚMERO DE SUPORT
+    // (IDESP, p.ex. BMK169866) i el DNI/NIF real va al camp opcional (pos 15-29).
+    // Ho detectem: si el camp opcional té format de DNI (8 dígits+lletra) o NIE
+    // (X/Y/Z+7 dígits+lletra), aquell és el document i el de pos 5-13 és el suport.
+    const esDniNie = (s: string) =>
+      /^[0-9]{8}[A-Z]$/.test(s) || /^[XYZ][0-9]{7}[A-Z]$/.test(s);
+    let numDocument = docFieldRaw;
+    let numSuport = optFieldRaw.length >= 3 ? optFieldRaw : undefined;
+    if (esDniNie(optFieldRaw)) {
+      numDocument = optFieldRaw; // DNI/NIF o NIE real
+      numSuport = docFieldRaw || undefined; // número de suport (IDESP)
+    }
     return {
       format: 'TD1',
       documentType: l1.slice(0, 2).replace(/</g, ''),
       issuingCountry: l1.slice(2, 5).replace(/</g, ''),
-      numDocument: numDocumentRaw.replace(/</g, ''),
-      numSuport: numSuportRaw.length >= 3 ? numSuportRaw : undefined,
+      numDocument,
+      numSuport,
       ...name,
       nacionalitat: l2.slice(15, 18).replace(/</g, ''),
       sexe: sexFrom(l2[7]!),

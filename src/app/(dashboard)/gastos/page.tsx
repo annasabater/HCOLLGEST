@@ -2,7 +2,7 @@
 
 import { Fragment, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Plus, Trash2, Paperclip, Filter, Camera, Upload, X, Users, ShieldCheck, ShieldOff, Pencil, Check } from 'lucide-react';
+import { Plus, Trash2, Paperclip, Filter, Camera, Upload, X, Users, ShieldCheck, ShieldOff, Pencil, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { FinancesNav } from '@/components/balanc/finances-nav';
 import { Button } from '@/components/ui/button';
@@ -376,6 +376,7 @@ function GastosVariablesTab() {
 
   const load = useCallback(async () => {
     const p = new URLSearchParams();
+    p.set('variables', '1'); // només despeses variables (les fixes són a l'altra pestanya)
     if (fDesde) p.set('desde', fDesde);
     if (fFins) p.set('fins', fFins);
     if (fCat) p.set('categoriaId', fCat);
@@ -890,6 +891,56 @@ function PersonalTab() {
 
 // ─── Pàgina principal ─────────────────────────────────────────────────────────
 
+const MESOS_CURT = ['Gen', 'Feb', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Des'];
+
+// Resum de totals de despeses (variables + fixes) per mes, trimestre i anual.
+// Es mostra a dalt de tot de /gastos, sigui quina sigui la pestanya.
+function ResumGastos() {
+  const [year, setYear] = useState(() => new Date().getFullYear());
+  const [resum, setResum] = useState<{ mesos: number[]; trimestres: number[]; anual: number } | null>(null);
+
+  useEffect(() => {
+    getJSON<{ mesos: number[]; trimestres: number[]; anual: number }>(`/api/gastos/resum?year=${year}`)
+      .then((r) => setResum({ mesos: r.mesos, trimestres: r.trimestres, anual: r.anual }))
+      .catch(() => setResum(null));
+  }, [year]);
+
+  return (
+    <Card className="mb-6">
+      <CardHeader className="flex items-center justify-between">
+        <CardTitle>Resum de despeses</CardTitle>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={() => setYear((y) => y - 1)} className="rounded p-1 text-slate-500 hover:bg-slate-100" aria-label="Any anterior"><ChevronLeft className="h-4 w-4" /></button>
+          <span className="min-w-14 text-center text-sm font-semibold">{year}</span>
+          <button type="button" onClick={() => setYear((y) => y + 1)} className="rounded p-1 text-slate-500 hover:bg-slate-100" aria-label="Any següent"><ChevronRight className="h-4 w-4" /></button>
+        </div>
+      </CardHeader>
+      <CardBody className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-5">
+          <div className="rounded-lg border border-brand-200 bg-brand-50/50 px-3 py-2">
+            <div className="text-xs text-brand-700">Total {year}</div>
+            <div className="text-lg font-semibold text-brand-800"><Eur value={resum?.anual ?? 0} /></div>
+          </div>
+          {[0, 1, 2, 3].map((t) => (
+            <div key={t} className="rounded-lg border border-slate-200 px-3 py-2">
+              <div className="text-xs text-slate-500">{t + 1}r trimestre</div>
+              <div className="text-base font-medium"><Eur value={resum?.trimestres[t] ?? 0} /></div>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+          {MESOS_CURT.map((m, i) => (
+            <div key={m} className="rounded-md bg-slate-50 px-2 py-1.5 text-center">
+              <div className="text-[11px] uppercase tracking-wide text-slate-400">{m}</div>
+              <div className="text-sm font-medium text-slate-700"><Eur value={resum?.mesos[i] ?? 0} /></div>
+            </div>
+          ))}
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
 function GastosContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -899,6 +950,8 @@ function GastosContent() {
     <div>
       <PageHeader title="Despeses" subtitle="Gestió de despeses del hostal" />
       <FinancesNav />
+
+      <ResumGastos />
 
       {/* Sub-pestanyes Variables / Fixes / Personal */}
       <div className="mb-6 flex gap-1 border-b border-slate-200">
