@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardTitle } from '@/components/ui/card';
 import { Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
-import { Badge } from '@/components/ui/badge';
 import { cn, formatDate } from '@/lib/utils';
 import { optionsFrom, tipusDocumentPujatValues, TIPUS_DOCUMENT_PUJAT_LABELS } from '@/lib/validation/enums';
 
@@ -102,9 +101,9 @@ export function DocumentsHuesped({
         return (
         <div
           key={d.id}
-          className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm"
         >
-          <div className="flex min-w-0 items-center gap-3">
+          <div className="flex min-w-0 items-start gap-3">
             {esImatge ? (
               <button type="button" onClick={() => setLightbox(url)} title="Veure el document" className="relative shrink-0 overflow-hidden rounded border border-slate-200">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -122,17 +121,15 @@ export function DocumentsHuesped({
             )}
             <div className="min-w-0">
               <div className="font-medium text-slate-800">{TIPUS_DOCUMENT_PUJAT_LABELS[d.tipus]}</div>
-              <Badge tone="neutral">{d.fitxerNom}</Badge>
+              <div className="truncate text-xs text-slate-500" title={d.fitxerNom}>{d.fitxerNom}</div>
+              <div className="mt-0.5 text-xs text-slate-400">{formatDate(d.dataSubida)}</div>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-3">
-            <span className="text-xs text-slate-400">{formatDate(d.dataSubida)}</span>
-            {canWrite && (
-              <button className="text-slate-400 hover:text-red-600" onClick={() => esborrar(d.id)}>
-                <Trash2 className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+          {canWrite && (
+            <button className="shrink-0 text-slate-400 hover:text-red-600" onClick={() => esborrar(d.id)} aria-label="Eliminar document">
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
         </div>
         );
       })}

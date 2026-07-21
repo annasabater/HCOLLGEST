@@ -82,7 +82,7 @@ export default async function HuespedDetailPage({ params }: { params: Promise<{ 
             : undefined
         }
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {noAcollir && (
               <Badge tone="danger">
                 <Ban className="mr-1 h-3 w-3" /> No acollir
@@ -149,21 +149,21 @@ export default async function HuespedDetailPage({ params }: { params: Promise<{ 
             </CardHeader>
             <CardBody>
               <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                <div>
+                <div className="min-w-0">
                   <dt className="text-xs uppercase text-slate-400">Email</dt>
-                  <dd className="text-sm">{huesped.email ?? '—'}</dd>
+                  <dd className="text-sm break-words">{huesped.email ?? '—'}</dd>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <dt className="text-xs uppercase text-slate-400">Telèfon</dt>
-                  <dd className="text-sm">{huesped.telefon ?? '—'}</dd>
+                  <dd className="text-sm break-words">{huesped.telefon ?? '—'}</dd>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <dt className="text-xs uppercase text-slate-400">Nacionalitat</dt>
-                  <dd className="text-sm">{huesped.nacionalitat ?? '—'}</dd>
+                  <dd className="text-sm break-words">{huesped.nacionalitat ?? '—'}</dd>
                 </div>
-                <div className="col-span-2">
+                <div className="col-span-2 min-w-0">
                   <dt className="text-xs uppercase text-slate-400">Adreça</dt>
-                  <dd className="text-sm">
+                  <dd className="text-sm break-words">
                     {[huesped.adreca, huesped.codiPostal, huesped.municipi ?? huesped.localitat, huesped.provincia, huesped.pais]
                       .filter(Boolean)
                       .join(', ') || '—'}
