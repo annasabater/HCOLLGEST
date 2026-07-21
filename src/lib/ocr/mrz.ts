@@ -152,23 +152,25 @@ export function parseMrz(lines: string[]): MrzResult | null {
       checkDigit(expiry) === Number(l2[14]);
     // Camp opcional línia 1 (pos 15-29).
     const optFieldRaw = l1.slice(15, 29).replace(/</g, '').trim();
+    const issuingCountry = l1.slice(2, 5).replace(/</g, '');
 
-    // DNI espanyol: el camp "document number" (pos 5-13) porta el NÚMERO DE SUPORT
-    // (IDESP, p.ex. BMK169866) i el DNI/NIF real va al camp opcional (pos 15-29).
-    // Ho detectem: si el camp opcional té format de DNI (8 dígits+lletra) o NIE
-    // (X/Y/Z+7 dígits+lletra), aquell és el document i el de pos 5-13 és el suport.
+    // Documents espanyols (DNI, TIE d'estranger…): el camp "document number"
+    // (pos 5-13) porta el NÚMERO DE SUPORT (IDESP, p.ex. BMK169866) i el número
+    // real (DNI/NIF o NIE) va al camp opcional (pos 15-29). Ho detectem: si el camp
+    // opcional té format de DNI (8 dígits+lletra) o NIE (X/Y/Z+7 dígits+lletra),
+    // aquell és el document i el de pos 5-13 és el suport. Només per a emissor ESP.
     const esDniNie = (s: string) =>
       /^[0-9]{8}[A-Z]$/.test(s) || /^[XYZ][0-9]{7}[A-Z]$/.test(s);
     let numDocument = docFieldRaw;
     let numSuport = optFieldRaw.length >= 3 ? optFieldRaw : undefined;
-    if (esDniNie(optFieldRaw)) {
+    if (issuingCountry === 'ESP' && esDniNie(optFieldRaw)) {
       numDocument = optFieldRaw; // DNI/NIF o NIE real
       numSuport = docFieldRaw || undefined; // número de suport (IDESP)
     }
     return {
       format: 'TD1',
       documentType: l1.slice(0, 2).replace(/</g, ''),
-      issuingCountry: l1.slice(2, 5).replace(/</g, ''),
+      issuingCountry,
       numDocument,
       numSuport,
       ...name,
@@ -191,14 +193,64 @@ const NACIONALITAT_LABELS: Record<string, string> = {
   DEU: 'Alemanya',
   GBR: 'Regne Unit',
   MAR: 'Marroc',
+  AND: 'Andorra',
+  NLD: 'Països Baixos',
+  BEL: 'Bèlgica',
+  CHE: 'Suïssa',
+  AUT: 'Àustria',
+  IRL: 'Irlanda',
+  POL: 'Polònia',
+  ROU: 'Romania',
+  BGR: 'Bulgària',
+  UKR: 'Ucraïna',
+  RUS: 'Rússia',
+  CZE: 'Txèquia',
+  SVK: 'Eslovàquia',
+  HUN: 'Hongria',
+  GRC: 'Grècia',
+  SWE: 'Suècia',
+  NOR: 'Noruega',
+  DNK: 'Dinamarca',
+  FIN: 'Finlàndia',
+  ISL: 'Islàndia',
+  LUX: 'Luxemburg',
+  HRV: 'Croàcia',
+  SVN: 'Eslovènia',
+  LTU: 'Lituània',
+  LVA: 'Letònia',
+  EST: 'Estònia',
+  TUR: 'Turquia',
+  USA: 'Estats Units',
+  CAN: 'Canadà',
+  MEX: 'Mèxic',
+  ARG: 'Argentina',
+  BRA: 'Brasil',
+  COL: 'Colòmbia',
+  CHL: 'Xile',
+  PER: 'Perú',
+  URY: 'Uruguai',
+  VEN: 'Veneçuela',
+  ECU: 'Equador',
+  CHN: 'Xina',
+  JPN: 'Japó',
+  KOR: 'Corea del Sud',
+  IND: 'Índia',
+  PAK: 'Pakistan',
+  DZA: 'Algèria',
+  SEN: 'Senegal',
+  NGA: 'Nigèria',
+  AUS: 'Austràlia',
+  NZL: 'Nova Zelanda',
 };
 
 /** Detecta el tipus de document a partir del núm. (DNI/NIE) o del format. */
 function tipusFrom(m: MrzResult): ViatgerOcr['tipusDocument'] {
   if (m.format === 'TD3') return 'PASSAPORT';
   const n = m.numDocument.toUpperCase();
-  if (/^[0-9]{8}[A-Z]$/.test(n)) return 'DNI_NIF';
   if (/^[XYZ][0-9]{7}[A-Z]$/.test(n)) return 'NIE';
+  // Un DNI/NIF és, per definició, espanyol. Un número amb format de DNI però
+  // nacionalitat no espanyola (p.ex. targeta d'estranger) és ALTRES, no DNI_NIF.
+  if (/^[0-9]{8}[A-Z]$/.test(n) && (m.nacionalitat === 'ESP' || !m.nacionalitat)) return 'DNI_NIF';
   return 'ALTRES';
 }
 

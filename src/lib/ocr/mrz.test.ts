@@ -94,6 +94,25 @@ describe('findMrzLines + Spanish DNI', () => {
     expect(v.numDocument).toBe('12345678Z');
     expect(v.numSuport).toBe('BAA000589');
   });
+
+  it('targeta d\'estranger espanyola: nacionalitat traduïda i tipus NO és DNI', () => {
+    // Emès per ESP però nacionalitat UKR: mateixa estructura (suport a pos 5-13,
+    // número real al camp opcional), però NO és un DNI (una russa/ucraïnesa no en té).
+    const tie = [
+      'IRESPE11111111412345678Z<<<<<<',
+      '9001011F3001019UKR<<<<<<<<<<<0',
+      'MOKRA<<NINA<<<<<<<<<<<<<<<<<<<',
+    ];
+    const r = parseMrz(tie)!;
+    expect(r.valid).toBe(true);
+    expect(r.numDocument).toBe('12345678Z');
+    expect(r.numSuport).toBe('E11111111');
+    const v = mrzToViatger(r);
+    expect(v.cognom1).toBe('Mokra');
+    expect(v.nom).toBe('Nina');
+    expect(v.nacionalitat).toBe('Ucraïna'); // traduït, no "UKR"
+    expect(v.tipusDocument).toBe('ALTRES'); // no DNI_NIF: no és espanyola
+  });
 });
 
 describe('dniCheckLetter', () => {
