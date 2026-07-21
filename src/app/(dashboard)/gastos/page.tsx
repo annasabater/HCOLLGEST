@@ -393,7 +393,11 @@ function GastosVariablesTab() {
 
   async function crear(e: React.FormEvent) {
     e.preventDefault();
-    if (!nova.categoriaId || !nova.import) return;
+    // Avisem clarament del que falta (abans sortia sense fer res, i semblava
+    // que el botó no funcionava).
+    if (!nova.import) { setError('Cal indicar l’import.'); return; }
+    if (!nova.categoriaId) { setError('Cal triar una categoria abans de desar.'); return; }
+    if (!nova.descripcio.trim()) { setError('Cal una descripció.'); return; }
     setSaving(true); setError(null);
     try {
       let adjuntPath: string | undefined;
@@ -630,10 +634,18 @@ function GastosVariablesTab() {
               </Field>
               {(scanNouProv || scanWarnings.length > 0) && (
                 <div className="sm:col-span-3 space-y-2">
-                  {scanNouProv && (
-                    <div className="rounded-lg border border-brand-200 bg-brand-50/50 px-3 py-2 text-sm text-brand-800">
-                      Proveïdor nou detectat: <span className="font-medium">{scanNouProv.nom}</span>
-                      {scanNouProv.nif && <> · NIF {scanNouProv.nif}</>}. Es crearà en desar (o tria’n un d’existent a dalt).
+                  {scanNouProv && !nova.proveidorId && (
+                    <div className="rounded-lg border border-brand-200 bg-brand-50/50 px-3 py-2.5 text-sm text-brand-800">
+                      <p className="mb-2 font-medium">Proveïdor nou detectat — revisa’l i edita’l si cal (es crearà en desar):</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <Field label="Nom del proveïdor">
+                          <Input value={nova.proveidorNom} onChange={(e) => setNova({ ...nova, proveidorNom: e.target.value })} placeholder="Nom del proveïdor" />
+                        </Field>
+                        <Field label="NIF/CIF">
+                          <Input value={nova.proveidorNif} onChange={(e) => setNova({ ...nova, proveidorNif: e.target.value })} placeholder="Ex. ESA82037292" />
+                        </Field>
+                      </div>
+                      <p className="mt-1.5 text-xs text-brand-700/70">O tria’n un d’existent a la llista «Proveïdor» de dalt.</p>
                     </div>
                   )}
                   {scanWarnings.length > 0 && (
@@ -895,20 +907,26 @@ const MESOS_CURT = ['Gen', 'Feb', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set
 
 interface ResumSet { mesos: number[]; trimestres: number[]; anual: number }
 interface ResumData { senseFianca: ResumSet; ambFianca: ResumSet; total: ResumSet }
-type ResumMode = 'senseFianca' | 'ambFianca' | 'total';
+type ResumMode = 'total' | 'senseFianca' | 'ambFianca';
 const RESUM_MODES: { key: ResumMode; label: string }[] = [
+  { key: 'total', label: 'Total' },
   { key: 'senseFianca', label: 'Sense fiança' },
   { key: 'ambFianca', label: 'Amb fiança' },
-  { key: 'total', label: 'Total' },
 ];
 
-// Resum de totals de despeses per mes, trimestre i anual. Es pot veure sense
-// fiança (despeses reals + nòmines), amb fiança (dipòsits) o el total, per
-// comparar-los. Es mostra a dalt de tot de /gastos, sigui quina sigui la pestanya.
+interface DetallCat { nom: string; sense: number; fianca: number }
+interface DetallData { categories: DetallCat[]; personal: number }
+type Sel = { tipus: 'mes' | 'trimestre'; idx: number };
+
+// Resum de totals de despeses per mes, trimestre i anual. Es pot veure el total,
+// només les despeses reals (sense fiança) o les fiances. En clicar un mes o
+// trimestre es mostra el desglossament d'aquell període (per categoria + personal).
 function ResumGastos() {
   const [year, setYear] = useState(() => new Date().getFullYear());
-  const [mode, setMode] = useState<ResumMode>('senseFianca');
+  const [mode, setMode] = useState<ResumMode>('total');
   const [resum, setResum] = useState<ResumData | null>(null);
+  const [sel, setSel] = useState<Sel | null>(null);
+  const [detall, setDetall] = useState<DetallData | null>(null);
 
   useEffect(() => {
     getJSON<{ year: number } & ResumData>(`/api/gastos/resum?year=${year}`)
@@ -916,8 +934,33 @@ function ResumGastos() {
       .catch(() => setResum(null));
   }, [year]);
 
+  useEffect(() => {
+    if (!sel) { setDetall(null); return; }
+    const q = sel.tipus === 'mes' ? `mes=${sel.idx + 1}` : `trimestre=${sel.idx + 1}`;
+    getJSON<DetallData>(`/api/gastos/resum/detall?year=${year}&${q}`).then(setDetall).catch(() => setDetall(null));
+  }, [sel, year]);
+
   const actual = resum ? resum[mode] : null;
   const modeLabel = RESUM_MODES.find((m) => m.key === mode)?.label ?? '';
+
+  const toggleSel = (s: Sel) =>
+    setSel((prev) => (prev && prev.tipus === s.tipus && prev.idx === s.idx ? null : s));
+  const isSel = (tipus: Sel['tipus'], idx: number) => sel?.tipus === tipus && sel.idx === idx;
+
+  const selLabel = sel
+    ? sel.tipus === 'mes'
+      ? `${MESOS_CURT[sel.idx]} ${year}`
+      : `${sel.idx + 1}r trimestre ${year}`
+    : '';
+  // Desglossament segons el mode triat (total / sense fiança / amb fiança).
+  const conceptes = detall
+    ? detall.categories
+        .map((c) => ({ nom: c.nom, valor: mode === 'ambFianca' ? c.fianca : mode === 'senseFianca' ? c.sense : c.sense + c.fianca }))
+        .filter((c) => c.valor > 0.005)
+        .sort((a, b) => b.valor - a.valor)
+    : [];
+  const personalVal = detall && mode !== 'ambFianca' ? detall.personal : 0;
+  const selTotal = conceptes.reduce((a, c) => a + c.valor, 0) + personalVal;
 
   return (
     <Card className="mb-6">
@@ -930,7 +973,7 @@ function ResumGastos() {
         </div>
       </CardHeader>
       <CardBody className="space-y-4">
-        {/* Selector sense fiança / amb fiança / total */}
+        {/* Selector total / sense fiança / amb fiança */}
         <div className="inline-flex rounded-lg border border-slate-200 p-0.5 text-sm">
           {RESUM_MODES.map((m) => (
             <button
@@ -949,9 +992,9 @@ function ResumGastos() {
 
         {/* Comparació ràpida dels tres totals anuals */}
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+          <span>Total: <span className="font-medium text-slate-700"><Eur value={resum?.total.anual ?? 0} /></span></span>
           <span>Sense fiança: <span className="font-medium text-slate-700"><Eur value={resum?.senseFianca.anual ?? 0} /></span></span>
           <span>Amb fiança: <span className="font-medium text-amber-700"><Eur value={resum?.ambFianca.anual ?? 0} /></span></span>
-          <span>Total: <span className="font-medium text-slate-700"><Eur value={resum?.total.anual ?? 0} /></span></span>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-5">
@@ -960,22 +1003,72 @@ function ResumGastos() {
             <div className="text-lg font-semibold text-brand-800"><Eur value={actual?.anual ?? 0} /></div>
           </div>
           {[0, 1, 2, 3].map((t) => (
-            <div key={t} className="rounded-lg border border-slate-200 px-3 py-2">
+            <button
+              key={t}
+              type="button"
+              onClick={() => toggleSel({ tipus: 'trimestre', idx: t })}
+              className={cn(
+                'rounded-lg border px-3 py-2 text-left transition-colors',
+                isSel('trimestre', t) ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-500' : 'border-slate-200 hover:bg-slate-50',
+              )}
+            >
               <div className="text-xs text-slate-500">{t + 1}r trimestre</div>
               <div className="text-base font-medium"><Eur value={actual?.trimestres[t] ?? 0} /></div>
-            </div>
+            </button>
           ))}
         </div>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
           {MESOS_CURT.map((m, i) => (
-            <div key={m} className="rounded-md bg-slate-50 px-2 py-1.5 text-center">
+            <button
+              key={m}
+              type="button"
+              onClick={() => toggleSel({ tipus: 'mes', idx: i })}
+              className={cn(
+                'rounded-md px-2 py-1.5 text-center transition-colors',
+                isSel('mes', i) ? 'bg-brand-100 ring-1 ring-brand-500' : 'bg-slate-50 hover:bg-slate-100',
+              )}
+            >
               <div className="text-[11px] uppercase tracking-wide text-slate-400">{m}</div>
               <div className="text-sm font-medium text-slate-700"><Eur value={actual?.mesos[i] ?? 0} /></div>
-            </div>
+            </button>
           ))}
         </div>
+
+        {/* Desglossament del període seleccionat */}
+        {sel && (
+          <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-sm font-semibold text-slate-700">Desglossament · {selLabel} · {modeLabel}</span>
+              <button type="button" onClick={() => setSel(null)} className="rounded p-0.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600" aria-label="Tancar"><X className="h-4 w-4" /></button>
+            </div>
+            {conceptes.length === 0 && personalVal === 0 ? (
+              <p className="text-sm text-slate-400">Sense despeses en aquest període.</p>
+            ) : (
+              <ul className="divide-y divide-slate-200 text-sm">
+                {conceptes.map((c) => (
+                  <li key={c.nom} className="flex items-center justify-between gap-3 py-1.5">
+                    <span className="min-w-0 truncate text-slate-600">{c.nom}</span>
+                    <span className="shrink-0 font-medium text-slate-800"><Eur value={c.valor} /></span>
+                  </li>
+                ))}
+                {personalVal > 0 && (
+                  <li className="flex items-center justify-between gap-3 py-1.5">
+                    <span className="text-slate-600">Personal (nòmines)</span>
+                    <span className="shrink-0 font-medium text-slate-800"><Eur value={personalVal} /></span>
+                  </li>
+                )}
+                <li className="flex items-center justify-between gap-3 py-1.5">
+                  <span className="font-semibold text-slate-700">Total {selLabel}</span>
+                  <span className="shrink-0 font-semibold text-brand-800"><Eur value={selTotal} /></span>
+                </li>
+              </ul>
+            )}
+          </div>
+        )}
+
         <p className="text-xs text-slate-400">
-          «Sense fiança» = despeses reals (variables, fixes i nòmines). «Amb fiança» = dipòsits recuperables. «Total» = tot plegat.
+          «Total» = tot plegat. «Sense fiança» = despeses reals (variables, fixes i nòmines). «Amb fiança» = dipòsits recuperables.
+          Clica un mes o trimestre per veure’n el desglossament.
         </p>
       </CardBody>
     </Card>
