@@ -38,7 +38,7 @@ export function DocumentScanner({
   const uploadRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [msg, setMsg] = useState<{ tone: 'ok' | 'warn'; text: string; items?: string[] } | null>(null);
+  const [msg, setMsg] = useState<{ tone: 'ok' | 'warn'; text: string; items?: string[]; mrz?: string[] } | null>(null);
   const [previews, setPreviews] = useState<Record<string, string>>({});
   const [lightbox, setLightbox] = useState<string | null>(null);
   // Si està desactivat, la foto NOMÉS es desa (no llegeix ni autoreplena el formulari).
@@ -73,11 +73,13 @@ export function DocumentScanner({
         // 422: s'ha desat la foto però no s'ha pogut llegir la MRZ. El cos porta
         // `warnings` amb el motiu concret (sense MRZ / dígits no quadren).
         let items: string[] | undefined;
+        let mrz: string[] | undefined;
         let detail = '';
         try {
-          const j = (await res.json()) as { error?: string; warnings?: string[] };
+          const j = (await res.json()) as { error?: string; warnings?: string[]; mrzLines?: string[] };
           if (j.warnings && j.warnings.length > 0) items = j.warnings;
           else if (j.error) detail = ` (${j.error})`;
+          if (j.mrzLines && j.mrzLines.length > 0) mrz = j.mrzLines;
         } catch { /* ignore */ }
         setMsg({
           tone: 'warn',
@@ -85,11 +87,16 @@ export function DocumentScanner({
             ? 'Foto desada. No s\'han pogut autoreplenar les dades:'
             : `Document desat, però no s'ha pogut llegir el text${detail}. Torna-ho a provar o omple-ho a mà.`,
           items,
+          mrz,
         });
         return;
       }
 
-      const { result, warnings } = (await res.json()) as { result: ViatgerOcr; warnings: string[] };
+      const { result, warnings, mrzLines } = (await res.json()) as {
+        result: ViatgerOcr;
+        warnings: string[];
+        mrzLines?: string[];
+      };
       setProgress(100);
 
       const hasUsefulData = result.nom || result.cognom1 || result.numDocument || result.adreca;
@@ -97,6 +104,7 @@ export function DocumentScanner({
         setMsg({
           tone: 'warn',
           text: "Document desat, però no s'han pogut llegir les dades. Fes una foto nítida i ben enquadrada. Pots omplir-ho a mà.",
+          mrz: mrzLines,
         });
         return;
       }
@@ -109,9 +117,13 @@ export function DocumentScanner({
         const prioritari = (w: string) =>
           /no s.?ha pogut llegir|no s.?ha llegit|il·legible|no s.?ha reconegut|sense llegir/i.test(w);
         const items = [...warnings].sort((a, b) => Number(prioritari(b)) - Number(prioritari(a)));
-        setMsg({ tone: 'warn', text: 'Dades llegides. Revisa aquests avisos:', items });
+        setMsg({ tone: 'warn', text: 'Dades llegides. Revisa aquests avisos:', items, mrz: mrzLines });
       } else {
-        setMsg({ tone: 'ok', text: 'Dades llegides correctament. Revisa-les i corregeix si cal.' });
+        setMsg({
+          tone: 'ok',
+          text: 'Dades llegides correctament. Compara-les amb el document i corregeix qualsevol camp si cal.',
+          mrz: mrzLines,
+        });
       }
     } catch {
       setMsg({ tone: 'warn', text: "Document desat, però no s'ha pogut llegir el text per autoreplenar." });
@@ -190,6 +202,16 @@ export function DocumentScanner({
                 <li key={i}>{w}</li>
               ))}
             </ul>
+          )}
+          {msg.mrz && msg.mrz.length > 0 && (
+            <div className="mt-2">
+              <p className="text-[11px] font-medium text-slate-500">
+                MRZ llegida (compara-la amb el document; si veus un error, corregeix el camp al formulari):
+              </p>
+              <pre className="mt-1 overflow-x-auto rounded border border-slate-200 bg-slate-50 px-2 py-1.5 font-mono text-[11px] leading-tight tracking-wider text-slate-700">
+                {msg.mrz.join('\n')}
+              </pre>
+            </div>
           )}
         </div>
       )}

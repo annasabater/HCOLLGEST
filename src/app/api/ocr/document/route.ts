@@ -161,13 +161,17 @@ export async function POST(req: Request) {
       warnings,
     };
 
+    // Retornem també les línies MRZ llegides perquè l'usuari les pugui comparar
+    // amb el document (el nom no porta dígit de control) i corregir el formulari.
+    const mrzLines = mrzCandidates;
+
     // Si no hem tret res útil (ni identitat ni adreça), retornem 422 perquè el
     // client mostri "no s'ha pogut llegir, omple-ho a mà" (i la foto ja s'ha desat).
     if (!identitat && !hasAddress) {
-      return Response.json({ result, warnings }, { status: 422 });
+      return Response.json({ result, warnings, mrzLines }, { status: 422 });
     }
 
-    return Response.json({ result, warnings });
+    return Response.json({ result, warnings, mrzLines });
   } catch (err) {
     return handleApiError(err);
   }
