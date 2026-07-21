@@ -151,8 +151,22 @@ export function parseMrz(lines: string[]): MrzResult | null {
       checkDigit(birth) === Number(l2[6]) &&
       checkDigit(expiry) === Number(l2[14]);
     // Camp opcional línia 1 (pos 15-29).
-    const optFieldRaw = l1.slice(15, 29).replace(/</g, '').trim();
+    let optFieldRaw = l1.slice(15, 29).replace(/</g, '').trim();
     const issuingCountry = l1.slice(2, 5).replace(/</g, '');
+    const nacionalitat = l2.slice(15, 18).replace(/</g, '');
+
+    // NIE codificat: a la MRZ la lletra inicial del NIE (X/Y/Z) es guarda com un
+    // dígit (X→0, Y→1, Z→2). En una targeta d'estranger espanyola el camp opcional
+    // porta el NIE amb aquesta codificació (p.ex. "21717102L" = Z1717102L). Com que
+    // un espanyol no té NIE, només ho descodifiquem si la nacionalitat NO és ESP.
+    const NIE_PREFIX: Record<string, string> = { '0': 'X', '1': 'Y', '2': 'Z' };
+    if (
+      issuingCountry === 'ESP' &&
+      nacionalitat !== 'ESP' &&
+      /^[012][0-9]{7}[A-Z]$/.test(optFieldRaw)
+    ) {
+      optFieldRaw = NIE_PREFIX[optFieldRaw[0]!]! + optFieldRaw.slice(1);
+    }
 
     // Documents espanyols (DNI, TIE d'estranger…): el camp "document number"
     // (pos 5-13) porta el NÚMERO DE SUPORT (IDESP, p.ex. BMK169866) i el número
@@ -174,7 +188,7 @@ export function parseMrz(lines: string[]): MrzResult | null {
       numDocument,
       numSuport,
       ...name,
-      nacionalitat: l2.slice(15, 18).replace(/</g, ''),
+      nacionalitat,
       sexe: sexFrom(l2[7]!),
       dataNaixement: toDate(birth, 'birth'),
       dataCaducitat: toDate(expiry, 'expiry'),
