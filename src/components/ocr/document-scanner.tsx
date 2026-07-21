@@ -70,9 +70,22 @@ export function DocumentScanner({
       setProgress(90);
 
       if (!res.ok) {
+        // 422: s'ha desat la foto però no s'ha pogut llegir la MRZ. El cos porta
+        // `warnings` amb el motiu concret (sense MRZ / dígits no quadren).
+        let items: string[] | undefined;
         let detail = '';
-        try { const j = await res.json() as { error?: string }; detail = j.error ? ` (${j.error})` : ''; } catch { /* ignore */ }
-        setMsg({ tone: 'warn', text: `Document desat, però no s'ha pogut llegir el text${detail}. Torna-ho a provar o omple-ho a mà.` });
+        try {
+          const j = (await res.json()) as { error?: string; warnings?: string[] };
+          if (j.warnings && j.warnings.length > 0) items = j.warnings;
+          else if (j.error) detail = ` (${j.error})`;
+        } catch { /* ignore */ }
+        setMsg({
+          tone: 'warn',
+          text: items
+            ? 'Foto desada. No s\'han pogut autoreplenar les dades:'
+            : `Document desat, però no s'ha pogut llegir el text${detail}. Torna-ho a provar o omple-ho a mà.`,
+          items,
+        });
         return;
       }
 
