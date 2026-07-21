@@ -139,6 +139,29 @@ export async function getGastosSoportats(year: number, trimestre: number): Promi
   });
 }
 
+/**
+ * Fiances/dipòsits del trimestre (esFianca=true). Serveix per garantir que una
+ * despesa marcada com a fiança MAI aparegui al trimestre, ni tan sols si havia
+ * quedat en un snapshot desat abans de marcar-la. Retorna signatures per casar
+ * amb les files desades (total + nº factura / NIF / proveïdor).
+ */
+export async function getFiancesSoportades(
+  year: number,
+  trimestre: number,
+): Promise<{ total: number; numFactura: string; nif: string; proveidor: string }[]> {
+  const { start, end } = rangTrimestre(year, trimestre);
+  const fiances = await prisma.gasto.findMany({
+    where: { deletedAt: null, esFianca: true, data: { gte: start, lte: end } },
+    include: { proveidor: { select: { nom: true, cif: true } } },
+  });
+  return fiances.map((g) => ({
+    total: round2(Number(g.import)),
+    numFactura: g.numFactura ?? '',
+    nif: g.proveidor?.cif ?? '',
+    proveidor: g.proveidor?.nom ?? g.descripcio,
+  }));
+}
+
 export async function getLlibreIngressos(year: number, trimestre: number): Promise<LlibreIngressos> {
   const { start, end } = rangTrimestre(year, trimestre);
 

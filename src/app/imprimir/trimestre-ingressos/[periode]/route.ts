@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
-import { getLlibreIngressos, getGastosSoportats, type FilaIngres, type FilaGasto } from '@/lib/services/llibre-iva';
+import { getLlibreIngressos, getGastosSoportats, getFiancesSoportades, type FilaIngres, type FilaGasto } from '@/lib/services/llibre-iva';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,16 +51,36 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     // Si ja s'havien desat gastos, es carreguen; si no (llibre desat abans que
     // existís la part de despeses), es generen dels gastos del trimestre.
     const gDesat = desat.gastos as unknown as FilaGastoEdit[] | null;
-    gastos = gDesat
-      ? gDesat.map((g) => ({
+    if (gDesat) {
+      // Una despesa marcada com a fiança NO ha d'aparèixer mai al trimestre, ni
+      // encara que hagués quedat en un snapshot desat abans de marcar-la: la
+      // descartem si casa amb alguna fiança actual del trimestre.
+      const fiances = await getFiancesSoportades(year, trimestre);
+      const esFianca = (g: FilaGastoEdit) => {
+        const total = Number(g.total ?? 0);
+        const nf = String(g.numFactura ?? '').trim();
+        const nif = String(g.nif ?? '').trim();
+        const prov = String(g.proveidor ?? '').trim().toLowerCase();
+        return fiances.some((f) =>
+          Math.abs(f.total - total) < 0.005 &&
+          ((nf && f.numFactura && nf === f.numFactura) ||
+            (nif && f.nif && nif === f.nif) ||
+            (prov && f.proveidor.trim().toLowerCase() === prov)),
+        );
+      };
+      gastos = gDesat
+        .filter((g) => !esFianca(g))
+        .map((g) => ({
           data: String(g.data ?? ''), nif: String(g.nif ?? ''), proveidor: String(g.proveidor ?? ''),
           numFactura: String(g.numFactura ?? ''), base: Number(g.base ?? 0), ivaPercent: Number(g.ivaPercent ?? 0),
           iva: Number(g.iva ?? 0), irpfPercent: Number(g.irpfPercent ?? 0), irpf: Number(g.irpf ?? 0), total: Number(g.total ?? 0),
-        }))
-      : (await getGastosSoportats(year, trimestre)).map((g: FilaGasto) => ({
-          data: fmtData(g.data), nif: g.nif, proveidor: g.proveidor, numFactura: g.numFactura,
-          base: g.base, ivaPercent: g.ivaPercent, iva: g.iva, irpfPercent: g.irpfPercent, irpf: g.irpf, total: g.total,
         }));
+    } else {
+      gastos = (await getGastosSoportats(year, trimestre)).map((g: FilaGasto) => ({
+        data: fmtData(g.data), nif: g.nif, proveidor: g.proveidor, numFactura: g.numFactura,
+        base: g.base, ivaPercent: g.ivaPercent, iva: g.iva, irpfPercent: g.irpfPercent, irpf: g.irpf, total: g.total,
+      }));
+    }
   } else {
     const llibre = await getLlibreIngressos(year, trimestre);
     etiqueta = llibre.etiqueta;
