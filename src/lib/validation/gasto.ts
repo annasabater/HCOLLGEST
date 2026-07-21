@@ -33,6 +33,12 @@ export const GastoCreateSchema = z.object({
   // o es crea un Proveidor a partir d'aquestes dades (per tenir NIF al trimestre).
   proveidorNom: optStr,
   proveidorNif: optStr,
+  // Dades de contacte del proveïdor nou (editables abans de desar).
+  proveidorActivitat: optStr,
+  proveidorTelefon: optStr,
+  proveidorEmail: optStr,
+  proveidorAdreca: optStr,
+  proveidorWeb: optStr,
   // Fiança/dipòsit pagat (recuperable): no compta al balanç fins que es desmarqui.
   esFianca: z.coerce.boolean().optional(),
 });

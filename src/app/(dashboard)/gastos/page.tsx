@@ -34,12 +34,18 @@ interface GastoOcrClient {
   data?: string;
   proveidorNom?: string;
   proveidorNif?: string;
+  proveidorActivitat?: string;
+  proveidorTelefon?: string;
+  proveidorEmail?: string;
+  proveidorAdreca?: string;
+  proveidorWeb?: string;
   numFactura?: string;
   baseImposable?: number;
   ivaPercent?: number;
   irpfPercent?: number;
   import?: number;
   descripcio?: string;
+  categoria?: string;
   warnings?: string[];
 }
 interface Gasto {
@@ -340,6 +346,11 @@ function novaBuida() {
     irpfPercent: '',
     proveidorNom: '',
     proveidorNif: '',
+    proveidorActivitat: '',
+    proveidorTelefon: '',
+    proveidorEmail: '',
+    proveidorAdreca: '',
+    proveidorWeb: '',
     esFianca: false,
   };
 }
@@ -420,9 +431,14 @@ function GastosVariablesTab() {
         ivaPercent: nova.ivaPercent || undefined,
         irpfPercent: nova.irpfPercent || undefined,
         // Si no s'ha triat proveïdor, enviem el detectat per l'escàner (el servidor
-        // el busca o el crea per tenir NIF al trimestre).
+        // el busca o el crea per tenir NIF i dades de contacte al trimestre).
         proveidorNom: nova.proveidorId ? undefined : nova.proveidorNom || undefined,
         proveidorNif: nova.proveidorId ? undefined : nova.proveidorNif || undefined,
+        proveidorActivitat: nova.proveidorId ? undefined : nova.proveidorActivitat || undefined,
+        proveidorTelefon: nova.proveidorId ? undefined : nova.proveidorTelefon || undefined,
+        proveidorEmail: nova.proveidorId ? undefined : nova.proveidorEmail || undefined,
+        proveidorAdreca: nova.proveidorId ? undefined : nova.proveidorAdreca || undefined,
+        proveidorWeb: nova.proveidorId ? undefined : nova.proveidorWeb || undefined,
         adjuntPath,
         esFianca: nova.esFianca,
       });
@@ -465,6 +481,8 @@ function GastosVariablesTab() {
     setScanning(true); setError(null);
     try {
       const fd = new FormData(); fd.append('image', f);
+      // Enviem la llista de categories perquè l'escàner en triï la més adient.
+      fd.append('categories', JSON.stringify(categories.map((c) => c.nom)));
       const res = await fetch('/api/ocr/gasto', { method: 'POST', body: fd });
       if (!res.ok) throw new ApiError('OCR', res.status);
       const { result } = (await res.json()) as { result: GastoOcrClient };
@@ -472,6 +490,11 @@ function GastosVariablesTab() {
       const matchProv = result.proveidorNom
         ? proveidors.find((p) => p.nom.trim().toLowerCase() === result.proveidorNom!.trim().toLowerCase())
         : undefined;
+
+      // Categoria suggerida per l'escàner → id. Si no casa amb cap, caiem a "Altres".
+      const catByName = (nom?: string) =>
+        nom ? categories.find((c) => c.nom.trim().toLowerCase() === nom.trim().toLowerCase()) : undefined;
+      const catSugg = catByName(result.categoria) ?? catByName('Altres');
 
       setNova((n) => {
         const next = { ...n };
@@ -482,11 +505,22 @@ function GastosVariablesTab() {
         if (result.ivaPercent != null) next.ivaPercent = String(result.ivaPercent);
         if (result.irpfPercent != null) next.irpfPercent = String(result.irpfPercent);
         if (result.descripcio && !n.descripcio.trim()) next.descripcio = result.descripcio;
+        // Categoria: només si no n'hi ha cap de triada, per no trepitjar la de l'usuari.
+        if (!n.categoriaId && catSugg) next.categoriaId = catSugg.id;
         if (!n.proveidorId && result.proveidorNom) {
           if (matchProv) {
-            next.proveidorId = matchProv.id; next.proveidorNom = ''; next.proveidorNif = '';
+            next.proveidorId = matchProv.id;
+            next.proveidorNom = ''; next.proveidorNif = '';
+            next.proveidorActivitat = ''; next.proveidorTelefon = '';
+            next.proveidorEmail = ''; next.proveidorAdreca = ''; next.proveidorWeb = '';
           } else {
-            next.proveidorNom = result.proveidorNom; next.proveidorNif = result.proveidorNif ?? '';
+            next.proveidorNom = result.proveidorNom;
+            next.proveidorNif = result.proveidorNif ?? '';
+            next.proveidorActivitat = result.proveidorActivitat ?? '';
+            next.proveidorTelefon = result.proveidorTelefon ?? '';
+            next.proveidorEmail = result.proveidorEmail ?? '';
+            next.proveidorAdreca = result.proveidorAdreca ?? '';
+            next.proveidorWeb = result.proveidorWeb ?? '';
           }
         }
         return next;
@@ -643,6 +677,21 @@ function GastosVariablesTab() {
                         </Field>
                         <Field label="NIF/CIF">
                           <Input value={nova.proveidorNif} onChange={(e) => setNova({ ...nova, proveidorNif: e.target.value })} placeholder="Ex. ESA82037292" />
+                        </Field>
+                        <Field label="Activitat">
+                          <Input value={nova.proveidorActivitat} onChange={(e) => setNova({ ...nova, proveidorActivitat: e.target.value })} placeholder="Ex. Electrònica, Ferreteria…" />
+                        </Field>
+                        <Field label="Telèfon">
+                          <Input value={nova.proveidorTelefon} onChange={(e) => setNova({ ...nova, proveidorTelefon: e.target.value })} placeholder="Ex. 937 66 08 93" />
+                        </Field>
+                        <Field label="E-mail">
+                          <Input value={nova.proveidorEmail} onChange={(e) => setNova({ ...nova, proveidorEmail: e.target.value })} placeholder="Ex. info@proveidor.cat" />
+                        </Field>
+                        <Field label="Web">
+                          <Input value={nova.proveidorWeb} onChange={(e) => setNova({ ...nova, proveidorWeb: e.target.value })} placeholder="Ex. www.proveidor.cat" />
+                        </Field>
+                        <Field label="Adreça" className="sm:col-span-2">
+                          <Input value={nova.proveidorAdreca} onChange={(e) => setNova({ ...nova, proveidorAdreca: e.target.value })} placeholder="Carrer, població" />
                         </Field>
                       </div>
                       <p className="mt-1.5 text-xs text-brand-700/70">O tria’n un d’existent a la llista «Proveïdor» de dalt.</p>
@@ -914,8 +963,11 @@ const RESUM_MODES: { key: ResumMode; label: string }[] = [
   { key: 'ambFianca', label: 'Amb fiança' },
 ];
 
-interface DetallCat { nom: string; sense: number; fianca: number }
-interface DetallData { categories: DetallCat[]; personal: number }
+interface DetallData {
+  categories: { nom: string; sense: number }[];
+  fiances: { proveidor: string; import: number }[];
+  personal: number;
+}
 type Sel = { tipus: 'mes' | 'trimestre'; idx: number };
 
 // Resum de totals de despeses per mes, trimestre i anual. Es pot veure el total,
@@ -952,13 +1004,18 @@ function ResumGastos() {
       ? `${MESOS_CURT[sel.idx]} ${year}`
       : `${sel.idx + 1}r trimestre ${year}`
     : '';
-  // Desglossament segons el mode triat (total / sense fiança / amb fiança).
-  const conceptes = detall
-    ? detall.categories
-        .map((c) => ({ nom: c.nom, valor: mode === 'ambFianca' ? c.fianca : mode === 'senseFianca' ? c.sense : c.sense + c.fianca }))
-        .filter((c) => c.valor > 0.005)
-        .sort((a, b) => b.valor - a.valor)
-    : [];
+  // Desglossament segons el mode: despeses reals per categoria i, si és una
+  // fiança, per proveïdor (per identificar el dipòsit).
+  const conceptes: { nom: string; valor: number; fianca?: boolean }[] = [];
+  if (detall) {
+    if (mode !== 'ambFianca') {
+      for (const c of detall.categories) if (c.sense > 0.005) conceptes.push({ nom: c.nom, valor: c.sense });
+    }
+    if (mode !== 'senseFianca') {
+      for (const f of detall.fiances) if (f.import > 0.005) conceptes.push({ nom: `Fiança · ${f.proveidor}`, valor: f.import, fianca: true });
+    }
+    conceptes.sort((a, b) => b.valor - a.valor);
+  }
   const personalVal = detall && mode !== 'ambFianca' ? detall.personal : 0;
   const selTotal = conceptes.reduce((a, c) => a + c.valor, 0) + personalVal;
 
@@ -1047,8 +1104,8 @@ function ResumGastos() {
               <ul className="divide-y divide-slate-200 text-sm">
                 {conceptes.map((c) => (
                   <li key={c.nom} className="flex items-center justify-between gap-3 py-1.5">
-                    <span className="min-w-0 truncate text-slate-600">{c.nom}</span>
-                    <span className="shrink-0 font-medium text-slate-800"><Eur value={c.valor} /></span>
+                    <span className={cn('min-w-0 truncate', c.fianca ? 'text-amber-700' : 'text-slate-600')}>{c.nom}</span>
+                    <span className={cn('shrink-0 font-medium', c.fianca ? 'text-amber-700' : 'text-slate-800')}><Eur value={c.valor} /></span>
                   </li>
                 ))}
                 {personalVal > 0 && (

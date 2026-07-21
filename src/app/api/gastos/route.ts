@@ -74,7 +74,17 @@ export async function POST(req: Request) {
       if (existent) {
         proveidorId = existent.id;
       } else if (nom) {
-        const nou = await prisma.proveidor.create({ data: { nom, cif: nif ?? null } });
+        const nou = await prisma.proveidor.create({
+          data: {
+            nom,
+            cif: nif ?? null,
+            activitat: data.proveidorActivitat ?? null,
+            telefon: data.proveidorTelefon ?? null,
+            email: data.proveidorEmail ?? null,
+            adreca: data.proveidorAdreca ?? null,
+            web: data.proveidorWeb ?? null,
+          },
+        });
         proveidorId = nou.id;
       }
     }

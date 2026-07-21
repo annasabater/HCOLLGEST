@@ -14,12 +14,19 @@ export interface GastoOcr {
   data?: string; // YYYY-MM-DD
   proveidorNom?: string;
   proveidorNif?: string;
+  // Dades de contacte del proveïdor (per crear-ne la fitxa), si es llegeixen.
+  proveidorActivitat?: string;
+  proveidorTelefon?: string;
+  proveidorEmail?: string;
+  proveidorAdreca?: string;
+  proveidorWeb?: string;
   numFactura?: string;
   baseImposable?: number;
   ivaPercent?: number;
   irpfPercent?: number;
   import?: number; // total pagat (IVA inclòs)
   descripcio?: string;
+  categoria?: string; // categoria triada de la llista (o "Altres")
   warnings: string[];
 }
 
@@ -33,24 +40,33 @@ REGLES ABSOLUTES (molt importants):
 - Els imports espanyols usen coma decimal (31,10). Retorna'ls SEMPRE com a número JSON amb punt decimal (31.10).
 Respon SEMPRE en format JSON vàlid, sense cap text addicional fora del JSON.`;
 
-const USER_PROMPT = `Extreu les dades d'aquesta factura o tiquet de COMPRA (una despesa del negoci).
+function buildUserPrompt(categories: string[]): string {
+  const catList = categories.length > 0 ? categories.join(', ') : 'Altres';
+  return `Extreu les dades d'aquesta factura o tiquet de COMPRA (una despesa del negoci).
 
 MOLT IMPORTANT sobre el proveïdor:
 - El "proveïdor" és qui EMET la factura (l'emissor/venedor), normalment a la capçalera de dalt.
 - NO és el client/destinatari (a qui va dirigida). Sovint el client és "FAICOM PACKAGING INDUSTRIAL S.L." amb NIF B61183158 o similar: aquest NO és el proveïdor, ignora'l com a proveïdor.
 - El NIF/CIF del proveïdor és el de l'emissor (p.ex. B70955505, B60514650, ESA82037292…). Si a la factura només hi ha el NIF del client, deixa proveidorNif buit i posa un warning.
+- Les dades de contacte (telèfon, e-mail, adreça, web, activitat) han de ser les de l'EMISSOR/proveïdor, no les del client.
 
 Retorna un objecte JSON amb exactament aquesta estructura (posa null als camps que no puguis llegir amb seguretat):
 {
   "data": "YYYY-MM-DD o null — data de la factura/tiquet",
   "proveidorNom": "string o null — nom de l'empresa que EMET la factura",
   "proveidorNif": "string o null — NIF/CIF de l'emissor (majúscules, sense espais)",
+  "proveidorActivitat": "string o null — activitat/sector del proveïdor (p.ex. 'Electrònica', 'Ferreteria', 'Assegurances') si es dedueix",
+  "proveidorTelefon": "string o null — telèfon del proveïdor",
+  "proveidorEmail": "string o null — e-mail del proveïdor",
+  "proveidorAdreca": "string o null — adreça (carrer, població) del proveïdor",
+  "proveidorWeb": "string o null — pàgina web del proveïdor",
   "numFactura": "string o null — número de factura o de tiquet",
   "baseImposable": "número o null — base imposable (sense IVA)",
   "ivaPercent": "número o null — percentatge d'IVA aplicat (21, 10 o 4). Si la factura mostra base i total però no el %, calcula'l: round((total-base)/base*100)",
   "irpfPercent": "número o null — percentatge de retenció d'IRPF si n'hi ha (sovint no n'hi ha; deixa null)",
   "import": "número o null — TOTAL a pagar amb IVA inclòs",
   "descripcio": "string o null — descripció breu del que s'ha comprat (p.ex. 'Material de pintura', 'Llits i matalassos', 'Ferreteria')",
+  "categoria": "string — tria la categoria MÉS adient d'aquesta llista EXACTA: [${catList}]. Copia el nom tal qual. Si cap encaixa clarament, posa 'Altres'.",
   "warnings": ["array de strings — avisos sobre dades dubtoses o que no s'han pogut llegir"]
 }
 
@@ -59,7 +75,10 @@ Regles de lectura (transcripció fidel, sense inventar):
 - El TOTAL és l'import final amb IVA inclòs ("Total", "Importe total", "Total factura"). És el més important: no el confonguis amb la base.
 - Si només veus el total (tiquet simple sense desglossament), omple només "import" i deixa base/ivaPercent a null (o, si el tiquet indica "IVA 21%", posa ivaPercent=21).
 - Si hi ha diverses línies de producte, NO les detallis totes: resumeix a "descripcio" en poques paraules.
-- Si no pots llegir cap dada fiable, retorna { "warnings": ["No s'han pogut llegir dades fiables; fes una foto més nítida"] }.`;
+- La "categoria" NO és transcripció: és una classificació teva. Tria SEMPRE un nom de la llista (o 'Altres'); no te'l pots inventar fora de la llista.
+- Les dades de contacte del proveïdor només si es veuen clarament; si no, null.
+- Si no pots llegir cap dada fiable, retorna { "categoria": "Altres", "warnings": ["No s'han pogut llegir dades fiables; fes una foto més nítida"] }.`;
+}
 
 function toNum(v: unknown): number | undefined {
   if (typeof v === 'number' && Number.isFinite(v)) return v;
@@ -86,6 +105,17 @@ export async function POST(req: Request) {
       return Response.json({ error: 'Cal enviar un camp "image"' }, { status: 400 });
     }
 
+    // Llista de categories disponibles (per triar-ne la més adient). El client
+    // l'envia com a JSON; si no ve, es fa servir només "Altres".
+    let categories: string[] = [];
+    const catsRaw = formData.get('categories');
+    if (typeof catsRaw === 'string' && catsRaw.trim()) {
+      try {
+        const arr = JSON.parse(catsRaw) as unknown;
+        if (Array.isArray(arr)) categories = arr.map(String).filter(Boolean);
+      } catch { /* ignore */ }
+    }
+
     const rawType = file.type || 'image/jpeg';
     const bytes = await file.arrayBuffer();
     const base64 = Buffer.from(bytes).toString('base64');
@@ -106,7 +136,7 @@ export async function POST(req: Request) {
       // Temperatura 0: transcripció determinista, sense inventar imports.
       temperature: 0,
       system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: [contentBlock, { type: 'text', text: USER_PROMPT }] }],
+      messages: [{ role: 'user', content: [contentBlock, { type: 'text', text: buildUserPrompt(categories) }] }],
     });
 
     const text = message.content.find((b) => b.type === 'text')?.text ?? '';
@@ -121,16 +151,30 @@ export async function POST(req: Request) {
 
     const warnings = Array.isArray(parsed.warnings) ? (parsed.warnings as unknown[]).map(String) : [];
 
+    // La categoria que retorna el model ha de ser una de la llista; si no ho és,
+    // caiem a "Altres" (o al text tal qual si no tenim llista).
+    const catRaw = toStr(parsed.categoria);
+    const catMatch = catRaw
+      ? categories.find((c) => c.toLowerCase() === catRaw.toLowerCase())
+      : undefined;
+    const categoria = catMatch ?? (categories.length > 0 ? 'Altres' : catRaw);
+
     const result: GastoOcr = {
       data: toStr(parsed.data),
       proveidorNom: toStr(parsed.proveidorNom),
       proveidorNif: toStr(parsed.proveidorNif)?.toUpperCase().replace(/\s+/g, ''),
+      proveidorActivitat: toStr(parsed.proveidorActivitat),
+      proveidorTelefon: toStr(parsed.proveidorTelefon),
+      proveidorEmail: toStr(parsed.proveidorEmail),
+      proveidorAdreca: toStr(parsed.proveidorAdreca),
+      proveidorWeb: toStr(parsed.proveidorWeb),
       numFactura: toStr(parsed.numFactura),
       baseImposable: toNum(parsed.baseImposable),
       ivaPercent: toNum(parsed.ivaPercent),
       irpfPercent: toNum(parsed.irpfPercent),
       import: toNum(parsed.import),
       descripcio: toStr(parsed.descripcio),
+      categoria,
       warnings,
     };
 
