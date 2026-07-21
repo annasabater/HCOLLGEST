@@ -893,21 +893,35 @@ function PersonalTab() {
 
 const MESOS_CURT = ['Gen', 'Feb', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Des'];
 
-// Resum de totals de despeses (variables + fixes) per mes, trimestre i anual.
-// Es mostra a dalt de tot de /gastos, sigui quina sigui la pestanya.
+interface ResumSet { mesos: number[]; trimestres: number[]; anual: number }
+interface ResumData { senseFianca: ResumSet; ambFianca: ResumSet; total: ResumSet }
+type ResumMode = 'senseFianca' | 'ambFianca' | 'total';
+const RESUM_MODES: { key: ResumMode; label: string }[] = [
+  { key: 'senseFianca', label: 'Sense fiança' },
+  { key: 'ambFianca', label: 'Amb fiança' },
+  { key: 'total', label: 'Total' },
+];
+
+// Resum de totals de despeses per mes, trimestre i anual. Es pot veure sense
+// fiança (despeses reals + nòmines), amb fiança (dipòsits) o el total, per
+// comparar-los. Es mostra a dalt de tot de /gastos, sigui quina sigui la pestanya.
 function ResumGastos() {
   const [year, setYear] = useState(() => new Date().getFullYear());
-  const [resum, setResum] = useState<{ mesos: number[]; trimestres: number[]; anual: number } | null>(null);
+  const [mode, setMode] = useState<ResumMode>('senseFianca');
+  const [resum, setResum] = useState<ResumData | null>(null);
 
   useEffect(() => {
-    getJSON<{ mesos: number[]; trimestres: number[]; anual: number }>(`/api/gastos/resum?year=${year}`)
-      .then((r) => setResum({ mesos: r.mesos, trimestres: r.trimestres, anual: r.anual }))
+    getJSON<{ year: number } & ResumData>(`/api/gastos/resum?year=${year}`)
+      .then((r) => setResum({ senseFianca: r.senseFianca, ambFianca: r.ambFianca, total: r.total }))
       .catch(() => setResum(null));
   }, [year]);
 
+  const actual = resum ? resum[mode] : null;
+  const modeLabel = RESUM_MODES.find((m) => m.key === mode)?.label ?? '';
+
   return (
     <Card className="mb-6">
-      <CardHeader className="flex items-center justify-between">
+      <CardHeader className="flex flex-wrap items-center justify-between gap-3">
         <CardTitle>Resum de despeses</CardTitle>
         <div className="flex items-center gap-1">
           <button type="button" onClick={() => setYear((y) => y - 1)} className="rounded p-1 text-slate-500 hover:bg-slate-100" aria-label="Any anterior"><ChevronLeft className="h-4 w-4" /></button>
@@ -916,15 +930,39 @@ function ResumGastos() {
         </div>
       </CardHeader>
       <CardBody className="space-y-4">
+        {/* Selector sense fiança / amb fiança / total */}
+        <div className="inline-flex rounded-lg border border-slate-200 p-0.5 text-sm">
+          {RESUM_MODES.map((m) => (
+            <button
+              key={m.key}
+              type="button"
+              onClick={() => setMode(m.key)}
+              className={cn(
+                'rounded-md px-3 py-1 font-medium transition-colors',
+                mode === m.key ? 'bg-brand-700 text-white' : 'text-slate-600 hover:bg-slate-100',
+              )}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Comparació ràpida dels tres totals anuals */}
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+          <span>Sense fiança: <span className="font-medium text-slate-700"><Eur value={resum?.senseFianca.anual ?? 0} /></span></span>
+          <span>Amb fiança: <span className="font-medium text-amber-700"><Eur value={resum?.ambFianca.anual ?? 0} /></span></span>
+          <span>Total: <span className="font-medium text-slate-700"><Eur value={resum?.total.anual ?? 0} /></span></span>
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-5">
           <div className="rounded-lg border border-brand-200 bg-brand-50/50 px-3 py-2">
-            <div className="text-xs text-brand-700">Total {year}</div>
-            <div className="text-lg font-semibold text-brand-800"><Eur value={resum?.anual ?? 0} /></div>
+            <div className="text-xs text-brand-700">{modeLabel} · {year}</div>
+            <div className="text-lg font-semibold text-brand-800"><Eur value={actual?.anual ?? 0} /></div>
           </div>
           {[0, 1, 2, 3].map((t) => (
             <div key={t} className="rounded-lg border border-slate-200 px-3 py-2">
               <div className="text-xs text-slate-500">{t + 1}r trimestre</div>
-              <div className="text-base font-medium"><Eur value={resum?.trimestres[t] ?? 0} /></div>
+              <div className="text-base font-medium"><Eur value={actual?.trimestres[t] ?? 0} /></div>
             </div>
           ))}
         </div>
@@ -932,11 +970,13 @@ function ResumGastos() {
           {MESOS_CURT.map((m, i) => (
             <div key={m} className="rounded-md bg-slate-50 px-2 py-1.5 text-center">
               <div className="text-[11px] uppercase tracking-wide text-slate-400">{m}</div>
-              <div className="text-sm font-medium text-slate-700"><Eur value={resum?.mesos[i] ?? 0} /></div>
+              <div className="text-sm font-medium text-slate-700"><Eur value={actual?.mesos[i] ?? 0} /></div>
             </div>
           ))}
         </div>
-        <p className="text-xs text-slate-400">Inclou despeses variables, fixes i nòmines del personal. No compta les fiances.</p>
+        <p className="text-xs text-slate-400">
+          «Sense fiança» = despeses reals (variables, fixes i nòmines). «Amb fiança» = dipòsits recuperables. «Total» = tot plegat.
+        </p>
       </CardBody>
     </Card>
   );

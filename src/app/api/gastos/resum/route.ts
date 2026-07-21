@@ -18,33 +18,45 @@ export async function GET(req: Request) {
 
     const [gastos, nomines] = await Promise.all([
       prisma.gasto.findMany({
-        where: { deletedAt: null, esFianca: false, data: { gte: start, lt: end } },
-        select: { data: true, import: true },
+        where: { deletedAt: null, data: { gte: start, lt: end } },
+        select: { data: true, import: true, esFianca: true },
       }),
-      // Nòmines del personal (periode 'YYYY-MM'): també són despesa real.
+      // Nòmines del personal (periode 'YYYY-MM'): despesa real (mai fiança).
       prisma.nomina.findMany({
         where: { periode: { startsWith: `${year}-` } },
         select: { periode: true, total: true },
       }),
     ]);
 
-    const mesos = Array<number>(12).fill(0);
+    // Despeses reals (sense fiança) i fiances/dipòsits, per separat.
+    const mSense = Array<number>(12).fill(0);
+    const mFianca = Array<number>(12).fill(0);
     for (const g of gastos) {
       const m = g.data.getUTCMonth();
-      mesos[m] = (mesos[m] ?? 0) + Number(g.import);
+      if (g.esFianca) mFianca[m] = (mFianca[m] ?? 0) + Number(g.import);
+      else mSense[m] = (mSense[m] ?? 0) + Number(g.import);
     }
     for (const n of nomines) {
       const m = Number(n.periode.slice(5, 7)) - 1; // 'YYYY-MM' → 0-11
-      if (m >= 0 && m <= 11) mesos[m] = (mesos[m] ?? 0) + Number(n.total);
+      if (m >= 0 && m <= 11) mSense[m] = (mSense[m] ?? 0) + Number(n.total);
     }
-    const trimestres = [0, 0, 0, 0];
-    mesos.forEach((v, i) => {
-      const q = Math.floor(i / 3);
-      trimestres[q] = (trimestres[q] ?? 0) + v;
-    });
-    const anual = mesos.reduce((a, b) => a + b, 0);
+    const mTotal = mSense.map((v, i) => v + (mFianca[i] ?? 0));
 
-    return ok({ year, mesos, trimestres, anual });
+    const build = (mesos: number[]) => {
+      const trimestres = [0, 0, 0, 0];
+      mesos.forEach((v, i) => {
+        const q = Math.floor(i / 3);
+        trimestres[q] = (trimestres[q] ?? 0) + v;
+      });
+      return { mesos, trimestres, anual: mesos.reduce((a, b) => a + b, 0) };
+    };
+
+    return ok({
+      year,
+      senseFianca: build(mSense),
+      ambFianca: build(mFianca),
+      total: build(mTotal),
+    });
   } catch (err) {
     return handleApiError(err);
   }
