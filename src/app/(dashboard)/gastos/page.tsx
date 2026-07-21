@@ -22,6 +22,13 @@ import { optionsFrom, metodeCobramentValues, METODE_COBRAMENT_LABELS } from '@/l
 interface Cat { id: string; nom: string }
 interface Prov { id: string; nom: string }
 interface Hab { id: string; nom: string }
+// Valors habituals d'un proveïdor (de la seva última despesa).
+interface ProvDefaults {
+  categoriaId: string;
+  ivaPercent: number | null;
+  irpfPercent: number | null;
+  metodePagament: string;
+}
 // Resultat de l'escàner de tiquets/factures (/api/ocr/gasto).
 interface GastoOcrClient {
   data?: string;
@@ -419,6 +426,27 @@ function GastosVariablesTab() {
     } catch (err) { setError(err instanceof ApiError ? err.message : 'Error desant la despesa'); } finally { setSaving(false); }
   }
 
+  // En triar un proveïdor ja usat, omple els camps buits amb els seus valors
+  // habituals (categoria, %IVA, %IRPF, mètode) de l'última despesa. Així només
+  // cal posar el producte i el preu; el NIF ja ve amb el proveïdor.
+  async function aplicaDefaultsProveidor(id: string) {
+    if (!id) return;
+    try {
+      const { defaults } = await getJSON<{ defaults: ProvDefaults | null }>(`/api/proveidors/${id}/defaults`);
+      if (!defaults) return;
+      setNova((n) => ({
+        ...n,
+        categoriaId: n.categoriaId || defaults.categoriaId || '',
+        ivaPercent: n.ivaPercent || (defaults.ivaPercent != null ? String(defaults.ivaPercent) : ''),
+        irpfPercent: n.irpfPercent || (defaults.irpfPercent != null ? String(defaults.irpfPercent) : ''),
+        // El mètode només es reomple si encara és el per defecte (no tocat).
+        metodePagament: n.metodePagament === 'TARGETA' && defaults.metodePagament ? defaults.metodePagament : n.metodePagament,
+      }));
+    } catch {
+      /* si falla, es queda sense autoemplenar */
+    }
+  }
+
   // Tria un fitxer d'adjunt i, si és imatge o PDF, l'escaneja per autoemplenar.
   function triaFitxer(f: File | null) {
     setFile(f);
@@ -462,6 +490,9 @@ function GastosVariablesTab() {
       if (result.proveidorNom && !matchProv && !nova.proveidorId) {
         setScanNouProv({ nom: result.proveidorNom, nif: result.proveidorNif ?? '' });
       }
+      // Si l'OCR ha casat amb un proveïdor existent, completem els camps que el
+      // tiquet no dona (p.ex. la categoria) amb els seus valors habituals.
+      if (matchProv && !nova.proveidorId) void aplicaDefaultsProveidor(matchProv.id);
       setScanWarnings(result.warnings ?? []);
     } catch {
       setScanWarnings(['No s’ha pogut escanejar el fitxer. Omple les dades a mà.']);
@@ -551,7 +582,7 @@ function GastosVariablesTab() {
               <Field label="Proveïdor">
                 <Select
                   value={nova.proveidorId}
-                  onChange={(e) => { setNova({ ...nova, proveidorId: e.target.value, proveidorNom: '', proveidorNif: '' }); if (e.target.value) setScanNouProv(null); }}
+                  onChange={(e) => { const id = e.target.value; setNova({ ...nova, proveidorId: id, proveidorNom: '', proveidorNif: '' }); if (id) { setScanNouProv(null); void aplicaDefaultsProveidor(id); } }}
                 >
                   <option value="">—</option>
                   {proveidors.map((p) => <option key={p.id} value={p.id}>{p.nom}</option>)}
