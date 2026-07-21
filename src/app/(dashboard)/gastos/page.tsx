@@ -22,6 +22,19 @@ import { optionsFrom, metodeCobramentValues, METODE_COBRAMENT_LABELS } from '@/l
 interface Cat { id: string; nom: string }
 interface Prov { id: string; nom: string }
 interface Hab { id: string; nom: string }
+// Resultat de l'escàner de tiquets/factures (/api/ocr/gasto).
+interface GastoOcrClient {
+  data?: string;
+  proveidorNom?: string;
+  proveidorNif?: string;
+  numFactura?: string;
+  baseImposable?: number;
+  ivaPercent?: number;
+  irpfPercent?: number;
+  import?: number;
+  descripcio?: string;
+  warnings?: string[];
+}
 interface Gasto {
   id: string;
   data: string;
@@ -303,6 +316,27 @@ function GastosFixesTab() {
 
 // ─── Gastos variables ─────────────────────────────────────────────────────────
 
+// Estat inicial del formulari de nova despesa (inclou camps fiscals i el
+// proveïdor detectat per l'escàner, que es buiden en desar).
+function novaBuida() {
+  return {
+    data: toISODate(new Date()),
+    import: '',
+    categoriaId: '',
+    proveidorId: '',
+    habitacioId: '',
+    metodePagament: 'TARGETA',
+    descripcio: '',
+    numFactura: '',
+    baseImposable: '',
+    ivaPercent: '',
+    irpfPercent: '',
+    proveidorNom: '',
+    proveidorNif: '',
+    esFianca: false,
+  };
+}
+
 function GastosVariablesTab() {
   const [categories, setCategories] = useState<Cat[]>([]);
   const [proveidors, setProveidors] = useState<Prov[]>([]);
@@ -316,12 +350,17 @@ function GastosVariablesTab() {
   const [fCat, setFCat] = useState('');
 
   const [showForm, setShowForm] = useState(false);
-  const [nova, setNova] = useState({ data: toISODate(new Date()), import: '', categoriaId: '', proveidorId: '', habitacioId: '', metodePagament: 'TARGETA', descripcio: '', esFianca: false });
+  const [nova, setNova] = useState(novaBuida);
   const [file, setFile] = useState<File | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Escàner del tiquet/factura (OCR amb Claude): estat de la lectura.
+  const [scanning, setScanning] = useState(false);
+  const [scanWarnings, setScanWarnings] = useState<string[]>([]);
+  const [scanNouProv, setScanNouProv] = useState<{ nom: string; nif: string } | null>(null);
 
   // Edició inline d'una despesa existent.
   const [editId, setEditId] = useState<string | null>(null);
@@ -356,10 +395,79 @@ function GastosVariablesTab() {
         if (!up.ok) throw new ApiError('No s\'ha pogut pujar l\'adjunt', up.status);
         adjuntPath = (await up.json()).path;
       }
-      await postJSON('/api/gastos', { data: nova.data, import: Number(nova.import), categoriaId: nova.categoriaId, proveidorId: nova.proveidorId || undefined, habitacioId: nova.habitacioId || undefined, metodePagament: nova.metodePagament, descripcio: nova.descripcio, adjuntPath, esFianca: nova.esFianca });
-      setNova({ data: toISODate(new Date()), import: '', categoriaId: '', proveidorId: '', habitacioId: '', metodePagament: 'TARGETA', descripcio: '', esFianca: false });
-      setFile(null); setShowForm(false); load();
+      await postJSON('/api/gastos', {
+        data: nova.data,
+        import: Number(nova.import),
+        categoriaId: nova.categoriaId,
+        proveidorId: nova.proveidorId || undefined,
+        habitacioId: nova.habitacioId || undefined,
+        metodePagament: nova.metodePagament,
+        descripcio: nova.descripcio,
+        numFactura: nova.numFactura || undefined,
+        baseImposable: nova.baseImposable || undefined,
+        ivaPercent: nova.ivaPercent || undefined,
+        irpfPercent: nova.irpfPercent || undefined,
+        // Si no s'ha triat proveïdor, enviem el detectat per l'escàner (el servidor
+        // el busca o el crea per tenir NIF al trimestre).
+        proveidorNom: nova.proveidorId ? undefined : nova.proveidorNom || undefined,
+        proveidorNif: nova.proveidorId ? undefined : nova.proveidorNif || undefined,
+        adjuntPath,
+        esFianca: nova.esFianca,
+      });
+      setNova(novaBuida());
+      setFile(null); setScanWarnings([]); setScanNouProv(null); setShowForm(false); load();
     } catch (err) { setError(err instanceof ApiError ? err.message : 'Error desant la despesa'); } finally { setSaving(false); }
+  }
+
+  // Tria un fitxer d'adjunt i, si és imatge o PDF, l'escaneja per autoemplenar.
+  function triaFitxer(f: File | null) {
+    setFile(f);
+    setScanWarnings([]); setScanNouProv(null);
+    if (f) void escaneja(f);
+  }
+
+  // Escàner OCR (Claude): llegeix data, proveïdor, NIF, nº factura, base, IVA,
+  // IRPF i total del tiquet/factura i autoemplena el formulari (camps editables).
+  async function escaneja(f: File) {
+    setScanning(true); setError(null);
+    try {
+      const fd = new FormData(); fd.append('image', f);
+      const res = await fetch('/api/ocr/gasto', { method: 'POST', body: fd });
+      if (!res.ok) throw new ApiError('OCR', res.status);
+      const { result } = (await res.json()) as { result: GastoOcrClient };
+
+      const matchProv = result.proveidorNom
+        ? proveidors.find((p) => p.nom.trim().toLowerCase() === result.proveidorNom!.trim().toLowerCase())
+        : undefined;
+
+      setNova((n) => {
+        const next = { ...n };
+        if (result.data) next.data = result.data;
+        if (result.import != null) next.import = String(result.import);
+        if (result.numFactura) next.numFactura = result.numFactura;
+        if (result.baseImposable != null) next.baseImposable = String(result.baseImposable);
+        if (result.ivaPercent != null) next.ivaPercent = String(result.ivaPercent);
+        if (result.irpfPercent != null) next.irpfPercent = String(result.irpfPercent);
+        if (result.descripcio && !n.descripcio.trim()) next.descripcio = result.descripcio;
+        if (!n.proveidorId && result.proveidorNom) {
+          if (matchProv) {
+            next.proveidorId = matchProv.id; next.proveidorNom = ''; next.proveidorNif = '';
+          } else {
+            next.proveidorNom = result.proveidorNom; next.proveidorNif = result.proveidorNif ?? '';
+          }
+        }
+        return next;
+      });
+
+      if (result.proveidorNom && !matchProv && !nova.proveidorId) {
+        setScanNouProv({ nom: result.proveidorNom, nif: result.proveidorNif ?? '' });
+      }
+      setScanWarnings(result.warnings ?? []);
+    } catch {
+      setScanWarnings(['No s’ha pogut escanejar el fitxer. Omple les dades a mà.']);
+    } finally {
+      setScanning(false);
+    }
   }
 
   async function esborrar(id: string) {
@@ -441,7 +549,10 @@ function GastosVariablesTab() {
                 </Select>
               </Field>
               <Field label="Proveïdor">
-                <Select value={nova.proveidorId} onChange={(e) => setNova({ ...nova, proveidorId: e.target.value })}>
+                <Select
+                  value={nova.proveidorId}
+                  onChange={(e) => { setNova({ ...nova, proveidorId: e.target.value, proveidorNom: '', proveidorNif: '' }); if (e.target.value) setScanNouProv(null); }}
+                >
                   <option value="">—</option>
                   {proveidors.map((p) => <option key={p.id} value={p.id}>{p.nom}</option>)}
                 </Select>
@@ -457,21 +568,52 @@ function GastosVariablesTab() {
                   {optionsFrom(metodeCobramentValues, METODE_COBRAMENT_LABELS).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </Select>
               </Field>
-              <Field label="Adjunt (factura/ticket)" hint="Fes una foto amb el mòbil o puja un fitxer (PDF o imatge).">
+              <Field label="Nº factura" hint="Del proveïdor (per al llibre d'IVA).">
+                <Input value={nova.numFactura} onChange={(e) => setNova({ ...nova, numFactura: e.target.value })} />
+              </Field>
+              <Field label="Base imponible €" hint="Sense IVA (opcional).">
+                <Input type="number" step="0.01" value={nova.baseImposable} onChange={(e) => setNova({ ...nova, baseImposable: e.target.value })} />
+              </Field>
+              <Field label="% IVA">
+                <Input type="number" step="0.01" value={nova.ivaPercent} onChange={(e) => setNova({ ...nova, ivaPercent: e.target.value })} />
+              </Field>
+              <Field label="% IRPF" hint="Retenció (deixa buit si no n'hi ha).">
+                <Input type="number" step="0.01" value={nova.irpfPercent} onChange={(e) => setNova({ ...nova, irpfPercent: e.target.value })} />
+              </Field>
+              <Field label="Adjunt (factura/ticket)" hint="Fes una foto o puja el fitxer: es llegiran les dades automàticament." className="sm:col-span-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-                  <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+                  <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => triaFitxer(e.target.files?.[0] ?? null)} />
+                  <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => triaFitxer(e.target.files?.[0] ?? null)} />
                   <Button type="button" variant="outline" size="sm" onClick={() => cameraRef.current?.click()}><Camera className="h-4 w-4" /> Fer foto</Button>
                   <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}><Upload className="h-4 w-4" /> Pujar fitxer</Button>
+                  {scanning && <span className="text-xs font-medium text-brand-700">Llegint el tiquet…</span>}
                   {file && (
                     <span className="flex items-center gap-1 text-xs text-slate-600">
                       <Paperclip className="h-3.5 w-3.5 text-slate-400" />
                       <span className="max-w-40 truncate">{file.name}</span>
-                      <button type="button" onClick={() => { setFile(null); if (cameraRef.current) cameraRef.current.value = ''; if (fileRef.current) fileRef.current.value = ''; }} className="text-slate-400 hover:text-red-600" aria-label="Treure l'adjunt"><X className="h-3.5 w-3.5" /></button>
+                      <button type="button" onClick={() => { setFile(null); setScanWarnings([]); setScanNouProv(null); if (cameraRef.current) cameraRef.current.value = ''; if (fileRef.current) fileRef.current.value = ''; }} className="text-slate-400 hover:text-red-600" aria-label="Treure l'adjunt"><X className="h-3.5 w-3.5" /></button>
                     </span>
                   )}
                 </div>
               </Field>
+              {(scanNouProv || scanWarnings.length > 0) && (
+                <div className="sm:col-span-3 space-y-2">
+                  {scanNouProv && (
+                    <div className="rounded-lg border border-brand-200 bg-brand-50/50 px-3 py-2 text-sm text-brand-800">
+                      Proveïdor nou detectat: <span className="font-medium">{scanNouProv.nom}</span>
+                      {scanNouProv.nif && <> · NIF {scanNouProv.nif}</>}. Es crearà en desar (o tria’n un d’existent a dalt).
+                    </div>
+                  )}
+                  {scanWarnings.length > 0 && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-xs text-amber-800">
+                      <span className="font-medium">Revisa les dades llegides:</span>
+                      <ul className="mt-1 list-disc pl-4">
+                        {scanWarnings.map((w, i) => <li key={i}>{w}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
               <Field label="Descripció" required className="sm:col-span-3"><Input value={nova.descripcio} onChange={(e) => setNova({ ...nova, descripcio: e.target.value })} /></Field>
               <label className="sm:col-span-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2 text-sm">
                 <input

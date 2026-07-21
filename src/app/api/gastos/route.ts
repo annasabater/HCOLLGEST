@@ -51,16 +51,43 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null);
     const data = GastoCreateSchema.parse(body);
 
+    // Si no s'ha triat proveïdor però l'escàner n'ha detectat un (nom/NIF), el
+    // busquem (per CIF, o pel nom) o el creem, així la despesa surt amb NIF i
+    // proveïdor al llibre del trimestre.
+    let proveidorId = data.proveidorId ?? null;
+    if (!proveidorId && (data.proveidorNom || data.proveidorNif)) {
+      const nif = data.proveidorNif?.toUpperCase().replace(/\s+/g, '');
+      const nom = data.proveidorNom?.trim();
+      const existent = await prisma.proveidor.findFirst({
+        where: {
+          deletedAt: null,
+          OR: [
+            ...(nif ? [{ cif: { equals: nif, mode: 'insensitive' as const } }] : []),
+            ...(nom ? [{ nom: { equals: nom, mode: 'insensitive' as const } }] : []),
+          ],
+        },
+      });
+      if (existent) {
+        proveidorId = existent.id;
+      } else if (nom) {
+        const nou = await prisma.proveidor.create({ data: { nom, cif: nif ?? null } });
+        proveidorId = nou.id;
+      }
+    }
+
     const gasto = await prisma.gasto.create({
       data: {
         data: data.data,
         import: data.import,
         categoriaId: data.categoriaId,
-        proveidorId: data.proveidorId ?? null,
+        proveidorId,
         habitacioId: data.habitacioId ?? null,
         animalId: data.animalId ?? null,
         descripcio: data.descripcio,
         numFactura: data.numFactura ?? null,
+        baseImposable: data.baseImposable ?? null,
+        ivaPercent: data.ivaPercent ?? null,
+        irpfPercent: data.irpfPercent ?? null,
         metodePagament: data.metodePagament,
         adjuntPath: data.adjuntPath ?? null,
         esFianca: data.esFianca ?? false,
