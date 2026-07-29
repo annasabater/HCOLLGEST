@@ -232,8 +232,8 @@ function drawCampsClient(
   const field = (x: number, colW: number, rowTop: number, label: string, value: string) => {
     cur.page.drawText(label.toUpperCase(), { x, y: rowTop - 7, size: 6.3, font: bold, color: MUTED });
     const v = sanitize(value) || '—';
-    const fitted = font.widthOfTextAtSize(v, 9) > colW ? `${v.slice(0, Math.floor((colW / font.widthOfTextAtSize(v, 9)) * v.length))}…` : v;
-    cur.page.drawText(fitted, { x, y: rowTop - 15.5, size: 9, font, color: INK });
+    const fitted = font.widthOfTextAtSize(v, 8) > colW ? `${v.slice(0, Math.floor((colW / font.widthOfTextAtSize(v, 8)) * v.length))}…` : v;
+    cur.page.drawText(fitted, { x, y: rowTop - 15.5, size: 8, font, color: INK });
   };
 
   let rowTop = top - padY;
