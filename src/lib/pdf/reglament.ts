@@ -187,7 +187,7 @@ function drawEyebrow(doc: PDFDocument, cur: Cur, text: string, bold: PDFFont): C
 /** Punt de llista en granat + text envoltat amb sagnia penjant. */
 function drawBullet(doc: PDFDocument, cur: Cur, text: string, font: PDFFont): Cur {
   const size = 7;
-  const lineH = 7.7;
+  const lineH = 8;
   const indent = 12;
   const lines = wrap(font, text, size, A4.w - M * 2 - indent);
   lines.forEach((l, i) => {
@@ -196,7 +196,7 @@ function drawBullet(doc: PDFDocument, cur: Cur, text: string, font: PDFFont): Cu
     cur.page.drawText(l, { x: M + indent, y: cur.y - size, size, font, color: INK });
     cur.y -= lineH;
   });
-  cur.y -= 1.3;
+  cur.y -= 2;
   return cur;
 }
 
@@ -352,15 +352,15 @@ async function renderReglamentDoc(
   const adreca =
     [establiment.adreca, establiment.codiPostal, establiment.poblacio].filter(Boolean).join(', ') || ADRECA_FALLBACK;
   for (const b of lopdBlocks(adreca)) {
-    if (b.kind === 'sub') cur = drawParagraph(doc, cur, b.text, bold, 6.6, 8.2);
-    else if (b.kind === 'bullet') cur = drawParagraph(doc, cur, `•  ${b.text}`, font, 6.3, 7.9, 10);
-    else if (b.kind === 'check') cur = drawParagraph(doc, cur, `[  ]  ${b.text}`, font, 6.3, 7.9, 10);
-    else cur = drawParagraph(doc, cur, b.text, font, 6.3, 7.9);
-    cur.y -= 0.6;
+    if (b.kind === 'sub') cur = drawParagraph(doc, cur, b.text, bold, 6.6, 7.5);
+    else if (b.kind === 'bullet') cur = drawParagraph(doc, cur, `•  ${b.text}`, font, 6.3, 7.2, 10);
+    else if (b.kind === 'check') cur = drawParagraph(doc, cur, `[  ]  ${b.text}`, font, 6.3, 7.2, 10);
+    else cur = drawParagraph(doc, cur, b.text, font, 6.3, 7.2);
+    cur.y -= 0.2;
   }
-  cur.y -= 2;
+  cur.y -= 1.5;
   cur = drawParagraph(doc, cur, CLOSING, bold, 7, 9);
-  cur.y -= 4;
+  cur.y -= 3;
 
   const lloc = estancia
     ? [v?.signatura?.llocSignatura || establiment.poblacio || 'Calella', formatDate(v?.signatura?.data ?? estancia.dataEntrada)]
