@@ -216,37 +216,36 @@ function drawCampsClient(
     acompanyants: string;
   },
 ): Cur {
-  // Files compactes perquè el reglament càpiga en una sola pàgina.
-  const rowH = 17;
+  // 3 files (en comptes de 4): les dues primeres en 3 columnes i l'última
+  // (acompanyants) a amplada completa. Files més altes → es llegeix millor.
+  const rowH = 21;
   const padX = 14;
-  const padY = 4;
-  // 4 files (Nombre/Apellidos · Nacionalidad/Documento · Expedición/Nacimiento ·
-  // Acompañantes) → l'última fila també queda dins de la caixa marcada.
-  const boxH = rowH * 4 + padY * 2;
+  const padY = 6;
+  const boxH = rowH * 3 + padY * 2;
   cur = ensure(doc, cur, boxH + 16);
   const top = cur.y;
   const w = A4.w - M * 2;
   cur.page.drawRectangle({ x: M, y: top - boxH, width: w, height: boxH, color: FIELD_BG, borderColor: LINE, borderWidth: 0.8 });
 
-  const half = (w - padX * 3) / 2;
+  const col = (w - padX * 4) / 3;
+  const colX = [M + padX, M + padX * 2 + col, M + padX * 3 + col * 2];
   const field = (x: number, colW: number, rowTop: number, label: string, value: string) => {
-    cur.page.drawText(label.toUpperCase(), { x, y: rowTop - 7, size: 6.3, font: bold, color: MUTED });
+    cur.page.drawText(label.toUpperCase(), { x, y: rowTop - 8, size: 6.3, font: bold, color: MUTED });
     const v = sanitize(value) || '—';
-    const fitted = font.widthOfTextAtSize(v, 8) > colW ? `${v.slice(0, Math.floor((colW / font.widthOfTextAtSize(v, 8)) * v.length))}…` : v;
-    cur.page.drawText(fitted, { x, y: rowTop - 15.5, size: 8, font, color: INK });
+    const fitted = font.widthOfTextAtSize(v, 7) > colW ? `${v.slice(0, Math.floor((colW / font.widthOfTextAtSize(v, 7)) * v.length))}…` : v;
+    cur.page.drawText(fitted, { x, y: rowTop - 18, size: 7, font, color: INK });
   };
 
   let rowTop = top - padY;
-  field(M + padX, half, rowTop, 'Nombre', data.nom);
-  field(M + padX * 2 + half, half, rowTop, 'Apellidos', data.cognoms);
+  field(colX[0]!, col, rowTop, 'Nombre', data.nom);
+  field(colX[1]!, col, rowTop, 'Apellidos', data.cognoms);
+  field(colX[2]!, col, rowTop, 'Nacionalidad', data.nacionalitat);
   rowTop -= rowH;
-  field(M + padX, half, rowTop, 'Nacionalidad', data.nacionalitat);
-  field(M + padX * 2 + half, half, rowTop, 'Nº de DNI o pasaporte', data.doc);
+  field(colX[0]!, col, rowTop, 'Nº de DNI o pasaporte', data.doc);
+  field(colX[1]!, col, rowTop, 'Fecha de expedición', data.expedicio);
+  field(colX[2]!, col, rowTop, 'Fecha de nacimiento', data.naixement);
   rowTop -= rowH;
-  field(M + padX, half, rowTop, 'Fecha de expedición', data.expedicio);
-  field(M + padX * 2 + half, half, rowTop, 'Fecha de nacimiento', data.naixement);
-  rowTop -= rowH;
-  field(M + padX, w - padX * 2, rowTop, 'Acompañantes (menores)', data.acompanyants);
+  field(colX[0]!, w - padX * 2, rowTop, 'Acompañantes (menores)', data.acompanyants);
 
   cur.y = top - boxH - 12;
   return cur;
