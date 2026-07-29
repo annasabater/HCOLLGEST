@@ -268,12 +268,13 @@ async function drawSignatura(
   cur.y -= 9;
 
   const sigW = 230;
-  const sigH = 38;
+  const sigH = 32;
   const sigX = M;
-  const sigY = cur.y - 6 - sigH;
+  // El requadre comença més avall perquè no trepitgi l'etiqueta de sobre.
+  const sigY = cur.y - 12 - sigH;
 
   cur.page.drawText('FIRMA DEL HUÉSPED', { x: M, y: cur.y - 7, size: 7, font: bold, color: MUTED });
-  cur.page.drawRectangle({ x: sigX, y: sigY, width: sigW, height: sigH, borderColor: ACCENT, borderWidth: 1 });
+  cur.page.drawRectangle({ x: sigX, y: sigY, width: sigW, height: sigH, borderColor: ACCENT, borderWidth: 0.6 });
   if (v?.signatura?.imatge?.startsWith('data:image')) {
     try {
       const b64 = v.signatura.imatge.split(',')[1] ?? '';
