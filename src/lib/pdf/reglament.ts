@@ -489,8 +489,8 @@ export async function buildCartellPdf(establiment: Establiment): Promise<Uint8Ar
     // consentiment, que només tenen sentit al reglament que signa cada hoste.
     if (b.kind === 'check') continue;
     if (b.kind === 'sub') para(bold, b.text, 9.5, 13, INK);
-    else if (b.kind === 'bullet') para(font, `•  ${b.text}`, 9.5, 13, MUTED, 12);
-    else para(font, b.text, 9.5, 13, MUTED);
+    else if (b.kind === 'bullet') para(font, `•  ${b.text}`, 9.5, 13, INK, 12);
+    else para(font, b.text, 9.5, 13, INK);
     y -= 3;
   }
   y -= 8;
