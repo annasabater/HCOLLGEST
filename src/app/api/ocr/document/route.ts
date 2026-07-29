@@ -44,7 +44,9 @@ Instruccions:
 - Passaport: 2 línies de 44 caràcters. DNI/NIE/targeta europea: 3 línies de 30 caràcters.
 - Copia cada "<" que vegis; són significatius. No completis ni escurcis les línies.
 - Si la imatge és el revers d'un DNI, a més de la MRZ omple adreça/CP/localitat/província si es veuen.
-- Si no hi ha MRZ (cara del davant, carnet de conduir, foto borrosa), retorna "mrzLines": [].`;
+- Si no hi ha MRZ (cara del davant, carnet de conduir, foto borrosa), retorna "mrzLines": [].
+
+Respon NOMÉS amb l'objecte JSON, començant per "{" i acabant per "}". Cap frase ni explicació abans o després.`;
 
 interface ModelOut {
   mrzLines?: string[];
@@ -77,7 +79,7 @@ export async function POST(req: Request) {
     const message = await client.messages.create({
       // Model que la clau d'API de producció té disponible (opus 4.8 no hi és).
       model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
+      max_tokens: 1500,
       // Temperatura 0: transcripció determinista i fidel, sense "creativitat".
       temperature: 0,
       system: SYSTEM_PROMPT,
@@ -97,12 +99,32 @@ export async function POST(req: Request) {
 
     const text = message.content.find((b) => b.type === 'text')?.text ?? '';
 
-    let parsed: ModelOut;
-    try {
-      const clean = text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
-      parsed = JSON.parse(clean) as ModelOut;
-    } catch {
-      return Response.json({ error: 'Resposta invàlida del model', raw: text }, { status: 502 });
+    // Extracció robusta del JSON: el model pot afegir text abans/després o embolicar-lo
+    // en ```json. Traiem les tanques i, si cal, agafem del primer "{" a l'últim "}".
+    let parsed: ModelOut | null = null;
+    const candidates: string[] = [];
+    const noFence = text.replace(/```(?:json)?/gi, '').trim();
+    candidates.push(noFence);
+    const first = noFence.indexOf('{');
+    const last = noFence.lastIndexOf('}');
+    if (first >= 0 && last > first) candidates.push(noFence.slice(first, last + 1));
+    for (const c of candidates) {
+      try { parsed = JSON.parse(c) as ModelOut; break; } catch { /* prova la següent */ }
+    }
+
+    if (!parsed) {
+      // No hi ha JSON: potser el model ha respost text pla. Intentem llegir-ne la MRZ
+      // igualment (les línies «<<<» surten al text) abans de rendir-nos.
+      const linesFromText = findMrzLines(text);
+      const mrzText = parseMrz(linesFromText);
+      if (mrzText && mrzText.valid) {
+        const v = mrzToViatger(mrzText);
+        return Response.json({ result: { ...v, warnings: [] }, warnings: [], mrzLines: linesFromText });
+      }
+      return Response.json(
+        { error: 'Resposta invàlida del model', raw: text.slice(0, 300) },
+        { status: 502 },
+      );
     }
 
     // Adreça (best-effort, no és a la MRZ): sempre revisable per l'usuari.
