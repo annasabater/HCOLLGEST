@@ -341,12 +341,12 @@ async function renderReglamentDoc(
     acompanyants,
   });
 
-  cur = drawParagraph(doc, cur, INTRO, font, 7.5, 9.5, 0, MUTED);
-  cur.y -= 2;
+  cur = drawParagraph(doc, cur, INTRO, font, 6.5, 8.5, 0, MUTED);
+  cur.y -= 5;
 
   cur = drawEyebrow(doc, cur, 'Normas de la casa', bold);
   for (const n of NORMES) cur = drawBullet(doc, cur, n, font);
-  cur.y -= 2;
+  cur.y -= 5;
 
   cur = drawEyebrow(doc, cur, 'Protección de datos', bold);
   const adreca =
