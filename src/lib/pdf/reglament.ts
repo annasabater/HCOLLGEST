@@ -446,9 +446,10 @@ export async function buildCartellPdf(establiment: Establiment): Promise<Uint8Ar
   };
 
   const heading = (t: string) => {
-    brk(21);
-    page.drawText(t, { x: M, y: y - 8, size: 8.5, font: bold, color: ACCENT });
-    y -= 13;
+    brk(30);
+    y -= 6;
+    page.drawText(t, { x: M, y: y - 9, size: 10, font: bold, color: ACCENT });
+    y -= 17;
   };
 
   // Capçalera compacta.
@@ -460,23 +461,23 @@ export async function buildCartellPdf(establiment: Establiment): Promise<Uint8Ar
   page.drawLine({ start: { x: M, y }, end: { x: M + 40, y }, thickness: 2.4, color: ACCENT });
   y -= 13;
 
-  para(font, INTRO, 8, 10, MUTED);
-  y -= 6;
+  para(font, INTRO, 9, 13, MUTED);
+  y -= 10;
 
   heading('NORMAS DE LA CASA');
 
-  // Normes en UNA columna, lletra 9pt.
-  const indent = 12;
+  // Normes en UNA columna, ben espaiades perquè es llegeixin de lluny.
+  const indent = 14;
   for (const t of NORMES) {
-    wrap(font, t, 9, W - indent).forEach((l, i) => {
-      brk(11);
-      if (i === 0) page.drawText('•', { x: M, y: y - 9, size: 9, font, color: ACCENT });
-      page.drawText(l, { x: M + indent, y: y - 9, size: 9, font, color: INK });
-      y -= 11;
+    wrap(font, t, 10, W - indent).forEach((l, i) => {
+      brk(14);
+      if (i === 0) page.drawText('•', { x: M, y: y - 10, size: 10, font, color: ACCENT });
+      page.drawText(l, { x: M + indent, y: y - 10, size: 10, font, color: INK });
+      y -= 14;
     });
-    y -= 2;
+    y -= 5;
   }
-  y -= 4;
+  y -= 6;
 
   heading('PROTECCIÓN DE DATOS');
   const adreca =
@@ -485,13 +486,13 @@ export async function buildCartellPdf(establiment: Establiment): Promise<Uint8Ar
     // El cartell és informatiu (per penjar a paret): no porta les caselles de
     // consentiment, que només tenen sentit al reglament que signa cada hoste.
     if (b.kind === 'check') continue;
-    if (b.kind === 'sub') para(bold, b.text, 7, 8.6, INK);
-    else if (b.kind === 'bullet') para(font, `•  ${b.text}`, 7, 8.6, MUTED, 10);
-    else para(font, b.text, 7, 8.6, MUTED);
-    y -= 1.5;
+    if (b.kind === 'sub') para(bold, b.text, 9, 12, INK);
+    else if (b.kind === 'bullet') para(font, `•  ${b.text}`, 8.5, 11.5, MUTED, 12);
+    else para(font, b.text, 8.5, 11.5, MUTED);
+    y -= 3;
   }
-  y -= 6;
-  para(bold, CLOSING, 7.5, 9.5);
+  y -= 8;
+  para(bold, CLOSING, 9.5, 13);
 
   const label = 'Hostal Coll · Reglamento interno de hospedaje';
   const lw = font.widthOfTextAtSize(label, 7.5);
