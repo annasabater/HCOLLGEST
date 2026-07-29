@@ -11,6 +11,44 @@ import { findMrzLines, parseMrz, mrzToViatger, parseDniReverso, type ViatgerOcr 
 // lectura molt més fiable, ja que la MRZ només conté aquests caràcters.
 const MRZ_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<';
 
+/**
+ * Prepara la imatge per a l'OCR de la MRZ (tot al navegador): la porta a una
+ * mida òptima, la passa a escala de grisos i li apuja el contrast. Això millora
+ * MOLT la lectura de tesseract sobre fotos reals (poca llum, reflexos…). Si
+ * alguna cosa falla, retorna el fitxer original.
+ */
+async function preprocessForMrz(file: File): Promise<HTMLCanvasElement | File> {
+  try {
+    const bmp = await createImageBitmap(file);
+    // Amplada objectiu: prou gran perquè la MRZ tingui resolució, sense passar-se.
+    const targetW = 1600;
+    const scale = bmp.width > targetW ? targetW / bmp.width : 1;
+    const w = Math.round(bmp.width * scale);
+    const h = Math.round(bmp.height * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(bmp, 0, 0, w, h);
+    bmp.close?.();
+
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const px = imgData.data;
+    const CONTRAST = 1.5; // >1 = més contrast
+    for (let i = 0; i < px.length; i += 4) {
+      const gray = 0.299 * px[i]! + 0.587 * px[i + 1]! + 0.114 * px[i + 2]!;
+      let v = (gray - 128) * CONTRAST + 128;
+      v = v < 0 ? 0 : v > 255 ? 255 : v;
+      px[i] = px[i + 1] = px[i + 2] = v;
+    }
+    ctx.putImageData(imgData, 0, 0);
+    return canvas;
+  } catch {
+    return file;
+  }
+}
+
 export interface PendingDoc {
   id: string;
   file: File;
@@ -70,22 +108,32 @@ export function DocumentScanner({
     setProgress(5);
     setMsg(null);
     try {
-      const { createWorker } = await import('tesseract.js');
+      const { createWorker, PSM } = await import('tesseract.js');
       const worker = await createWorker('eng', 1, {
         logger: (m: { status: string; progress: number }) => {
           if (m.status === 'recognizing text') setProgress(Math.round(m.progress * 100));
         },
       });
 
-      // 1a passada: zona MRZ amb alfabet restringit (la lectura més fiable).
-      await worker.setParameters({ tessedit_char_whitelist: MRZ_CHARS });
-      const passMrz = await worker.recognize(file);
+      // Prepara la imatge (B/N + contrast + mida) per llegir la MRZ molt millor.
+      const prepared = await preprocessForMrz(file);
+
+      // 1a passada: zona MRZ amb alfabet restringit i mode "bloc uniforme de text"
+      // (PSM 6), que és el que millor funciona amb les línies de la MRZ.
+      await worker.setParameters({
+        tessedit_char_whitelist: MRZ_CHARS,
+        tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
+      });
+      const passMrz = await worker.recognize(prepared);
       const mrzLines = findMrzLines(passMrz.data.text);
       const mrz = parseMrz(mrzLines);
 
       // 2a passada: text lliure NOMÉS per llegir l'adreça del revers (no la
       // identitat: el nom/número surten de la MRZ, validats). Així no s'inventa res.
-      await worker.setParameters({ tessedit_char_whitelist: '' });
+      await worker.setParameters({
+        tessedit_char_whitelist: '',
+        tessedit_pageseg_mode: PSM.AUTO,
+      });
       const passFull = await worker.recognize(file);
       const revers = parseDniReverso(passFull.data.text);
       await worker.terminate();
@@ -184,8 +232,9 @@ export function DocumentScanner({
       </label>
 
       <p className="mt-1.5 text-xs text-slate-500">
-        DNI (anvers i revers), passaport, NIE o carnet de conduir. S&apos;autoreplenen totes les dades
-        disponibles i totes les fotos es desen xifrades, en pots afegir diverses.
+        Per autoreplenar, fes la foto de la cara amb les línies <span className="font-mono">&laquo;&lt;&lt;&lt;&raquo;</span>:
+        al <strong>DNI/NIE és el DARRERE</strong> (la cara sense foto) i al <strong>passaport la pàgina de la foto</strong>.
+        Bona llum, sense reflexos i que la foto ompli el requadre. Pots afegir-ne més (anvers, etc.); totes es desen xifrades.
       </p>
 
       {msg && (
