@@ -482,9 +482,11 @@ export async function buildCartellPdf(establiment: Establiment): Promise<Uint8Ar
   const adreca =
     [establiment.adreca, establiment.codiPostal, establiment.poblacio].filter(Boolean).join(', ') || ADRECA_FALLBACK;
   for (const b of lopdBlocks(adreca)) {
+    // El cartell és informatiu (per penjar a paret): no porta les caselles de
+    // consentiment, que només tenen sentit al reglament que signa cada hoste.
+    if (b.kind === 'check') continue;
     if (b.kind === 'sub') para(bold, b.text, 7, 8.6, INK);
     else if (b.kind === 'bullet') para(font, `•  ${b.text}`, 7, 8.6, MUTED, 10);
-    else if (b.kind === 'check') para(font, `[  ]  ${b.text}`, 7, 8.6, MUTED, 10);
     else para(font, b.text, 7, 8.6, MUTED);
     y -= 1.5;
   }
