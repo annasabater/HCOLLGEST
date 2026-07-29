@@ -999,7 +999,7 @@ export function MasterForm({
         const ext = !!v.pais && v.pais.toLowerCase() !== 'espanya';
         const P = (f: string) => `viatgers.${i}.${f}`;
         return (
-          <Card key={i}>
+          <Card key={i} id={v.huespedId ? `v-${v.huespedId}` : undefined} className="scroll-mt-24">
             <CardHeader className="flex items-center justify-between">
               <CardTitle>
                 Viatger {i + 1} {v.esTitular && <Badge tone="info" className="ml-2">Titular</Badge>}

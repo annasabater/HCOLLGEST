@@ -322,7 +322,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                       </Link>
                       <div className="flex items-center gap-2">
                         {canWrite && (
-                          <Link href={`/huespedes/${h.id}/edita`}>
+                          <Link href={`/estancies/${estancia.id}/edita#v-${h.id}`}>
                             <Button variant="ghost" size="sm">
                               <Pencil className="h-4 w-4" /> Editar dades
                             </Button>
