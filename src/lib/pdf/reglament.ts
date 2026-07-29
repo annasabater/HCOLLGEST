@@ -461,24 +461,26 @@ export async function buildCartellPdf(establiment: Establiment): Promise<Uint8Ar
   page.drawLine({ start: { x: M, y }, end: { x: M + 40, y }, thickness: 2.4, color: ACCENT });
   y -= 13;
 
-  para(font, INTRO, 9, 13, MUTED);
-  y -= 10;
+  para(font, INTRO, 9, 12, MUTED);
+  y -= 8;
 
   heading('NORMAS DE LA CASA');
 
-  // Normes en UNA columna, ben espaiades perquè es llegeixin de lluny.
+  // Normes en UNA columna, a 9,5pt (totes càpiguen a la primera pàgina).
   const indent = 14;
   for (const t of NORMES) {
-    wrap(font, t, 10, W - indent).forEach((l, i) => {
-      brk(14);
-      if (i === 0) page.drawText('•', { x: M, y: y - 10, size: 10, font, color: ACCENT });
-      page.drawText(l, { x: M + indent, y: y - 10, size: 10, font, color: INK });
-      y -= 14;
+    wrap(font, t, 9.5, W - indent).forEach((l, i) => {
+      brk(12.5);
+      if (i === 0) page.drawText('•', { x: M, y: y - 9.5, size: 9.5, font, color: ACCENT });
+      page.drawText(l, { x: M + indent, y: y - 9.5, size: 9.5, font, color: INK });
+      y -= 12.5;
     });
-    y -= 5;
+    y -= 3;
   }
-  y -= 6;
 
+  // La clàusula de protecció de dades va sencera a la pàgina següent.
+  page = doc.addPage([A4.w, A4.h]);
+  y = A4.h - M;
   heading('PROTECCIÓN DE DATOS');
   const adreca =
     [establiment.adreca, establiment.codiPostal, establiment.poblacio].filter(Boolean).join(', ') || ADRECA_FALLBACK;
@@ -486,9 +488,9 @@ export async function buildCartellPdf(establiment: Establiment): Promise<Uint8Ar
     // El cartell és informatiu (per penjar a paret): no porta les caselles de
     // consentiment, que només tenen sentit al reglament que signa cada hoste.
     if (b.kind === 'check') continue;
-    if (b.kind === 'sub') para(bold, b.text, 9, 12, INK);
-    else if (b.kind === 'bullet') para(font, `•  ${b.text}`, 8.5, 11.5, MUTED, 12);
-    else para(font, b.text, 8.5, 11.5, MUTED);
+    if (b.kind === 'sub') para(bold, b.text, 9.5, 13, INK);
+    else if (b.kind === 'bullet') para(font, `•  ${b.text}`, 9.5, 13, MUTED, 12);
+    else para(font, b.text, 9.5, 13, MUTED);
     y -= 3;
   }
   y -= 8;
