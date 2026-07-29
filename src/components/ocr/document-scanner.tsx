@@ -43,6 +43,9 @@ export function DocumentScanner({
   const [lightbox, setLightbox] = useState<string | null>(null);
   // Si està desactivat, la foto NOMÉS es desa (no llegeix ni autoreplena el formulari).
   const [autoreplenar, setAutoreplenar] = useState(true);
+  // True quan ja s'han llegit dades d'una cara: així, si després escaneges la cara
+  // del davant (sense MRZ), no es sobreescriu ni s'ensenya un avís confús.
+  const [readOk, setReadOk] = useState(false);
 
   // Genera URLs de previsualització per a cada imatge pendent
   useEffect(() => {
@@ -70,6 +73,12 @@ export function DocumentScanner({
       setProgress(90);
 
       if (!res.ok) {
+        // Si ja hem llegit bé una cara abans (p.ex. el darrere), aquesta és
+        // segurament la cara del davant (sense MRZ): NO espantem ni sobreescrivim.
+        if (readOk) {
+          setMsg({ tone: 'ok', text: 'Aquesta cara no té MRZ (p.ex. el davant): s\'ha desat com a foto. Les dades ja s\'han llegit de l\'altra cara.' });
+          return;
+        }
         // 422: s'ha desat la foto però no s'ha pogut llegir la MRZ. El cos porta
         // `warnings` amb el motiu concret (sense MRZ / dígits no quadren).
         let items: string[] | undefined;
@@ -101,6 +110,11 @@ export function DocumentScanner({
 
       const hasUsefulData = result.nom || result.cognom1 || result.numDocument || result.adreca;
       if (!hasUsefulData) {
+        // Si ja teníem una lectura bona, no la trepitgem amb un avís.
+        if (readOk) {
+          setMsg({ tone: 'ok', text: 'Aquesta cara no té MRZ: s\'ha desat com a foto. Les dades ja s\'han llegit de l\'altra cara.' });
+          return;
+        }
         setMsg({
           tone: 'warn',
           text: "Document desat, però no s'han pogut llegir les dades. Fes una foto nítida i ben enquadrada. Pots omplir-ho a mà.",
@@ -110,6 +124,7 @@ export function DocumentScanner({
       }
 
       onExtract({ ...result, warnings });
+      setReadOk(true);
 
       if (warnings && warnings.length > 0) {
         // Prioritza els avisos de lectura ("no s'ha pogut llegir…") i, després, les
@@ -117,11 +132,11 @@ export function DocumentScanner({
         const prioritari = (w: string) =>
           /no s.?ha pogut llegir|no s.?ha llegit|il·legible|no s.?ha reconegut|sense llegir/i.test(w);
         const items = [...warnings].sort((a, b) => Number(prioritari(b)) - Number(prioritari(a)));
-        setMsg({ tone: 'warn', text: 'Dades llegides. Revisa aquests avisos:', items, mrz: mrzLines });
+        setMsg({ tone: 'warn', text: 'Dades llegides. Revisa els camps del formulari i aquests avisos:', items, mrz: mrzLines });
       } else {
         setMsg({
           tone: 'ok',
-          text: 'Dades llegides correctament. Compara-les amb el document i corregeix qualsevol camp si cal.',
+          text: 'Dades llegides correctament. Revisa-les als camps del formulari i corregeix el que calgui.',
           mrz: mrzLines,
         });
       }
@@ -205,14 +220,18 @@ export function DocumentScanner({
             </ul>
           )}
           {msg.mrz && msg.mrz.length > 0 && (
-            <div className="mt-2">
-              <p className="text-[11px] font-medium text-slate-500">
-                MRZ llegida (compara-la amb el document; si veus un error, corregeix el camp al formulari):
+            <details className="mt-2">
+              <summary className="cursor-pointer text-[11px] font-medium text-slate-500 select-none">
+                Veure la MRZ llegida (només per comparar)
+              </summary>
+              <p className="mt-1 text-[11px] text-slate-400">
+                Això és només de referència, <strong>no s&apos;edita aquí</strong>. Si veus cap error,
+                corregeix directament el camp al formulari (Nom, Cognom, Document…).
               </p>
               <pre className="mt-1 overflow-x-auto rounded border border-slate-200 bg-slate-50 px-2 py-1.5 font-mono text-[11px] leading-tight tracking-wider text-slate-700">
                 {msg.mrz.join('\n')}
               </pre>
-            </div>
+            </details>
           )}
         </div>
       )}
