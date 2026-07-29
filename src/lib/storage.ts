@@ -12,7 +12,7 @@
  *   estar configurado Supabase Storage o los ficheros se perderían.
  */
 import 'server-only';
-import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
@@ -132,6 +132,31 @@ export async function readUpload(rel: string): Promise<Buffer> {
     throw new Error('Ruta de fitxer no permesa');
   }
   return readFile(abs);
+}
+
+/**
+ * Elimina FÍSICAMENT un fichero (Supabase o disco local) a partir de su ruta
+ * relativa. Se usa para la retención: cuando caduca el plazo de conservación,
+ * la imagen del documento se borra de verdad, no solo se marca como eliminada.
+ * No lanza si el fichero ya no existe (idempotente).
+ */
+export async function deleteUpload(rel: string): Promise<void> {
+  const safe = assertSafeRel(rel);
+  const cfg = getSupabaseStorageConfig();
+
+  if (cfg) {
+    const sb = getSupabase(cfg.url, cfg.serviceKey);
+    await sb.storage.from(cfg.bucket).remove([safe]);
+    return;
+  }
+
+  // Fallback: disco local (desarrollo).
+  const base = path.resolve(getStorageDir());
+  const abs = path.resolve(base, safe);
+  if (abs !== base && !abs.startsWith(base + path.sep)) {
+    throw new Error('Ruta de fitxer no permesa');
+  }
+  await rm(abs, { force: true });
 }
 
 // --- Documentos de identidad: CIFRADOS en reposo (§7, AES-256-GCM) ----------

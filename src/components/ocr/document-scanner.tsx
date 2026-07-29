@@ -5,7 +5,11 @@ import { ScanLine, Upload, CheckCircle2, AlertTriangle, FileText, Trash2, Lock, 
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/input';
 import { optionsFrom, tipusDocumentPujatValues, TIPUS_DOCUMENT_PUJAT_LABELS } from '@/lib/validation/enums';
-import type { ViatgerOcr } from '@/lib/ocr/mrz';
+import { findMrzLines, parseMrz, mrzToViatger, parseDniReverso, type ViatgerOcr } from '@/lib/ocr/mrz';
+
+// Alfabet de la MRZ (lletres, dígits i el separador '<'): restringir-lo fa la
+// lectura molt més fiable, ja que la MRZ només conté aquests caràcters.
+const MRZ_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<';
 
 export interface PendingDoc {
   id: string;
@@ -57,76 +61,72 @@ export function DocumentScanner({
     return () => { Object.values(urls).forEach(URL.revokeObjectURL); };
   }, [docs]);
 
+  // OCR 100% AL NAVEGADOR (tesseract.js): la imatge NO s'envia a cap servidor
+  // (ni al nostre, ni a cap tercer). Es llegeix la zona MRZ localment i, amb els
+  // dígits de control, s'autoreplena el formulari. La foto s'emmagatzema a part
+  // (xifrada) només si l'usuari la desa; aquest OCR no la transmet enlloc.
   async function processFile(file: File) {
     setBusy(true);
-    setProgress(10);
+    setProgress(5);
     setMsg(null);
     try {
-      const formData = new FormData();
-      formData.append('image', file);
+      const { createWorker } = await import('tesseract.js');
+      const worker = await createWorker('eng', 1, {
+        logger: (m: { status: string; progress: number }) => {
+          if (m.status === 'recognizing text') setProgress(Math.round(m.progress * 100));
+        },
+      });
 
-      setProgress(30);
-      const res = await fetch('/api/ocr/document', { method: 'POST', body: formData });
-      setProgress(90);
+      // 1a passada: zona MRZ amb alfabet restringit (la lectura més fiable).
+      await worker.setParameters({ tessedit_char_whitelist: MRZ_CHARS });
+      const passMrz = await worker.recognize(file);
+      const mrzLines = findMrzLines(passMrz.data.text);
+      const mrz = parseMrz(mrzLines);
 
-      if (!res.ok) {
-        // 422: s'ha desat la foto però no s'ha pogut llegir la MRZ. El cos porta
-        // `warnings` amb el motiu concret (sense MRZ / dígits no quadren).
-        let items: string[] | undefined;
-        let mrz: string[] | undefined;
-        let detail = '';
-        try {
-          const j = (await res.json()) as { error?: string; warnings?: string[]; mrzLines?: string[] };
-          if (j.warnings && j.warnings.length > 0) items = j.warnings;
-          else if (j.error) detail = ` (${j.error})`;
-          if (j.mrzLines && j.mrzLines.length > 0) mrz = j.mrzLines;
-        } catch { /* ignore */ }
-        setMsg({
-          tone: 'warn',
-          text: items
-            ? 'Foto desada. No s\'han pogut autoreplenar les dades:'
-            : `Document desat, però no s'ha pogut llegir el text${detail}. Torna-ho a provar o omple-ho a mà.`,
-          items,
-          mrz,
-        });
-        return;
-      }
-
-      const { result, warnings, mrzLines } = (await res.json()) as {
-        result: ViatgerOcr;
-        warnings: string[];
-        mrzLines?: string[];
-      };
+      // 2a passada: text lliure NOMÉS per llegir l'adreça del revers (no la
+      // identitat: el nom/número surten de la MRZ, validats). Així no s'inventa res.
+      await worker.setParameters({ tessedit_char_whitelist: '' });
+      const passFull = await worker.recognize(file);
+      const revers = parseDniReverso(passFull.data.text);
+      await worker.terminate();
       setProgress(100);
 
-      const hasUsefulData = result.nom || result.cognom1 || result.numDocument || result.adreca;
-      if (!hasUsefulData) {
-        setMsg({
-          tone: 'warn',
-          text: "Document desat, però no s'han pogut llegir les dades. Fes una foto nítida i ben enquadrada. Pots omplir-ho a mà.",
-          mrz: mrzLines,
-        });
-        return;
-      }
+      const mrzForDisplay = mrzLines.length > 0 ? mrzLines : undefined;
 
-      onExtract({ ...result, warnings });
-
-      if (warnings && warnings.length > 0) {
-        // Prioritza els avisos de lectura ("no s'ha pogut llegir…") i, després, les
-        // incoherències (titular menor, etc.). Cada avís es mostra en una línia.
-        const prioritari = (w: string) =>
-          /no s.?ha pogut llegir|no s.?ha llegit|il·legible|no s.?ha reconegut|sense llegir/i.test(w);
-        const items = [...warnings].sort((a, b) => Number(prioritari(b)) - Number(prioritari(a)));
-        setMsg({ tone: 'warn', text: 'Dades llegides. Revisa aquests avisos:', items, mrz: mrzLines });
-      } else {
+      if (mrz && mrz.valid) {
+        // Dígits de control OK → dades fiables.
+        const base = mrzToViatger(mrz);
+        const result: ViatgerOcr = revers
+          ? { ...base, adreca: revers.adreca, codiPostal: revers.codiPostal, localitat: revers.localitat, provinciaNom: revers.provinciaNom }
+          : base;
+        onExtract(result);
         setMsg({
           tone: 'ok',
-          text: 'Dades llegides correctament. Compara-les amb el document i corregeix qualsevol camp si cal.',
-          mrz: mrzLines,
+          text: 'Dades llegides i validades (MRZ). Compara-les amb el document i corregeix els accents si cal (la MRZ no en porta).',
+          mrz: mrzForDisplay,
+        });
+      } else if (revers && (revers.adreca || revers.codiPostal || revers.localitat)) {
+        // No hi ha MRZ vàlida però sí adreça del revers: l'aprofitem.
+        onExtract(revers);
+        setMsg({
+          tone: 'warn',
+          text: 'Adreça llegida del revers. La identitat (MRZ) no s\'ha pogut validar: revisa-la o escaneja la cara amb les línies «<<<».',
+          mrz: mrzForDisplay,
+        });
+      } else if (mrz && !mrz.valid) {
+        setMsg({
+          tone: 'warn',
+          text: "S'ha detectat la MRZ però els dígits de control no quadren (lectura poc nítida). No s'ha autoreplenat res per no posar dades incorrectes; fes una foto més nítida o omple-ho a mà.",
+          mrz: mrzForDisplay,
+        });
+      } else {
+        setMsg({
+          tone: 'warn',
+          text: "No s'ha detectat la zona MRZ (les línies «<<<»). Al DNI/NIE és al REVERS i al passaport a la pàgina de la foto. Escaneja aquesta cara o omple-ho a mà.",
         });
       }
     } catch {
-      setMsg({ tone: 'warn', text: "Document desat, però no s'ha pogut llegir el text per autoreplenar." });
+      setMsg({ tone: 'warn', text: "No s'ha pogut llegir el document al navegador. Torna-ho a provar o omple-ho a mà." });
     } finally {
       setBusy(false);
     }
