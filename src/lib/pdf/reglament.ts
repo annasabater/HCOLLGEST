@@ -219,7 +219,7 @@ function drawCampsClient(
   // Files compactes perquè el reglament càpiga en una sola pàgina.
   const rowH = 17;
   const padX = 14;
-  const padY = 6;
+  const padY = 4;
   // 4 files (Nombre/Apellidos · Nacionalidad/Documento · Expedición/Nacimiento ·
   // Acompañantes) → l'última fila també queda dins de la caixa marcada.
   const boxH = rowH * 4 + padY * 2;
@@ -352,16 +352,19 @@ async function renderReglamentDoc(
   const adreca =
     [establiment.adreca, establiment.codiPostal, establiment.poblacio].filter(Boolean).join(', ') || ADRECA_FALLBACK;
   for (const b of lopdBlocks(adreca)) {
-    if (b.kind === 'sub') cur = drawParagraph(doc, cur, b.text, bold, 6.6, 7.5);
-    else if (b.kind === 'bullet') cur = drawParagraph(doc, cur, `•  ${b.text}`, font, 6.3, 7.2, 10);
+    if (b.kind === 'sub') cur = drawParagraph(doc, cur, b.text, bold, 6.6, 7.2);
+    else if (b.kind === 'bullet') cur = drawParagraph(doc, cur, `•  ${b.text}`, font, 6.3, 6.9, 10);
     else if (b.kind === 'check') {
       // Casella marcada [X] si el viatger ho va triar en signar; si no, buida.
+      // Amb una mica d'aire a sobre i a sota perquè destaqui que és una casella.
       const marcat =
         b.consent === 'refusa' ? !!v?.signatura?.refusaComercial
         : b.consent === 'autoritza' ? !!v?.signatura?.autoritzaComercialAltres
         : false;
-      cur = drawParagraph(doc, cur, `${marcat ? '[X]' : '[  ]'}  ${b.text}`, font, 6.3, 7.2, 10);
-    } else cur = drawParagraph(doc, cur, b.text, font, 6.3, 7.2);
+      cur.y -= 2;
+      cur = drawParagraph(doc, cur, `${marcat ? '[X]' : '[  ]'}  ${b.text}`, font, 6.3, 6.9, 10);
+      cur.y -= 2;
+    } else cur = drawParagraph(doc, cur, b.text, font, 6.3, 6.9);
     cur.y -= 0.2;
   }
   cur.y -= 1.5;
