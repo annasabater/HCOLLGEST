@@ -187,7 +187,7 @@ function drawEyebrow(doc: PDFDocument, cur: Cur, text: string, bold: PDFFont): C
 /** Punt de llista en granat + text envoltat amb sagnia penjant. */
 function drawBullet(doc: PDFDocument, cur: Cur, text: string, font: PDFFont): Cur {
   const size = 7;
-  const lineH = 8.3;
+  const lineH = 7.7;
   const indent = 12;
   const lines = wrap(font, text, size, A4.w - M * 2 - indent);
   lines.forEach((l, i) => {
@@ -196,7 +196,7 @@ function drawBullet(doc: PDFDocument, cur: Cur, text: string, font: PDFFont): Cu
     cur.page.drawText(l, { x: M + indent, y: cur.y - size, size, font, color: INK });
     cur.y -= lineH;
   });
-  cur.y -= 2.5;
+  cur.y -= 1.3;
   return cur;
 }
 
@@ -216,9 +216,10 @@ function drawCampsClient(
     acompanyants: string;
   },
 ): Cur {
-  const rowH = 24;
+  // Files compactes perquè el reglament càpiga en una sola pàgina.
+  const rowH = 17;
   const padX = 14;
-  const padY = 9;
+  const padY = 6;
   // 4 files (Nombre/Apellidos · Nacionalidad/Documento · Expedición/Nacimiento ·
   // Acompañantes) → l'última fila també queda dins de la caixa marcada.
   const boxH = rowH * 4 + padY * 2;
@@ -229,10 +230,10 @@ function drawCampsClient(
 
   const half = (w - padX * 3) / 2;
   const field = (x: number, colW: number, rowTop: number, label: string, value: string) => {
-    cur.page.drawText(label.toUpperCase(), { x, y: rowTop - 9, size: 6.5, font: bold, color: MUTED });
+    cur.page.drawText(label.toUpperCase(), { x, y: rowTop - 7, size: 6.3, font: bold, color: MUTED });
     const v = sanitize(value) || '—';
-    const fitted = font.widthOfTextAtSize(v, 9.5) > colW ? `${v.slice(0, Math.floor((colW / font.widthOfTextAtSize(v, 9.5)) * v.length))}…` : v;
-    cur.page.drawText(fitted, { x, y: rowTop - 22, size: 9.5, font, color: INK });
+    const fitted = font.widthOfTextAtSize(v, 9) > colW ? `${v.slice(0, Math.floor((colW / font.widthOfTextAtSize(v, 9)) * v.length))}…` : v;
+    cur.page.drawText(fitted, { x, y: rowTop - 15.5, size: 9, font, color: INK });
   };
 
   let rowTop = top - padY;
@@ -261,15 +262,15 @@ async function drawSignatura(
   nomComplet: string,
   lloc: string,
 ): Promise<Cur> {
-  const boxH = 86;
+  const boxH = 68;
   cur = ensure(doc, cur, boxH);
   cur.page.drawLine({ start: { x: M, y: cur.y }, end: { x: A4.w - M, y: cur.y }, thickness: 0.8, color: LINE });
-  cur.y -= 14;
+  cur.y -= 9;
 
   const sigW = 230;
-  const sigH = 46;
+  const sigH = 38;
   const sigX = M;
-  const sigY = cur.y - 8 - sigH;
+  const sigY = cur.y - 6 - sigH;
 
   cur.page.drawText('FIRMA DEL HUÉSPED', { x: M, y: cur.y - 7, size: 7, font: bold, color: MUTED });
   cur.page.drawRectangle({ x: sigX, y: sigY, width: sigW, height: sigH, borderColor: ACCENT, borderWidth: 1 });
@@ -340,25 +341,25 @@ async function renderReglamentDoc(
   });
 
   cur = drawParagraph(doc, cur, INTRO, font, 7.5, 9.5, 0, MUTED);
-  cur.y -= 4;
+  cur.y -= 2;
 
   cur = drawEyebrow(doc, cur, 'Normas de la casa', bold);
   for (const n of NORMES) cur = drawBullet(doc, cur, n, font);
-  cur.y -= 4;
+  cur.y -= 2;
 
   cur = drawEyebrow(doc, cur, 'Protección de datos', bold);
   const adreca =
     [establiment.adreca, establiment.codiPostal, establiment.poblacio].filter(Boolean).join(', ') || ADRECA_FALLBACK;
   for (const b of lopdBlocks(adreca)) {
-    if (b.kind === 'sub') cur = drawParagraph(doc, cur, b.text, bold, 6.6, 8.4);
-    else if (b.kind === 'bullet') cur = drawParagraph(doc, cur, `•  ${b.text}`, font, 6.3, 8.2, 10);
-    else if (b.kind === 'check') cur = drawParagraph(doc, cur, `[  ]  ${b.text}`, font, 6.3, 8.2, 10);
-    else cur = drawParagraph(doc, cur, b.text, font, 6.3, 8.2);
-    cur.y -= 1.5;
+    if (b.kind === 'sub') cur = drawParagraph(doc, cur, b.text, bold, 6.6, 8.2);
+    else if (b.kind === 'bullet') cur = drawParagraph(doc, cur, `•  ${b.text}`, font, 6.3, 7.9, 10);
+    else if (b.kind === 'check') cur = drawParagraph(doc, cur, `[  ]  ${b.text}`, font, 6.3, 7.9, 10);
+    else cur = drawParagraph(doc, cur, b.text, font, 6.3, 7.9);
+    cur.y -= 0.6;
   }
-  cur.y -= 3.5;
+  cur.y -= 2;
   cur = drawParagraph(doc, cur, CLOSING, bold, 7, 9);
-  cur.y -= 6;
+  cur.y -= 4;
 
   const lloc = estancia
     ? [v?.signatura?.llocSignatura || establiment.poblacio || 'Calella', formatDate(v?.signatura?.data ?? estancia.dataEntrada)]
