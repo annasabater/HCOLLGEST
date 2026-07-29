@@ -64,8 +64,47 @@ const INTRO =
 const CLOSING =
   'El incumplimiento de este Reglamento Interno de Hospedaje por parte del huésped será causa de rescisión del contrato de hospedaje, sin responsabilidad jurídica para la empresa.';
 
-function lopdParagraph(adreca: string): string {
-  return `ELISABETH NUALART COLL es la responsable del tratamiento de sus datos personales y le informa de que estos datos serán tratados de conformidad con el Reglamento (UE) 2016/679, de 27 de abril (GDPR), y la Ley Orgánica 3/2018, de 5 de diciembre (LOPDGDD), con la finalidad de mantener la relación comercial que nos une (en base a una relación contractual, obligación legal o interés legítimo), conservándolos durante no más tiempo del necesario para dicho fin o mientras existan prescripciones legales que dictaminen su custodia. No se comunicarán los datos a terceros, salvo obligación legal. Puede ejercer sus derechos de acceso, rectificación, portabilidad y supresión, así como los de limitación y oposición al tratamiento, dirigiéndose a ELISABETH NUALART COLL en ${adreca}. E-mail: hostalcoll@gmail.com. Derecho de reclamación: www.aepd.es.`;
+// Clàusula LOPD (versió actualitzada, maig 2026): informació detallada del
+// tractament segons el document oficial del hostal. Es retorna en blocs perquè
+// es maqueti amb subtítols, vinyetes i caselles de consentiment.
+type LopdBlockKind = 'p' | 'sub' | 'bullet' | 'check';
+interface LopdBlock { kind: LopdBlockKind; text: string }
+
+function lopdBlocks(adreca: string): LopdBlock[] {
+  return [
+    {
+      kind: 'p',
+      text: 'ELISABETH NUALART COLL es el Responsable del tratamiento de sus datos personales y le informa de que estos datos serán tratados de conformidad con lo dispuesto en el Reglamento (UE) 2016/679, de 27 de abril (GDPR), y la Ley Orgánica 3/2018, de 5 de diciembre (LOPDGDD), por lo que se le facilita la siguiente información del tratamiento:',
+    },
+    { kind: 'sub', text: 'Fines y legitimación del tratamiento:' },
+    {
+      kind: 'bullet',
+      text: 'Para la gestión de las reservas por usted solicitadas, de habitaciones o de cualquier otro servicio prestado por nuestra entidad, lo que incluye facilitarle información sobre las mismas (confirmación, modificación o cancelación) a través de medios electrónicos, por ser necesario para la prestación del servicio que usted ha solicitado y la relación contractual que este supone (art. 6.1.b RGPD).',
+    },
+    {
+      kind: 'bullet',
+      text: 'Para la facturación, cobro y contabilización de nuestros servicios y para la llevanza del libro registro de entrada de viajeros, para el cumplimiento de nuestras obligaciones legales en materia fiscal y de hospedaje respectivamente (art. 6.1.c RGPD).',
+    },
+    {
+      kind: 'bullet',
+      text: 'Para el envío de comunicaciones comerciales a través de correo electrónico o medio de comunicación electrónica equivalente de productos o servicios de nuestro establecimiento distintos a los que usted ya ha contratado anteriormente, solicitando previamente su consentimiento (art. 6.1.a RGPD).',
+    },
+    {
+      kind: 'bullet',
+      text: 'Para el envío de comunicaciones comerciales a través de correo electrónico o medio de comunicación electrónica equivalente referentes a servicios de nuestro establecimiento similares a los que usted ya ha contratado anteriormente, en base a nuestro interés legítimo (art. 6.1.f RGPD, exención art. 21.2 LSSI), salvo que usted nos indique su deseo de no recibir estas comunicaciones comerciales marcando la casilla dispuesta al efecto.',
+    },
+    { kind: 'check', text: 'No deseo recibir comunicaciones comerciales.' },
+    {
+      kind: 'p',
+      text: 'Criterios de conservación de los datos: se conservarán durante no más tiempo del necesario para mantener los fines del tratamiento; cuando ya no sea necesario para tales fines y hayan prescrito los plazos legales aplicables, se suprimirán con medidas de seguridad adecuadas para garantizar la anonimización o la destrucción total de los mismos.',
+    },
+    { kind: 'p', text: 'Comunicación de los datos: solo las necesarias para el cumplimiento de nuestras obligaciones legales.' },
+    {
+      kind: 'p',
+      text: `Asimismo, se le informa de que puede ejercer los derechos de acceso, rectificación, portabilidad y supresión de sus datos y los de limitación y oposición a su tratamiento dirigiéndose a ELISABETH NUALART COLL en ${adreca}. E-mail: hostalcoll@gmail.com y el de reclamación a www.aepd.es.`,
+    },
+    { kind: 'check', text: 'Autorizo el envío de comunicaciones comerciales de productos o servicios distintos a los contratados.' },
+  ];
 }
 
 const ADRECA_FALLBACK = 'C/ Sant Isidre, 54 - 08370 Calella (Barcelona)';
@@ -310,8 +349,14 @@ async function renderReglamentDoc(
   cur = drawEyebrow(doc, cur, 'Protección de datos', bold);
   const adreca =
     [establiment.adreca, establiment.codiPostal, establiment.poblacio].filter(Boolean).join(', ') || ADRECA_FALLBACK;
-  cur = drawParagraph(doc, cur, lopdParagraph(adreca), font, 6.3, 8.2);
-  cur.y -= 5;
+  for (const b of lopdBlocks(adreca)) {
+    if (b.kind === 'sub') cur = drawParagraph(doc, cur, b.text, bold, 6.6, 8.4);
+    else if (b.kind === 'bullet') cur = drawParagraph(doc, cur, `•  ${b.text}`, font, 6.3, 8.2, 10);
+    else if (b.kind === 'check') cur = drawParagraph(doc, cur, `[  ]  ${b.text}`, font, 6.3, 8.2, 10);
+    else cur = drawParagraph(doc, cur, b.text, font, 6.3, 8.2);
+    cur.y -= 1.5;
+  }
+  cur.y -= 3.5;
   cur = drawParagraph(doc, cur, CLOSING, bold, 7, 9);
   cur.y -= 6;
 
@@ -360,7 +405,7 @@ export async function buildReglamentBlank(establiment: Establiment): Promise<Uin
 
 /**
  * Cartell informatiu (per penjar a paret): normes + LOPD, sense dades ni firma.
- * Maquetat COMPACTE i en 2 COLUMNES perquè totes les normes càpiguen en UNA pàgina.
+ * Maquetat compacte en una columna; pagina si cal (la clàusula LOPD és llarga).
  */
 export async function buildCartellPdf(establiment: Establiment): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
@@ -368,16 +413,32 @@ export async function buildCartellPdf(establiment: Establiment): Promise<Uint8Ar
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   doc.setTitle('Cartell — Reglamento interno de hospedaje', { showInWindowTitleBar: true });
 
-  const page = doc.addPage([A4.w, A4.h]);
+  let page = doc.addPage([A4.w, A4.h]);
   let y = A4.h - M;
   const W = A4.w - 2 * M;
 
-  // Paràgraf a amplada completa (mou la `y` externa). No pagina: el cartell és 1 pàgina.
-  const para = (f: PDFFont, text: string, size: number, lineH: number, color = INK) => {
-    for (const l of wrap(f, text, size, W)) {
-      page.drawText(l, { x: M, y: y - size, size, font: f, color });
+  // Salta de pàgina si no hi ha prou espai (amb la LOPD ampliada el cartell pot
+  // ocupar més d'una pàgina).
+  const brk = (needed: number) => {
+    if (y - needed < M) {
+      page = doc.addPage([A4.w, A4.h]);
+      y = A4.h - M;
+    }
+  };
+
+  // Paràgraf a amplada completa amb sagnat opcional (mou la `y` externa).
+  const para = (f: PDFFont, text: string, size: number, lineH: number, color = INK, indentP = 0) => {
+    for (const l of wrap(f, text, size, W - indentP)) {
+      brk(lineH);
+      page.drawText(l, { x: M + indentP, y: y - size, size, font: f, color });
       y -= lineH;
     }
+  };
+
+  const heading = (t: string) => {
+    brk(21);
+    page.drawText(t, { x: M, y: y - 8, size: 8.5, font: bold, color: ACCENT });
+    y -= 13;
   };
 
   // Capçalera compacta.
@@ -392,13 +453,13 @@ export async function buildCartellPdf(establiment: Establiment): Promise<Uint8Ar
   para(font, INTRO, 8, 10, MUTED);
   y -= 6;
 
-  page.drawText('NORMAS DE LA CASA', { x: M, y: y - 8, size: 8.5, font: bold, color: ACCENT });
-  y -= 13;
+  heading('NORMAS DE LA CASA');
 
   // Normes en UNA columna, lletra 9pt.
   const indent = 12;
   for (const t of NORMES) {
     wrap(font, t, 9, W - indent).forEach((l, i) => {
+      brk(11);
       if (i === 0) page.drawText('•', { x: M, y: y - 9, size: 9, font, color: ACCENT });
       page.drawText(l, { x: M + indent, y: y - 9, size: 9, font, color: INK });
       y -= 11;
@@ -407,11 +468,16 @@ export async function buildCartellPdf(establiment: Establiment): Promise<Uint8Ar
   }
   y -= 4;
 
-  page.drawText('PROTECCIÓN DE DATOS', { x: M, y: y - 8, size: 8.5, font: bold, color: ACCENT });
-  y -= 13;
+  heading('PROTECCIÓN DE DATOS');
   const adreca =
     [establiment.adreca, establiment.codiPostal, establiment.poblacio].filter(Boolean).join(', ') || ADRECA_FALLBACK;
-  para(font, lopdParagraph(adreca), 7, 8.6, MUTED);
+  for (const b of lopdBlocks(adreca)) {
+    if (b.kind === 'sub') para(bold, b.text, 7, 8.6, INK);
+    else if (b.kind === 'bullet') para(font, `•  ${b.text}`, 7, 8.6, MUTED, 10);
+    else if (b.kind === 'check') para(font, `[  ]  ${b.text}`, 7, 8.6, MUTED, 10);
+    else para(font, b.text, 7, 8.6, MUTED);
+    y -= 1.5;
+  }
   y -= 6;
   para(bold, CLOSING, 7.5, 9.5);
 
