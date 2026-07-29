@@ -5,57 +5,7 @@ import { ScanLine, Upload, CheckCircle2, AlertTriangle, FileText, Trash2, Lock, 
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/input';
 import { optionsFrom, tipusDocumentPujatValues, TIPUS_DOCUMENT_PUJAT_LABELS } from '@/lib/validation/enums';
-import { findMrzLines, parseMrz, mrzToViatger, parseDniReverso, type ViatgerOcr } from '@/lib/ocr/mrz';
-
-// Alfabet de la MRZ (lletres, dígits i el separador '<'): restringir-lo fa la
-// lectura molt més fiable, ja que la MRZ només conté aquests caràcters.
-const MRZ_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<';
-
-/**
- * Prepara la imatge per a l'OCR (tot al navegador): la gira l'angle indicat (la
- * foto pot estar de costat), la porta a una mida òptima, la passa a escala de
- * grisos i li apuja el contrast. Això millora MOLT la lectura de tesseract sobre
- * fotos reals (girades, poca llum, reflexos…). Si alguna cosa falla, retorna el
- * fitxer original.
- */
-async function prepareCanvas(file: File, angle = 0, contrast = 1.5): Promise<HTMLCanvasElement | File> {
-  try {
-    const bmp = await createImageBitmap(file);
-    const targetW = 1600;
-    const scale = bmp.width > targetW ? targetW / bmp.width : 1;
-    const w = Math.round(bmp.width * scale);
-    const h = Math.round(bmp.height * scale);
-    const rot = ((angle % 360) + 360) % 360;
-
-    const canvas = document.createElement('canvas');
-    // Si girem 90°/270°, s'intercanvien amplada i alçada.
-    canvas.width = rot === 90 || rot === 270 ? h : w;
-    canvas.height = rot === 90 || rot === 270 ? w : h;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return file;
-
-    ctx.save();
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.rotate((rot * Math.PI) / 180);
-    ctx.drawImage(bmp, -w / 2, -h / 2, w, h);
-    ctx.restore();
-    bmp.close?.();
-
-    // Escala de grisos + contrast (contrast=1 → només grisos).
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const px = imgData.data;
-    for (let i = 0; i < px.length; i += 4) {
-      const gray = 0.299 * px[i]! + 0.587 * px[i + 1]! + 0.114 * px[i + 2]!;
-      let v = (gray - 128) * contrast + 128;
-      v = v < 0 ? 0 : v > 255 ? 255 : v;
-      px[i] = px[i + 1] = px[i + 2] = v;
-    }
-    ctx.putImageData(imgData, 0, 0);
-    return canvas;
-  } catch {
-    return file;
-  }
-}
+import type { ViatgerOcr } from '@/lib/ocr/mrz';
 
 export interface PendingDoc {
   id: string;
@@ -66,8 +16,8 @@ export interface PendingDoc {
 /**
  * Captura de documents d'identitat en un sol bloc: fer foto o pujar (DNI,
  * passaport, carnet de conduir…). Cada document:
- *  - si és DNI/passaport, es llegeix la zona MRZ al NAVEGADOR (tesseract.js, sense
- *    credencials) i s'autoreplena el formulari (corregible);
+ *  - si és DNI/passaport, es transcriu la zona MRZ (Claude Vision, /api/ocr/document)
+ *    i, validant els dígits de control, s'autoreplena el formulari (corregible);
  *  - s'afegeix a la llista per desar-lo (al servidor: xifrat, B/N + marca d'aigua).
  * Es poden afegir diversos (DNI anvers i revers, carnet de conduir…).
  */
@@ -107,97 +57,76 @@ export function DocumentScanner({
     return () => { Object.values(urls).forEach(URL.revokeObjectURL); };
   }, [docs]);
 
-  // OCR 100% AL NAVEGADOR (tesseract.js): la imatge NO s'envia a cap servidor
-  // (ni al nostre, ni a cap tercer). Es llegeix la zona MRZ localment i, amb els
-  // dígits de control, s'autoreplena el formulari. La foto s'emmagatzema a part
-  // (xifrada) només si l'usuari la desa; aquest OCR no la transmet enlloc.
   async function processFile(file: File) {
     setBusy(true);
-    setProgress(5);
+    setProgress(10);
     setMsg(null);
     try {
-      const { createWorker, PSM } = await import('tesseract.js');
-      const worker = await createWorker('eng', 1, {
-        logger: (m: { status: string; progress: number }) => {
-          if (m.status === 'recognizing text') setProgress(Math.round(m.progress * 100));
-        },
-      });
+      const formData = new FormData();
+      formData.append('image', file);
 
-      // Passada MRZ: alfabet restringit + mode "bloc uniforme de text" (PSM 6).
-      // La foto pot estar GIRADA, així que provem les 4 orientacions fins que la
-      // MRZ quedi horitzontal i validi els dígits de control.
-      await worker.setParameters({
-        tessedit_char_whitelist: MRZ_CHARS,
-        tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
-      });
-      let mrzLines: string[] = [];
-      let mrz: ReturnType<typeof parseMrz> = null;
-      let bestAngle = 0;
-      for (const angle of [0, 90, 270, 180]) {
-        const canvas = await prepareCanvas(file, angle, 1.5);
-        const pass = await worker.recognize(canvas);
-        const lines = findMrzLines(pass.data.text);
-        const parsed = parseMrz(lines);
-        if (parsed && parsed.valid) {
-          // Orientació correcta i dígits de control OK: no cal provar-ne més.
-          mrz = parsed; mrzLines = lines; bestAngle = angle;
-          break;
-        }
-        // Guarda la millor candidata (més línies MRZ) per si cap valida.
-        if (lines.length > mrzLines.length) {
-          mrzLines = lines; bestAngle = angle; if (parsed) mrz = parsed;
-        }
+      setProgress(30);
+      const res = await fetch('/api/ocr/document', { method: 'POST', body: formData });
+      setProgress(90);
+
+      if (!res.ok) {
+        // 422: s'ha desat la foto però no s'ha pogut llegir la MRZ. El cos porta
+        // `warnings` amb el motiu concret (sense MRZ / dígits no quadren).
+        let items: string[] | undefined;
+        let mrz: string[] | undefined;
+        let detail = '';
+        try {
+          const j = (await res.json()) as { error?: string; warnings?: string[]; mrzLines?: string[] };
+          if (j.warnings && j.warnings.length > 0) items = j.warnings;
+          else if (j.error) detail = ` (${j.error})`;
+          if (j.mrzLines && j.mrzLines.length > 0) mrz = j.mrzLines;
+        } catch { /* ignore */ }
+        setMsg({
+          tone: 'warn',
+          text: items
+            ? 'Foto desada. No s\'han pogut autoreplenar les dades:'
+            : `Document desat, però no s'ha pogut llegir el text${detail}. Torna-ho a provar o omple-ho a mà.`,
+          items,
+          mrz,
+        });
+        return;
       }
 
-      // 2a passada: text lliure NOMÉS per llegir l'adreça del revers (no la
-      // identitat: el nom/número surten de la MRZ, validats). Així no s'inventa res.
-      // Es fa amb l'orientació que ha funcionat per a la MRZ.
-      await worker.setParameters({
-        tessedit_char_whitelist: '',
-        tessedit_pageseg_mode: PSM.AUTO,
-      });
-      const addrCanvas = await prepareCanvas(file, bestAngle, 1);
-      const passFull = await worker.recognize(addrCanvas);
-      const revers = parseDniReverso(passFull.data.text);
-      await worker.terminate();
+      const { result, warnings, mrzLines } = (await res.json()) as {
+        result: ViatgerOcr;
+        warnings: string[];
+        mrzLines?: string[];
+      };
       setProgress(100);
 
-      const mrzForDisplay = mrzLines.length > 0 ? mrzLines : undefined;
+      const hasUsefulData = result.nom || result.cognom1 || result.numDocument || result.adreca;
+      if (!hasUsefulData) {
+        setMsg({
+          tone: 'warn',
+          text: "Document desat, però no s'han pogut llegir les dades. Fes una foto nítida i ben enquadrada. Pots omplir-ho a mà.",
+          mrz: mrzLines,
+        });
+        return;
+      }
 
-      if (mrz && mrz.valid) {
-        // Dígits de control OK → dades fiables.
-        const base = mrzToViatger(mrz);
-        const result: ViatgerOcr = revers
-          ? { ...base, adreca: revers.adreca, codiPostal: revers.codiPostal, localitat: revers.localitat, provinciaNom: revers.provinciaNom }
-          : base;
-        onExtract(result);
-        setMsg({
-          tone: 'ok',
-          text: 'Dades llegides i validades (MRZ). Compara-les amb el document i corregeix els accents si cal (la MRZ no en porta).',
-          mrz: mrzForDisplay,
-        });
-      } else if (revers && (revers.adreca || revers.codiPostal || revers.localitat)) {
-        // No hi ha MRZ vàlida però sí adreça del revers: l'aprofitem.
-        onExtract(revers);
-        setMsg({
-          tone: 'warn',
-          text: 'Adreça llegida del revers. La identitat (MRZ) no s\'ha pogut validar: revisa-la o escaneja la cara amb les línies «<<<».',
-          mrz: mrzForDisplay,
-        });
-      } else if (mrz && !mrz.valid) {
-        setMsg({
-          tone: 'warn',
-          text: "S'ha detectat la MRZ però els dígits de control no quadren (lectura poc nítida). No s'ha autoreplenat res per no posar dades incorrectes; fes una foto més nítida o omple-ho a mà.",
-          mrz: mrzForDisplay,
-        });
+      onExtract({ ...result, warnings });
+
+      if (warnings && warnings.length > 0) {
+        // Prioritza els avisos de lectura ("no s'ha pogut llegir…") i, després, les
+        // incoherències (titular menor, etc.). Cada avís es mostra en una línia.
+        const prioritari = (w: string) =>
+          /no s.?ha pogut llegir|no s.?ha llegit|il·legible|no s.?ha reconegut|sense llegir/i.test(w);
+        const items = [...warnings].sort((a, b) => Number(prioritari(b)) - Number(prioritari(a)));
+        setMsg({ tone: 'warn', text: 'Dades llegides. Revisa aquests avisos:', items, mrz: mrzLines });
       } else {
         setMsg({
-          tone: 'warn',
-          text: "No s'ha detectat la zona MRZ (les línies «<<<»). Al DNI/NIE és al REVERS i al passaport a la pàgina de la foto. Escaneja aquesta cara o omple-ho a mà.",
+          tone: 'ok',
+          text: 'Dades llegides correctament. Compara-les amb el document i corregeix qualsevol camp si cal.',
+          mrz: mrzLines,
         });
       }
     } catch {
-      setMsg({ tone: 'warn', text: "No s'ha pogut llegir el document al navegador. Torna-ho a provar o omple-ho a mà." });
+      setMsg({ tone: 'warn', text: "Document desat, però no s'ha pogut llegir el text per autoreplenar." });
     } finally {
       setBusy(false);
     }
@@ -257,7 +186,7 @@ export function DocumentScanner({
       <p className="mt-1.5 text-xs text-slate-500">
         Per autoreplenar, fes la foto de la cara amb les línies <span className="font-mono">&laquo;&lt;&lt;&lt;&raquo;</span>:
         al <strong>DNI/NIE és el DARRERE</strong> (la cara sense foto) i al <strong>passaport la pàgina de la foto</strong>.
-        Bona llum, sense reflexos i que la foto ompli el requadre. Pots afegir-ne més (anvers, etc.); totes es desen xifrades.
+        No passa res si surt una mica girada. Pots afegir-ne més; totes es desen xifrades.
       </p>
 
       {msg && (
