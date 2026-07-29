@@ -16,11 +16,15 @@ export function SignaturePad({
   viatgerId,
   onSaved,
   onCancel,
+  refusaComercialInicial = false,
+  autoritzaComercialAltresInicial = false,
 }: {
   estanciaId: string;
   viatgerId: string;
   onSaved: () => void;
   onCancel: () => void;
+  refusaComercialInicial?: boolean;
+  autoritzaComercialAltresInicial?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -28,6 +32,10 @@ export function SignaturePad({
   const hasInk = useRef(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Consentiment de comunicacions comercials (LOPD): es desa amb la firma i surt
+  // marcat al PDF del reglament.
+  const [refusaComercial, setRefusaComercial] = useState(refusaComercialInicial);
+  const [autoritzaComercialAltres, setAutoritzaComercialAltres] = useState(autoritzaComercialAltresInicial);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -131,7 +139,11 @@ export function SignaturePad({
     setError(null);
     try {
       const imatge = canvas.toDataURL('image/png');
-      await postJSON(`/api/estancies/${estanciaId}/viatgers/${viatgerId}/firma`, { imatge });
+      await postJSON(`/api/estancies/${estanciaId}/viatgers/${viatgerId}/firma`, {
+        imatge,
+        refusaComercial,
+        autoritzaComercialAltres,
+      });
       onSaved();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error desant la firma');
@@ -149,6 +161,20 @@ export function SignaturePad({
         className="touch-none rounded-lg border border-slate-300 bg-white"
       />
       <p className="text-xs text-slate-400">Firma aquí, o puja una foto de la firma feta en paper.</p>
+
+      {/* Consentiment de comunicacions comercials (LOPD) — surt marcat al reglament. */}
+      <div className="space-y-1.5 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2">
+        <p className="text-xs font-medium text-slate-500">Comunicacions comercials (opcional)</p>
+        <label className="flex items-start gap-2 text-sm text-slate-700">
+          <input type="checkbox" className="mt-0.5" checked={refusaComercial} onChange={(e) => setRefusaComercial(e.target.checked)} />
+          <span>No vull rebre comunicacions comercials.</span>
+        </label>
+        <label className="flex items-start gap-2 text-sm text-slate-700">
+          <input type="checkbox" className="mt-0.5" checked={autoritzaComercialAltres} onChange={(e) => setAutoritzaComercialAltres(e.target.checked)} />
+          <span>Autoritzo l’enviament de comunicacions comercials de productes o serveis diferents als contractats.</span>
+        </label>
+      </div>
+
       <input
         ref={fileRef}
         type="file"

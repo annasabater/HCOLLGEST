@@ -13,6 +13,9 @@ const FirmaSchema = z.object({
   llocSignatura: z.string().optional(),
   data: z.coerce.date().optional(),
   hora: z.string().optional(),
+  // Consentiment de comunicacions comercials (LOPD).
+  refusaComercial: z.coerce.boolean().optional(),
+  autoritzaComercialAltres: z.coerce.boolean().optional(),
 });
 
 export async function POST(req: Request, ctx: Ctx) {
@@ -36,6 +39,8 @@ export async function POST(req: Request, ctx: Ctx) {
         llocSignatura: data.llocSignatura ?? null,
         data: data.data ?? now,
         hora: data.hora ?? now.toTimeString().slice(0, 5),
+        refusaComercial: data.refusaComercial ?? false,
+        autoritzaComercialAltres: data.autoritzaComercialAltres ?? false,
         usuariId: auth.id,
       },
       update: {
@@ -43,6 +48,8 @@ export async function POST(req: Request, ctx: Ctx) {
         llocSignatura: data.llocSignatura ?? null,
         data: data.data ?? now,
         hora: data.hora ?? now.toTimeString().slice(0, 5),
+        refusaComercial: data.refusaComercial ?? false,
+        autoritzaComercialAltres: data.autoritzaComercialAltres ?? false,
         usuariId: auth.id,
       },
     });

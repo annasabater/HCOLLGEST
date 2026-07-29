@@ -15,7 +15,7 @@ export function ViatgerFirma({
 }: {
   estanciaId: string;
   viatgerId: string;
-  signatura: { data: string | Date; hora: string } | null;
+  signatura: { data: string | Date; hora: string; refusaComercial?: boolean; autoritzaComercialAltres?: boolean } | null;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -25,6 +25,8 @@ export function ViatgerFirma({
       <SignaturePad
         estanciaId={estanciaId}
         viatgerId={viatgerId}
+        refusaComercialInicial={signatura?.refusaComercial ?? false}
+        autoritzaComercialAltresInicial={signatura?.autoritzaComercialAltres ?? false}
         onSaved={() => {
           setOpen(false);
           router.refresh();

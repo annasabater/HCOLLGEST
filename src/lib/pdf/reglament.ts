@@ -68,7 +68,7 @@ const CLOSING =
 // tractament segons el document oficial del hostal. Es retorna en blocs perquè
 // es maqueti amb subtítols, vinyetes i caselles de consentiment.
 type LopdBlockKind = 'p' | 'sub' | 'bullet' | 'check';
-interface LopdBlock { kind: LopdBlockKind; text: string }
+interface LopdBlock { kind: LopdBlockKind; text: string; consent?: 'refusa' | 'autoritza' }
 
 function lopdBlocks(adreca: string): LopdBlock[] {
   return [
@@ -93,7 +93,7 @@ function lopdBlocks(adreca: string): LopdBlock[] {
       kind: 'bullet',
       text: 'Para el envío de comunicaciones comerciales a través de correo electrónico o medio de comunicación electrónica equivalente referentes a servicios de nuestro establecimiento similares a los que usted ya ha contratado anteriormente, en base a nuestro interés legítimo (art. 6.1.f RGPD, exención art. 21.2 LSSI), salvo que usted nos indique su deseo de no recibir estas comunicaciones comerciales marcando la casilla dispuesta al efecto.',
     },
-    { kind: 'check', text: 'No deseo recibir comunicaciones comerciales.' },
+    { kind: 'check', text: 'No deseo recibir comunicaciones comerciales.', consent: 'refusa' },
     {
       kind: 'p',
       text: 'Criterios de conservación de los datos: se conservarán durante no más tiempo del necesario para mantener los fines del tratamiento; cuando ya no sea necesario para tales fines y hayan prescrito los plazos legales aplicables, se suprimirán con medidas de seguridad adecuadas para garantizar la anonimización o la destrucción total de los mismos.',
@@ -103,7 +103,7 @@ function lopdBlocks(adreca: string): LopdBlock[] {
       kind: 'p',
       text: `Asimismo, se le informa de que puede ejercer los derechos de acceso, rectificación, portabilidad y supresión de sus datos y los de limitación y oposición a su tratamiento dirigiéndose a ELISABETH NUALART COLL en ${adreca}. E-mail: hostalcoll@gmail.com y el de reclamación a www.aepd.es.`,
     },
-    { kind: 'check', text: 'Autorizo el envío de comunicaciones comerciales de productos o servicios distintos a los contratados.' },
+    { kind: 'check', text: 'Autorizo el envío de comunicaciones comerciales de productos o servicios distintos a los contratados.', consent: 'autoritza' },
   ];
 }
 
@@ -354,8 +354,14 @@ async function renderReglamentDoc(
   for (const b of lopdBlocks(adreca)) {
     if (b.kind === 'sub') cur = drawParagraph(doc, cur, b.text, bold, 6.6, 7.5);
     else if (b.kind === 'bullet') cur = drawParagraph(doc, cur, `•  ${b.text}`, font, 6.3, 7.2, 10);
-    else if (b.kind === 'check') cur = drawParagraph(doc, cur, `[  ]  ${b.text}`, font, 6.3, 7.2, 10);
-    else cur = drawParagraph(doc, cur, b.text, font, 6.3, 7.2);
+    else if (b.kind === 'check') {
+      // Casella marcada [X] si el viatger ho va triar en signar; si no, buida.
+      const marcat =
+        b.consent === 'refusa' ? !!v?.signatura?.refusaComercial
+        : b.consent === 'autoritza' ? !!v?.signatura?.autoritzaComercialAltres
+        : false;
+      cur = drawParagraph(doc, cur, `${marcat ? '[X]' : '[  ]'}  ${b.text}`, font, 6.3, 7.2, 10);
+    } else cur = drawParagraph(doc, cur, b.text, font, 6.3, 7.2);
     cur.y -= 0.2;
   }
   cur.y -= 1.5;

@@ -491,6 +491,10 @@ model Signatura {
   llocSignatura     String?         @map("lloc_signatura")
   data              DateTime
   hora              String
+  // Consentiment de comunicacions comercials (LOPD), marcat en signar el
+  // reglament i reflectit a les caselles del PDF.
+  refusaComercial          Boolean @default(false) @map("refusa_comercial")
+  autoritzaComercialAltres Boolean @default(false) @map("autoritza_comercial_altres")
   usuariId          String?         @map("usuari_id")
   usuari            Usuari?         @relation(fields: [usuariId], references: [id], onDelete: SetNull)
 
