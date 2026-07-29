@@ -12,33 +12,41 @@ import { findMrzLines, parseMrz, mrzToViatger, parseDniReverso, type ViatgerOcr 
 const MRZ_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<';
 
 /**
- * Prepara la imatge per a l'OCR de la MRZ (tot al navegador): la porta a una
- * mida òptima, la passa a escala de grisos i li apuja el contrast. Això millora
- * MOLT la lectura de tesseract sobre fotos reals (poca llum, reflexos…). Si
- * alguna cosa falla, retorna el fitxer original.
+ * Prepara la imatge per a l'OCR (tot al navegador): la gira l'angle indicat (la
+ * foto pot estar de costat), la porta a una mida òptima, la passa a escala de
+ * grisos i li apuja el contrast. Això millora MOLT la lectura de tesseract sobre
+ * fotos reals (girades, poca llum, reflexos…). Si alguna cosa falla, retorna el
+ * fitxer original.
  */
-async function preprocessForMrz(file: File): Promise<HTMLCanvasElement | File> {
+async function prepareCanvas(file: File, angle = 0, contrast = 1.5): Promise<HTMLCanvasElement | File> {
   try {
     const bmp = await createImageBitmap(file);
-    // Amplada objectiu: prou gran perquè la MRZ tingui resolució, sense passar-se.
     const targetW = 1600;
     const scale = bmp.width > targetW ? targetW / bmp.width : 1;
     const w = Math.round(bmp.width * scale);
     const h = Math.round(bmp.height * scale);
+    const rot = ((angle % 360) + 360) % 360;
+
     const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
+    // Si girem 90°/270°, s'intercanvien amplada i alçada.
+    canvas.width = rot === 90 || rot === 270 ? h : w;
+    canvas.height = rot === 90 || rot === 270 ? w : h;
     const ctx = canvas.getContext('2d');
     if (!ctx) return file;
-    ctx.drawImage(bmp, 0, 0, w, h);
+
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate((rot * Math.PI) / 180);
+    ctx.drawImage(bmp, -w / 2, -h / 2, w, h);
+    ctx.restore();
     bmp.close?.();
 
-    const imgData = ctx.getImageData(0, 0, w, h);
+    // Escala de grisos + contrast (contrast=1 → només grisos).
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const px = imgData.data;
-    const CONTRAST = 1.5; // >1 = més contrast
     for (let i = 0; i < px.length; i += 4) {
       const gray = 0.299 * px[i]! + 0.587 * px[i + 1]! + 0.114 * px[i + 2]!;
-      let v = (gray - 128) * CONTRAST + 128;
+      let v = (gray - 128) * contrast + 128;
       v = v < 0 ? 0 : v > 255 ? 255 : v;
       px[i] = px[i + 1] = px[i + 2] = v;
     }
@@ -115,26 +123,41 @@ export function DocumentScanner({
         },
       });
 
-      // Prepara la imatge (B/N + contrast + mida) per llegir la MRZ molt millor.
-      const prepared = await preprocessForMrz(file);
-
-      // 1a passada: zona MRZ amb alfabet restringit i mode "bloc uniforme de text"
-      // (PSM 6), que és el que millor funciona amb les línies de la MRZ.
+      // Passada MRZ: alfabet restringit + mode "bloc uniforme de text" (PSM 6).
+      // La foto pot estar GIRADA, així que provem les 4 orientacions fins que la
+      // MRZ quedi horitzontal i validi els dígits de control.
       await worker.setParameters({
         tessedit_char_whitelist: MRZ_CHARS,
         tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
       });
-      const passMrz = await worker.recognize(prepared);
-      const mrzLines = findMrzLines(passMrz.data.text);
-      const mrz = parseMrz(mrzLines);
+      let mrzLines: string[] = [];
+      let mrz: ReturnType<typeof parseMrz> = null;
+      let bestAngle = 0;
+      for (const angle of [0, 90, 270, 180]) {
+        const canvas = await prepareCanvas(file, angle, 1.5);
+        const pass = await worker.recognize(canvas);
+        const lines = findMrzLines(pass.data.text);
+        const parsed = parseMrz(lines);
+        if (parsed && parsed.valid) {
+          // Orientació correcta i dígits de control OK: no cal provar-ne més.
+          mrz = parsed; mrzLines = lines; bestAngle = angle;
+          break;
+        }
+        // Guarda la millor candidata (més línies MRZ) per si cap valida.
+        if (lines.length > mrzLines.length) {
+          mrzLines = lines; bestAngle = angle; if (parsed) mrz = parsed;
+        }
+      }
 
       // 2a passada: text lliure NOMÉS per llegir l'adreça del revers (no la
       // identitat: el nom/número surten de la MRZ, validats). Així no s'inventa res.
+      // Es fa amb l'orientació que ha funcionat per a la MRZ.
       await worker.setParameters({
         tessedit_char_whitelist: '',
         tessedit_pageseg_mode: PSM.AUTO,
       });
-      const passFull = await worker.recognize(file);
+      const addrCanvas = await prepareCanvas(file, bestAngle, 1);
+      const passFull = await worker.recognize(addrCanvas);
       const revers = parseDniReverso(passFull.data.text);
       await worker.terminate();
       setProgress(100);
