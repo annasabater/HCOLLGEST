@@ -44,6 +44,26 @@ export function connectorAvailable(): boolean {
  * NOMÉS el resum de validació amb els errors, net i llegible. Retorna null si no
  * el troba (llavors es mostra el text cru com a última opció).
  */
+// Tradueix la instrucció llarga de Mossos al CAMP concret que falla + què s'espera.
+function resumErrorMossos(text: string): string {
+  const s = text.toLowerCase();
+  if (/n[úu]mero de suport|num[_ ]?suport/.test(s))
+    return 'número de suport incorrecte (DNI/NIF: 3 lletres + 6 dígits; NIE: «E» + 8 dígits).';
+  if (/segon cognom|cognom2|segundo apellido/.test(s))
+    return 'falta el segon cognom (obligatori amb DNI/NIF).';
+  if (/n[úu]mero de document|num[_ ]?document|documento/.test(s))
+    return 'número de document incorrecte o buit.';
+  if (/parentesc|parentesco/.test(s)) return 'falta el parentesc (obligatori si és menor).';
+  if (/data.*naixement|fecha.*nacimiento|data d.expedici[óo]|expedici[óo]n/.test(s))
+    return 'data incorrecta (naixement/expedició) o posterior a avui.';
+  if (/municipi|municipio|prov[íi]ncia|provincia|\bine\b|localitat|localidad/.test(s))
+    return 'codi de municipi/província (INE) o localitat incorrecte.';
+  if (/nacionalitat|nacionalidad|pa[íi]s\b/.test(s)) return 'nacionalitat/país incorrecte (codi ISO).';
+  // Si no el reconeixem, deixem la primera frase (curta).
+  const first = (text.split(/\.\s/)[0] ?? text).trim();
+  return first.length > 140 ? `${first.slice(0, 140)}…` : first || 'dades incorrectes.';
+}
+
 export function extreuErrorsMossos(raw: string): string | null {
   const t = (raw ?? '').replace(/\s+/g, ' ');
 
@@ -70,7 +90,15 @@ export function extreuErrorsMossos(raw: string): string | null {
     .replace(/\n /g, '\n')
     .trim();
 
-  return seg || null;
+  // Resumeix cada error al camp + format esperat (no la instrucció completa).
+  const linies = seg
+    .split('\n')
+    .filter(Boolean)
+    .map((l) => {
+      const m2 = l.match(/^•\s*(L[íi]nia\s*\d+)\s*:\s*(.*)$/i);
+      return m2 ? `• ${m2[1]}: ${resumErrorMossos(m2[2] ?? '')}` : l;
+    });
+  return linies.join('\n') || null;
 }
 
 const SEL = {
