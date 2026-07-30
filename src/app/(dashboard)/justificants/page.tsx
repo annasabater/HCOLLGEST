@@ -199,17 +199,23 @@ export default async function JustificantsPage({
                       <Td>
                         {!pendents ? (
                           <Badge tone="success">Completa</Badge>
-                        ) : mostraAvis ? (
-                          <Badge tone="warning" title={faltes.join('\n')}>
-                            Pendents ({faltes.length})
-                          </Badge>
                         ) : (
-                          <Badge tone="neutral">Avís silenciat</Badge>
-                        )}
-                        {pendents && (
-                          <span className="ml-1">
-                            <SilenciarAvis estanciaId={e.id} parat={e.avisDadesParat} />
-                          </span>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1">
+                              {mostraAvis ? (
+                                <Badge tone="warning">Pendents ({faltes.length})</Badge>
+                              ) : (
+                                <Badge tone="neutral">Avís silenciat</Badge>
+                              )}
+                              <SilenciarAvis estanciaId={e.id} parat={e.avisDadesParat} />
+                            </div>
+                            {/* Detall del que falta, perquè sàpigues què completar. */}
+                            <ul className="max-w-xs list-disc space-y-0.5 pl-4 text-xs text-amber-700">
+                              {faltes.map((f, i) => (
+                                <li key={i}>{f}</li>
+                              ))}
+                            </ul>
+                          </div>
                         )}
                       </Td>
                       <Td className="text-right">

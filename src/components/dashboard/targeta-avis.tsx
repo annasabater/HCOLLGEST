@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Send, PenLine, FileWarning, Receipt, ChevronDown, TrendingUp, EyeOff } from 'lucide-react';
+import { Send, PenLine, FileWarning, Receipt, FileEdit, ChevronDown, TrendingUp, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const ICONS = { Send, PenLine, FileWarning, Receipt } as const;
+const ICONS = { Send, PenLine, FileWarning, Receipt, FileEdit } as const;
 const COLORS = {
   amber: { bg: 'bg-amber-50', icon: 'bg-amber-100 text-amber-700', border: 'border-amber-200', num: 'text-amber-800' },
   violet: { bg: 'bg-violet-50', icon: 'bg-violet-100 text-violet-700', border: 'border-violet-200', num: 'text-violet-800' },

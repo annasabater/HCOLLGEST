@@ -6,6 +6,7 @@ import {
   Sparkles, TrendingUp, ChevronRight,
 } from 'lucide-react';
 import { getResum } from '@/lib/services/dashboard';
+import { fitxesDadesPendents } from '@/lib/services/fitxes-pendents';
 import { isFormatConfirmat } from '@/lib/mossos/fitxer';
 import { getSessionUser } from '@/lib/auth/session';
 import { teVistaRestringida } from '@/lib/auth/restriccions';
@@ -47,6 +48,7 @@ const colorMap = {
 export default async function DashboardPage() {
   const user = await getSessionUser();
   const resum = await getResum({ excloureMetodeAltres: teVistaRestringida(user) });
+  const fitxesPendents = await fitxesDadesPendents();
   const isAdmin = user?.role === 'ADMIN';
 
   const araMs = Date.now();
@@ -99,6 +101,13 @@ export default async function DashboardPage() {
     nom: e.titular,
     sub: `Contracte ${e.contracte}${e.dataSortida ? ` · sortida ${formatDate(e.dataSortida)}` : ''}`,
     href: `/estancies/${e.id}`,
+  }));
+  // Fitxes amb dades obligatòries pendents (mateixa validació que /justificants).
+  const itemsFitxes: AvisItem[] = fitxesPendents.map((f) => ({
+    key: f.id,
+    nom: `${f.nom} · ${f.contracte}`,
+    sub: `Falten ${f.faltes.length}: ${f.faltes.slice(0, 2).join(' · ')}${f.faltes.length > 2 ? '…' : ''}`,
+    href: `/estancies/${f.id}`,
   }));
 
   const alertes: { label: string; value: number; icon: React.ElementType; ok: boolean; href: string; color: ColorKey }[] = [
@@ -224,6 +233,7 @@ export default async function DashboardPage() {
 
       {/* Cards d'alerta */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <TargetaAvis label="Fitxes amb dades pendents" ok={itemsFitxes.length === 0} color="amber" iconKey="FileEdit" items={itemsFitxes} dismissable={false} />
         <TargetaAvis label="Pendents d'enviar a Mossos" ok={itemsMossos.length === 0} color="amber" iconKey="Send" items={itemsMossos} />
         <TargetaAvis label="Firmes pendents" ok={itemsFirma.length === 0} color="violet" iconKey="PenLine" items={itemsFirma} />
         <TargetaAvis label="Enviaments amb error" ok={itemsError.length === 0} color="red" iconKey="FileWarning" items={itemsError} />
