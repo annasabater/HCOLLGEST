@@ -9,6 +9,18 @@ import { Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { cn, formatDate } from '@/lib/utils';
 import { optionsFrom, tipusDocumentPujatValues, TIPUS_DOCUMENT_PUJAT_LABELS } from '@/lib/validation/enums';
+import type { ViatgerOcr } from '@/lib/ocr/mrz';
+
+// El lector de la MRZ diu si és DNI/NIE/passaport; ho traduïm al "tipus de
+// document pujat". La MRZ és al REVERS del DNI, per això DNI → DNI_REVERS.
+function mapTipusDocument(t: ViatgerOcr['tipusDocument']): string | null {
+  switch (t) {
+    case 'DNI_NIF': return 'DNI_REVERS';
+    case 'NIE': return 'NIE';
+    case 'PASSAPORT': return 'PASSAPORT';
+    default: return null;
+  }
+}
 
 interface Doc {
   id: string;
@@ -37,6 +49,49 @@ export function DocumentsHuesped({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  // Lectura automàtica del document (OCR de la MRZ) en triar el fitxer.
+  const [scanning, setScanning] = useState(false);
+  const [scanInfo, setScanInfo] = useState<{ tone: 'ok' | 'warn'; text: string } | null>(null);
+
+  // En triar un fitxer, l'escanegem (mateix lector que a l'estada): detecta si és
+  // DNI/NIE/passaport, posa el "Tipus de document" sol i mostra què ha llegit.
+  async function triaFitxer(f: File | null) {
+    setFile(f);
+    setScanInfo(null);
+    setError(null);
+    if (!f || !f.type.startsWith('image/')) return; // OCR només amb imatges
+    setScanning(true);
+    try {
+      const fd = new FormData();
+      fd.append('image', f);
+      const res = await fetch('/api/ocr/document', { method: 'POST', body: fd });
+      const data = (await res.json().catch(() => null)) as
+        | { result?: ViatgerOcr; warnings?: string[] }
+        | null;
+      if (res.ok && data?.result) {
+        const r = data.result;
+        const mapped = mapTipusDocument(r.tipusDocument);
+        if (mapped) setTipus(mapped);
+        const nom = [r.nom, r.cognom1].filter(Boolean).join(' ');
+        const parts = [
+          TIPUS_DOCUMENT_PUJAT_LABELS[(mapped ?? tipus) as keyof typeof TIPUS_DOCUMENT_PUJAT_LABELS],
+          nom || null,
+          r.numDocument || null,
+        ].filter(Boolean);
+        setScanInfo({ tone: 'ok', text: `Llegit: ${parts.join(' · ')}. Revisa el tipus abans de pujar.` });
+      } else {
+        const w = data?.warnings?.[0];
+        setScanInfo({
+          tone: 'warn',
+          text: w ?? "No s'ha detectat la MRZ (potser és l'anvers del DNI). Tria el tipus a mà.",
+        });
+      }
+    } catch {
+      setScanInfo({ tone: 'warn', text: "No s'ha pogut llegir el document; tria el tipus a mà." });
+    } finally {
+      setScanning(false);
+    }
+  }
 
   async function pujar(e: React.FormEvent) {
     e.preventDefault();
@@ -150,11 +205,20 @@ export function DocumentsHuesped({
               <input
                 type="file"
                 accept="application/pdf,image/png,image/jpeg,image/webp"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => triaFitxer(e.target.files?.[0] ?? null)}
                 className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1 file:text-xs"
               />
             </Field>
           </div>
+          <p className="text-xs text-slate-400">
+            En triar una foto es llegeix sola (DNI, NIE o passaport) i s’omple el tipus. Fes la foto de la cara amb les línies «&lt;&lt;&lt;».
+          </p>
+          {scanning && <p className="text-xs font-medium text-brand-700">Llegint el document…</p>}
+          {scanInfo && (
+            <p className={cn('text-xs', scanInfo.tone === 'ok' ? 'text-green-700' : 'text-amber-700')}>
+              {scanInfo.text}
+            </p>
+          )}
           {error && <p className="text-xs text-red-600">{error}</p>}
           <Button type="submit" size="sm" disabled={busy}>
             <Upload className="h-4 w-4" /> {busy ? 'Pujant…' : 'Pujar document'}
