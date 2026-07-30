@@ -22,7 +22,7 @@ import { ConvertirAEnCurs } from '@/components/estancia/convertir-a-en-curs';
 import { EmailsPanel } from '@/components/estancia/emails-panel';
 import { FacturaPanel } from '@/components/factura/factura-panel';
 import { PagamentsPanel } from '@/components/factura/pagaments-panel';
-import { formatDate } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
 import { toISODate, ageAt } from '@/lib/dates';
 import {
   TIPUS_PAGAMENT_LABELS,
@@ -73,6 +73,15 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
     where: { deletedAt: null },
     orderBy: { nom: 'asc' },
     select: { id: true, nom: true },
+  });
+
+  // Cadena de contractes d'aquesta estada (principal + ampliacions), per navegar
+  // entre ells. L'arrel és l'origen (si és ampliació) o la mateixa estada.
+  const rootId = estancia.origen?.id ?? estancia.id;
+  const cadena = await prisma.estancia.findMany({
+    where: { deletedAt: null, OR: [{ id: rootId }, { estanciaOrigenId: rootId }] },
+    select: { id: true, numContracte: true, anyContracte: true, dataEntrada: true, dataSortida: true },
+    orderBy: [{ dataEntrada: 'asc' }],
   });
 
   const user = await getSessionUser();
@@ -237,28 +246,37 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
         }
       />
 
-      {(estancia.origen || estancia.ampliacions.length > 0) && (
-        <div className="mb-6 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm">
-          {estancia.origen && (
-            <span>
-              Ampliació de{' '}
-              <Link href={`/estancies/${estancia.origen.id}`} className="font-medium text-brand-700">
-                {estancia.origen.numContracte}/{estancia.origen.anyContracte}
-              </Link>
-            </span>
-          )}
-          {estancia.ampliacions.length > 0 && (
-            <span className="flex flex-wrap items-center gap-2">
-              <span className="text-slate-500">Ampliacions:</span>
-              {estancia.ampliacions.map((a) => (
-                <Link key={a.id} href={`/estancies/${a.id}`}>
-                  <Badge tone="info">
-                    {a.numContracte} · {formatDate(a.dataEntrada)}–{formatDate(a.dataSortida)}
-                  </Badge>
+      {cadena.length > 1 && (
+        <div className="mb-6 rounded-lg border border-slate-200 bg-white px-4 py-3">
+          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+            Contractes d’aquesta estada ({cadena.length})
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {cadena.map((c) => {
+              const actual = c.id === estancia.id;
+              return (
+                <Link
+                  key={c.id}
+                  href={`/estancies/${c.id}`}
+                  aria-current={actual ? 'page' : undefined}
+                  className={cn(
+                    'rounded-lg border px-3 py-1.5 transition-colors',
+                    actual
+                      ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-500'
+                      : 'border-slate-200 hover:bg-slate-50',
+                  )}
+                >
+                  <div className={cn('flex items-center gap-1.5 text-sm font-medium', actual ? 'text-brand-800' : 'text-slate-700')}>
+                    {c.numContracte}/{c.anyContracte}
+                    {actual && <span className="rounded bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-white">Aquí</span>}
+                  </div>
+                  <div className="text-xs text-slate-400">
+                    {formatDate(c.dataEntrada)} – {formatDate(c.dataSortida)}
+                  </div>
                 </Link>
-              ))}
-            </span>
-          )}
+              );
+            })}
+          </div>
         </div>
       )}
 
