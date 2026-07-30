@@ -30,26 +30,27 @@ export function FitxaExpandible({
 
   return (
     <div>
-      <div className="flex items-start gap-1">
-        {altresViatgers.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setObert((o) => !o)}
-            className="mt-0.5 text-slate-400 hover:text-slate-600"
-            title={obert ? 'Plegar' : 'Veure viatgers'}
-          >
-            <ChevronDown className={`h-4 w-4 transition-transform ${obert ? 'rotate-180' : ''}`} />
-          </button>
-        )}
-        <div>
+      {/* Nom sempre a l'esquerra (alineat amb la resta) i el desplegable a la DRETA. */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
           <Link href={`/estancies/${estanciaId}`} className="font-medium text-slate-900 hover:text-brand-700">
             {titular}
           </Link>
           <div className="text-xs text-slate-400">{numContracte}/{anyContracte}</div>
         </div>
+        {altresViatgers.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setObert((o) => !o)}
+            className="mt-0.5 shrink-0 text-slate-400 hover:text-slate-600"
+            title={obert ? 'Plegar' : 'Veure viatgers'}
+          >
+            <ChevronDown className={`h-4 w-4 transition-transform ${obert ? 'rotate-180' : ''}`} />
+          </button>
+        )}
       </div>
       {obert && altresViatgers.length > 0 && (
-        <div className="mt-1 ml-5 space-y-0.5 border-l border-slate-100 pl-3">
+        <div className="mt-1 space-y-0.5 border-l border-slate-100 pl-3">
           {altresViatgers.map((v) => (
             <div key={v.id} className="text-xs text-slate-500">
               {v.nom} {v.cognom1} {v.cognom2 ?? ''}
