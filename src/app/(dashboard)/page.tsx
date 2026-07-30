@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import {
-  AlertTriangle, FileWarning, PenLine, Send, LogIn, LogOut,
+  AlertTriangle, LogIn, LogOut,
   Receipt, Boxes, Clock, Wrench, CalendarClock, ShieldAlert,
   Sparkles, TrendingUp, ChevronRight,
 } from 'lucide-react';
@@ -15,6 +15,7 @@ import { BenvingudesPendents } from '@/components/dashboard/benvingudes-pendents
 import { CalculadoraPreu } from '@/components/dashboard/calculadora-preu';
 import { GlobalSearch } from '@/components/layout/global-search';
 import { DescartarAvisMossos } from '@/components/estancia/descartar-avis-mossos';
+import { TargetaAvis, type AvisItem } from '@/components/dashboard/targeta-avis';
 import { formatDate, formatEur } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -66,10 +67,34 @@ export default async function DashboardPage() {
   const vencuts24 = termini24.filter((t) => t.vencut);
 
   type ColorKey = keyof typeof colorMap;
+
+  // Llistes accionables per als 3 avisos desplegables (persones pendents).
+  const itemsMossos: AvisItem[] = resum.pendentsEnviament.map((e) => ({
+    key: e.id,
+    nom: titularNom(e.viatgers),
+    sub: e.dataEntrada ? `Entrada ${formatDate(e.dataEntrada)}` : undefined,
+    href: `/estancies/${e.id}`,
+    tipus: 'MOSSOS',
+    entitatId: e.id,
+  }));
+  const itemsFirma: AvisItem[] = resum.pendentsFirma.map((v) => ({
+    key: v.id,
+    nom: v.nom || '—',
+    sub: `Contracte ${v.contracte}`,
+    href: `/estancies/${v.estanciaId}`,
+    tipus: 'FIRMA',
+    entitatId: v.id,
+  }));
+  const itemsError: AvisItem[] = resum.enviamentsError.map((e) => ({
+    key: e.id,
+    nom: e.estancia ? `Contracte ${e.estancia.numContracte}/${e.estancia.anyContracte}` : 'Estada',
+    sub: 'Enviament rebutjat / error',
+    href: e.estanciaId ? `/estancies/${e.estanciaId}` : '/estancies',
+    tipus: 'ENVIAMENT_ERROR',
+    entitatId: e.estanciaId,
+  }));
+
   const alertes: { label: string; value: number; icon: React.ElementType; ok: boolean; href: string; color: ColorKey }[] = [
-    { label: 'Pendents d\'enviar a Mossos', value: resum.pendentsEnviament.length,   icon: Send,        ok: resum.pendentsEnviament.length === 0,      href: '/estancies?estat=pendent', color: 'amber'   },
-    { label: 'Firmes pendents',             value: resum.pendentsFirmaCount,          icon: PenLine,     ok: resum.pendentsFirmaCount === 0,            href: '/estancies',               color: 'violet'  },
-    { label: 'Enviaments amb error',        value: resum.enviamentsError.length,      icon: FileWarning, ok: resum.enviamentsError.length === 0,        href: '/estancies',               color: 'red'     },
     ...(isAdmin ? [
       { label: 'Factures pendents',         value: resum.alertes.facturesPendents,    icon: Receipt,     ok: resum.alertes.facturesPendents === 0,      href: '/factures',                color: 'emerald' as ColorKey },
     ] : []),
@@ -195,6 +220,9 @@ export default async function DashboardPage() {
 
       {/* Cards d'alerta */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <TargetaAvis label="Pendents d'enviar a Mossos" ok={itemsMossos.length === 0} color="amber" iconKey="Send" items={itemsMossos} />
+        <TargetaAvis label="Firmes pendents" ok={itemsFirma.length === 0} color="violet" iconKey="PenLine" items={itemsFirma} />
+        <TargetaAvis label="Enviaments amb error" ok={itemsError.length === 0} color="red" iconKey="FileWarning" items={itemsError} />
         {alertes.map((a) => {
           const Icon = a.icon;
           const c = colorMap[a.color];

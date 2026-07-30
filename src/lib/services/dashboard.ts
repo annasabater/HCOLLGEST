@@ -137,7 +137,7 @@ export async function getResum(opts?: FinanceOpts) {
 
   const [
     pendentsEnviament,
-    pendentsFirmaCount,
+    pendentsFirmaRaw,
     enviamentsError,
     properesEntrades,
     properesSortides,
@@ -174,11 +174,19 @@ export async function getResum(opts?: FinanceOpts) {
       take: 20,
       include: { viatgers: { where: { esTitular: true }, include: { huesped: true } } },
     }),
-    prisma.estanciaViatger.count({
+    prisma.estanciaViatger.findMany({
       where: { signatura: { is: null }, estancia: { estat: 'EN_CURS', deletedAt: null } },
+      take: 30,
+      include: { huesped: { select: { nom: true, cognom1: true } }, estancia: { select: { id: true, numContracte: true, anyContracte: true } } },
     }),
     prisma.enviamentMossos.findMany({
-      where: { estat: { in: ['ERROR', 'REBUTJAT'] } },
+      where: {
+        estat: { in: ['ERROR', 'REBUTJAT'] },
+        // No mostris l'error si la MATEIXA estada ja té un enviament bo després
+        // (p.ex. es va reintentar i el 2n intent es va acceptar). Així un error
+        // "resolt" no queda com a alerta pendent.
+        estancia: { deletedAt: null, enviaments: { none: { estat: { in: ['ENVIAT', 'ACCEPTAT'] } } } },
+      },
       orderBy: { createdAt: 'desc' },
       take: 20,
       include: { estancia: true },
@@ -346,10 +354,25 @@ export async function getResum(opts?: FinanceOpts) {
       : '—',
   }));
 
+  // Avisos descartats manualment ("amaga per sempre"): es treuen de les llistes.
+  const descartats = await prisma.avisDescartat.findMany({ select: { tipus: true, entitatId: true } });
+  const amagat = new Set(descartats.map((d) => `${d.tipus}:${d.entitatId}`));
+  const pendentsEnviamentVis = pendentsEnviament.filter((e) => !amagat.has(`MOSSOS:${e.id}`));
+  const enviamentsErrorVis = enviamentsError.filter((e) => !amagat.has(`ENVIAMENT_ERROR:${e.estanciaId}`));
+  const pendentsFirma = pendentsFirmaRaw
+    .filter((v) => !amagat.has(`FIRMA:${v.id}`))
+    .map((v) => ({
+      id: v.id, // estanciaViatgerId (per descartar)
+      estanciaId: v.estancia.id,
+      nom: `${v.huesped.nom} ${v.huesped.cognom1}`.trim(),
+      contracte: `${v.estancia.numContracte}/${v.estancia.anyContracte}`,
+    }));
+
   return {
-    pendentsEnviament,
-    pendentsFirmaCount,
-    enviamentsError,
+    pendentsEnviament: pendentsEnviamentVis,
+    pendentsFirmaCount: pendentsFirma.length,
+    pendentsFirma,
+    enviamentsError: enviamentsErrorVis,
     properesEntrades,
     properesSortides,
     sortidesToday,

@@ -1265,3 +1265,15 @@ model EmailProgramat {
   @@index([enviatAt])
   @@map("email_programat")
 }
+
+// Avís del taulell descartat manualment ("amaga per sempre"): no torna a sortir.
+model AvisDescartat {
+  id        String   @id @default(cuid())
+  tipus     String // 'MOSSOS' | 'FIRMA' | 'ENVIAMENT_ERROR'
+  entitatId String   @map("entitat_id")
+  usuariId  String?  @map("usuari_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([tipus, entitatId])
+  @@map("avis_descartat")
+}
