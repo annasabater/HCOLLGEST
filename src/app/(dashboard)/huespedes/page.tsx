@@ -12,19 +12,38 @@ import { TIPUS_DOCUMENT_LABELS } from '@/lib/validation/enums';
 
 export const dynamic = 'force-dynamic';
 
-// El color de l'avatar indica l'estat actual del client:
-//  verd = hi és ara · taronja = hi és amb fiança (no oficial) · vermell = no hi és.
+// El color de l'avatar indica com es paga l'estada actual del client:
+//  verd = hi és ara (només oficial) · taronja = hi és amb fiança · vermell = no hi és ·
+//  partit (mig verd/mig groc) = paga part oficial i part amb fiança.
 const STATUS_COLOR = {
   verd: 'bg-emerald-100 text-emerald-700',
   taronja: 'bg-amber-100 text-amber-700',
   vermell: 'bg-rose-100 text-rose-700',
 } as const;
-type EstatClient = keyof typeof STATUS_COLOR;
+type EstatClient = keyof typeof STATUS_COLOR | 'mixt';
+
+const STATUS_TITLE: Record<EstatClient, string> = {
+  verd: 'Hi és ara',
+  taronja: 'Hi és amb fiança',
+  vermell: 'No hi és',
+  mixt: 'Hi és ara · part oficial i part amb fiança',
+};
+
+// Fons partit en diagonal: meitat verd (oficial), meitat groc (fiança).
+const MIXT_BG = 'linear-gradient(135deg, #d1fae5 0 50%, #fef3c7 50% 100%)';
 
 function Inicials({ nom, cognom, estat }: { nom: string; cognom: string; estat: EstatClient }) {
   const ini = (nom[0] ?? '') + (cognom[0] ?? '');
+  const base = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold uppercase';
+  if (estat === 'mixt') {
+    return (
+      <span className={`${base} text-slate-700`} style={{ background: MIXT_BG }} title={STATUS_TITLE.mixt}>
+        {ini}
+      </span>
+    );
+  }
   return (
-    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold uppercase ${STATUS_COLOR[estat]}`}>
+    <span className={`${base} ${STATUS_COLOR[estat]}`} title={STATUS_TITLE[estat]}>
       {ini}
     </span>
   );
@@ -64,13 +83,21 @@ export default async function HuespedesPage({
       _count: { select: { estancies: { where: { estancia: { deletedAt: null } } } } },
       anotacions: { where: { noAcollir: true, deletedAt: null }, select: { id: true }, take: 1 },
       animals: { where: { deletedAt: null }, select: { id: true }, take: 1 },
-      // Estades que cobreixen AVUI (per pintar l'estat: verd/taronja/vermell) +
-      // si tenen una fiança en custòdia (→ "no oficial", taronja).
+      // Estades que cobreixen AVUI (per pintar l'estat). El color depèn de com es
+      // paga aquesta estada: si té alguna fiança/dipòsit (→ taronja) i/o algun
+      // cobrament oficial (→ verd). Amb les dues coses, avatar partit.
       estancies: {
         where: {
           estancia: { deletedAt: null, estat: { not: 'CANCELLADA' }, dataEntrada: { lte: now }, dataSortida: { gt: now } },
         },
-        select: { estancia: { select: { diposits: { where: { estat: 'EN_CUSTODIA' }, select: { id: true }, take: 1 } } } },
+        select: {
+          estancia: {
+            select: {
+              diposits: { select: { id: true }, take: 1 },
+              cobraments: { select: { id: true }, take: 1 },
+            },
+          },
+        },
       },
     },
   });
@@ -115,6 +142,7 @@ export default async function HuespedesPage({
       <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
         <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /> Hi és ara</span>
         <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> Hi és amb fiança</span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: 'linear-gradient(135deg,#34d399 0 50%,#fbbf24 50% 100%)' }} /> Part oficial, part fiança</span>
         <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-400" /> No hi és</span>
       </div>
 
@@ -128,7 +156,14 @@ export default async function HuespedesPage({
           {huespedes.map((h) => {
             const estaAra = h.estancies.length > 0;
             const teFianca = h.estancies.some((ev) => ev.estancia.diposits.length > 0);
-            const estat: EstatClient = estaAra ? (teFianca ? 'taronja' : 'verd') : 'vermell';
+            const teOficial = h.estancies.some((ev) => ev.estancia.cobraments.length > 0);
+            const estat: EstatClient = !estaAra
+              ? 'vermell'
+              : teFianca && teOficial
+              ? 'mixt'
+              : teFianca
+              ? 'taronja'
+              : 'verd';
             return (
             <Link key={h.id} href={`/huespedes/${h.id}`}
               className="group flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition-all hover:border-brand-300 hover:shadow-md">
