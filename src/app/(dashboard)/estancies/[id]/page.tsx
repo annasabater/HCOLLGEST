@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { Send, Receipt, FileSignature, Pencil, Mail } from 'lucide-react';
 import { BackLink } from '@/components/ui/back-link';
 import { prisma } from '@/lib/db';
+import { formataRebuigMossos } from '@/lib/mossos/errors';
 import { getSessionUser } from '@/lib/auth/session';
 import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
 import { MascotesPanel } from '@/components/huesped/mascotes-panel';
@@ -517,7 +518,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   dataEnviament: e.dataEnviament ? e.dataEnviament.toISOString() : null,
                   codiValidacio: e.codiValidacio,
                   numRegistre: e.numRegistre,
-                  errorMsg: e.errorMsg,
+                  errorMsg: formataRebuigMossos(e.errorMsg) || null,
                 }))}
               />
             </CardBody>
