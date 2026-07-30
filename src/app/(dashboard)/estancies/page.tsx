@@ -66,15 +66,25 @@ export default async function EstanciesPage({
   const { estat, pagina: paginaStr, perPagina: perPaginaStr, ordre: ordreStr } = await searchParams;
   const ordre = ordreStr && ORDRE_MAP[ordreStr] ? ordreStr : 'entrada-desc';
 
-  const estatFilter = estat && ['RESERVA', 'EN_CURS', 'FINALITZADA', 'CANCELLADA'].includes(estat)
-    ? (estat as EstatEstancia)
-    : undefined;
-
   const perPagina = [10, 25, 50].includes(Number(perPaginaStr)) ? Number(perPaginaStr) : 25;
   const pagina = Math.max(1, Number(paginaStr) || 1);
-  const where = { deletedAt: null as null, ...(estatFilter ? { estat: estatFilter } : {}) };
-  const total = await prisma.estancia.count({ where });
   const now = new Date();
+
+  // «Finalitzada» és sobretot un estat CALCULAT (una estada EN_CURS amb la sortida
+  // ja passada), no un valor guardat. Per això filtrem i comptem per l'estat
+  // EFECTIU, no només pel guardat a la BD (si no, en surten molt poques).
+  const estatSel = estat && ['RESERVA', 'EN_CURS', 'FINALITZADA', 'CANCELLADA'].includes(estat) ? estat : '';
+  const whereEstat = (e: string): Prisma.EstanciaWhereInput => {
+    switch (e) {
+      case 'RESERVA': return { estat: 'RESERVA' };
+      case 'EN_CURS': return { estat: 'EN_CURS', OR: [{ dataSortida: null }, { dataSortida: { gt: now } }] };
+      case 'FINALITZADA': return { OR: [{ estat: 'FINALITZADA' }, { estat: 'EN_CURS', dataSortida: { lte: now } }] };
+      case 'CANCELLADA': return { estat: 'CANCELLADA' };
+      default: return {};
+    }
+  };
+  const where: Prisma.EstanciaWhereInput = { deletedAt: null, ...whereEstat(estatSel) };
+  const total = await prisma.estancia.count({ where });
 
   const estancies = await prisma.estancia.findMany({
     where,
@@ -89,19 +99,22 @@ export default async function EstanciesPage({
     },
   });
 
-  const comptes = await prisma.estancia.groupBy({
-    by: ['estat'],
-    where: { deletedAt: null },
-    _count: true,
-  });
-  const comptesMap = Object.fromEntries(comptes.map((c) => [c.estat, c._count]));
+  // Comptadors per estat EFECTIU (mateixa lògica que el filtre).
+  const base: Prisma.EstanciaWhereInput = { deletedAt: null };
+  const [cTotes, cReserva, cEnCurs, cFinalitzada, cCancellada] = await Promise.all([
+    prisma.estancia.count({ where: base }),
+    prisma.estancia.count({ where: { ...base, ...whereEstat('RESERVA') } }),
+    prisma.estancia.count({ where: { ...base, ...whereEstat('EN_CURS') } }),
+    prisma.estancia.count({ where: { ...base, ...whereEstat('FINALITZADA') } }),
+    prisma.estancia.count({ where: { ...base, ...whereEstat('CANCELLADA') } }),
+  ]);
 
   const tabs: { key: string; label: string; count?: number }[] = [
-    { key: '', label: 'Totes', count: comptes.reduce((a, c) => a + c._count, 0) },
-    { key: 'EN_CURS', label: 'En curs', count: comptesMap['EN_CURS'] },
-    { key: 'RESERVA', label: 'Reserva', count: comptesMap['RESERVA'] },
-    { key: 'FINALITZADA', label: 'Finalitzada', count: comptesMap['FINALITZADA'] },
-    { key: 'CANCELLADA', label: 'Cancel·lada', count: comptesMap['CANCELLADA'] },
+    { key: '', label: 'Totes', count: cTotes },
+    { key: 'EN_CURS', label: 'En curs', count: cEnCurs },
+    { key: 'RESERVA', label: 'Reserva', count: cReserva },
+    { key: 'FINALITZADA', label: 'Finalitzada', count: cFinalitzada },
+    { key: 'CANCELLADA', label: 'Cancel·lada', count: cCancellada },
   ];
 
   return (
