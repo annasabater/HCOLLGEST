@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getSupabaseStorageConfig } from '@/lib/env';
+import { saveUpload, deleteUpload } from '@/lib/storage';
 
 // GET /api/health — diagnòstic de desplegament (sense login).
-// Informa de connexió a BD, taules/seed i variables d'entorn (booleans, sense valors).
+// Informa de connexió a BD, taules/seed, variables d'entorn (booleans, sense
+// valors) i si l'emmagatzematge de fitxers (documents del DNI) és escrivible.
 export async function GET() {
   const env = {
     DATABASE_URL: Boolean(process.env.DATABASE_URL),
@@ -26,7 +29,26 @@ export async function GET() {
     detail = e instanceof Error ? `${e.name}` : 'unknown';
   }
 
-  const ready = db === 'ok' && tablesReady && establiment && env.JWT_SECRET && env.DOCUMENT_ENCRYPTION_KEY;
+  // Prova real d'escriptura a l'emmagatzematge (on es desen les fotos del DNI,
+  // xifrades). Escriu un fitxer de prova i l'esborra. Si falla, desar documents
+  // fallarà (p.ex. Supabase no configurat i el disc local no és escrivible a Vercel).
+  const supabase = Boolean(getSupabaseStorageConfig());
+  let storage: { supabase: boolean; writable: boolean; backend: string; error?: string };
+  try {
+    const rel = await saveUpload(Buffer.from('health-probe'), 'health-probe.txt');
+    await deleteUpload(rel);
+    storage = { supabase, writable: true, backend: supabase ? 'supabase' : 'disc-local' };
+  } catch (e) {
+    storage = {
+      supabase,
+      writable: false,
+      backend: supabase ? 'supabase' : 'disc-local',
+      error: e instanceof Error ? e.message : 'unknown',
+    };
+  }
+
+  const ready =
+    db === 'ok' && tablesReady && establiment && env.JWT_SECRET && env.DOCUMENT_ENCRYPTION_KEY && storage.writable;
 
   return NextResponse.json(
     {
@@ -35,6 +57,7 @@ export async function GET() {
       tablesReady,
       seed: { establiment, usuaris },
       env,
+      storage,
       ...(detail ? { detail } : {}),
       hint: ready
         ? 'Tot a punt.'
@@ -44,7 +67,9 @@ export async function GET() {
             ? 'No es connecta a la BD o falten taules: executa `prisma migrate deploy`.'
             : !establiment
               ? 'Falta el seed: executa `pnpm db:seed`.'
-              : 'Revisa la configuració.',
+              : !storage.writable
+                ? 'L’emmagatzematge de fitxers no és escrivible: configura Supabase Storage (SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY + bucket). Per això no es desen les fotos del DNI.'
+                : 'Revisa la configuració.',
     },
     { status: ready ? 200 : 503 },
   );
