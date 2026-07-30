@@ -40,18 +40,18 @@ describe('descriuTasques (una línia per habitació)', () => {
         ],
         'es',
       ),
-    ).toBe('- Núm. 1: mantenimiento.\n- Núm. 4: mantenimiento.\n- Núm. 5: salida.');
+    ).toBe('- Núm. 1. mantenimiento.\n- Núm. 4. mantenimiento.\n- Núm. 5. salida.');
   });
-  it('afegeix la nota d’animal (català)', () => {
+  it('afegeix la nota d’animal amb coma (català)', () => {
     expect(
       descriuTasques([{ habitacio: '2', tipus: 'REPAS', animal: 'un gat' }], 'ca'),
-    ).toBe('- Núm. 2: manteniment. Hi ha un animal de companyia, un gat.');
+    ).toBe('- Núm. 2. manteniment, hi ha un animal de companyia, un gat.');
   });
   it('descriu en català', () => {
-    expect(descriuTasques([{ habitacio: '3', tipus: 'CANVI_COMPLET' }], 'ca')).toBe('- Núm. 3: sortida.');
+    expect(descriuTasques([{ habitacio: '3', tipus: 'CANVI_COMPLET' }], 'ca')).toBe('- Núm. 3. sortida.');
   });
   it('descriu en anglès', () => {
-    expect(descriuTasques([{ habitacio: '4', tipus: 'REPAS' }], 'en')).toBe('- Room 4: maintenance.');
+    expect(descriuTasques([{ habitacio: '4', tipus: 'REPAS' }], 'en')).toBe('- Room 4. maintenance.');
   });
   it('sense tasques', () => {
     expect(descriuTasques([], 'es')).toBe('no hay habitaciones asignadas');
@@ -84,12 +84,11 @@ describe('plantilla de neteja (multilínia)', () => {
     'es',
   );
 
-  it('missatge complet amb zones i hora', () => {
+  it('missatge complet amb hora (zones fixes al text)', () => {
     const msg = netejaLinies(
       fillTemplate(PLANTILLA_NETEJA.es, {
         nom: 'Rossy',
         habitacions,
-        zones: zonesComunesTxt('es', { pasillo: true, pati: true, vorera: true }),
         hora: fillTemplate(HORA_NETEJA_TXT.es, { hora: '11:00' }),
       }),
     );
@@ -97,25 +96,25 @@ describe('plantilla de neteja (multilínia)', () => {
       '¡Hola Rossy! 😊\n' +
         'Te paso el trabajo de mañana:\n' +
         '🛏️ Habitaciones:\n' +
-        '- Núm. 1: mantenimiento.\n' +
-        '- Núm. 4: mantenimiento.\n' +
-        '- Núm. 5: salida.\n' +
+        '- Núm. 1. mantenimiento.\n' +
+        '- Núm. 4. mantenimiento.\n' +
+        '- Núm. 5. salida.\n' +
         'Ten en cuenta que cada día también habrá que hacer el pasillo, el patio y la acera. Puedes venir sobre las 11:00.\n' +
         '¡Muchas gracias!',
     );
   });
 
-  it('opcions desactivades no deixen rastre (ni línies buides)', () => {
+  it('sense hora: la frase de zones surt igualment (és fixa)', () => {
     const msg = netejaLinies(
       fillTemplate(PLANTILLA_NETEJA.es, {
         nom: 'Rossy',
         habitacions: descriuTasques([{ habitacio: '1', tipus: 'CANVI_COMPLET' }], 'es'),
-        zones: '',
         hora: '',
       }),
     );
     expect(msg).toBe(
-      '¡Hola Rossy! 😊\nTe paso el trabajo de mañana:\n🛏️ Habitaciones:\n- Núm. 1: salida.\n¡Muchas gracias!',
+      '¡Hola Rossy! 😊\nTe paso el trabajo de mañana:\n🛏️ Habitaciones:\n- Núm. 1. salida.\n' +
+        'Ten en cuenta que cada día también habrá que hacer el pasillo, el patio y la acera.\n¡Muchas gracias!',
     );
   });
 });

@@ -51,10 +51,10 @@ export const PLANTILLA_GRACIES: Record<Lang, string> = {
  * Format multilínia: habitacions agrupades per tipus + zones comunes en una frase.
  */
 export const PLANTILLA_NETEJA: Record<Lang, string> = {
-  ca: 'Hola {nom}! 😊\nEt passo la feina de demà:\n🛏️ Habitacions:\n{habitacions}\n{zones}{hora}\nMoltes gràcies!',
-  es: '¡Hola {nom}! 😊\nTe paso el trabajo de mañana:\n🛏️ Habitaciones:\n{habitacions}\n{zones}{hora}\n¡Muchas gracias!',
-  fr: 'Bonjour {nom} ! 😊\nVoici le travail de demain :\n🛏️ Chambres :\n{habitacions}\n{zones}{hora}\nMerci beaucoup !',
-  en: 'Hi {nom}! 😊\nHere is tomorrow’s work:\n🛏️ Rooms:\n{habitacions}\n{zones}{hora}\nThank you so much!',
+  ca: 'Hola {nom}! 😊\nEt passo la feina de demà:\n🛏️ Habitacions:\n{habitacions}\nCal tenir en compte que cada dia també caldrà fer el passadís, el pati i la vorera.{hora}\nMoltes gràcies!',
+  es: '¡Hola {nom}! 😊\nTe paso el trabajo de mañana:\n🛏️ Habitaciones:\n{habitacions}\nTen en cuenta que cada día también habrá que hacer el pasillo, el patio y la acera.{hora}\n¡Muchas gracias!',
+  fr: 'Bonjour {nom} ! 😊\nVoici le travail de demain :\n🛏️ Chambres :\n{habitacions}\nÀ noter que chaque jour il faudra aussi faire le couloir, la cour et le trottoir.{hora}\nMerci beaucoup !',
+  en: 'Hi {nom}! 😊\nHere is tomorrow’s work:\n🛏️ Rooms:\n{habitacions}\nPlease note that every day you’ll also need to do the hallway, the patio and the sidewalk.{hora}\nThank you so much!',
 };
 
 /** Neteja un missatge multilínia: treu espais sobrants i línies buides. */
@@ -158,10 +158,10 @@ const NETEJA_TXT: Record<
   Lang,
   { sing: string; plur: string; art: string; i: string; salida: string; repas: string; none: string; sep: string; zones: string; num: string; petPrefix: string }
 > = {
-  ca: { sing: "l’habitació", plur: "les habitacions", art: "la ", i: " i ", salida: "sortida", repas: "manteniment", none: "cap habitació assignada", sep: ": ", zones: "les zones comunes (passadís, vorera i pati)", num: "Núm. ", petPrefix: "Hi ha un animal de companyia, " },
-  es: { sing: "la habitación", plur: "las habitaciones", art: "la ", i: " y ", salida: "salida", repas: "mantenimiento", none: "no hay habitaciones asignadas", sep: ": ", zones: "las zonas comunes (pasillo, acera y patio)", num: "Núm. ", petPrefix: "Hay un animal de compañía, " },
-  fr: { sing: "la chambre", plur: "les chambres", art: "la ", i: " et ", salida: "départ", repas: "entretien", none: "aucune chambre assignée", sep: " : ", zones: "les parties communes (couloir, trottoir et cour)", num: "Nº ", petPrefix: "Il y a un animal de compagnie, " },
-  en: { sing: "room", plur: "rooms", art: "", i: " and ", salida: "checkout", repas: "maintenance", none: "no rooms assigned", sep: ": ", zones: "common areas (hallway, sidewalk and patio)", num: "Room ", petPrefix: "There is a pet, " },
+  ca: { sing: "l’habitació", plur: "les habitacions", art: "la ", i: " i ", salida: "sortida", repas: "manteniment", none: "cap habitació assignada", sep: ". ", zones: "les zones comunes (passadís, vorera i pati)", num: "Núm. ", petPrefix: "hi ha un animal de companyia, " },
+  es: { sing: "la habitación", plur: "las habitaciones", art: "la ", i: " y ", salida: "salida", repas: "mantenimiento", none: "no hay habitaciones asignadas", sep: ". ", zones: "las zonas comunes (pasillo, acera y patio)", num: "Núm. ", petPrefix: "hay un animal de compañía, " },
+  fr: { sing: "la chambre", plur: "les chambres", art: "la ", i: " et ", salida: "départ", repas: "entretien", none: "aucune chambre assignée", sep: ". ", zones: "les parties communes (couloir, trottoir et cour)", num: "Nº ", petPrefix: "il y a un animal de compagnie, " },
+  en: { sing: "room", plur: "rooms", art: "", i: " and ", salida: "checkout", repas: "maintenance", none: "no rooms assigned", sep: ". ", zones: "common areas (hallway, sidewalk and patio)", num: "Room ", petPrefix: "there is a pet, " },
 };
 
 /** Etiqueta curta del tipus de neteja (per a selectors). */
@@ -188,11 +188,13 @@ export function descriuTasques(
   for (const x of tasques) {
     if (x.habitacio === null) continue;
     const tip = x.tipus === 'CANVI_COMPLET' ? t.salida : t.repas;
-    let line = `- ${t.num}${x.habitacio}${t.sep}${tip}.`;
+    // "- Núm. 6. manteniment" i, si hi ha notes/animal, s'hi afegeixen amb coma:
+    // "- Núm. 2. manteniment, hi ha un animal de companyia, un gat."
+    let line = `- ${t.num}${x.habitacio}${t.sep}${tip}`;
     const extres: string[] = [];
     if (x.notes && x.notes.trim()) extres.push(x.notes.trim());
-    if (x.animal && x.animal.trim()) extres.push(`${t.petPrefix}${x.animal.trim()}.`);
-    if (extres.length) line += ` ${extres.join(' ')}`;
+    if (x.animal && x.animal.trim()) extres.push(`${t.petPrefix}${x.animal.trim()}`);
+    line += extres.length ? `, ${extres.join(', ')}.` : '.';
     linies.push(line);
   }
   // Zones comunes (tasques sense habitació), cadascuna a la seva línia.

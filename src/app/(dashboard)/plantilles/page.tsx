@@ -19,7 +19,6 @@ import {
   descriuTasques,
   tipusNetejaLabel,
   netejaLinies,
-  zonesComunesTxt,
   PLANTILLA_HOSTE,
   PLANTILLA_NETEJA,
   PLANTILLA_BENVINGUDA,
@@ -66,10 +65,11 @@ function loadTpls(kind: 'hoste' | 'neteja' | 'benvinguda'): Record<Lang, string>
   (Object.keys(base) as Lang[]).forEach((l) => {
     const key = `plantilla_${kind}_${l}`;
     const saved = lsGet(key, base[l]);
-    // Descarta plantilles de neteja desades amb el FORMAT ANTIC (feien servir
-    // {data}, variable que ja no existeix): així es mostra el format nou
-    // (🛏️ Habitacions, una línia per habitació) sense haver de restaurar-les a mà.
-    if (kind === 'neteja' && saved.includes('{data}')) {
+    // Descarta plantilles de neteja desades amb un FORMAT ANTIC (feien servir
+    // {data} o {zones}, variables que ja no existeixen): així es mostra el format
+    // nou (🛏️ Habitacions una línia per habitació, i zones fixes al text) sense
+    // haver de restaurar-les a mà.
+    if (kind === 'neteja' && (saved.includes('{data}') || saved.includes('{zones}'))) {
       try { window.localStorage.removeItem(key); } catch { /* ignora */ }
       out[l] = base[l];
     } else {
@@ -189,10 +189,6 @@ function NetejaCard() {
   const [treballadors, setTreballadors] = useState<Treballador[]>([]);
   const [treballadorId, setTreballadorId] = useState('');
   const [tasques, setTasques] = useState<Tasca[]>([]);
-  // Zones comunes: per defecte TOTES activades (passadís, pati i vorera).
-  const [pasillo, setPasillo] = useState(true);
-  const [pati, setPati] = useState(true);
-  const [vorera, setVorera] = useState(true);
   const [mostrarHora, setMostrarHora] = useState(false);
   const [hora, setHora] = useState('15:00');
   const [lang, setLang] = useState<Lang>('es');
@@ -271,7 +267,6 @@ function NetejaCard() {
       netejaLinies(
         fillTemplate(tpls[lang], {
           nom: treballador?.nom ?? '',
-          data: formatDate(data),
           habitacions: descriuTasques(
             meves.map((t) => {
               const hab = t.habitacio?.nom ?? null;
@@ -280,19 +275,11 @@ function NetejaCard() {
             }),
             lang,
           ),
-          // Zones comunes combinades en una sola frase ("También el pasillo, el patio y la acera.").
-          zones: zonesComunesTxt(lang, { pasillo, pati, vorera }),
-          // Compatibilitat amb plantilles desades antigues ({pasillo}{pati}{vorera}):
-          // la frase combinada va al primer forat i els altres queden buits, així
-          // MAI surt "También el pasillo. También el patio. També la acera.".
-          pasillo: ` ${zonesComunesTxt(lang, { pasillo, pati, vorera })}`,
-          pati: '',
-          vorera: '',
           hora: mostrarHora ? fillTemplate(HORA_NETEJA_TXT[lang], { hora }) : '',
         }),
       ),
     );
-  }, [tpls, lang, treballador, data, tasques, mascotesPerHab, pasillo, pati, vorera, mostrarHora, hora]);
+  }, [tpls, lang, treballador, tasques, mascotesPerHab, mostrarHora, hora]);
 
   // Canvia el tipus d'una habitació (salida/repàs) i ho desa a la tasca.
   async function setTipus(id: string, tipus: 'CANVI_COMPLET' | 'REPAS') {
@@ -333,16 +320,6 @@ function NetejaCard() {
           </Field>
           <Field label="Idioma">
             <LangSelect value={lang} onChange={setLang} />
-          </Field>
-          <Field label="Zones comunes">
-            <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={pasillo && pati && vorera}
-                onChange={(e) => { setPasillo(e.target.checked); setPati(e.target.checked); setVorera(e.target.checked); }}
-              />
-              Passadís, vorera i pati
-            </label>
           </Field>
           <Field label="Hora aproximada">
             <div className="flex h-10 items-center gap-2 text-sm text-slate-700">
@@ -437,8 +414,7 @@ function NetejaCard() {
           <Textarea className="mt-2" rows={2} value={tpls[editLang]} onChange={(e) => saveTpl(e.target.value)} />
           <div className="mt-1 flex items-center justify-between gap-2">
             <p className="text-xs text-slate-400">
-              Variables: {'{nom}'} {'{data}'} {'{habitacions}'} {'{pasillo}'} {'{pati}'} {'{vorera}'}{' '}
-              {'{hora}'}. Es desa al navegador.
+              Variables: {'{nom}'} {'{habitacions}'} {'{hora}'}. Les zones comunes (passadís, pati i vorera) ja van fixes al text. Es desa al navegador.
             </p>
             <Button type="button" variant="ghost" size="sm" onClick={restaurar}>
               <RotateCcw className="h-3.5 w-3.5" /> Restaurar per defecte
