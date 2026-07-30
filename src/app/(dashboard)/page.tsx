@@ -106,7 +106,7 @@ export default async function DashboardPage() {
   const itemsFitxes: AvisItem[] = fitxesPendents.map((f) => ({
     key: f.id,
     nom: `${f.nom} · ${f.contracte}`,
-    sub: `Falten ${f.total}: ${f.resum}`,
+    sub: `Falta: ${f.resum}`,
     href: `/estancies/${f.id}`,
   }));
 

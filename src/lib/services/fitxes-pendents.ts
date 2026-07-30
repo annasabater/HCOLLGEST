@@ -39,17 +39,29 @@ export async function fitxesDadesPendents(limit = 50): Promise<FitxaPendent[]> {
     const total = faltes.generals.length + faltes.perViatger.reduce((a, g) => a + g.faltes.length, 0);
     if (total === 0) continue;
     const t = e.viatgers.find((v) => v.esTitular)?.huesped ?? e.viatgers[0]?.huesped ?? null;
-    // Resum curt: nom (només primer nom) + les seves faltes, per cada viatger.
-    const parts = [
-      ...faltes.generals,
-      ...faltes.perViatger.map((g) => `${g.viatger.split(' ')[0]}: ${g.faltes.join(', ')}`),
-    ];
+    // Resum MOLT breu per a la targeta: només el nom del camp que falta (sense
+    // "falta el", sense parèntesis ni valors), p. ex. "número de suport, parentesc".
+    const terse = (s: string) =>
+      s
+        .replace(/^falta (el |la |l’|l'|els |les )?/i, '')
+        .replace(/\s*\([^)]*\)/g, '')
+        .replace(/«[^»]*»\s*/g, '')
+        .replace(/codi ISO/gi, 'ISO')
+        .replace(/codi INE/gi, 'INE')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const viatgersTerse = faltes.perViatger.map((g) => ({ nom: g.viatger.split(' ')[0], camps: g.faltes.map(terse) }));
+    // Un sol viatger i sense errors generals → no cal repetir el nom.
+    const resum =
+      faltes.generals.length === 0 && viatgersTerse.length === 1
+        ? viatgersTerse[0]!.camps.join(', ')
+        : [...faltes.generals.map(terse), ...viatgersTerse.map((g) => `${g.nom}: ${g.camps.join(', ')}`)].join(' · ');
     out.push({
       id: e.id,
       nom: t ? `${t.nom} ${t.cognom1}` : '—',
       contracte: `${e.numContracte}/${e.anyContracte}`,
       total,
-      resum: parts.join(' · '),
+      resum,
     });
     if (out.length >= limit) break;
   }
