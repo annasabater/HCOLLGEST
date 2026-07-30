@@ -16,6 +16,18 @@ import { GRUP_TARIFA, type GrupTarifa } from '../validation/tarifa-tipus';
 const n = (d: unknown) => (d == null ? null : Number(d));
 const r2 = (x: number) => Math.round((x + Number.EPSILON) * 100) / 100;
 const addDies = (d: Date, dies: number) => { const x = new Date(d); x.setDate(x.getDate() + dies); return x; };
+// Suma `m` mesos de CALENDARI mantenint el dia del mes (clamp al darrer dia si
+// el mes destí no el té: 31/01 + 1 mes → 28/02). Així un "mes" va del dia X al
+// mateix dia del mes següent, tingui 28, 30 o 31 dies.
+const addMesos = (d: Date, m: number) => {
+  const x = new Date(d);
+  const dia = x.getDate();
+  x.setDate(1);
+  x.setMonth(x.getMonth() + m);
+  const ultimDia = new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate();
+  x.setDate(Math.min(dia, ultimDia));
+  return x;
+};
 const MESOS_CA = ['gener', 'febrer', 'març', 'abril', 'maig', 'juny', 'juliol', 'agost', 'setembre', 'octubre', 'novembre', 'desembre'];
 
 export interface LiniaCalcul {
@@ -67,10 +79,27 @@ function preusDe(f: { preuDia: unknown; preuDia4: unknown; preuSetmana: unknown;
 }
 const esBuida = (p: Preus) => p.preuDia == null && p.preuDia4 == null && p.preuSetmana == null && p.preuDosSetmanes == null && p.preuMes == null;
 
-/** Desglossa `nits` en blocs (mes/2setm/setmana) i dies, amb el preu de cada tram. */
-function desglossa(nits: number, p: Preus): LiniaCalcul[] {
+/**
+ * Desglossa una estada [desde, fins) en MESOS DE CALENDARI + 2 setmanes + setmana
+ * + dies, amb el preu de cada tram. Un mes és del dia X al mateix dia del mes
+ * següent (no 30 nits fixos): 01/08→01/09 = 1 mes, 01/02→01/04 = 2 mesos. El dia
+ * de sortida no es paga (no dormen aquella nit).
+ */
+function desglossa(desde: Date, fins: Date, p: Preus): LiniaCalcul[] {
   const linies: LiniaCalcul[] = [];
-  let rem = nits;
+
+  // 1) Mesos de calendari complets.
+  let cursor = new Date(desde);
+  if (p.preuMes) {
+    let mesos = 0;
+    while (addMesos(cursor, 1) <= fins) { cursor = addMesos(cursor, 1); mesos++; }
+    if (mesos > 0) {
+      linies.push({ concepte: 'Mes', quantitat: mesos, preuUnitat: p.preuMes, subtotal: r2(mesos * p.preuMes) });
+    }
+  }
+
+  // 2) Nits que sobren després de l'últim mes complet.
+  let rem = nights(cursor, fins);
   const bloc = (preu: number | null, dies: number, nom: string) => {
     if (!preu || rem < dies) return;
     const q = Math.floor(rem / dies);
@@ -78,7 +107,6 @@ function desglossa(nits: number, p: Preus): LiniaCalcul[] {
     linies.push({ concepte: nom, quantitat: q, preuUnitat: preu, subtotal: r2(q * preu) });
     rem -= q * dies;
   };
-  bloc(p.preuMes, 30, 'Mes');
   bloc(p.preuDosSetmanes, 14, '2 setmanes');
   bloc(p.preuSetmana, 7, 'Setmana');
   if (rem > 0) {
@@ -148,7 +176,7 @@ export async function calcularPreu(opts: {
     let j = i + 1;
     while (j < nits && filaDe(j).fila.id === start.fila.id) j++;
     const segNits = j - i;
-    const linies = desglossa(segNits, start.preus);
+    const linies = desglossa(addDies(opts.entrada, i), addDies(opts.entrada, j), start.preus);
     segments.push({
       etiqueta: start.fila.etiqueta,
       desde: toISODate(addDies(opts.entrada, i)),
