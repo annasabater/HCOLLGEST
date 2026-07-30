@@ -73,13 +73,7 @@ export function EstanciaActions({
     <div className="space-y-4">
       {esAmpliacio && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
-          <p className="font-medium">Ampliació — normalment no cal reenviar a Mossos.</p>
-          <p className="mt-0.5 text-blue-700">
-            Aquests hostes ja es van comunicar en l’estada original. Segons el manual (§4):{' '}
-            <em>«només cal trametre les altes de cada client… no cal tornar a relacionar els
-            clients que ja han estat informats en enviaments anteriors».</em> Pots generar el
-            fitxer igualment si vols comunicar la nova estada, però sigues-ne conscient.
-          </p>
+          <p>Ampliació: els hostes ja es van comunicar a Mossos a l’estada original; normalment no cal reenviar-los (§4).</p>
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2">
