@@ -95,8 +95,8 @@ export function extreuErrorsMossos(raw: string): string | null {
     .split('\n')
     .filter(Boolean)
     .map((l) => {
-      const m2 = l.match(/^•\s*(L[íi]nia\s*\d+)\s*:\s*(.*)$/i);
-      return m2 ? `• ${m2[1]}: ${resumErrorMossos(m2[2] ?? '')}` : l;
+      const m2 = l.match(/^•\s*L[íi]nia\s*\d+\s*:\s*(.*)$/i);
+      return m2 ? `• ${resumErrorMossos(m2[1] ?? '')}` : l;
     });
   return linies.join('\n') || null;
 }
