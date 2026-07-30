@@ -310,16 +310,16 @@ export function validaParteFaltes(parte: ParteViatgers): FaltesParte {
       if (!v.codiPostal?.trim()) f.push('falta el codi postal');
       if (esEspanya(v.pais)) {
         if (!v.provincia?.trim()) f.push('falta la província');
-        else if (!provinciaToINE(v.provincia)) f.push(`província «${v.provincia}» sense codi INE`);
+        else if (!provinciaToINE(v.provincia)) f.push(`província «${v.provincia}» no reconeguda`);
         if (!v.municipi?.trim()) f.push('falta el municipi');
-        else if (!municipiToINE(provinciaToINE(v.provincia), v.municipi)) f.push(`municipi «${v.municipi}» no trobat al padró INE`);
+        else if (!municipiToINE(provinciaToINE(v.provincia), v.municipi)) f.push(`municipi «${v.municipi}» no trobat`);
       } else if (v.pais?.trim()) {
         if (!paisToISO3(v.pais)) isoDolents.add(v.pais.trim());
         if (!v.localitat?.trim()) f.push('falta la localitat (estranger)');
       }
     }
 
-    for (const val of isoDolents) f.push(`nacionalitat/país «${val}» sense codi ISO (revisa'l)`);
+    for (const val of isoDolents) f.push(`nacionalitat/país «${val}» no reconegut (escriu-hi el nom del país)`);
     if (f.length) perViatger.push({ viatger: label, faltes: f });
   });
 

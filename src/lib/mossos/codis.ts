@@ -306,13 +306,33 @@ function paisIso3Norm(): Record<string, string> {
   return PAIS_ISO3_NORM;
 }
 
+// Gentilicis i noms en altres idiomes → ISO3 (per si al document surt així,
+// p. ex. un passaport neerlandès posa "NEDERLANDSE"). Clau sense accents.
+const PAIS_ALIAS: Record<string, string> = {
+  nederlandse: 'NLD', nederland: 'NLD', holanda: 'NLD', holandes: 'NLD', holandesa: 'NLD',
+  neerlandes: 'NLD', neerlandesa: 'NLD', dutch: 'NLD',
+  espanola: 'ESP', espanyola: 'ESP', espanol: 'ESP', espanyol: 'ESP', spanish: 'ESP',
+  francesa: 'FRA', frances: 'FRA', francaise: 'FRA', french: 'FRA',
+  britanica: 'GBR', britanico: 'GBR', british: 'GBR', anglesa: 'GBR', ingles: 'GBR', inglesa: 'GBR',
+  alemana: 'DEU', aleman: 'DEU', alemanya: 'DEU', deutsche: 'DEU', german: 'DEU',
+  italiana: 'ITA', italiano: 'ITA', italian: 'ITA',
+  portuguesa: 'PRT', portugues: 'PRT', portuguese: 'PRT',
+  marroqui: 'MAR', marroquina: 'MAR', marocaine: 'MAR',
+  ucrainesa: 'UKR', ucraines: 'UKR', ukrainian: 'UKR', ucraniana: 'UKR',
+  russa: 'RUS', rus: 'RUS', russian: 'RUS', rusa: 'RUS',
+  romanesa: 'ROU', romanes: 'ROU', rumana: 'ROU',
+};
+function normAccents(s: string): string {
+  return s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
 export function paisToISO3(nom: string | undefined | null): string | undefined {
   if (!nom) return undefined;
   const val = nom.trim();
   // Si ja ens donen un codi alfa-3, l'acceptem tal qual.
   if (/^[A-Za-z]{3}$/.test(val)) return val.toUpperCase();
-  // Coincidència exacta i, si no, sense distingir majúscules/minúscules.
-  return PAIS_ISO3[val] ?? paisIso3Norm()[val.toLowerCase()];
+  // Coincidència exacta, sense majúscules, o per gentilici/altre idioma.
+  return PAIS_ISO3[val] ?? paisIso3Norm()[val.toLowerCase()] ?? PAIS_ALIAS[normAccents(val)];
 }
 
 /** Determina si un país és Espanya (per nom o per codi ESP). */

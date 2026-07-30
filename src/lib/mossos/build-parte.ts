@@ -55,7 +55,9 @@ export function buildParteFromDb(
         email: h.email ?? undefined,
         telefon: h.telefon ?? undefined,
         parentesc: row.parentesc ?? undefined,
-        esMenor: row.esMenor || isMenor(h.dataNaixement, estancia.dataEntrada!),
+        // Si tenim data de naixement, MANA la data (no una marca antiga que pot
+        // haver quedat desactualitzada): així un adult no surt mai com a "menor".
+        esMenor: h.dataNaixement ? isMenor(h.dataNaixement, estancia.dataEntrada ?? new Date()) : row.esMenor,
         adreca: h.adreca ?? undefined,
         pais: h.pais ?? undefined,
         provincia: h.provincia ?? undefined,
