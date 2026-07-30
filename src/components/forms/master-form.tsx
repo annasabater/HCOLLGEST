@@ -289,6 +289,21 @@ export function MasterForm({
     return () => { cancel = true; };
   }, [isEdit, estancia.anyContracte, estancia.numContracte]);
 
+  // Genera (o regenera) el següent número de contracte a petició, des del botó.
+  // Útil si la proposta automàtica ha fallat o s'ha esborrat el número.
+  async function generarNumero() {
+    try {
+      const r = await getJSON<{ numero: string }>(
+        `/api/estancies/next-numero?any=${encodeURIComponent(estancia.anyContracte)}`,
+      );
+      numeroPrefilled.current = true;
+      setEstancia((prev) => ({ ...prev, numContracte: r.numero }));
+      setNumeroConfirmat(true);
+    } catch {
+      /* si falla, l'usuari l'escriu a mà */
+    }
+  }
+
   const esReserva = tipusRegistre === 'RESERVA';
 
   const setV = (i: number, patch: Partial<ViatgerState>) =>
@@ -790,8 +805,21 @@ export function MasterForm({
               <button
                 type="button"
                 disabled={numeroOcupat}
-                onClick={() => { if (!numeroOcupat) setNumeroConfirmat(true); }}
-                title={numeroOcupat ? 'Aquest número ja està en ús' : numeroConfirmat ? 'Número confirmat' : 'Confirmar aquest número'}
+                onClick={() => {
+                  if (numeroOcupat) return;
+                  // Camp buit → genera el següent número; si ja n'hi ha, el confirma.
+                  if (estancia.numContracte.trim() === '') void generarNumero();
+                  else setNumeroConfirmat(true);
+                }}
+                title={
+                  numeroOcupat
+                    ? 'Aquest número ja està en ús'
+                    : estancia.numContracte.trim() === ''
+                      ? 'Generar el següent número'
+                      : numeroConfirmat
+                        ? 'Número confirmat'
+                        : 'Confirmar aquest número'
+                }
                 aria-pressed={numeroConfirmat}
                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors ${
                   numeroOcupat
