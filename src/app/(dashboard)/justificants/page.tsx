@@ -13,7 +13,7 @@ import { EnviarCorreuButton } from '@/components/justificants/enviar-correu-butt
 import { FitxaExpandible } from '@/components/justificants/fitxa-expandible';
 import { JustificantsFiltres } from '@/components/justificants/justificants-filtres';
 import { buildParteFromDb } from '@/lib/mossos/build-parte';
-import { validaParteErrors } from '@/lib/mossos/fitxer';
+import { validaParteFaltes, type FaltesParte } from '@/lib/mossos/fitxer';
 import { formatDate } from '@/lib/utils';
 import { ageAt } from '@/lib/dates';
 
@@ -75,18 +75,19 @@ export default async function JustificantsPage({
 
   const fitxes = estancies.map((e) => {
     const titular = e.viatgers.find((v) => v.esTitular)?.huesped ?? e.viatgers[0]?.huesped ?? null;
-    let faltes: string[] = [];
+    let faltes: FaltesParte = { generals: [], perViatger: [] };
     if (establiment) {
-      try { faltes = validaParteErrors(buildParteFromDb(establiment, e, e.viatgers)); } catch { faltes = []; }
+      try { faltes = validaParteFaltes(buildParteFromDb(establiment, e, e.viatgers)); } catch { faltes = { generals: [], perViatger: [] }; }
     }
+    const total = faltes.generals.length + faltes.perViatger.reduce((a, g) => a + g.faltes.length, 0);
     // Declaració IEET si hi ha algun menor de 17 anys (exempció impost turístic).
     const refMenor = e.dataEntrada ?? new Date();
     const teMenor = e.viatgers.some(
       (v) => v.huesped?.dataNaixement && ageAt(v.huesped.dataNaixement, refMenor) < 17,
     );
-    return { e, titular, faltes, teMenor };
+    return { e, titular, faltes, total, teMenor };
   });
-  const nPendents = fitxes.filter((f) => f.faltes.length > 0 && !f.e.avisDadesParat).length;
+  const nPendents = fitxes.filter((f) => f.total > 0 && !f.e.avisDadesParat).length;
 
   return (
     <div className="space-y-8">
@@ -168,8 +169,8 @@ export default async function JustificantsPage({
                 </tr>
               </Thead>
               <tbody>
-                {fitxes.map(({ e, titular, faltes, teMenor }) => {
-                  const pendents = faltes.length > 0;
+                {fitxes.map(({ e, titular, faltes, total, teMenor }) => {
+                  const pendents = total > 0;
                   const mostraAvis = pendents && !e.avisDadesParat;
                   const env = e.enviaments[0]; // darrer enviament a Mossos (si n'hi ha)
                   return (
@@ -203,16 +204,21 @@ export default async function JustificantsPage({
                           <div className="space-y-1">
                             <div className="flex items-center gap-1">
                               {mostraAvis ? (
-                                <Badge tone="warning">Pendents ({faltes.length})</Badge>
+                                <Badge tone="warning">Pendents ({total})</Badge>
                               ) : (
                                 <Badge tone="neutral">Avís silenciat</Badge>
                               )}
                               <SilenciarAvis estanciaId={e.id} parat={e.avisDadesParat} />
                             </div>
-                            {/* Detall del que falta, perquè sàpigues què completar. */}
-                            <ul className="max-w-xs list-disc space-y-0.5 pl-4 text-xs text-amber-700">
-                              {faltes.map((f, i) => (
-                                <li key={i}>{f}</li>
+                            {/* Detall AGRUPAT per viatger (el nom un sol cop). */}
+                            <ul className="max-w-xs space-y-1 pl-1 text-xs text-amber-700">
+                              {faltes.generals.map((g, i) => (
+                                <li key={`g${i}`}>{g}</li>
+                              ))}
+                              {faltes.perViatger.map((g, i) => (
+                                <li key={i}>
+                                  <span className="font-medium">{g.viatger}:</span> {g.faltes.join(', ')}
+                                </li>
                               ))}
                             </ul>
                           </div>

@@ -1,13 +1,14 @@
 import 'server-only';
 import { prisma } from '../db';
 import { buildParteFromDb } from '../mossos/build-parte';
-import { validaParteErrors } from '../mossos/fitxer';
+import { validaParteFaltes } from '../mossos/fitxer';
 
 export interface FitxaPendent {
   id: string;
   nom: string;
   contracte: string;
-  faltes: string[];
+  total: number;  // nombre total de faltes
+  resum: string;  // resum curt agrupat per viatger (nom un cop)
 }
 
 /**
@@ -33,15 +34,22 @@ export async function fitxesDadesPendents(limit = 50): Promise<FitxaPendent[]> {
 
   const out: FitxaPendent[] = [];
   for (const e of estancies) {
-    let faltes: string[] = [];
-    try { faltes = validaParteErrors(buildParteFromDb(establiment, e, e.viatgers)); } catch { faltes = []; }
-    if (faltes.length === 0) continue;
+    let faltes = { generals: [] as string[], perViatger: [] as { viatger: string; faltes: string[] }[] };
+    try { faltes = validaParteFaltes(buildParteFromDb(establiment, e, e.viatgers)); } catch { /* ignora */ }
+    const total = faltes.generals.length + faltes.perViatger.reduce((a, g) => a + g.faltes.length, 0);
+    if (total === 0) continue;
     const t = e.viatgers.find((v) => v.esTitular)?.huesped ?? e.viatgers[0]?.huesped ?? null;
+    // Resum curt: nom (només primer nom) + les seves faltes, per cada viatger.
+    const parts = [
+      ...faltes.generals,
+      ...faltes.perViatger.map((g) => `${g.viatger.split(' ')[0]}: ${g.faltes.join(', ')}`),
+    ];
     out.push({
       id: e.id,
       nom: t ? `${t.nom} ${t.cognom1}` : '—',
       contracte: `${e.numContracte}/${e.anyContracte}`,
-      faltes,
+      total,
+      resum: parts.join(' · '),
     });
     if (out.length >= limit) break;
   }

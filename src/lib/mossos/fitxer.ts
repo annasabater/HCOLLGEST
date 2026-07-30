@@ -257,79 +257,81 @@ export function buildFitxerBuffer(parte: ParteViatgers, encoding: Encoding = CON
 // ----------------------------------------------------------------------------
 
 /** Llista d'errors que impedeixen pujar el fitxer (buida si tot és correcte). */
-export function validaParteErrors(parte: ParteViatgers): string[] {
-  const errs: string[] = [];
+/** Faltes agrupades per viatger (nom un cop) + errors generals de contracte. */
+export interface FaltesViatger { viatger: string; faltes: string[] }
+export interface FaltesParte { generals: string[]; perViatger: FaltesViatger[] }
+
+/**
+ * Validació agrupada i CONCISA per mostrar a l'usuari: un bloc per viatger amb
+ * el nom un sol cop i la llista curta del que falta. Fusiona el cas de
+ * nacionalitat i país amb el mateix valor sense codi ISO (no el repeteix).
+ */
+export function validaParteFaltes(parte: ParteViatgers): FaltesParte {
+  const generals: string[] = [];
+  const perViatger: FaltesViatger[] = [];
   const c = parte.contracte;
   const esReserva = c.tipusRegistre === 'RESERVA';
   const avui = new Date();
 
-  if (c.dataFormalitzacio > avui) errs.push('La data de contracte no pot ser futura');
-  if (c.dataSortida <= c.dataEntrada)
-    errs.push('La data de sortida ha de ser posterior a l’entrada');
+  if (c.dataFormalitzacio > avui) generals.push('La data de contracte no pot ser futura');
+  if (c.dataSortida <= c.dataEntrada) generals.push('La sortida ha de ser posterior a l’entrada');
 
   parte.viatgers.forEach((v, i) => {
-    // Etiqueta el viatger pel nom (si el tenim) perquè l'usuari sàpiga exactament
-    // qui té el problema; si encara no hi ha nom, hi posem el número d'ordre.
     const nomComplet = [v.nom?.trim(), v.cognom1?.trim(), v.cognom2?.trim()].filter(Boolean).join(' ');
-    const p = nomComplet ? `${nomComplet} (viatger ${i + 1})` : `Viatger ${i + 1}`;
-    if (!v.nom?.trim()) errs.push(`${p}: falta el nom`);
-    if (!v.cognom1?.trim()) errs.push(`${p}: falta el primer cognom`);
+    const label = nomComplet || `Viatger ${i + 1}`;
+    const f: string[] = [];
+    // Valors iguals sense codi ISO (nacionalitat i país) → un sol avís.
+    const isoDolents = new Set<string>();
 
-    // La nacionalitat, si s'informa, ha de tenir codi ISO (qualsevol tipus).
-    if (v.nacionalitat?.trim() && !paisToISO3(v.nacionalitat))
-      errs.push(`${p}: nacionalitat "${v.nacionalitat}" sense codi ISO 3166-1 (revisa el país)`);
+    if (!v.nom?.trim()) f.push('falta el nom');
+    if (!v.cognom1?.trim()) f.push('falta el primer cognom');
+    if (v.nacionalitat?.trim() && !paisToISO3(v.nacionalitat)) isoDolents.add(v.nacionalitat.trim());
 
     if (esReserva) {
-      if (!v.email?.trim() && !v.telefon?.trim())
-        errs.push(`${p}: en reserva cal email o telèfon`);
-      return;
+      if (!v.email?.trim() && !v.telefon?.trim()) f.push('en reserva cal email o telèfon');
+    } else {
+      // CONTRACTE EN CURS
+      if (!v.esMenor) {
+        if (!v.tipusDocument) f.push('falta el tipus de document');
+        if (!v.numDocument?.trim()) f.push('falta el número de document');
+      }
+      if (v.numDocument && v.numDocument.trim().length > 14) f.push('el número de document supera 14 caràcters');
+      if (v.tipusDocument === 'DNI_NIF' || v.tipusDocument === 'NIE') {
+        if (!v.numSuport?.trim()) f.push('falta el número de suport (DNI/NIE)');
+        else if (v.numSuport.trim().length !== 9) f.push('el número de suport ha de tenir 9 caràcters');
+      } else if (v.numSuport && v.numSuport.trim().length > 9) {
+        f.push('el número de suport supera 9 caràcters');
+      }
+      if (v.tipusDocument === 'DNI_NIF' && !v.cognom2?.trim()) f.push('falta el segon cognom (DNI/NIF)');
+      if (v.esMenor && !v.parentesc) f.push('falta el parentesc (menor)');
+      if (v.dataNaixement && v.dataNaixement > avui) f.push('la data de naixement no pot ser futura');
+      if (v.dataExpedicio && v.dataExpedicio > avui) f.push('la data d’expedició no pot ser futura');
+      if (!v.adreca?.trim()) f.push('falta l’adreça');
+      if (!v.codiPostal?.trim()) f.push('falta el codi postal');
+      if (esEspanya(v.pais)) {
+        if (!v.provincia?.trim()) f.push('falta la província');
+        else if (!provinciaToINE(v.provincia)) f.push(`província «${v.provincia}» sense codi INE`);
+        if (!v.municipi?.trim()) f.push('falta el municipi');
+        else if (!municipiToINE(provinciaToINE(v.provincia), v.municipi)) f.push(`municipi «${v.municipi}» no trobat al padró INE`);
+      } else if (v.pais?.trim()) {
+        if (!paisToISO3(v.pais)) isoDolents.add(v.pais.trim());
+        if (!v.localitat?.trim()) f.push('falta la localitat (estranger)');
+      }
     }
 
-    // CONTRACTE EN CURS
-    if (!v.esMenor) {
-      if (!v.tipusDocument) errs.push(`${p}: falta el tipus de document`);
-      if (!v.numDocument?.trim()) errs.push(`${p}: falta el número de document`);
-    }
-    // El número de document té un màxim de 14 caràcters al fitxer de Mossos.
-    if (v.numDocument && v.numDocument.trim().length > 14)
-      errs.push(
-        `${p}: el número de document "${v.numDocument.trim()}" supera els 14 caràcters (màxim de Mossos). Corregeix-lo.`,
-      );
-    if (v.tipusDocument === 'DNI_NIF' || v.tipusDocument === 'NIE') {
-      if (!v.numSuport?.trim()) errs.push(`${p}: falta el número de suport (DNI/NIE)`);
-      else if (v.numSuport.trim().length !== 9)
-        errs.push(`${p}: el número de suport ha de tenir 9 caràcters exactes`);
-    } else if (v.numSuport && v.numSuport.trim().length > 9) {
-      // Per a qualsevol document, Mossos limita el número de suport a 9 caràcters.
-      errs.push(
-        `${p}: el número de suport "${v.numSuport.trim()}" supera els 9 caràcters (màxim de Mossos). Escurça'l o deixa'l buit.`,
-      );
-    }
-    if (v.tipusDocument === 'DNI_NIF' && !v.cognom2?.trim())
-      errs.push(`${p}: falta el segon cognom (obligatori amb DNI/NIF)`);
-    if (v.esMenor && !v.parentesc) errs.push(`${p}: falta el parentesc (menor)`);
-    if (v.dataNaixement && v.dataNaixement > avui)
-      errs.push(`${p}: la data de naixement no pot ser futura`);
-    if (v.dataExpedicio && v.dataExpedicio > avui)
-      errs.push(`${p}: la data d’expedició no pot ser futura`);
-    if (!v.adreca?.trim()) errs.push(`${p}: falta l’adreça (contracte en curs)`);
-    if (!v.codiPostal?.trim()) errs.push(`${p}: falta el codi postal`);
-
-    // Dades postals: codificació INE (Espanya) o localitat (estranger).
-    if (esEspanya(v.pais)) {
-      if (!v.provincia?.trim()) errs.push(`${p}: falta la província (país = Espanya)`);
-      else if (!provinciaToINE(v.provincia))
-        errs.push(`${p}: província "${v.provincia}" sense codi INE`);
-      if (!v.municipi?.trim()) errs.push(`${p}: falta el municipi (país = Espanya)`);
-      else if (!municipiToINE(provinciaToINE(v.provincia), v.municipi))
-        errs.push(`${p}: municipi "${v.municipi}" no trobat al padró INE de la província`);
-    } else if (v.pais?.trim()) {
-      if (!paisToISO3(v.pais)) errs.push(`${p}: país "${v.pais}" sense codi ISO 3166-1`);
-      if (!v.localitat?.trim()) errs.push(`${p}: falta la localitat (país estranger)`);
-    }
+    for (const val of isoDolents) f.push(`nacionalitat/país «${val}» sense codi ISO (revisa'l)`);
+    if (f.length) perViatger.push({ viatger: label, faltes: f });
   });
 
-  return errs;
+  return { generals, perViatger };
+}
+
+/** Versió plana (per als llocs que necessiten un array de missatges: fitxer, logs). */
+export function validaParteErrors(parte: ParteViatgers): string[] {
+  const { generals, perViatger } = validaParteFaltes(parte);
+  const out = [...generals];
+  for (const g of perViatger) for (const f of g.faltes) out.push(`${g.viatger}: ${f}`);
+  return out;
 }
 
 /** Valida el parte i llança si falta algun requisit per pujar a Mossos. */
