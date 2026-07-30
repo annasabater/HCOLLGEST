@@ -200,10 +200,12 @@ export async function pujaFitxerAMossos(input: ConnectorInput): Promise<Connecto
 
     if (!exit) {
       const errors = extreuErrorsMossos(text);
+      // La gravació de la sessió es guarda al log (depuració), no al missatge.
+      console.error('[mossos] fitxer rebutjat. Gravació:', replay);
       const errorMsg = errors
-        ? `Mossos ha rebutjat el fitxer. Corregeix això i torna-ho a provar:\n${errors}\n\n(Gravació de la sessió: ${replay})`
-        : `El portal no ha acceptat el fitxer. Mira la gravació: ${replay} — Resposta: ${
-            text.replace(/\s+/g, ' ').trim().slice(0, 800) || 'sense missatge visible al portal'
+        ? `Mossos ha rebutjat el fitxer:\n${errors}`
+        : `Mossos no ha acceptat el fitxer. ${
+            text.replace(/\s+/g, ' ').trim().slice(0, 200) || 'sense missatge visible al portal'
           }`;
       return { ok: false, errorMsg };
     }
