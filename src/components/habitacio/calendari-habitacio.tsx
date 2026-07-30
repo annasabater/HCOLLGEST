@@ -25,7 +25,7 @@ const DOW = ['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'];
 // Colors de cada cel·la segons l'estat de l'estada que ocupa la nit.
 const ESTAT_CELL: Record<Estat, string> = {
   RESERVA: 'bg-amber-100 text-amber-900 hover:bg-amber-200',
-  EN_CURS: 'bg-brand-700 text-white hover:bg-brand-800',
+  EN_CURS: 'bg-brand-500 text-white hover:bg-brand-600',
   FINALITZADA: 'bg-slate-100 text-slate-500 hover:bg-slate-200',
   CANCELLADA: '',
 };
@@ -106,7 +106,7 @@ export function CalendariHabitacio({ habitacions }: { habitacions: { id: string;
       {/* Llegenda */}
       <div className="mb-3 flex flex-wrap gap-3 text-xs text-slate-500">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-sm bg-brand-700" /> Ocupada
+          <span className="inline-block h-3 w-3 rounded-sm bg-brand-500" /> Ocupada
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-3 w-3 rounded-sm bg-amber-200" /> Reservada

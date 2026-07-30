@@ -52,9 +52,9 @@ export const PLANTILLA_GRACIES: Record<Lang, string> = {
  */
 export const PLANTILLA_NETEJA: Record<Lang, string> = {
   ca: 'Hola {nom}! 😊\nEt passo la feina de demà:\n🛏️ Habitacions:\n{habitacions}\nTambé caldrà fer el passadís, el pati i la vorera.{hora}\nMoltes gràcies!',
-  es: '¡Hola {nom}! 😊\nTe paso el trabajo de mañana:\n🛏️ Habitaciones:\n{habitacions}\nTen en cuenta que cada día también habrá que hacer el pasillo, el patio y la acera.{hora}\n¡Muchas gracias!',
-  fr: 'Bonjour {nom} ! 😊\nVoici le travail de demain :\n🛏️ Chambres :\n{habitacions}\nÀ noter que chaque jour il faudra aussi faire le couloir, la cour et le trottoir.{hora}\nMerci beaucoup !',
-  en: 'Hi {nom}! 😊\nHere is tomorrow’s work:\n🛏️ Rooms:\n{habitacions}\nPlease note that every day you’ll also need to do the hallway, the patio and the sidewalk.{hora}\nThank you so much!',
+  es: '¡Hola {nom}! 😊\nTe paso el trabajo de mañana:\n🛏️ Habitaciones:\n{habitacions}\nTambién habrá que hacer el pasillo, el patio y la acera.{hora}\n¡Muchas gracias!',
+  fr: 'Bonjour {nom} ! 😊\nVoici le travail de demain :\n🛏️ Chambres :\n{habitacions}\nIl faudra aussi faire le couloir, la cour et le trottoir.{hora}\nMerci beaucoup !',
+  en: 'Hi {nom}! 😊\nHere is tomorrow’s work:\n🛏️ Rooms:\n{habitacions}\nYou’ll also need to do the hallway, the patio and the sidewalk.{hora}\nThank you so much!',
 };
 
 /** Neteja un missatge multilínia: treu espais sobrants i línies buides. */
@@ -75,10 +75,10 @@ export function zonesComunesTxt(
   opts: { pasillo?: boolean; pati?: boolean; vorera?: boolean },
 ): string {
   const NOMS: Record<Lang, { pasillo: string; pati: string; vorera: string; prefix: string; i: string }> = {
-    ca: { pasillo: 'el passadís', pati: 'el pati', vorera: 'la vorera', prefix: 'Cal tenir en compte que cada dia també caldrà fer ', i: ' i ' },
-    es: { pasillo: 'el pasillo', pati: 'el patio', vorera: 'la acera', prefix: 'Ten en cuenta que cada día también habrá que hacer ', i: ' y ' },
-    fr: { pasillo: 'le couloir', pati: 'la cour', vorera: 'le trottoir', prefix: 'À noter que chaque jour il faudra aussi faire ', i: ' et ' },
-    en: { pasillo: 'the hallway', pati: 'the patio', vorera: 'the sidewalk', prefix: 'Please note that every day you’ll also need to do ', i: ' and ' },
+    ca: { pasillo: 'el passadís', pati: 'el pati', vorera: 'la vorera', prefix: 'També caldrà fer ', i: ' i ' },
+    es: { pasillo: 'el pasillo', pati: 'el patio', vorera: 'la acera', prefix: 'También habrá que hacer ', i: ' y ' },
+    fr: { pasillo: 'le couloir', pati: 'la cour', vorera: 'le trottoir', prefix: 'Il faudra aussi faire ', i: ' et ' },
+    en: { pasillo: 'the hallway', pati: 'the patio', vorera: 'the sidewalk', prefix: 'You’ll also need to do ', i: ' and ' },
   };
   const t = NOMS[lang];
   const parts = [opts.pasillo ? t.pasillo : null, opts.pati ? t.pati : null, opts.vorera ? t.vorera : null]

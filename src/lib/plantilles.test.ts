@@ -61,12 +61,12 @@ describe('descriuTasques (una línia per habitació)', () => {
 describe('zonesComunesTxt', () => {
   it('combina les tres zones en una frase (recordatori diari)', () => {
     expect(zonesComunesTxt('es', { pasillo: true, pati: true, vorera: true })).toBe(
-      'Ten en cuenta que cada día también habrá que hacer el pasillo, el patio y la acera.',
+      'También habrá que hacer el pasillo, el patio y la acera.',
     );
   });
   it('dues zones', () => {
     expect(zonesComunesTxt('es', { pasillo: true, pati: true })).toBe(
-      'Ten en cuenta que cada día también habrá que hacer el pasillo y el patio.',
+      'También habrá que hacer el pasillo y el patio.',
     );
   });
   it('cap zona → buit', () => {
@@ -99,7 +99,7 @@ describe('plantilla de neteja (multilínia)', () => {
         '- Núm. 1. mantenimiento.\n' +
         '- Núm. 4. mantenimiento.\n' +
         '- Núm. 5. salida.\n' +
-        'Ten en cuenta que cada día también habrá que hacer el pasillo, el patio y la acera. Puedes venir sobre las 11:00.\n' +
+        'También habrá que hacer el pasillo, el patio y la acera. Puedes venir sobre las 11:00.\n' +
         '¡Muchas gracias!',
     );
   });
@@ -114,7 +114,7 @@ describe('plantilla de neteja (multilínia)', () => {
     );
     expect(msg).toBe(
       '¡Hola Rossy! 😊\nTe paso el trabajo de mañana:\n🛏️ Habitaciones:\n- Núm. 1. salida.\n' +
-        'Ten en cuenta que cada día también habrá que hacer el pasillo, el patio y la acera.\n¡Muchas gracias!',
+        'También habrá que hacer el pasillo, el patio y la acera.\n¡Muchas gracias!',
     );
   });
 });
