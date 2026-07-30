@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle, LogIn, LogOut,
-  Boxes, Clock, Wrench, CalendarClock, ShieldAlert,
+  Clock, Wrench, CalendarClock, ShieldAlert,
   Sparkles, TrendingUp, ChevronRight,
 } from 'lucide-react';
 import { getResum } from '@/lib/services/dashboard';
@@ -111,7 +111,6 @@ export default async function DashboardPage() {
   }));
 
   const alertes: { label: string; value: number; icon: React.ElementType; ok: boolean; href: string; color: ColorKey }[] = [
-    { label: 'Actius amb alerta',           value: resum.alertes.actiusAlerta,        icon: Boxes,       ok: resum.alertes.actiusAlerta === 0,          href: '/actius',                  color: 'orange'  },
     { label: 'Serveis/renovacions pròximes',value: resum.alertes.serveisProxims,      icon: Wrench,      ok: resum.alertes.serveisProxims === 0,        href: '/serveis',                 color: 'sky'     },
   ];
 
