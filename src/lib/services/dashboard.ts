@@ -147,7 +147,6 @@ export async function getResum(opts?: FinanceOpts) {
     ingressosAny,
     despesesMes,
     despesesAny,
-    facturesPendents,
     actius,
     habitacionsCount,
     habitacionsOcupadesAra,
@@ -159,6 +158,7 @@ export async function getResum(opts?: FinanceOpts) {
     benvingudesPendentsRaw,
     establimentBenv,
     sortidesTodayRaw,
+    estadesAFacturarRaw,
   ] = await Promise.all([
     prisma.estancia.findMany({
       where: {
@@ -215,7 +215,6 @@ export async function getResum(opts?: FinanceOpts) {
     }),
     prisma.gasto.aggregate({ _sum: { import: true }, where: { deletedAt: null, esFianca: false, data: { gte: monthStart, lte: monthEnd } } }),
     prisma.gasto.aggregate({ _sum: { import: true }, where: { deletedAt: null, esFianca: false, data: { gte: yearStart, lte: yearEnd } } }),
-    prisma.factura.findMany({ where: { deletedAt: null, estat: 'PENDENT' }, select: { total: true } }),
     prisma.actiu.findMany({
       where: { deletedAt: null },
       select: { dataCompra: true, garantiaFins: true, estat: true },
@@ -300,6 +299,23 @@ export async function getResum(opts?: FinanceOpts) {
       orderBy: { dataSortida: 'asc' },
       include: { viatgers: { where: { esTitular: true }, include: { huesped: true } }, habitacio: true },
     }),
+    // Estades pendents de FACTURAR: contracte real (26XXX, sense punt d'ampliació),
+    // ja en curs o finalitzades, i sense cap factura fiscal (F1/F2). Un simple
+    // recibo NO compta com a factura feta. Les reserves ("/2026" sense número)
+    // i les ampliacions (".1"/".2") queden fora.
+    prisma.estancia.findMany({
+      where: {
+        deletedAt: null,
+        estat: { in: ['EN_CURS', 'FINALITZADA'] },
+        NOT: { numContracte: { contains: '.' } },
+        factures: {
+          none: { deletedAt: null, tipusDocument: { in: ['FACTURA', 'FACTURA_SIMPLIFICADA'] } },
+        },
+      },
+      orderBy: [{ anyContracte: 'desc' }, { numContracte: 'desc' }],
+      take: 50,
+      include: { viatgers: { where: { esTitular: true }, include: { huesped: true } } },
+    }),
   ]);
 
   const num = (d: { _sum: { import: unknown } }) => Number(d._sum.import ?? 0);
@@ -309,7 +325,6 @@ export async function getResum(opts?: FinanceOpts) {
   const personalMes = num(personalMesAgg);
   const dipositsCustodia = num(dipositsCustodiaAgg);
 
-  const facturesPendentsTotal = facturesPendents.reduce((a, f) => a + Number(f.total), 0);
   const actiusAlerta = actius.filter((a) => computeActiuInfo(a, now).alerta).length;
   const ocupacio =
     habitacionsCount > 0 ? Math.round((Math.min(habitacionsOcupadesAra, habitacionsCount) / habitacionsCount) * 100) : 0;
@@ -354,6 +369,18 @@ export async function getResum(opts?: FinanceOpts) {
       : '—',
   }));
 
+  // Estades pendents de facturar: només números "purs" (26XXX, sense buit ni punt).
+  const estadesAFacturar = estadesAFacturarRaw
+    .filter((e) => /^\d+$/.test(e.numContracte))
+    .map((e) => ({
+      id: e.id,
+      contracte: `${e.numContracte}/${e.anyContracte}`,
+      titular: e.viatgers[0]?.huesped
+        ? `${e.viatgers[0].huesped.nom} ${e.viatgers[0].huesped.cognom1}`.trim()
+        : '—',
+      dataSortida: e.dataSortida?.toISOString() ?? null,
+    }));
+
   // Avisos descartats manualment ("amaga per sempre"): es treuen de les llistes.
   const descartats = await prisma.avisDescartat.findMany({ select: { tipus: true, entitatId: true } });
   const amagat = new Set(descartats.map((d) => `${d.tipus}:${d.entitatId}`));
@@ -376,6 +403,7 @@ export async function getResum(opts?: FinanceOpts) {
     properesEntrades,
     properesSortides,
     sortidesToday,
+    estadesAFacturar,
     serveisProxims: serveisProximsList,
     vigenciesProximes: vigenciesProximesList,
     benvingudes: {
@@ -395,8 +423,7 @@ export async function getResum(opts?: FinanceOpts) {
       dipositsCustodia,
     },
     alertes: {
-      facturesPendents: facturesPendents.length,
-      facturesPendentsTotal,
+      estadesAFacturar: estadesAFacturar.length,
       actiusAlerta,
       serveisProxims: serveisProximsList.length,
       vigenciesProximes: vigenciesProximesList.length,

@@ -3,14 +3,15 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Send, PenLine, FileWarning, ChevronDown, TrendingUp, EyeOff } from 'lucide-react';
+import { Send, PenLine, FileWarning, Receipt, ChevronDown, TrendingUp, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const ICONS = { Send, PenLine, FileWarning } as const;
+const ICONS = { Send, PenLine, FileWarning, Receipt } as const;
 const COLORS = {
   amber: { bg: 'bg-amber-50', icon: 'bg-amber-100 text-amber-700', border: 'border-amber-200', num: 'text-amber-800' },
   violet: { bg: 'bg-violet-50', icon: 'bg-violet-100 text-violet-700', border: 'border-violet-200', num: 'text-violet-800' },
   red: { bg: 'bg-red-50', icon: 'bg-red-100 text-red-700', border: 'border-red-200', num: 'text-red-800' },
+  emerald: { bg: 'bg-emerald-50', icon: 'bg-emerald-100 text-emerald-700', border: 'border-emerald-200', num: 'text-emerald-800' },
 } as const;
 
 export type AvisTipus = 'MOSSOS' | 'FIRMA' | 'ENVIAMENT_ERROR';
@@ -19,8 +20,9 @@ export interface AvisItem {
   nom: string;
   sub?: string;
   href: string;
-  tipus: AvisTipus;
-  entitatId: string;
+  /** Només per als avisos que es poden amagar per sempre (Mossos/firma/error). */
+  tipus?: AvisTipus;
+  entitatId?: string;
 }
 
 /**
@@ -34,12 +36,15 @@ export function TargetaAvis({
   color,
   iconKey,
   items,
+  dismissable = true,
 }: {
   label: string;
   ok: boolean;
   color: keyof typeof COLORS;
   iconKey: keyof typeof ICONS;
   items: AvisItem[];
+  /** Si es pot amagar cada element per sempre (botó «Amaga»). Per defecte, sí. */
+  dismissable?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -48,6 +53,7 @@ export function TargetaAvis({
   const c = COLORS[color];
 
   async function amaga(it: AvisItem) {
+    if (!it.tipus || !it.entitatId) return;
     setAmagant(it.key);
     try {
       await fetch('/api/avisos/descartar', {
@@ -94,15 +100,17 @@ export function TargetaAvis({
                   <span className="block truncate text-sm font-medium text-slate-800">{it.nom}</span>
                   {it.sub && <span className="block truncate text-xs text-slate-400">{it.sub}</span>}
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => amaga(it)}
-                  disabled={amagant === it.key}
-                  title="Amaga aquest avís per sempre"
-                  className="flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700 disabled:opacity-50"
-                >
-                  <EyeOff className="h-3.5 w-3.5" /> {amagant === it.key ? 'Amagant…' : 'Amaga'}
-                </button>
+                {dismissable && (
+                  <button
+                    type="button"
+                    onClick={() => amaga(it)}
+                    disabled={amagant === it.key}
+                    title="Amaga aquest avís per sempre"
+                    className="flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700 disabled:opacity-50"
+                  >
+                    <EyeOff className="h-3.5 w-3.5" /> {amagant === it.key ? 'Amagant…' : 'Amaga'}
+                  </button>
+                )}
               </div>
             ))
           )}

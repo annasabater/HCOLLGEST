@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle, LogIn, LogOut,
-  Receipt, Boxes, Clock, Wrench, CalendarClock, ShieldAlert,
+  Boxes, Clock, Wrench, CalendarClock, ShieldAlert,
   Sparkles, TrendingUp, ChevronRight,
 } from 'lucide-react';
 import { getResum } from '@/lib/services/dashboard';
@@ -93,11 +93,15 @@ export default async function DashboardPage() {
     tipus: 'ENVIAMENT_ERROR',
     entitatId: e.estanciaId,
   }));
+  // Estades amb contracte real (26XXX) i sense factura fiscal feta.
+  const itemsFacturar: AvisItem[] = resum.estadesAFacturar.map((e) => ({
+    key: e.id,
+    nom: e.titular,
+    sub: `Contracte ${e.contracte}${e.dataSortida ? ` · sortida ${formatDate(e.dataSortida)}` : ''}`,
+    href: `/estancies/${e.id}`,
+  }));
 
   const alertes: { label: string; value: number; icon: React.ElementType; ok: boolean; href: string; color: ColorKey }[] = [
-    ...(isAdmin ? [
-      { label: 'Factures pendents',         value: resum.alertes.facturesPendents,    icon: Receipt,     ok: resum.alertes.facturesPendents === 0,      href: '/factures',                color: 'emerald' as ColorKey },
-    ] : []),
     { label: 'Actius amb alerta',           value: resum.alertes.actiusAlerta,        icon: Boxes,       ok: resum.alertes.actiusAlerta === 0,          href: '/actius',                  color: 'orange'  },
     { label: 'Serveis/renovacions pròximes',value: resum.alertes.serveisProxims,      icon: Wrench,      ok: resum.alertes.serveisProxims === 0,        href: '/serveis',                 color: 'sky'     },
   ];
@@ -223,6 +227,9 @@ export default async function DashboardPage() {
         <TargetaAvis label="Pendents d'enviar a Mossos" ok={itemsMossos.length === 0} color="amber" iconKey="Send" items={itemsMossos} />
         <TargetaAvis label="Firmes pendents" ok={itemsFirma.length === 0} color="violet" iconKey="PenLine" items={itemsFirma} />
         <TargetaAvis label="Enviaments amb error" ok={itemsError.length === 0} color="red" iconKey="FileWarning" items={itemsError} />
+        {isAdmin && (
+          <TargetaAvis label="Estades a facturar" ok={itemsFacturar.length === 0} color="emerald" iconKey="Receipt" items={itemsFacturar} dismissable={false} />
+        )}
         {alertes.map((a) => {
           const Icon = a.icon;
           const c = colorMap[a.color];
