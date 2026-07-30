@@ -64,7 +64,17 @@ function loadTpls(kind: 'hoste' | 'neteja' | 'benvinguda'): Record<Lang, string>
         : PLANTILLA_NETEJA;
   const out = { ...base };
   (Object.keys(base) as Lang[]).forEach((l) => {
-    out[l] = lsGet(`plantilla_${kind}_${l}`, base[l]);
+    const key = `plantilla_${kind}_${l}`;
+    const saved = lsGet(key, base[l]);
+    // Descarta plantilles de neteja desades amb el FORMAT ANTIC (feien servir
+    // {data}, variable que ja no existeix): així es mostra el format nou
+    // (🛏️ Habitacions, una línia per habitació) sense haver de restaurar-les a mà.
+    if (kind === 'neteja' && saved.includes('{data}')) {
+      try { window.localStorage.removeItem(key); } catch { /* ignora */ }
+      out[l] = base[l];
+    } else {
+      out[l] = saved;
+    }
   });
   return out;
 }
