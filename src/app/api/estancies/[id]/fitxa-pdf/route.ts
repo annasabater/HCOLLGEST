@@ -4,6 +4,7 @@ import { authorize, clientIp } from '@/lib/auth/guard';
 import { audit } from '@/lib/audit';
 import { handleApiError, notFound } from '@/lib/http';
 import { buildFitxaPdf } from '@/lib/pdf/fitxa';
+import { firmesDeLOrigen, ambFirmaHeretada } from '@/lib/services/signatura-heretada';
 
 const ESTABLIMENT_ID = 'hostal-coll';
 type Ctx = { params: Promise<{ id: string }> };
@@ -29,11 +30,15 @@ export async function GET(req: Request, ctx: Ctx) {
 
     // Filtre opcional ?hab=principal | ?hab=<nom>: només les fitxes d'aquell "contracte".
     const habFiltre = new URL(req.url).searchParams.get('hab');
-    const viatgers = habFiltre
+    const filtrats = habFiltre
       ? tots.filter((v) =>
           habFiltre === 'principal' ? !v.habitacioSeparada : v.habitacioSeparada?.nom === habFiltre,
         )
       : tots;
+
+    // Si és una ampliació, reaprofita la firma de l'estada original.
+    const firmes = await firmesDeLOrigen(estancia.estanciaOrigenId);
+    const viatgers = ambFirmaHeretada(filtrats, firmes);
 
     const pdf = await buildFitxaPdf(establiment, estancia, viatgers);
 
