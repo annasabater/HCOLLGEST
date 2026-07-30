@@ -134,6 +134,9 @@ export async function createRegistre(
 
     // 3) Crear los joins estancia_viatger.
     for (const { huespedId, v } of resolved) {
+      // Una "habitació separada" igual a la principal NO és separada: s'ignora
+      // (si no, es crearia un contracte redundant per a la mateixa habitació).
+      const sepId = v.habitacioSeparadaId && v.habitacioSeparadaId !== estancia.habitacioId ? v.habitacioSeparadaId : null;
       await tx.estanciaViatger.create({
         data: {
           estanciaId: est.id,
@@ -141,8 +144,8 @@ export async function createRegistre(
           esTitular: v.esTitular,
           parentesc: v.parentesc ?? null,
           esMenor: v.esMenor || isMenor(v.dataNaixement, estancia.dataEntrada ?? new Date()),
-          habitacioSeparadaId: v.habitacioSeparadaId ?? null,
-          numContracteSeparat: v.habitacioSeparadaId ? (v.numContracteSeparat ?? null) : null,
+          habitacioSeparadaId: sepId,
+          numContracteSeparat: sepId ? (v.numContracteSeparat ?? null) : null,
         },
       });
     }
@@ -249,12 +252,14 @@ export async function updateRegistre(
     }
     for (const { huespedId, v } of resolved) {
       const link = existing.viatgers.find((l) => l.huespedId === huespedId);
+      // Una "habitació separada" igual a la principal NO és separada: s'ignora.
+      const sepId = v.habitacioSeparadaId && v.habitacioSeparadaId !== estancia.habitacioId ? v.habitacioSeparadaId : null;
       const data = {
         esTitular: v.esTitular,
         parentesc: v.parentesc ?? null,
         esMenor: v.esMenor || isMenor(v.dataNaixement, estancia.dataEntrada ?? new Date()),
-        habitacioSeparadaId: v.habitacioSeparadaId ?? null,
-        numContracteSeparat: v.habitacioSeparadaId ? (v.numContracteSeparat ?? null) : null,
+        habitacioSeparadaId: sepId,
+        numContracteSeparat: sepId ? (v.numContracteSeparat ?? null) : null,
       };
       if (link) {
         await tx.estanciaViatger.update({ where: { id: link.id }, data });
