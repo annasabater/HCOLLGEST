@@ -25,11 +25,14 @@ export function EstanciaActions({
   estanciaId,
   enviaments,
   esAmpliacio = false,
+  contracte = null,
 }: {
   estanciaId: string;
   enviaments: Enviament[];
   /** Si és una ampliació d'una estada: els hostes ja es van comunicar a Mossos. */
   esAmpliacio?: boolean;
+  /** Número de contracte de l'estada (per mostrar quin s'ha enviat a Mossos). */
+  contracte?: string | null;
 }) {
   const router = useRouter();
   const [notice, setNotice] = useState<FitxerNotice | null>(null);
@@ -151,14 +154,14 @@ export function EstanciaActions({
           <p className="text-sm text-slate-400">Encara no s’ha generat cap fitxer per a aquesta estada.</p>
         )}
         {enviaments.map((env) => (
-          <EnviamentRow key={env.id} enviament={env} onChanged={() => router.refresh()} />
+          <EnviamentRow key={env.id} enviament={env} contracte={contracte} onChanged={() => router.refresh()} />
         ))}
       </div>
     </div>
   );
 }
 
-function EnviamentRow({ enviament, onChanged }: { enviament: Enviament; onChanged: () => void }) {
+function EnviamentRow({ enviament, contracte, onChanged }: { enviament: Enviament; contracte?: string | null; onChanged: () => void }) {
   const [err, setErr] = useState<string | null>(null);
   // Eliminació amb doble confirmació (0 cap · 1 avís · 2 confirmació final).
   const [delStep, setDelStep] = useState<0 | 1 | 2>(0);
@@ -194,6 +197,11 @@ function EnviamentRow({ enviament, onChanged }: { enviament: Enviament; onChange
           {ESTAT_ENVIAMENT_LABELS[estat]}
         </Badge>
       </div>
+      {contracte && (
+        <p className="mb-2 text-xs text-slate-600">
+          Contracte enviat: <span className="font-medium text-slate-800">{contracte}</span>
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <a href={`/api/enviaments/${enviament.id}/justificant`} target="_blank" rel="noreferrer">
           <Button type="button" variant="outline" size="sm">
