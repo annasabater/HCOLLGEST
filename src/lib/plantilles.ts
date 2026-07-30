@@ -51,7 +51,7 @@ export const PLANTILLA_GRACIES: Record<Lang, string> = {
  * Format multilínia: habitacions agrupades per tipus + zones comunes en una frase.
  */
 export const PLANTILLA_NETEJA: Record<Lang, string> = {
-  ca: 'Hola {nom}! 😊\nEt passo la feina de demà:\n🛏️ Habitacions:\n{habitacions}\nCal tenir en compte que cada dia també caldrà fer el passadís, el pati i la vorera.{hora}\nMoltes gràcies!',
+  ca: 'Hola {nom}! 😊\nEt passo la feina de demà:\n🛏️ Habitacions:\n{habitacions}\nTambé caldrà fer el passadís, el pati i la vorera.{hora}\nMoltes gràcies!',
   es: '¡Hola {nom}! 😊\nTe paso el trabajo de mañana:\n🛏️ Habitaciones:\n{habitacions}\nTen en cuenta que cada día también habrá que hacer el pasillo, el patio y la acera.{hora}\n¡Muchas gracias!',
   fr: 'Bonjour {nom} ! 😊\nVoici le travail de demain :\n🛏️ Chambres :\n{habitacions}\nÀ noter que chaque jour il faudra aussi faire le couloir, la cour et le trottoir.{hora}\nMerci beaucoup !',
   en: 'Hi {nom}! 😊\nHere is tomorrow’s work:\n🛏️ Rooms:\n{habitacions}\nPlease note that every day you’ll also need to do the hallway, the patio and the sidewalk.{hora}\nThank you so much!',
