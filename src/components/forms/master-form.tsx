@@ -624,25 +624,38 @@ export function MasterForm({
       // l'estada ja s'ha creat i es poden afegir des de la fitxa de l'hoste.
       const huespedIds = res.viatgerHuespedIds ?? [];
       let docsFallits = 0;
+      const motius = new Set<string>();
       for (let i = 0; i < viatgers.length; i++) {
         const docs = viatgers[i]?._docs ?? [];
+        if (docs.length === 0) continue;
         const hid = huespedIds[i];
-        if (!hid || docs.length === 0) continue;
+        // Si no hem pogut identificar l'hoste, NO ho ometis en silenci: avisa.
+        if (!hid) {
+          docsFallits += docs.length;
+          motius.add('No s’ha pogut identificar l’hoste per desar-hi els documents.');
+          continue;
+        }
         for (const d of docs) {
           try {
             const fd = new FormData();
             fd.append('file', d.file);
             fd.append('tipus', d.tipus);
             const r = await fetch(`/api/huespedes/${hid}/documents`, { method: 'POST', body: fd });
-            if (!r.ok) docsFallits++;
+            if (!r.ok) {
+              docsFallits++;
+              const j = (await r.json().catch(() => ({}))) as { error?: string };
+              motius.add(j.error ?? `Error ${r.status} pujant el document.`);
+            }
           } catch {
             docsFallits++;
+            motius.add('Error de connexió pujant el document.');
           }
         }
       }
       if (docsFallits > 0) {
         alert(
-          `L'estada s'ha desat, però ${docsFallits} document(s) no s'han pogut pujar. ` +
+          `L'estada s'ha desat, però ${docsFallits} document(s) no s'han pogut pujar:\n` +
+            `${[...motius].map((m) => `• ${m}`).join('\n')}\n\n` +
             'Pots afegir-los des de la fitxa de l’hoste.',
         );
       }
