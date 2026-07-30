@@ -26,6 +26,8 @@ interface Estada {
   id: string;
   habitacioId: string;
   titular: string;
+  titularNom: string;
+  numContracte: string | null;
   dataEntrada: string;
   dataSortida: string;
   estat: string;
@@ -156,17 +158,23 @@ export function CalendariOcupacioTotal() {
                 </span>
               </div>
 
-              {/* Pilules de les habitacions ocupades */}
+              {/* Una fila FIXA per habitació (ordre 1→6): si està buida, es deixa
+                  un forat sense pintar, així cada habitació queda sempre alineada. */}
               <div className="flex flex-col gap-0.5">
-                {ocupades.map((e) => {
+                {habitacions.slice(0, 6).map((hab) => {
+                  const e = ocupades.find((x) => x.habitacioId === hab.id);
+                  if (!e) {
+                    // Forat: habitació buida aquell dia (no es pinta).
+                    return <div key={hab.id} className="h-[14px]" />;
+                  }
                   const c = colorFor(e.habitacioId);
                   const canvi = teCanvi(day, e.habitacioId);
-                  const hab = habitacions.find((h) => h.id === e.habitacioId);
+                  const etiqueta = [hab.nom, e.titularNom, e.numContracte].filter(Boolean).join(' · ');
                   return (
                     <Link
-                      key={e.id}
+                      key={hab.id}
                       href={`/estancies/${e.id}`}
-                      title={`Hab. ${hab?.nom ?? ''} · ${e.titular}${canvi ? ' · CANVI D\'HOSTES' : ''}`}
+                      title={`Hab. ${hab.nom} · ${e.titular}${e.numContracte ? ` · ${e.numContracte}` : ''}${canvi ? ' · CANVI D\'HOSTES' : ''}`}
                       className={cn(
                         'block truncate rounded px-1 text-[10px] font-medium leading-tight',
                         c.light,
@@ -175,7 +183,7 @@ export function CalendariOcupacioTotal() {
                       )}
                     >
                       {canvi && '⇄ '}
-                      {hab?.nom ?? '?'}
+                      {etiqueta}
                     </Link>
                   );
                 })}
