@@ -327,9 +327,89 @@ function SituacioView({ data }: { data: BalancSituacio }) {
   );
 }
 
+// Llista de moviments del període amb filtre: ingressos / +fiança / despeses / tot.
+const MOV_FILTRE_GRUPS: Record<string, MovGrup[]> = {
+  ingressos: ['INGRES', 'FIANCA'],
+  'ingressos-fianca': ['INGRES', 'FIANCA', 'FIANCA_CUST'],
+  despeses: ['DESPESA', 'PERSONAL', 'FIANCA_PAGADA'],
+  tot: ['INGRES', 'FIANCA', 'FIANCA_CUST', 'DESPESA', 'PERSONAL', 'FIANCA_PAGADA'],
+};
+function MovimentsCard({ moviments }: { moviments: MovDetall[] }) {
+  const [filtre, setFiltre] = useState<'ingressos' | 'ingressos-fianca' | 'despeses' | 'tot'>('tot');
+  const filtrats = moviments.filter((m) => MOV_FILTRE_GRUPS[filtre]!.includes(m.grup));
+  const total = Math.round((filtrats.reduce((a, m) => a + m.import, 0) + Number.EPSILON) * 100) / 100;
+  return (
+    <Card>
+      <CardHeader className="flex flex-wrap items-center justify-between gap-2">
+        <CardTitle>Moviments</CardTitle>
+        <div className="inline-flex rounded-lg border border-slate-200 p-0.5 text-xs">
+          {[
+            { k: 'ingressos', l: 'Ingressos' },
+            { k: 'ingressos-fianca', l: 'Ingressos + fiança' },
+            { k: 'despeses', l: 'Despeses' },
+            { k: 'tot', l: 'Tot' },
+          ].map((t) => (
+            <button
+              key={t.k}
+              type="button"
+              onClick={() => setFiltre(t.k as typeof filtre)}
+              className={cn(
+                'rounded-md px-2.5 py-1 font-medium transition-colors',
+                filtre === t.k ? 'bg-brand-700 text-white' : 'text-slate-600 hover:bg-slate-100',
+              )}
+            >
+              {t.l}
+            </button>
+          ))}
+        </div>
+      </CardHeader>
+      <CardBody>
+        {filtrats.length === 0 ? (
+          <p className="text-sm text-slate-400">Sense moviments en aquest període.</p>
+        ) : (
+          <Table>
+            <Thead>
+              <tr>
+                <Th>Data</Th>
+                <Th>Concepte</Th>
+                <Th>Mètode</Th>
+                <Th className="text-right">Import</Th>
+              </tr>
+            </Thead>
+            <tbody>
+              {filtrats.map((m) => (
+                <Tr key={m.id}>
+                  <Td className="whitespace-nowrap text-slate-500">{dataCurta(m.data)}</Td>
+                  <Td>
+                    {m.href ? (
+                      <a href={m.href} className="font-medium text-brand-700 hover:underline">{m.concepte}</a>
+                    ) : (
+                      m.concepte
+                    )}
+                    {m.pagada === false ? <span className="ml-1 text-xs text-amber-600">(pendent de pagar)</span> : null}
+                  </Td>
+                  <Td className="text-slate-500">
+                    {m.metode ? METODE_COBRAMENT_LABELS[m.metode as keyof typeof METODE_COBRAMENT_LABELS] ?? m.metode : '—'}
+                  </Td>
+                  <Td className={cn('text-right font-medium', m.import < 0 ? 'text-red-700' : 'text-green-700')}>
+                    <Eur value={m.import} />
+                  </Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+        <div className="mt-2 flex items-center justify-between border-t-2 border-slate-300 pt-2 text-sm font-bold">
+          <span className="text-slate-900">Total ({filtrats.length})</span>
+          <span className={cn(total < 0 ? 'text-red-700' : 'text-slate-900')}><Eur value={total} /></span>
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
 function BreakdownsSection({ data, despesesFianca = 0 }: { data: Breakdowns; despesesFianca?: number }) {
   const metodes = metodeItems(data.ingressosPerMetode);
-  const moviments = data.movimentsPerPersona ?? [];
   return (
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">
@@ -373,74 +453,8 @@ function BreakdownsSection({ data, despesesFianca = 0 }: { data: Breakdowns; des
         </Card>
       </div>
 
-      {/* Moviments per persona: ingressos i devolucions del període, per titular */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Moviments per persona</CardTitle>
-        </CardHeader>
-        <CardBody>
-          {moviments.length === 0 ? (
-            <p className="text-sm text-slate-400">Sense moviments en aquest període.</p>
-          ) : (
-            <Table>
-              <Thead>
-                <tr>
-                  <Th>Titular</Th>
-                  <Th>Habitació</Th>
-                  <Th>Estada</Th>
-                  <Th>Pagat el</Th>
-                  <Th className="text-right">Ingressos</Th>
-                  <Th className="text-right">Devolucions</Th>
-                  <Th className="text-right">Net</Th>
-                </tr>
-              </Thead>
-              <tbody>
-                {moviments.map((m, i) => (
-                  <Tr key={i} className={m.fianca && m.fianca > 0 ? 'bg-amber-50/60' : undefined}>
-                    <Td>
-                      <span className="flex items-center gap-1.5">
-                        {m.estanciaId ? (
-                          <a href={`/estancies/${m.estanciaId}`} className="font-medium text-brand-700 hover:underline">
-                            {m.titular}
-                          </a>
-                        ) : (
-                          m.titular
-                        )}
-                        {m.fianca && m.fianca > 0 ? (
-                          <span
-                            className="inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200"
-                            title={`Inclou una fiança retinguda de ${m.fianca.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}
-                          >
-                            Fiança
-                          </span>
-                        ) : null}
-                      </span>
-                    </Td>
-                    <Td className="text-slate-600">{m.habitacio ? `Hab. ${m.habitacio}` : '—'}</Td>
-                    <Td className="whitespace-nowrap text-slate-600">
-                      {m.dataEntrada && m.dataSortida
-                        ? `${dataCurta(m.dataEntrada)} → ${dataCurta(m.dataSortida)}`
-                        : '—'}
-                    </Td>
-                    <Td className="whitespace-nowrap text-slate-600">
-                      {m.datesPagament && m.datesPagament.length > 0
-                        ? m.datesPagament.map(dataCurta).join(', ')
-                        : '—'}
-                    </Td>
-                    <Td className="text-right text-green-700"><Eur value={m.ingressos} /></Td>
-                    <Td className="text-right text-red-700">
-                      {m.devolucions > 0 ? <>−<Eur value={m.devolucions} /></> : <span className="text-slate-300">—</span>}
-                    </Td>
-                    <Td className={cn('text-right font-medium', m.ingressos - m.devolucions >= 0 ? 'text-slate-900' : 'text-red-700')}>
-                      <Eur value={Math.round((m.ingressos - m.devolucions) * 100) / 100} />
-                    </Td>
-                  </Tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
-        </CardBody>
-      </Card>
+      {/* Moviments del període, amb filtre (ingressos / +fiança / despeses / tot) */}
+      <MovimentsCard moviments={data.moviments ?? []} />
     </div>
   );
 }
