@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { Send, Receipt, FileSignature, Pencil, Mail } from 'lucide-react';
 import { BackLink } from '@/components/ui/back-link';
 import { prisma } from '@/lib/db';
+import { habitacioLlibre } from '@/lib/habitacio-llibre';
 import { formataRebuigMossos } from '@/lib/mossos/errors';
 import { getSessionUser } from '@/lib/auth/session';
 import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
@@ -94,13 +95,23 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
     (v) => v.huesped?.dataNaixement && ageAt(v.huesped.dataNaixement, estancia.dataEntrada ?? new Date()) < 17,
   );
 
-  // Contractes separats: viatgers que als papers consten en una altra habitació
-  // amb número de contracte propi. Un per habitació separada.
+  // Contractes separats: viatgers que als papers consten en una altra habitació.
+  // Un per habitació separada (el número és el de l'estada si no en tenen un de propi).
   const contractesSeparats = [...new Map(
     estancia.viatgers
       .filter((v) => v.habitacioSeparada)
       .map((v) => [v.habitacioSeparada!.nom, { hab: v.habitacioSeparada!.nom, num: v.numContracteSeparat ?? estancia.numContracte }]),
   ).values()];
+  // Full "principal" (habitació física) NOMÉS si hi ha viatgers que hi consten.
+  // Si tots estan reubicats al llibre (p. ex. un sol hoste), no hi ha full
+  // principal i així no es dupliquen els botons.
+  const teePrincipals = estancia.viatgers.some((v) => !v.habitacioSeparada);
+  const fullsDocs = [
+    ...(teePrincipals ? [{ hab: 'principal', num: estancia.numContracte }] : []),
+    ...contractesSeparats,
+  ];
+  // Habitació que consta al llibre/factura (pot diferir de la física real).
+  const habitacioLlibreEst = habitacioLlibre(estancia);
 
   // Estat REAL de l'estada (per dates) — més clar que el tipus de registre Mossos.
   const avuiIso = toISODate(new Date());
@@ -129,7 +140,9 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
               {contractesSeparats.map((c) => (
                 <span key={c.hab} className="text-slate-500">
                   {' '}
-                  + {c.num}/{estancia.anyContracte} (Hab. {c.hab})
+                  {c.num === estancia.numContracte
+                    ? `(Hab. ${c.hab} al llibre)`
+                    : `+ ${c.num}/${estancia.anyContracte} (Hab. ${c.hab})`}
                 </span>
               ))}
             </span>
@@ -166,8 +179,8 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 </a>
               </>
             ) : (
-              // Un joc de botons per contracte: el principal i cada habitació separada.
-              [{ hab: 'principal', num: estancia.numContracte }, ...contractesSeparats].map((c) => (
+              // Un joc de botons per full: el principal (si hi ha) i cada habitació separada.
+              fullsDocs.map((c) => (
                 <span key={c.hab} className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-1.5 py-1">
                   <span className="px-1 text-xs font-semibold text-slate-500">{c.num}</span>
                   <a
@@ -308,7 +321,14 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 <Dl label="Formalització" value={formatDate(estancia.dataFormalitzacio)} />
                 <Dl label="Viatgers" value={estancia.numViatgers} />
                 <Dl label="Pagament" value={TIPUS_PAGAMENT_LABELS[estancia.tipusPagament]} />
-                <Dl label="Habitació" value={estancia.habitacio?.nom} />
+                <Dl
+                  label="Habitació"
+                  value={
+                    habitacioLlibreEst && habitacioLlibreEst !== estancia.habitacio?.nom
+                      ? `${estancia.habitacio?.nom ?? '—'} · al llibre: ${habitacioLlibreEst}`
+                      : estancia.habitacio?.nom
+                  }
+                />
                 <Dl
                   wide
                   label="Tipus de registre (Mossos)"
