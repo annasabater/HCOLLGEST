@@ -161,12 +161,12 @@ describe('validaParte (§2.3 + codificació)', () => {
   it('rebutja municipi no trobat al padró INE', () => {
     const parte = parteContracte();
     parte.viatgers[0]!.municipi = 'Vilanova Inexistent';
-    expect(() => validaParte(parte)).toThrow(/padró INE/);
+    expect(() => validaParte(parte)).toThrow(/municipi.*no trobat/);
   });
   it('rebutja província sense codi INE', () => {
     const parte = parteContracte();
     parte.viatgers[0]!.provincia = 'Provincia Falsa';
-    expect(() => validaParte(parte)).toThrow(/INE/);
+    expect(() => validaParte(parte)).toThrow(/província.*no reconeguda/);
   });
   it('en RESERVA només exigeix nom, cognom1 i (email o telèfon)', () => {
     const parte = parteContracte();
