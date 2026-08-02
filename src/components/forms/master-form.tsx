@@ -579,6 +579,16 @@ export function MasterForm({
       }
     }
 
+    // Desar SENSE número de contracte: no es bloqueja, però es confirma (p. ex.
+    // estades que encara no s'envien a Mossos i no tenen número assignat).
+    if (!borrany && !esReserva && !estancia.numContracte.trim() && !force) {
+      const ok = window.confirm(
+        "Vols desar l'estada SENSE número de contracte?\n\n" +
+          "El pots deixar en blanc ara i posar-l'hi més tard (per exemple, quan l'enviïs a Mossos).",
+      );
+      if (!ok) return;
+    }
+
     const input = buildInput();
 
     // 1) Validació. En esborrany és laxa (es pot desar incomplet); si no, dura (§2.3).
@@ -784,14 +794,14 @@ export function MasterForm({
         <CardBody className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
           <Field
             label="Número de contracte"
-            required={tipusRegistre !== 'RESERVA'}
+            required={false}
             error={numeroOcupat ? 'Aquest número ja està en ús. Tria’n un altre.' : err('estancia.numContracte')}
             hint={
               numeroOcupat
                 ? undefined
                 : tipusRegistre === 'RESERVA'
                   ? 'Opcional per a reserves · es pot omplir al check-in'
-                  : 'Proposat automàticament (l’últim + 1). Revisa’l i canvia’l si cal.'
+                  : 'Proposat automàticament (l’últim + 1). Pots deixar-lo en blanc i posar-l’hi més tard.'
             }
           >
             <div className="flex items-center gap-2">

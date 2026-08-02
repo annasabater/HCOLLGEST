@@ -144,14 +144,9 @@ function buildRegistreSchema(borrany: boolean) {
       const { estancia, viatgers } = data;
       const today = endOfToday();
 
-      // --- Número de contracte (obligatori en contracte en curs, no en esborrany) ---
-      if (!borrany && estancia.tipusRegistre !== 'RESERVA' && !estancia.numContracte) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['estancia', 'numContracte'],
-          message: "El numero de contracte es obligatori per als contractes en curs",
-        });
-      }
+      // El número de contracte ja NO és obligatori: es pot deixar en blanc (p. ex.
+      // estades que encara no s'envien a Mossos). El formulari demana confirmació
+      // abans de desar sense número; aquí no es bloqueja.
 
       // --- Fechas de la estancia (sanity, només quan s'han introduït) ---
       if (estancia.dataFormalitzacio > today) {
