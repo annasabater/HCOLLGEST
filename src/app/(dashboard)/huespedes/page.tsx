@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Paginacio } from '@/components/ui/paginacio';
 import { AvisosPanel } from '@/components/huesped/avisos-panel';
 import { TIPUS_DOCUMENT_LABELS } from '@/lib/validation/enums';
+import { cn } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,12 +53,21 @@ function Inicials({ nom, cognom, estat }: { nom: string; cognom: string; estat: 
 export default async function HuespedesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; mascota?: string; pagina?: string; perPagina?: string }>;
+  searchParams: Promise<{ q?: string; mascota?: string; estat?: string; pagina?: string; perPagina?: string }>;
 }) {
-  const { q, mascota, pagina: paginaStr, perPagina: perPaginaStr } = await searchParams;
+  const { q, mascota, estat, pagina: paginaStr, perPagina: perPaginaStr } = await searchParams;
   const nomesMascota = mascota === '1';
+  const estatFiltre = estat === 'presents' || estat === 'absents' ? estat : '';
+  const now = new Date();
+
   const where: Prisma.HuespedWhereInput = { deletedAt: null };
   if (nomesMascota) where.animals = { some: { deletedAt: null } };
+  // Filtre "hi són ara" / "no hi són": segons si tenen una estada que cobreix avui.
+  const estadaActiva: Prisma.EstanciaViatgerWhereInput = {
+    estancia: { deletedAt: null, estat: { not: 'CANCELLADA' }, dataEntrada: { lte: now }, dataSortida: { gt: now } },
+  };
+  if (estatFiltre === 'presents') where.estancies = { some: estadaActiva };
+  else if (estatFiltre === 'absents') where.NOT = { estancies: { some: estadaActiva } };
   if (q?.trim()) {
     where.OR = [
       { nom: { contains: q, mode: 'insensitive' } },
@@ -69,10 +79,19 @@ export default async function HuespedesPage({
     ];
   }
 
+  // Construeix un href conservant la cerca i la mascota, canviant l'estat.
+  const hrefEstat = (e: string) => {
+    const p = new URLSearchParams();
+    if (q?.trim()) p.set('q', q);
+    if (nomesMascota) p.set('mascota', '1');
+    if (e) p.set('estat', e);
+    const s = p.toString();
+    return `/huespedes${s ? `?${s}` : ''}`;
+  };
+
   const perPagina = [10, 25, 50].includes(Number(perPaginaStr)) ? Number(perPaginaStr) : 25;
   const pagina = Math.max(1, Number(paginaStr) || 1);
   const total = await prisma.huesped.count({ where });
-  const now = new Date();
 
   const huespedes = await prisma.huesped.findMany({
     where,
@@ -126,7 +145,8 @@ export default async function HuespedesPage({
       <AvisosPanel />
 
       {/* Cerca */}
-      <form method="get" className="mb-6 flex flex-wrap items-center gap-2">
+      <form method="get" className="mb-4 flex flex-wrap items-center gap-2">
+        {estatFiltre && <input type="hidden" name="estat" value={estatFiltre} />}
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input name="q" defaultValue={q ?? ''} placeholder="Cerca per nom, document, email…" className="pl-9" />
@@ -137,6 +157,26 @@ export default async function HuespedesPage({
           <PawPrint className="h-4 w-4 text-slate-400" /> Amb mascota
         </label>
       </form>
+
+      {/* Filtre: tots / hi són ara / no hi són */}
+      <div className="mb-6 inline-flex rounded-lg border border-slate-200 p-0.5 text-sm">
+        {[
+          { k: '', l: 'Tots' },
+          { k: 'presents', l: 'Hi són ara' },
+          { k: 'absents', l: 'No hi són' },
+        ].map((t) => (
+          <Link
+            key={t.k}
+            href={hrefEstat(t.k)}
+            className={cn(
+              'rounded-md px-3 py-1 font-medium transition-colors',
+              estatFiltre === t.k ? 'bg-brand-700 text-white' : 'text-slate-600 hover:bg-slate-100',
+            )}
+          >
+            {t.l}
+          </Link>
+        ))}
+      </div>
 
       {/* Llegenda del color de l'avatar */}
       <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
