@@ -149,13 +149,24 @@ export async function GET(req: Request) {
   .notes{ margin:10px 0 0; padding-left:18px; color:var(--muted); font-size:11.5px; }
   .notes li{ margin:2px 0; }
   .foot{ margin-top:24px; padding-top:12px; border-top:1px solid var(--line); color:var(--muted); font-size:11px; text-align:center; }
-  @page{ size:A4; margin:14mm; }
+  @page{ size:A4; margin:10mm; }
   @media print{
-    body{ background:#fff; }
+    body{ background:#fff; font-size:11px; }
     .toolbar{ display:none !important; }
     .app{ padding:0; }
     .sheet{ box-shadow:none; border:none; border-radius:0; max-width:none; padding:0; }
     *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    /* Compactat per encabir-ho tot en UNA sola pàgina. */
+    .brand{ font-size:24px; }
+    .accent-rule{ margin-bottom:12px; }
+    .masthead{ padding-bottom:8px; margin-bottom:4px; }
+    .grup{ margin-bottom:12px; page-break-inside:avoid; }
+    .grup h2{ font-size:14px; margin:0 0 6px; }
+    table.tarifes th, table.tarifes td{ padding:4px 7px; }
+    table.tarifes thead th{ font-size:10px; }
+    .notes{ margin-top:6px; font-size:10px; }
+    .notes li{ margin:1px 0; }
+    .foot{ margin-top:12px; padding-top:8px; font-size:10px; }
   }
 </style>
 </head>
