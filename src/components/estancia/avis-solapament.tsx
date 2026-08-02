@@ -93,8 +93,8 @@ export function AvisSolapament({
   const totReserves = conflictes.every((c) => c.estat === 'RESERVA');
 
   return (
-    <div className="mt-2 space-y-2 rounded-lg border border-red-200 bg-red-50 p-3">
-      <p className="flex items-center gap-2 text-sm font-medium text-red-800">
+    <div className="mt-2 space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+      <p className="flex items-center gap-2 text-sm font-medium text-amber-800">
         <AlertTriangle className="h-4 w-4 shrink-0" />
         {totReserves
           ? 'Aquesta habitació ja està reservada en aquestes dates'
@@ -128,9 +128,10 @@ export function AvisSolapament({
         </div>
       ))}
       {error && <p className="text-xs text-red-600">{error}</p>}
-      <p className="text-xs text-red-600">
-        Si l’hoste anterior ja ha marxat, dóna per finalitzada la seva estada i així podràs assignar
-        l’habitació. Si no, tria una altra habitació o altres dates.
+      <p className="text-xs text-slate-600">
+        Això és només un avís: <strong>pots desar igualment</strong>. Si dues persones comparteixen
+        habitació però paguen per separat (contractes a part), assigna-la sense problema. Si l’hoste
+        anterior ja ha marxat, pots donar per finalitzada la seva estada amb el botó de sobre.
       </p>
     </div>
   );

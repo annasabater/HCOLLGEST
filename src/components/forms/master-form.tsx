@@ -1328,21 +1328,11 @@ export function MasterForm({
                   )}
                   <Field
                     label="Habitació al llibre / factura"
-                    hint="Opcional: si als papers aquest viatger ha de constar en una ALTRA habitació (fitxa del llibre i factura a part). L’estada real no canvia."
+                    hint="Opcional: si als papers aquest viatger ha de constar en una ALTRA habitació (fitxa del llibre i factura a part), amb el MATEIX número de contracte de l’estada. L’estada real no canvia."
                   >
                     <Select
                       value={v.habitacioSeparadaId}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        // En activar-ho, proposa el següent número de contracte (el de
-                        // l'estada + 1) si encara no n'hi ha cap; es pot canviar.
-                        const num = Number(estancia.numContracte);
-                        const proposta =
-                          val && !v.numContracteSeparat && Number.isFinite(num) && estancia.numContracte.trim() !== ''
-                            ? String(num + 1)
-                            : v.numContracteSeparat;
-                        setV(i, { habitacioSeparadaId: val, numContracteSeparat: val ? proposta : '' });
-                      }}
+                      onChange={(e) => setV(i, { habitacioSeparadaId: e.target.value })}
                     >
                       <option value="">La de l’estada</option>
                       {habitacions.map((h) => (
@@ -1352,18 +1342,6 @@ export function MasterForm({
                       ))}
                     </Select>
                   </Field>
-                  {v.habitacioSeparadaId && (
-                    <Field
-                      label="Núm. contracte separat"
-                      hint="Contracte propi del full separat (proposat: el de l’estada + 1). Canvia’l si cal."
-                    >
-                      <Input
-                        uppercase
-                        value={v.numContracteSeparat}
-                        onChange={(e) => setV(i, { numContracteSeparat: e.target.value })}
-                      />
-                    </Field>
-                  )}
                 </>
               )}
             </CardBody>
