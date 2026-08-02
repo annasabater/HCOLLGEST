@@ -6,6 +6,7 @@
 import 'server-only';
 import { prisma } from '../db';
 import { computeActiuInfo } from '../actiu-alerts';
+import { habitacioLlibre } from '../habitacio-llibre';
 import { generarDespesesVencudes } from './serveis-recurrents';
 
 export interface FinanceOpts {
@@ -30,7 +31,11 @@ interface EfectiuRow {
     dataEntrada: Date | null;
     dataSortida: Date | null;
     habitacio: { nom: string } | null;
-    viatgers: { huesped: { nom: string; cognom1: string } | null }[];
+    viatgers: {
+      esTitular: boolean;
+      huesped: { nom: string; cognom1: string } | null;
+      habitacioSeparada: { nom: string } | null;
+    }[];
   } | null;
 }
 
@@ -43,7 +48,11 @@ const titularSelDash = {
     viatgers: {
       where: { esTitular: true },
       take: 1,
-      select: { huesped: { select: { nom: true, cognom1: true } } },
+      select: {
+        esTitular: true,
+        huesped: { select: { nom: true, cognom1: true } },
+        habitacioSeparada: { select: { nom: true } },
+      },
     },
   },
 } as const;
@@ -600,7 +609,7 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
         ingressos: 0,
         devolucions: 0,
         fianca: 0,
-        habitacio: est?.habitacio?.nom ?? null,
+        habitacio: est ? habitacioLlibre(est) : null,
         dataEntrada: est?.dataEntrada ? est.dataEntrada.toISOString() : null,
         dataSortida: est?.dataSortida ? est.dataSortida.toISOString() : null,
         datesPagament: [],

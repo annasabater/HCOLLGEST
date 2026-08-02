@@ -159,32 +159,40 @@ export function CalendariOcupacioTotal() {
               </div>
 
               {/* Una fila FIXA per habitació (ordre 1→6): si està buida, es deixa
-                  un forat sense pintar, així cada habitació queda sempre alineada. */}
+                  un forat sense pintar, així cada habitació queda sempre alineada.
+                  Si una habitació té MÉS D'UN contracte alhora (p. ex. dues persones
+                  que paguen per separat), es mostren tots apilats. */}
               <div className="flex flex-col gap-0.5">
                 {habitacions.slice(0, 6).map((hab) => {
-                  const e = ocupades.find((x) => x.habitacioId === hab.id);
-                  if (!e) {
+                  const occ = ocupades.filter((x) => x.habitacioId === hab.id);
+                  if (occ.length === 0) {
                     // Forat: habitació buida aquell dia (no es pinta).
                     return <div key={hab.id} className="h-[14px]" />;
                   }
-                  const c = colorFor(e.habitacioId);
-                  const canvi = teCanvi(day, e.habitacioId);
-                  const etiqueta = [hab.nom, e.titularNom, e.numContracte].filter(Boolean).join(' · ');
+                  const c = colorFor(hab.id);
+                  const canvi = teCanvi(day, hab.id);
                   return (
-                    <Link
-                      key={hab.id}
-                      href={`/estancies/${e.id}`}
-                      title={`Hab. ${hab.nom} · ${e.titular}${e.numContracte ? ` · ${e.numContracte}` : ''}${canvi ? ' · CANVI D\'HOSTES' : ''}`}
-                      className={cn(
-                        'block truncate rounded px-1 text-[10px] font-medium leading-tight',
-                        c.light,
-                        c.text,
-                        canvi && 'border border-dashed border-current',
-                      )}
-                    >
-                      {canvi && '⇄ '}
-                      {etiqueta}
-                    </Link>
+                    <div key={hab.id} className="flex flex-col gap-0.5">
+                      {occ.map((e) => {
+                        const etiqueta = [hab.nom, e.titularNom, e.numContracte].filter(Boolean).join(' · ');
+                        return (
+                          <Link
+                            key={e.id}
+                            href={`/estancies/${e.id}`}
+                            title={`Hab. ${hab.nom} · ${e.titular}${e.numContracte ? ` · ${e.numContracte}` : ''}${canvi ? ' · CANVI D\'HOSTES' : ''}`}
+                            className={cn(
+                              'block truncate rounded px-1 text-[10px] font-medium leading-tight',
+                              c.light,
+                              c.text,
+                              canvi && 'border border-dashed border-current',
+                            )}
+                          >
+                            {canvi && '⇄ '}
+                            {etiqueta}
+                          </Link>
+                        );
+                      })}
+                    </div>
                   );
                 })}
               </div>

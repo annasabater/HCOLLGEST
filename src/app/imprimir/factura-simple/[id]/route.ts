@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import { habitacioLlibre } from '@/lib/habitacio-llibre';
 import { getSessionUser } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';
@@ -38,7 +39,7 @@ export async function GET(
       estancia: {
         include: {
           habitacio: true,
-          viatgers: { where: { esTitular: true }, include: { huesped: true } },
+          viatgers: { where: { esTitular: true }, include: { huesped: true, habitacioSeparada: { select: { nom: true } } } },
           diposits: { where: { estat: 'EN_CUSTODIA' }, orderBy: { data: 'asc' } },
         },
       },
@@ -298,7 +299,7 @@ export async function GET(
         <div class="meta-badge">Simplificada</div>
         <div class="meta-row"><span class="k">Número</span><span class="v"><input id="numero" class="in" aria-label="Número" value="${numeroDisplay}" data-prefix="${numeroPrefix}"></span></div>
         <div class="meta-row"><span class="k">Data</span><span class="v"><input id="data" class="in" aria-label="Data" value="${fmtDate(factura.data)}" placeholder="dd/mm/aaaa"></span></div>
-        ${factura.estancia.habitacio?.nom ? `<div class="meta-row"><span class="k">Habitació</span><span class="v"><input class="in" aria-label="Habitació" value="${esc(factura.estancia.habitacio.nom)}"></span></div>` : ''}
+        ${habitacioLlibre(factura.estancia) ? `<div class="meta-row"><span class="k">Habitació</span><span class="v"><input class="in" aria-label="Habitació" value="${esc(habitacioLlibre(factura.estancia)!)}"></span></div>` : ''}
       </div>
     </section>
 

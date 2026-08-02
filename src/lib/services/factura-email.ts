@@ -30,7 +30,7 @@ export async function enviaFacturaEmail(
       estancia: {
         include: {
           habitacio: { select: { nom: true } },
-          viatgers: { include: { huesped: true }, orderBy: { esTitular: 'desc' } },
+          viatgers: { include: { huesped: true, habitacioSeparada: { select: { nom: true } } }, orderBy: { esTitular: 'desc' } },
         },
       },
     },

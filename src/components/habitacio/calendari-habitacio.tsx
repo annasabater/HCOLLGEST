@@ -62,9 +62,11 @@ export function CalendariHabitacio({ habitacions }: { habitacions: { id: string;
   }, [load]);
 
   // L'estada ocupa la NIT del dia D si dataEntrada <= D < dataSortida (la sortida allibera).
-  const estadaDelDia = (day: Date): Estada | undefined => {
+  // Poden coincidir-hi diverses estades (2 contractes que paguen per separat a la
+  // mateixa habitació): es retornen totes perquè es vegin tots els hostes.
+  const estadesDelDia = (day: Date): Estada[] => {
     const iso = toISODate(day);
-    return estades.find((e) => toISODate(new Date(e.dataEntrada)) <= iso && iso < toISODate(new Date(e.dataSortida)));
+    return estades.filter((e) => toISODate(new Date(e.dataEntrada)) <= iso && iso < toISODate(new Date(e.dataSortida)));
   };
 
   const monthLabel = new Intl.DateTimeFormat('ca-ES', { month: 'long', year: 'numeric' }).format(anchor);
@@ -132,8 +134,11 @@ export function CalendariHabitacio({ habitacions }: { habitacions: { id: string;
           const iso = toISODate(day);
           const isToday = iso === todayIso;
           const dim = !sameMonth(day, anchor);
-          const e = estadaDelDia(day);
+          const dayEst = estadesDelDia(day);
+          const e = dayEst[0];
           const cell = e ? ESTAT_CELL[e.estat] : '';
+          // Tots els hostes del dia (de tots els contractes que hi coincideixen).
+          const noms = dayEst.flatMap((st) => (st.viatgers.length > 0 ? st.viatgers : [st.titular]));
           const content = (
             <>
               <div className="text-right">
@@ -146,7 +151,7 @@ export function CalendariHabitacio({ habitacions }: { habitacions: { id: string;
                   {day.getDate()}
                 </span>
               </div>
-              {e && (e.viatgers.length > 0 ? e.viatgers : [e.titular]).map((nom, idx) => (
+              {noms.map((nom, idx) => (
                 <span key={idx} className="mt-0.5 block truncate text-[10px] font-medium leading-tight">
                   {nom}
                 </span>
@@ -163,7 +168,7 @@ export function CalendariHabitacio({ habitacions }: { habitacions: { id: string;
               key={i}
               href={`/estancies/${e.id}`}
               className={base}
-              title={`${ESTAT_LABEL[e.estat]}: ${e.titular}`}
+              title={`${ESTAT_LABEL[e.estat]}: ${dayEst.map((st) => st.titular).join(' · ')}`}
             >
               {content}
             </Link>

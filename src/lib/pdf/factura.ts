@@ -9,12 +9,16 @@ import 'server-only';
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import type { Establiment, Estancia, Factura, LiniaFactura, EstanciaViatger, Huesped } from '@prisma/client';
 import { formatDate } from '../utils';
+import { habitacioLlibre } from '../habitacio-llibre';
 
 type FacturaAmb = Factura & {
   linies: LiniaFactura[];
   estancia: Estancia & {
     habitacio: { nom: string | null } | null;
-    viatgers: (EstanciaViatger & { huesped: Huesped | null })[];
+    viatgers: (EstanciaViatger & {
+      huesped: Huesped | null;
+      habitacioSeparada: { nom: string | null } | null;
+    })[];
   };
 };
 
@@ -195,7 +199,8 @@ export async function buildFacturaPdf(factura: FacturaAmb, establiment: Establim
   };
   metaRow('Número', numeroDisplay);
   metaRow('Data', formatDate(factura.data));
-  if (factura.estancia.habitacio?.nom) metaRow('Habitació', factura.estancia.habitacio.nom);
+  const habNomFactura = habitacioLlibre(factura.estancia);
+  if (habNomFactura) metaRow('Habitació', habNomFactura);
 
   y = Math.min(cy, my) - 18;
 

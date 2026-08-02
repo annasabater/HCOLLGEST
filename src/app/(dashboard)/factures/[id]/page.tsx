@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { CheckCircle, Clock, ExternalLink } from 'lucide-react';
 import { BackLink } from '@/components/ui/back-link';
 import { prisma } from '@/lib/db';
+import { habitacioLlibre } from '@/lib/habitacio-llibre';
 import { Card, CardBody } from '@/components/ui/card';
 import { ToggleEstatFactura } from '@/components/factura/toggle-estat-factura';
 import { LiniesCard } from '@/components/factura/linies-card';
@@ -29,7 +30,7 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
       diposits: { select: { id: true, import: true, metode: true, notes: true } },
       estancia: {
         include: {
-          viatgers: { where: { esTitular: true }, include: { huesped: true } },
+          viatgers: { where: { esTitular: true }, include: { huesped: true, habitacioSeparada: { select: { nom: true } } } },
           habitacio: { select: { nom: true } },
         },
       },
@@ -77,9 +78,9 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
               </p>
             )}
             <div className="flex items-center gap-3 text-sm text-slate-400">
-              {factura.estancia.habitacio && (
+              {habitacioLlibre(factura.estancia) && (
                 <>
-                  <span>Hab. {factura.estancia.habitacio.nom}</span>
+                  <span>Hab. {habitacioLlibre(factura.estancia)}</span>
                   <span>·</span>
                 </>
               )}
