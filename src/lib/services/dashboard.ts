@@ -631,7 +631,68 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
     (a, b) => b.ingressos - b.devolucions - (a.ingressos - a.devolucions),
   );
 
-  return { ...base, ingressosPerMetode, despesesPerCategoria, ocupacio, adr, revpar, movimentsPerPersona };
+  // --- Moviments individuals del període (per als desglossaments clicables) ---
+  // Grups: INGRES (cobraments) · FIANCA (dipòsits retinguts, ja són ingrés) ·
+  // FIANCA_CUST (dipòsits en custòdia) · DESPESA (proveïdors) · PERSONAL (nòmines) ·
+  // FIANCA_PAGADA (fiances pagades, recuperables). L'import va signat (+ ingrés, − despesa).
+  const [gastosMov, gastosFiancaMov, jornadesMov, custodiaMov] = await Promise.all([
+    prisma.gasto.findMany({
+      where: { deletedAt: null, esFianca: false, data: { gte: start, lte: end } },
+      orderBy: { data: 'desc' },
+      select: { id: true, data: true, import: true, descripcio: true, categoria: { select: { nom: true } }, proveidor: { select: { nom: true } } },
+    }),
+    prisma.gasto.findMany({
+      where: { deletedAt: null, esFianca: true, data: { gte: start, lte: end } },
+      orderBy: { data: 'desc' },
+      select: { id: true, data: true, import: true, descripcio: true, categoria: { select: { nom: true } }, proveidor: { select: { nom: true } } },
+    }),
+    prisma.jornada.findMany({
+      where: { data: { gte: start, lte: end } },
+      orderBy: { data: 'desc' },
+      select: { id: true, data: true, import: true, pagada: true, treballador: { select: { nom: true } } },
+    }),
+    prisma.diposit.findMany({
+      where: { estat: 'EN_CUSTODIA', data: { gte: start, lte: end }, estancia: { deletedAt: null } },
+      orderBy: { data: 'desc' },
+      select: { id: true, data: true, import: true, estancia: titularSelDash },
+    }),
+  ]);
+
+  const titularDe = (est: EfectiuRow['estancia']) => {
+    const h = est?.viatgers?.[0]?.huesped;
+    return h ? `${h.nom} ${h.cognom1}` : 'Sense titular';
+  };
+  const hrefEst = (est: EfectiuRow['estancia']) => (est?.id ? `/estancies/${est.id}` : null);
+
+  const moviments: MovDetall[] = [];
+  let mk = 0;
+  for (const c of cobramentsRows)
+    moviments.push({ id: `c${mk++}`, grup: 'INGRES', data: c.data.toISOString(), concepte: titularDe(c.estancia), import: r2(c.import), metode: c.metode, pagada: null, href: hrefEst(c.estancia) });
+  for (const d of retingutsRows)
+    moviments.push({ id: `r${mk++}`, grup: 'FIANCA', data: d.data.toISOString(), concepte: `${titularDe(d.estancia)} · fiança retinguda`, import: r2(d.import), metode: d.metode, pagada: null, href: hrefEst(d.estancia) });
+  for (const d of custodiaMov)
+    moviments.push({ id: `cu${d.id}`, grup: 'FIANCA_CUST', data: d.data.toISOString(), concepte: `${titularDe(d.estancia)} · fiança en custòdia`, import: num(d.import), metode: null, pagada: null, href: hrefEst(d.estancia) });
+  for (const g of gastosMov)
+    moviments.push({ id: `g${g.id}`, grup: 'DESPESA', data: g.data.toISOString(), concepte: [g.categoria?.nom, g.proveidor?.nom, g.descripcio].filter(Boolean).join(' · '), import: -num(g.import), metode: null, pagada: null, href: '/gastos' });
+  for (const j of jornadesMov)
+    moviments.push({ id: `j${j.id}`, grup: 'PERSONAL', data: j.data.toISOString(), concepte: `Personal · ${j.treballador?.nom ?? '—'}`, import: -num(j.import), metode: null, pagada: j.pagada, href: '/personal' });
+  for (const g of gastosFiancaMov)
+    moviments.push({ id: `gf${g.id}`, grup: 'FIANCA_PAGADA', data: g.data.toISOString(), concepte: [g.categoria?.nom, g.proveidor?.nom, 'fiança pagada'].filter(Boolean).join(' · '), import: -num(g.import), metode: null, pagada: null, href: '/gastos' });
+  moviments.sort((a, b) => (a.data < b.data ? 1 : -1));
+
+  return { ...base, ingressosPerMetode, despesesPerCategoria, ocupacio, adr, revpar, movimentsPerPersona, moviments };
+}
+
+export type MovGrup = 'INGRES' | 'FIANCA' | 'FIANCA_CUST' | 'DESPESA' | 'PERSONAL' | 'FIANCA_PAGADA';
+export interface MovDetall {
+  id: string;
+  grup: MovGrup;
+  data: string; // ISO
+  concepte: string;
+  import: number; // signat: + ingrés, − despesa
+  metode: string | null;
+  pagada: boolean | null; // només per a personal
+  href: string | null;
 }
 
 export type BalancDetall = Awaited<ReturnType<typeof getBalancDetall>>;
@@ -663,6 +724,7 @@ export async function getBalancAny(year: number, opts?: FinanceOpts) {
     },
     ingressosPerMetode: detall.ingressosPerMetode,
     despesesPerCategoria: detall.despesesPerCategoria,
+    moviments: detall.moviments,
     ocupacio: detall.ocupacio,
     adr: detall.adr,
     revpar: detall.revpar,

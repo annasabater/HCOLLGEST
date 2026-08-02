@@ -30,6 +30,7 @@ import { FinancesNav } from '@/components/balanc/finances-nav';
 import { TrimestreIvaCard } from '@/components/balanc/trimestre-iva-card';
 import { Eur, HideAmountsButton, HideAmountsOnMount } from '@/components/finances/amounts-visibility';
 import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
+import type { MovDetall, MovGrup } from '@/lib/services/dashboard';
 
 /** Data curta "dd/mm/aa" a partir d'un ISO string. */
 function dataCurta(iso: string): string {
@@ -53,6 +54,7 @@ interface Breakdowns {
     dataSortida?: string | null;
     datesPagament?: string[];
   }[];
+  moviments?: MovDetall[];
 }
 interface CustodiaItem {
   id: string;
@@ -198,9 +200,21 @@ interface VistaBalanc {
   ingressosAmbRetencions: number; despesesFianca: number; retencions: number;
   ingressosPerMetode: Record<string, number>;
   despesesPerCategoria: { categoria: string; import: number }[];
+  moviments?: MovDetall[];
 }
-interface Desglos { title: string; rows: { label: string; value: number }[]; total: number }
+interface Desglos { title: string; rows: { label: string; value: number }[]; total: number; moviments?: MovDetall[] }
+// Quins grups de moviments es mostren en clicar cada KPI.
+const MOV_GRUPS: Record<string, MovGrup[]> = {
+  ingressos: ['INGRES', 'FIANCA'],
+  'ingressos-fianca': ['INGRES', 'FIANCA', 'FIANCA_CUST'],
+  despeses: ['DESPESA', 'PERSONAL'],
+  'despeses-fianca': ['DESPESA', 'PERSONAL', 'FIANCA_PAGADA'],
+  benefici: ['INGRES', 'FIANCA', 'DESPESA', 'PERSONAL'],
+  'benefici-fianca': ['INGRES', 'FIANCA', 'FIANCA_CUST', 'DESPESA', 'PERSONAL', 'FIANCA_PAGADA'],
+};
 function desglos(metric: string, v: VistaBalanc): Desglos {
+  const grupsMov = MOV_GRUPS[metric] ?? [];
+  const moviments = (v.moviments ?? []).filter((m) => grupsMov.includes(m.grup));
   const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
   const met = metodeItems(v.ingressosPerMetode).map((m) => ({ label: m.label, value: m.value }));
   const cat = v.despesesPerCategoria.map((d) => ({ label: d.categoria, value: d.import }));
@@ -211,22 +225,25 @@ function desglos(metric: string, v: VistaBalanc): Desglos {
     const resta = r2(total - rows.reduce((a, m) => a + m.value, 0));
     return Math.abs(resta) >= 0.005 ? [...rows, { label, value: resta }] : rows;
   };
-  switch (metric) {
-    case 'ingressos':
-      return { title: 'Ingressos · per mètode de cobrament', rows: balanc(met, v.ingressos, 'Fiances retingudes (ingrés)'), total: v.ingressos };
-    case 'despeses':
-      return { title: 'Despeses · per categoria', rows: cat, total: desp };
-    case 'benefici':
-      return { title: 'Benefici = Ingressos − Despeses', rows: [{ label: 'Ingressos', value: v.ingressos }, { label: 'Despeses', value: -desp }], total: v.benefici };
-    case 'ingressos-fianca':
-      return { title: 'Ingressos + fiança', rows: balanc(met, v.ingressosAmbRetencions, 'Fiances (retingudes + custòdia)'), total: v.ingressosAmbRetencions };
-    case 'despeses-fianca':
-      return { title: 'Despeses + fiança', rows: [...cat, ...(v.despesesFianca ? [{ label: 'Fiances pagades', value: v.despesesFianca }] : [])], total: r2(desp + v.despesesFianca) };
-    case 'benefici-fianca':
-      return { title: 'Benefici + fiança', rows: [{ label: 'Benefici', value: v.benefici }, { label: 'Fiances netes', value: v.retencions }], total: r2(v.benefici + v.retencions) };
-    default:
-      return { title: 'Desglossament', rows: [], total: 0 };
-  }
+  const base: { title: string; rows: { label: string; value: number }[]; total: number } = (() => {
+    switch (metric) {
+      case 'ingressos':
+        return { title: 'Ingressos · per mètode de cobrament', rows: balanc(met, v.ingressos, 'Fiances retingudes (ingrés)'), total: v.ingressos };
+      case 'despeses':
+        return { title: 'Despeses · per categoria', rows: cat, total: desp };
+      case 'benefici':
+        return { title: 'Benefici = Ingressos − Despeses', rows: [{ label: 'Ingressos', value: v.ingressos }, { label: 'Despeses', value: -desp }], total: v.benefici };
+      case 'ingressos-fianca':
+        return { title: 'Ingressos + fiança', rows: balanc(met, v.ingressosAmbRetencions, 'Fiances (retingudes + custòdia)'), total: v.ingressosAmbRetencions };
+      case 'despeses-fianca':
+        return { title: 'Despeses + fiança', rows: [...cat, ...(v.despesesFianca ? [{ label: 'Fiances pagades', value: v.despesesFianca }] : [])], total: r2(desp + v.despesesFianca) };
+      case 'benefici-fianca':
+        return { title: 'Benefici + fiança', rows: [{ label: 'Benefici', value: v.benefici }, { label: 'Fiances netes', value: v.retencions }], total: r2(v.benefici + v.retencions) };
+      default:
+        return { title: 'Desglossament', rows: [], total: 0 };
+    }
+  })();
+  return { ...base, moviments };
 }
 
 function BsRow({ label, value, level = 0, strong, total }: { label: string; value: number; level?: number; strong?: boolean; total?: boolean }) {
@@ -809,14 +826,14 @@ export default function BalancPage() {
           {any && (
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <Kpi label="Ingressos" value={<Eur value={any.totals.ingressos} />} icon={TrendingUp} color="text-green-600" big delta={variacio(any.totals.ingressos, any.anterior.ingressos)} onSelect={() => setBreakdown(desglos('ingressos', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria }))} />
-                <Kpi label="Despeses" value={<Eur value={any.totals.despeses + any.totals.personal} />} icon={TrendingDown} color="text-red-600" delta={variacio(any.totals.despeses + any.totals.personal, any.anterior.despeses + any.anterior.personal)} deltaInvert onSelect={() => setBreakdown(desglos('despeses', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria }))} />
-                <Kpi label="Benefici" value={<Eur value={any.totals.benefici} />} icon={Wallet} color={any.totals.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big delta={variacio(any.totals.benefici, any.anterior.benefici)} onSelect={() => setBreakdown(desglos('benefici', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria }))} />
+                <Kpi label="Ingressos" value={<Eur value={any.totals.ingressos} />} icon={TrendingUp} color="text-green-600" big delta={variacio(any.totals.ingressos, any.anterior.ingressos)} onSelect={() => setBreakdown(desglos('ingressos', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria, moviments: any.moviments }))} />
+                <Kpi label="Despeses" value={<Eur value={any.totals.despeses + any.totals.personal} />} icon={TrendingDown} color="text-red-600" delta={variacio(any.totals.despeses + any.totals.personal, any.anterior.despeses + any.anterior.personal)} deltaInvert onSelect={() => setBreakdown(desglos('despeses', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria, moviments: any.moviments }))} />
+                <Kpi label="Benefici" value={<Eur value={any.totals.benefici} />} icon={Wallet} color={any.totals.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big delta={variacio(any.totals.benefici, any.anterior.benefici)} onSelect={() => setBreakdown(desglos('benefici', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria, moviments: any.moviments }))} />
                 {!restringit && (
                   <>
-                    <Kpi label="Ingressos + fiança" value={<Eur value={any.totals.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" onSelect={() => setBreakdown(desglos('ingressos-fianca', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria }))} />
-                    <Kpi label="Despeses + fiança" value={<Eur value={any.totals.despeses + any.totals.personal + any.totals.despesesFianca} />} icon={TrendingDown} color="text-red-600" onSelect={() => setBreakdown(desglos('despeses-fianca', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria }))} />
-                    <Kpi label="Benefici + fiança" value={<Eur value={any.totals.benefici + any.totals.retencions} />} icon={Wallet} color={any.totals.benefici + any.totals.retencions >= 0 ? 'text-green-600' : 'text-red-600'} big onSelect={() => setBreakdown(desglos('benefici-fianca', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria }))} />
+                    <Kpi label="Ingressos + fiança" value={<Eur value={any.totals.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" onSelect={() => setBreakdown(desglos('ingressos-fianca', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria, moviments: any.moviments }))} />
+                    <Kpi label="Despeses + fiança" value={<Eur value={any.totals.despeses + any.totals.personal + any.totals.despesesFianca} />} icon={TrendingDown} color="text-red-600" onSelect={() => setBreakdown(desglos('despeses-fianca', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria, moviments: any.moviments }))} />
+                    <Kpi label="Benefici + fiança" value={<Eur value={any.totals.benefici + any.totals.retencions} />} icon={Wallet} color={any.totals.benefici + any.totals.retencions >= 0 ? 'text-green-600' : 'text-red-600'} big onSelect={() => setBreakdown(desglos('benefici-fianca', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria, moviments: any.moviments }))} />
                   </>
                 )}
               </div>
@@ -959,6 +976,34 @@ export default function BalancPage() {
               <span className="text-slate-900">Total</span>
               <span className="text-brand-800"><Eur value={breakdown.total} /></span>
             </div>
+
+            {breakdown.moviments && breakdown.moviments.length > 0 && (
+              <div className="mt-3 border-t border-slate-100 pt-2">
+                <p className="mb-1 text-xs font-medium text-slate-500">Moviments ({breakdown.moviments.length})</p>
+                <div className="max-h-72 space-y-0.5 overflow-y-auto">
+                  {breakdown.moviments.map((m) => {
+                    const inner = (
+                      <>
+                        <span className="min-w-0 flex-1 truncate">
+                          <span className="text-slate-400">{dataCurta(m.data)}</span>{' '}
+                          <span className="text-slate-600">{m.concepte}</span>
+                          {m.metode ? <span className="text-slate-400"> · {METODE_COBRAMENT_LABELS[m.metode as keyof typeof METODE_COBRAMENT_LABELS] ?? m.metode}</span> : null}
+                          {m.pagada === false ? <span className="text-amber-600"> · pendent de pagar</span> : null}
+                        </span>
+                        <span className={cn('shrink-0 font-medium', m.import < 0 ? 'text-red-600' : 'text-green-700')}>
+                          <Eur value={m.import} />
+                        </span>
+                      </>
+                    );
+                    return m.href ? (
+                      <a key={m.id} href={m.href} className="flex items-center justify-between gap-2 rounded px-1 py-1 text-xs hover:bg-slate-50">{inner}</a>
+                    ) : (
+                      <div key={m.id} className="flex items-center justify-between gap-2 px-1 py-1 text-xs">{inner}</div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
