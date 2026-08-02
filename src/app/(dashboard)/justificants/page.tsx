@@ -234,6 +234,13 @@ export default async function JustificantsPage({
                                 .filter((v) => v.habitacioSeparada)
                                 .map((v) => [v.habitacioSeparada!.nom, { hab: v.habitacioSeparada!.nom, num: v.numContracteSeparat ?? e.numContracte }]),
                             ).values()];
+                            // Full "principal" (habitació física) només si hi ha viatgers
+                            // que hi consten; si tots estan al llibre, no es duplica.
+                            const teePrincipals = e.viatgers.some((v) => !v.habitacioSeparada);
+                            const fullsDocs = [
+                              ...(teePrincipals ? [{ hab: 'principal', num: e.numContracte }] : []),
+                              ...separats,
+                            ];
                             if (separats.length === 0) {
                               return (
                                 <>
@@ -255,7 +262,7 @@ export default async function JustificantsPage({
                                 </>
                               );
                             }
-                            return [{ hab: 'principal', num: e.numContracte }, ...separats].map((c) => (
+                            return fullsDocs.map((c) => (
                               <span key={c.hab} className="flex items-center gap-1 rounded-lg border border-slate-200 px-1 py-1">
                                 <span className="px-1 text-xs font-semibold text-slate-500">{c.num}</span>
                                 <a href={`/api/estancies/${e.id}/fitxa-pdf?hab=${encodeURIComponent(c.hab)}`} target="_blank" rel="noreferrer">
