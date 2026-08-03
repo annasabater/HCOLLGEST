@@ -258,20 +258,20 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   .add{ margin-top:10px; }
   .add button{ font:inherit; font-size:12px; color:var(--accent); background:#fff; border:1px dashed var(--accent); border-radius:8px; padding:6px 12px; cursor:pointer; }
   @page{ size:A4 landscape; margin:12mm; }
+  /* Tot el document surt en A4 HORITZONTAL: així el Libro de gastos (moltes
+     columnes) hi cap, i la resta de fulles hi caben de sobres. Cada taula que
+     sigui més ampla que el full s'escala amb JS (beforeprint). */
+  @page{ size:A4 landscape; margin:8mm; }
   @media print{
     body{ background:#fff; } .toolbar,.c-del,.del,.add,.resizer,.delg,.delcol{ display:none !important; } .app{ padding:0; }
-    .sheet{ box-shadow:none; border:none; border-radius:0; max-width:none; padding:0; }
+    .sheet{ box-shadow:none; border:none; border-radius:0; max-width:none; padding:0; overflow:visible; }
     .sheet + .sheet{ page-break-before:always; }
     .in:focus{ background:transparent; box-shadow:none; }
     *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-    /* Libro de gastos: full HORITZONTAL i taula sencera (sense scroll ni retall).
-       L'amplada es manté fixa i la taula s'ESCALA amb JS (beforeprint) per cabre. */
-    .sheet.wide{ page:libro-land; }
     .wide-scroll{ overflow:visible !important; }
-    table.lg{ transform-origin:top left; }
-    table.lg .col-hidden{ display:none !important; }
+    table.rz{ transform-origin:top left; }
+    .col-hidden{ display:none !important; }
   }
-  @page libro-land{ size:A4 landscape; margin:8mm; }
 </style>
 </head>
 <body>
@@ -426,8 +426,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <p class="note">Es pre-omple de les teves despeses (per categoria) i nòmines del trimestre, però és
     <strong>editable</strong>: pots canviar imports, <strong>eixamplar/estrènyer</strong> columnes
     (arrossega la vora dreta de la capçalera) i <strong>treure columnes</strong> amb la ×. Prem
-    <strong>Desar</strong> per guardar-ho per aquest trimestre. Per imprimir, tria orientació
-    <strong>horitzontal</strong>.</p>
+    <strong>Desar</strong> per guardar-ho per aquest trimestre. En imprimir, la pàgina ja surt en
+    <strong>horitzontal</strong> i la taula s'ajusta sola perquè hi càpiga tot.</p>
   </div>
 
   <!-- ── Resumen IVA: Repercutido / Soportado → a ingresar ───────────── -->
@@ -736,22 +736,21 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   document.getElementById('restoreCols').addEventListener('click', () => {
     Array.from(libroRemoved).forEach((k) => amagaCol(k, false));
   });
-  // Abans d'imprimir, escala el Libro de gastos perquè la taula sencera càpiga
-  // a l'amplada d'un full A4 horitzontal (uns 1050px útils amb marge 8mm).
-  function scalaLibroImpressio() {
-    const t = document.getElementById('libro');
-    if (!t) return;
-    t.style.transform = '';
-    const w = t.scrollWidth || t.offsetWidth;
-    const util = 1050;
-    const s = w > util ? Math.max(0.4, util / w) : 1;
-    t.style.transform = s < 1 ? 'scale(' + s.toFixed(3) + ')' : '';
+  // Abans d'imprimir, escala QUALSEVOL taula més ampla que el full (A4 horitzontal,
+  // ~1030px útils amb marge 8mm) perquè surti sencera, sense retallar.
+  function scalaImpressio() {
+    const util = 1030;
+    document.querySelectorAll('.sheet table.rz').forEach((t) => {
+      t.style.transform = '';
+      const w = t.scrollWidth || t.offsetWidth;
+      if (w > util) t.style.transform = 'scale(' + Math.max(0.4, util / w).toFixed(3) + ')';
+    });
   }
-  function reseteaLibroImpressio() {
-    const t = document.getElementById('libro'); if (t) t.style.transform = '';
+  function reseteaImpressio() {
+    document.querySelectorAll('.sheet table.rz').forEach((t) => { t.style.transform = ''; });
   }
-  window.addEventListener('beforeprint', scalaLibroImpressio);
-  window.addEventListener('afterprint', reseteaLibroImpressio);
+  window.addEventListener('beforeprint', scalaImpressio);
+  window.addEventListener('afterprint', reseteaImpressio);
   document.getElementById('print').addEventListener('click', () => window.print());
 
   // Columnes redimensionables: arrossega la nansa de la vora dreta de cada
