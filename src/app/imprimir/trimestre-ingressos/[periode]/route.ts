@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
-import { getLlibreIngressos, getGastosSoportats, getFiancesSoportades, type FilaIngres, type FilaGasto } from '@/lib/services/llibre-iva';
+import { getLlibreIngressos, getGastosSoportats, getFiancesSoportades, getLibroGastos, COLUMNES_GASTO, COLUMNA_GASTO_LABELS, type FilaIngres, type FilaGasto } from '@/lib/services/llibre-iva';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,6 +95,23 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   }
   const desatAt = desat ? fmtData(desat.updatedAt.toISOString()) : '';
 
+  // Libro de gastos (format gestoria): es deriva SEMPRE dels gastos reals +
+  // nòmines del trimestre (classificats per categoria), no de les files editades.
+  const libro = await getLibroGastos(year, trimestre);
+  const cell = (n: number) => (n ? num(n) : ''); // buit si és 0 (com el full de paper)
+  const filaLibro = (f: (typeof libro.files)[number]) => `
+    <tr>
+      <td>${esc(f.data.includes('T') ? fmtData(f.data) : f.data)}</td>
+      <td>${esc(f.nif)}</td>
+      <td class="lft">${esc(f.proveidor)}</td>
+      <td>${esc(f.numFactura)}</td>
+      ${COLUMNES_GASTO.map((c) => `<td class="c-n">${cell(f.bases[c])}</td>`).join('')}
+      <td class="c-n">${cell(f.iva5)}</td>
+      <td class="c-n">${cell(f.iva10)}</td>
+      <td class="c-n">${cell(f.iva21)}</td>
+      <td class="c-n">${cell(f.total)}</td>
+    </tr>`;
+
   // Fila editable de "Facturas emitidas" (font de veritat; el "Libro de ingresos"
   // i els totals es reconstrueixen des d'aquí amb JS).
   const filaEmesa = (f: FilaEdit) => `
@@ -167,6 +184,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   .rule::before{ content:""; position:absolute; top:3px; left:0; width:56px; border-top:3px solid var(--accent); }
   .period{ text-align:center; font-weight:600; letter-spacing:1px; margin:14px 0 4px; color:var(--ink); }
   .doc-title{ text-align:center; font-size:13px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--accent); margin:2px 0 16px; }
+  /* Libro de gastos: taula molt ampla (moltes columnes) — lletra petita i scroll. */
+  .sheet.wide{ max-width:none; }
+  .wide-scroll{ overflow-x:auto; }
+  table.mini{ table-layout:auto; font-size:8px; }
+  table.mini th{ font-size:7px; padding:0 3px 5px; letter-spacing:.2px; white-space:nowrap; }
+  table.mini td{ padding:2px 3px; white-space:nowrap; }
+  table.mini td.lft, table.mini th.lft{ text-align:left; }
   table{ width:100%; border-collapse:collapse; }
   th{ font-size:9.5px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); font-weight:600; text-align:left; padding:0 6px 7px; border-bottom:1.5px solid var(--ink); }
   th.n{ text-align:right; }
@@ -322,6 +346,42 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     LLOGUER o servei amb retenció, escriu la <strong>base</strong>, el <strong>% IVA</strong> (21) i el
     <strong>% IRPF</strong> (19): l'IVA, l'IRPF i el total (base + IVA − IRPF) es calculen sols. El nº de
     factura s'omple a mà. IRPF total del trimestre: <span id="g-irpf2">0,00</span> € (per al model 115).</p>
+  </div>
+
+  <!-- ── Libro de gastos (format gestoria: base per columna + IVA per tipus) ── -->
+  <div class="sheet wide">
+    <div class="brand">HOSTAL COLL</div>
+    <div class="brand-sub">Casa de Hostes · Calella</div>
+    <div class="rule"></div>
+    <div class="period">${esc(etiqueta)}</div>
+    <div class="doc-title">Libro de gastos</div>
+    <div class="wide-scroll">
+    <table class="rz mini">
+      <thead>
+        <tr>
+          <th>Fecha</th><th>NIF</th><th class="lft">Nombre proveedor</th><th>Nº factura</th>
+          ${COLUMNES_GASTO.map((c) => `<th class="n">${esc(COLUMNA_GASTO_LABELS[c])}</th>`).join('')}
+          <th class="n">IVA 5%</th><th class="n">IVA 10%</th><th class="n">IVA 21%</th><th class="n">Total</th>
+        </tr>
+      </thead>
+      <tbody>${libro.files.map(filaLibro).join('')}</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4" class="lab">Total…</td>
+          ${COLUMNES_GASTO.map((c) => `<td class="c-n">${cell(libro.totals[c])}</td>`).join('')}
+          <td class="c-n">${cell(libro.totalIva5)}</td>
+          <td class="c-n">${cell(libro.totalIva10)}</td>
+          <td class="c-n">${cell(libro.totalIva21)}</td>
+          <td class="c-n">${cell(libro.totalTotal)}</td>
+        </tr>
+      </tfoot>
+    </table>
+    </div>
+    <p class="note">Es genera automàticament de les teves despeses (per categoria) i nòmines del trimestre.
+    Per reclassificar un import, canvia la <strong>categoria</strong> de la despesa. Les columnes
+    <strong>Compras 5/10/21%</strong>, <strong>Impuesto local</strong>, <strong>Gestoría</strong>,
+    <strong>Autónomos</strong> i <strong>Seguridad Social</strong> encara no es desglossen a l'app.
+    Per imprimir aquesta taula, tria orientació <strong>horitzontal</strong>.</p>
   </div>
 
   <!-- ── Resumen IVA: Repercutido / Soportado → a ingresar ───────────── -->

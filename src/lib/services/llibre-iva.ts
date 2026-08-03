@@ -228,3 +228,148 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
     totalTotal: round2(files.reduce((a, f) => a + f.total, 0)),
   };
 }
+
+// ─── Libro de gastos (format de la gestoria: base per columna + IVA per tipus) ───
+
+/** Columnes de BASE del libro de gastos (les de la foto de la gestoria). */
+export const COLUMNES_GASTO = [
+  'compras5', 'compras10', 'compras21', 'impuestoLocal', 'gestoria',
+  'electricidadAgua', 'reparaciones', 'gastosVarios', 'autonomos',
+  'salarios', 'seguridadSocial', 'otrosSinIva',
+] as const;
+export type ColumnaGasto = (typeof COLUMNES_GASTO)[number];
+
+/** Etiquetes visibles de cada columna de base. */
+export const COLUMNA_GASTO_LABELS: Record<ColumnaGasto, string> = {
+  compras5: 'Compras 5%',
+  compras10: 'Compras 10%',
+  compras21: 'Compras 21%',
+  impuestoLocal: 'Impuesto local',
+  gestoria: 'Gestoría',
+  electricidadAgua: 'Electricidad/Agua',
+  reparaciones: 'Reparaciones',
+  gastosVarios: 'Gastos varios',
+  autonomos: 'Autónomos',
+  salarios: 'Salarios',
+  seguridadSocial: 'Seguridad Social',
+  otrosSinIva: 'Otros gastos sin IVA',
+};
+
+/** Mapatge categoria de l'app (minúscules) → columna de base. La resta → gastosVarios. */
+const CATEGORIA_A_COLUMNA: Record<string, ColumnaGasto> = {
+  aigua: 'electricidadAgua',
+  electricitat: 'electricidadAgua',
+  manteniment: 'reparaciones',
+  reformes: 'reparaciones',
+  assegurances: 'otrosSinIva',
+  personal: 'salarios',
+};
+
+function columnaPerCategoria(nom: string): ColumnaGasto {
+  return CATEGORIA_A_COLUMNA[nom.trim().toLowerCase()] ?? 'gastosVarios';
+}
+
+export interface FilaLibroGasto {
+  data: string; // ISO (gasto) o "YYYY-MM" (nòmina)
+  nif: string;
+  proveidor: string;
+  numFactura: string;
+  bases: Record<ColumnaGasto, number>;
+  iva5: number;
+  iva10: number;
+  iva21: number;
+  total: number;
+}
+
+function basesBuides(): Record<ColumnaGasto, number> {
+  return Object.fromEntries(COLUMNES_GASTO.map((c) => [c, 0])) as Record<ColumnaGasto, number>;
+}
+
+/**
+ * Libro de gastos del trimestre en el format de la gestoria: cada despesa a la
+ * columna de la seva categoria (base) + l'IVA a la columna del seu tipus, i les
+ * nòmines del trimestre a la columna "Salarios". Autònoms i Seguridad Social no
+ * es desglossen a l'app encara → columnes a 0 (editables a la impressió).
+ */
+export async function getLibroGastos(
+  year: number,
+  trimestre: number,
+): Promise<{ files: FilaLibroGasto[]; totals: Record<ColumnaGasto, number>; totalIva5: number; totalIva10: number; totalIva21: number; totalTotal: number }> {
+  const { start, end } = rangTrimestre(year, trimestre);
+  const gastos = await prisma.gasto.findMany({
+    where: { deletedAt: null, esFianca: false, data: { gte: start, lte: end } },
+    orderBy: [{ data: 'asc' }],
+    include: { proveidor: { select: { nom: true, cif: true } }, categoria: { select: { nom: true } } },
+  });
+
+  const files: FilaLibroGasto[] = gastos.map((g) => {
+    const total = round2(Number(g.import));
+    let base: number;
+    let ivaPercent: number;
+    let iva: number;
+    if (g.baseImposable != null) {
+      base = round2(Number(g.baseImposable));
+      ivaPercent = g.ivaPercent != null ? Number(g.ivaPercent) : 0;
+      iva = round2(base * (ivaPercent / 100));
+    } else {
+      base = round2(total / (1 + IVA_DESPESA / 100));
+      ivaPercent = IVA_DESPESA;
+      iva = round2(total - base);
+    }
+    const col = columnaPerCategoria(g.categoria?.nom ?? '');
+    const bases = basesBuides();
+    // Les despeses exemptes (assegurances → otrosSinIva) van sense IVA.
+    if (col === 'otrosSinIva') {
+      bases.otrosSinIva = total;
+      ivaPercent = 0;
+      iva = 0;
+    } else {
+      bases[col] = base;
+    }
+    return {
+      data: g.data.toISOString(),
+      nif: g.proveidor?.cif ?? '',
+      proveidor: g.proveidor?.nom ?? g.descripcio,
+      numFactura: g.numFactura ?? '',
+      bases,
+      iva5: ivaPercent === 5 ? iva : 0,
+      iva10: ivaPercent === 10 ? iva : 0,
+      iva21: ivaPercent >= 21 ? iva : 0,
+      total,
+    };
+  });
+
+  // Nòmines del trimestre → columna Salarios (periode "YYYY-MM").
+  const mesos = [1, 2, 3].map((m) => `${year}-${String((trimestre - 1) * 3 + m).padStart(2, '0')}`);
+  const nomines = await prisma.nomina.findMany({
+    where: { periode: { in: mesos } },
+    include: { treballador: { select: { nom: true } } },
+    orderBy: { periode: 'asc' },
+  });
+  for (const n of nomines) {
+    const bases = basesBuides();
+    bases.salarios = round2(Number(n.total));
+    files.push({
+      data: n.periode,
+      nif: '',
+      proveidor: n.treballador?.nom ?? 'Treballador',
+      numFactura: '',
+      bases,
+      iva5: 0,
+      iva10: 0,
+      iva21: 0,
+      total: round2(Number(n.total)),
+    });
+  }
+
+  const totals = basesBuides();
+  for (const f of files) for (const c of COLUMNES_GASTO) totals[c] = round2(totals[c] + f.bases[c]);
+  return {
+    files,
+    totals,
+    totalIva5: round2(files.reduce((a, f) => a + f.iva5, 0)),
+    totalIva10: round2(files.reduce((a, f) => a + f.iva10, 0)),
+    totalIva21: round2(files.reduce((a, f) => a + f.iva21, 0)),
+    totalTotal: round2(files.reduce((a, f) => a + f.total, 0)),
+  };
+}
