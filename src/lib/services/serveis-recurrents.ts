@@ -59,6 +59,66 @@ async function crearDespesaServei(s: ServeiRow, data: Date, import_: number, cat
 }
 
 /**
+ * Registra MANUALMENT la factura d'un servei (quan l'usuari la puja): crea la
+ * despesa amb la data i import reals + opcions (fiança, mètode, adjunt) i avança
+ * la propera data un període. Per als serveis en mode "només recordatori"
+ * (generaDespesa = false), aquesta és la via per entrar la despesa.
+ */
+export async function registrarFacturaServei(
+  serveiId: string,
+  input: {
+    data: Date;
+    import: number;
+    esFianca?: boolean;
+    metodePagament?: Prisma.GastoCreateInput['metodePagament'];
+    baseImposable?: number | null;
+    ivaPercent?: number | null;
+    irpfPercent?: number | null;
+    adjuntPath?: string | null;
+    numFactura?: string | null;
+  },
+  usuariId?: string | null,
+): Promise<{ gastoId: string }> {
+  const s = await prisma.serveiRecurrent.findFirst({ where: { id: serveiId, deletedAt: null } });
+  if (!s) throw new Error('Servei no trobat');
+  const categoriaId = s.categoriaId ?? (await ensureCategoriaServeis());
+
+  const gasto = await prisma.gasto.create({
+    data: {
+      data: input.data,
+      import: input.import,
+      categoriaId,
+      proveidorId: s.proveidorId,
+      serveiRecurrentId: s.id,
+      descripcio: `Servei: ${s.activitat}`,
+      baseImposable: input.baseImposable ?? s.baseImposable,
+      ivaPercent: input.ivaPercent ?? s.ivaPercent,
+      irpfPercent: input.irpfPercent ?? s.irpfPercent,
+      metodePagament: input.metodePagament ?? s.metodePagament,
+      esFianca: input.esFianca ?? false,
+      adjuntPath: input.adjuntPath ?? null,
+      numFactura: input.numFactura ?? null,
+    },
+  });
+
+  // Avança la propera data un període (o desactiva si és puntual).
+  const mesos = FREQUENCIA_MESOS[s.frequencia as FrequenciaServeiValue];
+  await prisma.serveiRecurrent.update({
+    where: { id: s.id },
+    data: mesos != null ? { properaData: addMonthsKeepDay(s.properaData, mesos) } : { actiu: false },
+  });
+
+  await audit({
+    usuariId: usuariId ?? null,
+    accio: 'CREACIO',
+    entitat: 'gasto',
+    entitatId: gasto.id,
+    detall: { origen: 'servei_registrat_manual', serveiId: s.id, import: input.import },
+  });
+  return { gastoId: gasto.id };
+}
+
+/**
  * Genera les despeses de tots els serveis vençuts (properaData ≤ ara) i avança
  * la data. Retorna el nombre de despeses creades. Segur per cridar sovint.
  */

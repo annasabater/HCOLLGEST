@@ -109,6 +109,13 @@ export default async function DashboardPage() {
     sub: `Falta: ${f.resum}`,
     href: `/estancies/${f.id}`,
   }));
+  // Serveis fixos vençuts en mode recordatori: falta pujar-ne la factura.
+  const itemsFixes: AvisItem[] = resum.serveisPendentsFactura.map((s) => ({
+    key: s.id,
+    nom: s.activitat,
+    sub: `Vençut ${formatDate(s.properaData)}${s.import != null ? ` · ${formatEur(s.import)}` : ''} · puja la factura`,
+    href: '/serveis',
+  }));
 
   const alertes: { label: string; value: number; icon: React.ElementType; ok: boolean; href: string; color: ColorKey }[] = [
     { label: 'Serveis/renovacions pròximes',value: resum.alertes.serveisProxims,      icon: Wrench,      ok: resum.alertes.serveisProxims === 0,        href: '/serveis',                 color: 'sky'     },
@@ -233,6 +240,7 @@ export default async function DashboardPage() {
       {/* Cards d'alerta */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <TargetaAvis label="Fitxes amb dades pendents" ok={itemsFitxes.length === 0} color="amber" iconKey="FileEdit" items={itemsFitxes} dismissable={false} />
+        <TargetaAvis label="Factures fixes pendents de pujar" ok={itemsFixes.length === 0} color="amber" iconKey="Receipt" items={itemsFixes} dismissable={false} />
         <TargetaAvis label="Pendents d'enviar a Mossos" ok={itemsMossos.length === 0} color="amber" iconKey="Send" items={itemsMossos} />
         <TargetaAvis label="Firmes pendents" ok={itemsFirma.length === 0} color="violet" iconKey="PenLine" items={itemsFirma} />
         <TargetaAvis label="Enviaments amb error" ok={itemsError.length === 0} color="red" iconKey="FileWarning" items={itemsError} />

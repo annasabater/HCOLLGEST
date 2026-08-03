@@ -345,7 +345,11 @@ export async function getResum(opts?: FinanceOpts) {
     properaData: s.properaData,
     import: s.importPrevist != null ? Number(s.importPrevist) : null,
     vencut: s.properaData < now,
+    generaDespesa: s.generaDespesa,
   }));
+  // Factures fixes pendents de pujar: serveis en mode "només recordatori"
+  // (no auto-generen) que ja han vençut i encara no s'han registrat.
+  const serveisPendentsFactura = serveisProximsList.filter((s) => !s.generaDespesa && s.vencut);
 
   const vigenciesProximesList = vigenciesProximes.map((s) => ({
     id: s.id,
@@ -414,6 +418,7 @@ export async function getResum(opts?: FinanceOpts) {
     sortidesToday,
     estadesAFacturar,
     serveisProxims: serveisProximsList,
+    serveisPendentsFactura,
     vigenciesProximes: vigenciesProximesList,
     benvingudes: {
       automatica: establimentBenv?.benvingudaAutomatica ?? false,
