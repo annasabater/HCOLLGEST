@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
-import { getLlibreIngressos, getGastosSoportats, getFiancesSoportades, getLibroGastos, COLUMNES_GASTO, COLUMNA_GASTO_LABELS, type FilaIngres, type FilaGasto } from '@/lib/services/llibre-iva';
+import { getLlibreIngressos, getGastosSoportats, getFiancesSoportades, getLibroGastos, COLUMNES_GASTO, COLUMNA_GASTO_LABELS, type FilaIngres, type FilaGasto, type FilaLibroGasto } from '@/lib/services/llibre-iva';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,22 +95,54 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   }
   const desatAt = desat ? fmtData(desat.updatedAt.toISOString()) : '';
 
-  // Libro de gastos (format gestoria): es deriva SEMPRE dels gastos reals +
-  // nòmines del trimestre (classificats per categoria), no de les files editades.
-  const libro = await getLibroGastos(year, trimestre);
-  const cell = (n: number) => (n ? num(n) : ''); // buit si és 0 (com el full de paper)
-  const filaLibro = (f: (typeof libro.files)[number]) => `
-    <tr>
-      <td>${esc(f.data.includes('T') ? fmtData(f.data) : f.data)}</td>
-      <td>${esc(f.nif)}</td>
-      <td class="lft">${esc(f.proveidor)}</td>
-      <td>${esc(f.numFactura)}</td>
-      ${COLUMNES_GASTO.map((c) => `<td class="c-n">${cell(f.bases[c])}</td>`).join('')}
-      <td class="c-n">${cell(f.iva5)}</td>
-      <td class="c-n">${cell(f.iva10)}</td>
-      <td class="c-n">${cell(f.iva21)}</td>
-      <td class="c-n">${cell(f.total)}</td>
+  // Libro de gastos (format gestoria). Si hi ha versió DESADA (editada), es fa
+  // servir; si no, es deriva dels gastos reals + nòmines del trimestre.
+  const libroDerivat = await getLibroGastos(year, trimestre);
+  const libroSaved = (desat?.libroGastos ?? null) as
+    | { rows: FilaLibroGasto[]; removedCols: string[]; widths: Record<string, number> }
+    | null;
+  const libroRows: FilaLibroGasto[] = libroSaved?.rows ?? libroDerivat.files;
+  const libroRemoved: string[] = libroSaved?.removedCols ?? [];
+  const libroWidths: Record<string, number> = libroSaved?.widths ?? {};
+
+  // Descriptor de columnes (ordre, etiqueta, tipus, si es pot treure, amplada).
+  const COLS_LIBRO: { key: string; label: string; num: boolean; del: boolean; left?: boolean; w: number }[] = [
+    { key: 'data', label: 'Fecha', num: false, del: false, w: 78 },
+    { key: 'nif', label: 'NIF', num: false, del: false, w: 86 },
+    { key: 'proveidor', label: 'Nombre proveedor', num: false, del: false, left: true, w: 150 },
+    { key: 'numFactura', label: 'Nº factura', num: false, del: false, w: 104 },
+    ...COLUMNES_GASTO.map((c) => ({ key: c, label: COLUMNA_GASTO_LABELS[c], num: true, del: true, w: 70 })),
+    { key: 'iva5', label: 'IVA 5%', num: true, del: true, w: 58 },
+    { key: 'iva10', label: 'IVA 10%', num: true, del: true, w: 58 },
+    { key: 'iva21', label: 'IVA 21%', num: true, del: true, w: 58 },
+    { key: 'total', label: 'Total', num: true, del: false, w: 76 },
+  ];
+  const cellVal = (r: FilaLibroGasto, key: string): number | string => {
+    switch (key) {
+      case 'data': return r.data.includes('T') ? fmtData(r.data) : r.data;
+      case 'nif': return r.nif;
+      case 'proveidor': return r.proveidor;
+      case 'numFactura': return r.numFactura;
+      case 'iva5': return r.iva5;
+      case 'iva10': return r.iva10;
+      case 'iva21': return r.iva21;
+      case 'total': return r.total;
+      default: return (r.bases as Record<string, number>)[key] ?? 0;
+    }
+  };
+  const cell = (n: number) => (n ? num(n) : '');
+  const hid = (key: string) => (libroRemoved.includes(key) ? ' col-hidden' : '');
+  const filaLibro = (r: FilaLibroGasto) => `
+    <tr class="litem-g">
+      ${COLS_LIBRO.map((c) => {
+        const v = cellVal(r, c.key);
+        const val = c.num ? (v ? num(v as number) : '') : esc(String(v));
+        return `<td data-col="${c.key}" class="${c.num ? 'c-n' : ''}${c.left ? ' lft' : ''}${hid(c.key)}"><input class="in lg-${c.key}${c.num ? ' n' : ''}" ${c.num ? 'inputmode="decimal"' : ''} value="${val}"></td>`;
+      }).join('')}
+      <td class="c-del"><button class="delg" type="button" title="Eliminar fila">×</button></td>
     </tr>`;
+  // Totals per columna numèrica (per al peu).
+  const totCol = (key: string) => libroRows.reduce((a, r) => a + Number(cellVal(r, key) || 0), 0);
 
   // Fila editable de "Facturas emitidas" (font de veritat; el "Libro de ingresos"
   // i els totals es reconstrueixen des d'aquí amb JS).
@@ -187,10 +219,15 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   /* Libro de gastos: taula molt ampla (moltes columnes) — lletra petita i scroll. */
   .sheet.wide{ max-width:none; }
   .wide-scroll{ overflow-x:auto; }
-  table.mini{ table-layout:auto; font-size:8px; }
-  table.mini th{ font-size:7px; padding:0 3px 5px; letter-spacing:.2px; white-space:nowrap; }
-  table.mini td{ padding:2px 3px; white-space:nowrap; }
-  table.mini td.lft, table.mini th.lft{ text-align:left; }
+  table.lg{ font-size:8.5px; }
+  table.lg th{ font-size:7px; padding:0 10px 5px 3px; letter-spacing:.2px; }
+  table.lg td{ padding:1px 2px; }
+  table.lg .in{ padding:2px 3px; }
+  td.lft, th.lft{ text-align:left; }
+  .col-hidden{ display:none; }
+  .delcol{ position:absolute; top:-2px; right:9px; z-index:4; border:0; background:transparent;
+    cursor:pointer; color:#C2BFB6; font-size:12px; line-height:1; padding:0 2px; }
+  .delcol:hover{ color:var(--accent); }
   table{ width:100%; border-collapse:collapse; }
   th{ font-size:9.5px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); font-weight:600; text-align:left; padding:0 6px 7px; border-bottom:1.5px solid var(--ink); }
   th.n{ text-align:right; }
@@ -348,7 +385,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     factura s'omple a mà. IRPF total del trimestre: <span id="g-irpf2">0,00</span> € (per al model 115).</p>
   </div>
 
-  <!-- ── Libro de gastos (format gestoria: base per columna + IVA per tipus) ── -->
+  <!-- ── Libro de gastos (editable: base per columna + IVA per tipus) ── -->
   <div class="sheet wide">
     <div class="brand">HOSTAL COLL</div>
     <div class="brand-sub">Casa de Hostes · Calella</div>
@@ -356,32 +393,34 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <div class="period">${esc(etiqueta)}</div>
     <div class="doc-title">Libro de gastos</div>
     <div class="wide-scroll">
-    <table class="rz mini">
+    <table id="libro" class="rz lg">
+      <colgroup>
+        ${COLS_LIBRO.map((c) => `<col data-col="${c.key}" style="width:${libroWidths[c.key] ?? c.w}px${libroRemoved.includes(c.key) ? ';display:none' : ''}">`).join('')}<col style="width:24px">
+      </colgroup>
       <thead>
         <tr>
-          <th>Fecha</th><th>NIF</th><th class="lft">Nombre proveedor</th><th>Nº factura</th>
-          ${COLUMNES_GASTO.map((c) => `<th class="n">${esc(COLUMNA_GASTO_LABELS[c])}</th>`).join('')}
-          <th class="n">IVA 5%</th><th class="n">IVA 10%</th><th class="n">IVA 21%</th><th class="n">Total</th>
+          ${COLS_LIBRO.map((c) => `<th data-col="${c.key}" class="${c.num ? 'n' : ''}${c.left ? ' lft' : ''}${hid(c.key)}">${esc(c.label)}${c.del ? '<button class="delcol" type="button" title="Treure aquesta columna">×</button>' : ''}<span class="resizer"></span></th>`).join('')}
+          <th></th>
         </tr>
       </thead>
-      <tbody>${libro.files.map(filaLibro).join('')}</tbody>
+      <tbody>${libroRows.map(filaLibro).join('')}</tbody>
       <tfoot>
         <tr>
-          <td colspan="4" class="lab">Total…</td>
-          ${COLUMNES_GASTO.map((c) => `<td class="c-n">${cell(libro.totals[c])}</td>`).join('')}
-          <td class="c-n">${cell(libro.totalIva5)}</td>
-          <td class="c-n">${cell(libro.totalIva10)}</td>
-          <td class="c-n">${cell(libro.totalIva21)}</td>
-          <td class="c-n">${cell(libro.totalTotal)}</td>
+          ${COLS_LIBRO.map((c, i) => `<td data-col="${c.key}" class="${c.num ? 'c-n' : ''}${i === 0 ? ' lab' : ''}${hid(c.key)}">${i === 0 ? 'Total…' : c.num ? `<span class="tg-${c.key}">${cell(totCol(c.key))}</span>` : ''}</td>`).join('')}
+          <td></td>
         </tr>
       </tfoot>
     </table>
     </div>
-    <p class="note">Es genera automàticament de les teves despeses (per categoria) i nòmines del trimestre.
-    Per reclassificar un import, canvia la <strong>categoria</strong> de la despesa. Les columnes
-    <strong>Compras 5/10/21%</strong>, <strong>Impuesto local</strong>, <strong>Gestoría</strong>,
-    <strong>Autónomos</strong> i <strong>Seguridad Social</strong> encara no es desglossen a l'app.
-    Per imprimir aquesta taula, tria orientació <strong>horitzontal</strong>.</p>
+    <div class="add">
+      <button id="addLibro" type="button">+ Afegir fila</button>
+      <button id="restoreCols" type="button">Restaurar columnes</button>
+    </div>
+    <p class="note">Es pre-omple de les teves despeses (per categoria) i nòmines del trimestre, però és
+    <strong>editable</strong>: pots canviar imports, <strong>eixamplar/estrènyer</strong> columnes
+    (arrossega la vora dreta de la capçalera) i <strong>treure columnes</strong> amb la ×. Prem
+    <strong>Desar</strong> per guardar-ho per aquest trimestre. Per imprimir, tria orientació
+    <strong>horitzontal</strong>.</p>
   </div>
 
   <!-- ── Resumen IVA: Repercutido / Soportado → a ingresar ───────────── -->
@@ -424,6 +463,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
 <script>
   const PERIODE = ${JSON.stringify(periode)};
   const ETIQUETA = ${JSON.stringify(etiqueta)};
+  const LIBRO_NUMKEYS = ${JSON.stringify(COLS_LIBRO.filter((c) => c.num).map((c) => c.key))};
+  const LIBRO_BASEKEYS = ${JSON.stringify([...COLUMNES_GASTO])};
+  const libroRemoved = new Set(${JSON.stringify(libroRemoved)});
   const num = v => {
     if (v == null) return 0;
     let s = String(v).trim(); if (!s) return 0;
@@ -568,6 +610,55 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     tbody.appendChild(row); render(); row.querySelector('.g-prov').focus();
   }
 
+  // ── Libro de gastos (editable) ──────────────────────────────────────────
+  function recomputeLibro() {
+    LIBRO_NUMKEYS.forEach((k) => {
+      let s = 0;
+      document.querySelectorAll('#libro tbody .lg-' + k).forEach((i) => { s += num(i.value); });
+      const t = document.querySelector('#libro tfoot .tg-' + k);
+      if (t) t.textContent = s ? plain(s) : '';
+    });
+  }
+  function novaLibro() {
+    const tbody = document.querySelector('#libro tbody');
+    const first = document.querySelector('#libro tbody tr.litem-g');
+    let row;
+    if (first) { row = first.cloneNode(true); row.querySelectorAll('input').forEach((i) => i.value = ''); }
+    if (!row) return;
+    tbody.appendChild(row); recomputeLibro();
+    const p = row.querySelector('.lg-proveidor'); if (p) p.focus();
+  }
+  function amagaCol(key, amaga) {
+    if (amaga) libroRemoved.add(key); else libroRemoved.delete(key);
+    document.querySelectorAll('#libro [data-col="' + key + '"]').forEach((el) => {
+      el.classList.toggle('col-hidden', amaga);
+      if (el.tagName === 'COL') el.style.display = amaga ? 'none' : '';
+    });
+  }
+  function readLibro() {
+    const rows = Array.from(document.querySelectorAll('#libro tbody tr.litem-g')).map((r) => {
+      const g = (k) => r.querySelector('.lg-' + k);
+      const bases = {};
+      LIBRO_BASEKEYS.forEach((k) => { const el = g(k); if (el) bases[k] = num(el.value); });
+      return {
+        data: (g('data') && g('data').value.trim()) || '',
+        nif: (g('nif') && g('nif').value.trim()) || '',
+        proveidor: (g('proveidor') && g('proveidor').value.trim()) || '',
+        numFactura: (g('numFactura') && g('numFactura').value.trim()) || '',
+        bases,
+        iva5: g('iva5') ? num(g('iva5').value) : 0,
+        iva10: g('iva10') ? num(g('iva10').value) : 0,
+        iva21: g('iva21') ? num(g('iva21').value) : 0,
+        total: g('total') ? num(g('total').value) : 0,
+      };
+    });
+    const widths = {};
+    document.querySelectorAll('#libro colgroup col[data-col]').forEach((col) => {
+      const w = parseInt(col.style.width, 10); if (w) widths[col.getAttribute('data-col')] = w;
+    });
+    return { rows, removedCols: Array.from(libroRemoved), widths };
+  }
+
   // Auto-càlcul a les despeses. Dos camins:
   //  · Escrivint el TOTAL (i %IVA), sense IRPF: base = total/(1+%IVA/100), IVA = total − base
   //    (cas ràpid d'una compra amb IVA inclòs, com Grupsupeco/Vodafone).
@@ -605,9 +696,20 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     if (e.target.closest('#emeses tbody')) syncEmesesToLibro(e.target);
     if (e.target.closest('#ingressos tbody')) syncLibroToEmeses(e.target);
     if (e.target.classList && e.target.classList.contains('liq')) liqTocat.add(e.target.id);
+    if (e.target.closest('#libro tbody')) recomputeLibro();
     if (e.target.closest('#emeses tbody') || e.target.closest('#gastos tbody') || e.target.closest('#ingressos tbody') || (e.target.classList && e.target.classList.contains('liq'))) render();
   });
   document.addEventListener('click', e => {
+    // Treure una columna del Libro de gastos.
+    if (e.target.classList.contains('delcol')) {
+      const th = e.target.closest('th'); if (th) amagaCol(th.getAttribute('data-col'), true);
+      return;
+    }
+    // Eliminar una fila del Libro de gastos.
+    if (e.target.classList.contains('delg')) {
+      const tr = e.target.closest('tr'); if (tr) { tr.remove(); recomputeLibro(); }
+      return;
+    }
     if (e.target.classList.contains('del')) {
       const tr = e.target.closest('tr');
       // Si esborrem una fila de "Facturas emitidas", esborrem també la seva
@@ -623,6 +725,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   document.getElementById('addRow').addEventListener('click', novaFila);
   document.getElementById('addRow2').addEventListener('click', novaFila);
   document.getElementById('addGasto').addEventListener('click', novaGasto);
+  document.getElementById('addLibro').addEventListener('click', novaLibro);
+  document.getElementById('restoreCols').addEventListener('click', () => {
+    Array.from(libroRemoved).forEach((k) => amagaCol(k, false));
+  });
   document.getElementById('print').addEventListener('click', () => window.print());
 
   // Columnes redimensionables: arrossega la nansa de la vora dreta de cada
@@ -658,7 +764,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     try {
       const res = await fetch('/api/llibre-iva/' + encodeURIComponent(PERIODE), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ etiqueta: ETIQUETA, files: readRows(), gastos: readGastos() }),
+        body: JSON.stringify({ etiqueta: ETIQUETA, files: readRows(), gastos: readGastos(), libroGastos: readLibro() }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Error desant'); }
       const d = await res.json();

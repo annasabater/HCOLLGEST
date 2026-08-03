@@ -27,11 +27,34 @@ export const FilaGastoSchema = z.object({
   total: z.coerce.number().default(0),
 });
 
+/** Fila del "Libro de gastos" (format gestoria): base per columna + IVA per tipus. */
+export const LibroGastoRowSchema = z.object({
+  data: z.string().trim().default(''),
+  nif: z.string().trim().default(''),
+  proveidor: z.string().trim().default(''),
+  numFactura: z.string().trim().default(''),
+  bases: z.record(z.coerce.number()).default({}),
+  iva5: z.coerce.number().default(0),
+  iva10: z.coerce.number().default(0),
+  iva21: z.coerce.number().default(0),
+  total: z.coerce.number().default(0),
+});
+
+/** Estat editat del Libro de gastos: files + columnes tretes + amplades. */
+export const LibroGastosSchema = z.object({
+  rows: z.array(LibroGastoRowSchema).default([]),
+  removedCols: z.array(z.string()).default([]),
+  widths: z.record(z.coerce.number()).default({}),
+});
+
 export const LlibreIvaSaveSchema = z.object({
   etiqueta: z.string().trim().min(1),
   files: z.array(FilaIvaSchema),
   gastos: z.array(FilaGastoSchema).optional(),
+  libroGastos: LibroGastosSchema.optional(),
 });
+
+export type LibroGastosInput = z.infer<typeof LibroGastosSchema>;
 
 export type FilaIvaInput = z.infer<typeof FilaIvaSchema>;
 export type FilaGastoInput = z.infer<typeof FilaGastoSchema>;

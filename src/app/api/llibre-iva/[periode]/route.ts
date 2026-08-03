@@ -29,6 +29,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ periode: strin
     const data = {
       any, trimestre, etiqueta: input.etiqueta, files: input.files,
       gastos: input.gastos ?? [],
+      libroGastos: input.libroGastos ?? undefined,
       totalBase, totalIva, totalTotal, usuariId: auth.id,
     };
     const desat = await prisma.llibreIvaTrimestre.upsert({

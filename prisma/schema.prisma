@@ -1173,6 +1173,7 @@ model LlibreIvaTrimestre {
   etiqueta   String
   files      Json // files d'ingressos editades (array de FilaIngres)
   gastos     Json? // files de despeses/facturas soportadas editades (array de FilaGasto)
+  libroGastos Json? @map("libro_gastos") // Libro de gastos editat: { rows, removedCols, widths }
   totalBase  Decimal @db.Decimal(12, 2)
   totalIva   Decimal @db.Decimal(12, 2)
   totalTotal Decimal @db.Decimal(12, 2)
