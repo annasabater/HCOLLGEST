@@ -295,13 +295,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <div class="doc-title">Facturas emitidas · Repercutidas</div>
     <table id="emeses" class="rz">
       <colgroup>
-        <col style="width:88px"><col style="width:95px"><col style="width:95px"><col style="width:205px"><col style="width:150px"><col style="width:88px"><col style="width:50px"><col style="width:85px"><col style="width:92px"><col style="width:28px">
+        <col style="width:88px"><col style="width:95px"><col style="width:95px"><col style="width:205px"><col style="width:150px"><col style="width:88px"><col style="width:50px"><col style="width:85px"><col style="width:92px"><col class="c-del" style="width:28px">
       </colgroup>
       <thead>
         <tr>
           <th>Fecha<span class="resizer"></span></th><th>Nº Factura S.<span class="resizer"></span></th><th>Nº Factura F.<span class="resizer"></span></th><th>Cliente<span class="resizer"></span></th>
           <th>Período de estancia<span class="resizer"></span></th><th class="n">Base imponible<span class="resizer"></span></th><th class="n">% IVA<span class="resizer"></span></th>
-          <th class="n">IVA<span class="resizer"></span></th><th class="n">Total<span class="resizer"></span></th><th></th>
+          <th class="n">IVA<span class="resizer"></span></th><th class="n">Total<span class="resizer"></span></th><th class="c-del"></th>
         </tr>
       </thead>
       <tbody>${rows.map(filaEmesa).join('')}</tbody>
@@ -312,7 +312,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
           <td></td>
           <td class="c-n" id="t1-iva">0,00</td>
           <td class="c-n" id="t1-total">0,00</td>
-          <td></td>
+          <td class="c-del"></td>
         </tr>
       </tfoot>
     </table>
@@ -362,13 +362,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <div class="doc-title">Facturas recibidas · Soportadas</div>
     <table id="gastos" class="rz">
       <colgroup>
-        <col style="width:88px"><col style="width:92px"><col style="width:180px"><col style="width:130px"><col style="width:88px"><col style="width:50px"><col style="width:82px"><col style="width:50px"><col style="width:82px"><col style="width:90px"><col style="width:28px">
+        <col style="width:88px"><col style="width:92px"><col style="width:180px"><col style="width:130px"><col style="width:88px"><col style="width:50px"><col style="width:82px"><col style="width:50px"><col style="width:82px"><col style="width:90px"><col class="c-del" style="width:28px">
       </colgroup>
       <thead>
         <tr>
           <th>Fecha<span class="resizer"></span></th><th>NIF<span class="resizer"></span></th><th>Proveedor<span class="resizer"></span></th><th>Nº factura<span class="resizer"></span></th>
           <th class="n">Base imponible<span class="resizer"></span></th><th class="n">% IVA<span class="resizer"></span></th><th class="n">IVA<span class="resizer"></span></th>
-          <th class="n">% IRPF<span class="resizer"></span></th><th class="n">IRPF<span class="resizer"></span></th><th class="n">Total<span class="resizer"></span></th><th></th>
+          <th class="n">% IRPF<span class="resizer"></span></th><th class="n">IRPF<span class="resizer"></span></th><th class="n">Total<span class="resizer"></span></th><th class="c-del"></th>
         </tr>
       </thead>
       <tbody>${gastos.map(filaGasto).join('')}</tbody>
@@ -381,7 +381,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
           <td></td>
           <td class="c-n" id="g-irpf">0,00</td>
           <td class="c-n" id="g-total">0,00</td>
-          <td></td>
+          <td class="c-del"></td>
         </tr>
       </tfoot>
     </table>
@@ -402,19 +402,19 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <div class="wide-scroll">
     <table id="libro" class="rz lg">
       <colgroup>
-        ${COLS_LIBRO.map((c) => `<col data-col="${c.key}" style="width:${libroWidths[c.key] ?? c.w}px${libroRemoved.includes(c.key) ? ';display:none' : ''}">`).join('')}<col style="width:24px">
+        ${COLS_LIBRO.map((c) => `<col data-col="${c.key}" style="width:${libroWidths[c.key] ?? c.w}px${libroRemoved.includes(c.key) ? ';display:none' : ''}">`).join('')}<col class="c-del" style="width:24px">
       </colgroup>
       <thead>
         <tr>
           ${COLS_LIBRO.map((c) => `<th data-col="${c.key}" class="${c.num ? 'n' : ''}${c.left ? ' lft' : ''}${hid(c.key)}">${esc(c.label)}${c.del ? '<button class="delcol" type="button" title="Treure aquesta columna">×</button>' : ''}<span class="resizer"></span></th>`).join('')}
-          <th></th>
+          <th class="c-del"></th>
         </tr>
       </thead>
       <tbody>${libroRows.map(filaLibro).join('')}</tbody>
       <tfoot>
         <tr>
           ${COLS_LIBRO.map((c, i) => `<td data-col="${c.key}" class="${c.num ? 'c-n' : ''}${i === 0 ? ' lab' : ''}${hid(c.key)}">${i === 0 ? 'Total…' : c.num ? `<span class="tg-${c.key}">${cell(totCol(c.key))}</span>` : ''}</td>`).join('')}
-          <td></td>
+          <td class="c-del"></td>
         </tr>
       </tfoot>
     </table>
