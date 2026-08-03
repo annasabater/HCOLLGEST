@@ -263,7 +263,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
      sigui més ampla que el full s'escala amb JS (beforeprint). */
   @page{ size:A4 landscape; margin:8mm; }
   @media print{
-    body{ background:#fff; } .toolbar,.c-del,.del,.add,.resizer,.delg,.delcol{ display:none !important; } .app{ padding:0; }
+    body{ background:#fff; } .toolbar,.c-del,.del,.add,.resizer,.delg,.delcol,.note{ display:none !important; } .app{ padding:0; }
     .sheet{ box-shadow:none; border:none; border-radius:0; max-width:none; padding:0; overflow:visible; }
     .sheet + .sheet{ page-break-before:always; }
     .in:focus{ background:transparent; box-shadow:none; }
