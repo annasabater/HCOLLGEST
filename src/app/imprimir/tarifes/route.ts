@@ -149,27 +149,27 @@ export async function GET(req: Request) {
   .notes{ margin:10px 0 0; padding-left:18px; color:var(--muted); font-size:11.5px; }
   .notes li{ margin:2px 0; }
   .foot{ margin-top:24px; padding-top:12px; border-top:1px solid var(--line); color:var(--muted); font-size:11px; text-align:center; }
-  @page{ size:A4; margin:8mm; }
+  @page{ size:A4; margin:10mm; }
   @media print{
-    body{ background:#fff; font-size:9.5px; }
+    body{ background:#fff; font-size:10px; line-height:1.45; }
     .toolbar{ display:none !important; }
     .app{ padding:0; }
     .sheet{ box-shadow:none; border:none; border-radius:0; max-width:none; padding:0; }
     *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-    /* Compactat al màxim per encabir-ho tot en UNA sola pàgina. */
-    .brand{ font-size:20px; }
-    .brand-sub{ font-size:8px; letter-spacing:2px; margin-top:2px; }
-    .period{ font-size:9px; }
-    .accent-rule{ height:2px; margin-bottom:8px; }
-    .masthead{ padding-bottom:5px; margin-bottom:3px; }
-    .grup{ margin-bottom:8px; page-break-inside:avoid; }
-    .grup h2{ font-size:12px; margin:0 0 4px; }
-    table.tarifes th, table.tarifes td{ padding:2.5px 5px; }
-    table.tarifes thead th{ font-size:9px; }
-    table.tarifes th.rowlab{ font-size:9px; }
-    .notes{ margin-top:4px; font-size:8.5px; padding-left:14px; }
-    .notes li{ margin:0.5px 0; }
-    .foot{ margin-top:8px; padding-top:5px; font-size:8.5px; }
+    /* Compacte però amb aire: cap en 1 pàgina sense quedar atapeït. */
+    .brand{ font-size:22px; }
+    .brand-sub{ font-size:8.5px; letter-spacing:2px; margin-top:3px; }
+    .period{ font-size:9.5px; }
+    .accent-rule{ height:2px; margin-bottom:12px; }
+    .masthead{ padding-bottom:7px; margin-bottom:5px; }
+    .grup{ margin-bottom:14px; page-break-inside:avoid; }
+    .grup h2{ font-size:13px; margin:0 0 6px; }
+    table.tarifes th, table.tarifes td{ padding:5px 9px; }
+    table.tarifes thead th{ font-size:9.5px; }
+    table.tarifes th.rowlab{ font-size:9.5px; }
+    .notes{ margin-top:7px; font-size:9.5px; padding-left:16px; }
+    .notes li{ margin:1.5px 0; }
+    .foot{ margin-top:13px; padding-top:7px; font-size:9.5px; }
   }
 </style>
 </head>
