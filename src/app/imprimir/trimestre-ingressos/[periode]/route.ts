@@ -216,8 +216,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   .rule::before{ content:""; position:absolute; top:3px; left:0; width:56px; border-top:3px solid var(--accent); }
   .period{ text-align:center; font-weight:600; letter-spacing:1px; margin:14px 0 4px; color:var(--ink); }
   .doc-title{ text-align:center; font-size:13px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--accent); margin:2px 0 16px; }
-  /* Libro de gastos: taula molt ampla (moltes columnes) — lletra petita i scroll. */
-  .sheet.wide{ max-width:none; }
+  /* Libro de gastos: mateix ample que les altres fulles; la taula (moltes
+     columnes) fa scroll horizontal a dins amb lletra petita. */
   .wide-scroll{ overflow-x:auto; }
   table.lg{ font-size:8.5px; }
   table.lg th{ font-size:7px; padding:0 10px 5px 3px; letter-spacing:.2px; }
