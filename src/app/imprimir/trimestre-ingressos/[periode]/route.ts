@@ -243,8 +243,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   table.rz th{ position:relative; overflow:hidden; }
   .resizer{ position:absolute; top:0; right:0; width:8px; height:100%; cursor:col-resize; z-index:3; }
   .resizer:hover{ background:rgba(122,31,43,.3); }
-  .del{ border:0; background:transparent; cursor:pointer; color:#C2BFB6; font-size:17px; line-height:1; width:22px; height:22px; border-radius:6px; }
-  .del:hover{ background:#F1E4E0; color:#A23A2B; }
+  .del, .delg{ border:0; background:transparent; cursor:pointer; color:#C2BFB6; font-size:17px; line-height:1; width:22px; height:22px; border-radius:6px; padding:0; }
+  .del:hover, .delg:hover{ background:#F1E4E0; color:#A23A2B; }
   tfoot td{ border-top:1.5px solid var(--ink); border-bottom:none; font-weight:700; color:var(--ink); padding-top:9px; }
   tfoot td.lab{ text-align:right; text-transform:uppercase; letter-spacing:.5px; font-size:10px; }
   td.roN{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; padding:7px 6px; }
