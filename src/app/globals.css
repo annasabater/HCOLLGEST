@@ -26,6 +26,10 @@
 
 html {
   color-scheme: light;
+  /* Evita que el mòbil (iOS/Android) infli el text automàticament en girar la
+     pantalla o en certes condicions, que descquadra i solapa etiquetes. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
