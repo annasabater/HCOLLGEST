@@ -81,6 +81,21 @@ function normalitzaSuportEsp(field9: string): string {
   return chars.join('');
 }
 
+/** Passa un camp que HAURIA de ser numèric (dates, etc.) a dígits (O→0, I→1…). */
+const aDigits = (s: string) => s.split('').map((c) => (c === '<' ? c : A_DIGIT[c] ?? c)).join('');
+
+/**
+ * Valida un camp amb el seu dígit de control. Si el text cru no quadra, prova la
+ * versió corregida (`fix`, p. ex. confusions O/0) i l'accepta NOMÉS si el mateix
+ * dígit de control la valida — així mai s'introdueix un valor inventat.
+ */
+function validaCampMrz(raw: string, check: string, fix: (s: string) => string): [string, boolean] {
+  if (checkDigit(raw) === Number(check)) return [raw, true];
+  const corregit = fix(raw);
+  if (corregit !== raw && checkDigit(corregit) === Number(check)) return [corregit, true];
+  return [raw, false];
+}
+
 function toDate(yymmdd: string, kind: 'birth' | 'expiry'): string | undefined {
   if (!/^\d{6}$/.test(yymmdd)) return undefined;
   const yy = Number(yymmdd.slice(0, 2));
@@ -162,28 +177,20 @@ export function parseMrz(lines: string[]): MrzResult | null {
     const l1 = pad(td1[0]!, 30);
     const l2 = pad(td1[1]!, 30);
     const l3 = pad(td1[2]!, 30);
-    // Camp "document number" ICAO (pos 5-13) + el seu dígit de control (pos 14).
-    const docRaw9 = l1.slice(5, 14);
-    const birth = l2.slice(0, 6);
-    const expiry = l2.slice(8, 14);
     const name = parseName(l3);
     const issuingCountry = l1.slice(2, 5).replace(/</g, '');
-    // Dígit de control del suport: si el cru no quadra, per a DNI espanyol provem la
-    // versió normalitzada (3 lletres + 6 dígits) que arregla confusions O/0, I/1…
-    let docField9 = docRaw9;
-    let docCheckOk = checkDigit(docRaw9) === Number(l1[14]);
-    if (!docCheckOk && issuingCountry === 'ESP') {
-      const norm = normalitzaSuportEsp(docRaw9);
-      if (checkDigit(norm) === Number(l1[14])) {
-        docField9 = norm;
-        docCheckOk = true;
-      }
-    }
+    // Validació amb autocorrecció per confusions típiques de l'OCR (O/0, I/1, S/5…),
+    // acceptada NOMÉS si el dígit de control la valida. El suport espanyol es
+    // normalitza a 3 lletres + 6 dígits; les dates, a dígits.
+    const [docField9, docCheckOk] = validaCampMrz(
+      l1.slice(5, 14),
+      l1[14]!,
+      issuingCountry === 'ESP' ? normalitzaSuportEsp : (s) => s,
+    );
+    const [birth, birthOk] = validaCampMrz(l2.slice(0, 6), l2[6]!, aDigits);
+    const [expiry, expiryOk] = validaCampMrz(l2.slice(8, 14), l2[14]!, aDigits);
     const docFieldRaw = docField9.replace(/</g, '');
-    const valid =
-      docCheckOk &&
-      checkDigit(birth) === Number(l2[6]) &&
-      checkDigit(expiry) === Number(l2[14]);
+    const valid = docCheckOk && birthOk && expiryOk;
     // Camp opcional línia 1 (pos 15-29).
     let optFieldRaw = l1.slice(15, 29).replace(/</g, '').trim();
     const nacionalitat = l2.slice(15, 18).replace(/</g, '');
