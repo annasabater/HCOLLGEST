@@ -21,12 +21,6 @@ export default async function TreballadorDetailPage({ params }: { params: Promis
   });
   if (!t) notFound();
 
-  const tarifes = {
-    s: t.preuSortida ? Number(t.preuSortida) : 0,
-    m: t.preuManteniment ? Number(t.preuManteniment) : 0,
-    z: t.preuZones ? Number(t.preuZones) : 0,
-  };
-
   return (
     <div>
       <BackLink fallback="/personal">Personal</BackLink>
@@ -44,7 +38,6 @@ export default async function TreballadorDetailPage({ params }: { params: Promis
             <JornadesSection
               treballadorId={t.id}
               preuHora={t.preuHora ? Number(t.preuHora) : null}
-              tarifes={tarifes}
               jornades={t.jornades.map((j) => ({
                 id: j.id,
                 data: j.data.toISOString(),
