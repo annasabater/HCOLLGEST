@@ -33,7 +33,7 @@ export function Field({
   className?: string;
 }) {
   return (
-    <div className={cn('space-y-1', className)}>
+    <div className={cn('min-w-0 space-y-1', className)}>
       {label && (
         <Label htmlFor={htmlFor} required={required}>
           {label}
