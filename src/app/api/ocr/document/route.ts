@@ -129,6 +129,14 @@ export async function POST(req: Request) {
       baseBuf = Buffer.from(bytes);
     }
 
+    // Diagnòstic: mida REAL de la imatge rebuda. Serveix per detectar si un
+    // dispositiu (p. ex. l'iPad) envia la foto molt reduïda i per això no es llegeix.
+    let diagMida = `${Math.round(bytes.byteLength / 1024)} KB`;
+    try {
+      const meta = await sharp(Buffer.from(bytes)).metadata();
+      if (meta.width && meta.height) diagMida = `${meta.width}×${meta.height} px · ${diagMida}`;
+    } catch { /* ignora */ }
+
     // 1a passada amb la imatge tal com ve. Si la MRZ NO valida (sovint perquè la
     // foto està girada 90°, el DNI de costat), la rotem i reintentem fins que quadri.
     let best = await transcriuMrz(baseBuf.toString('base64'), baseType);
@@ -211,6 +219,11 @@ export async function POST(req: Request) {
     // Si no hem tret res útil (ni identitat ni adreça), retornem 422 perquè el
     // client mostri "no s'ha pogut llegir, omple-ho a mà" (i la foto ja s'ha desat).
     if (!identitat && !hasAddress) {
+      warnings.push(
+        `Diagnòstic: imatge rebuda ${diagMida}. Si la mateixa foto va bé des d'un altre aparell, ` +
+          "és que aquest l'envia més petita/reduïda (la MRZ queda massa petita). Puja la foto original " +
+          'sencera (des del mòbil, o desactiva a l\'iPad «Optimitza l\'emmagatzematge» a Configuració → Fotos).',
+      );
       return Response.json({ result, warnings, mrzLines }, { status: 422 });
     }
 
