@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 export default async function FacturesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tipus?: string }>;
+  searchParams: Promise<{ tipus?: string; ordre?: string; dir?: string }>;
 }) {
   const user = await getSessionUser();
   const restringit = teVistaRestringida(user);
@@ -33,9 +33,26 @@ export default async function FacturesPage({
       ? { tipusDocument: { not: 'FACTURA' } }
       : {};
 
+  // Ordenació (per capçalera): número o data, ascendent/descendent. Per defecte,
+  // data descendent (les més noves a dalt). El número és "26005"/"26005.1", que
+  // com a text ja queda en ordre correcte (any + seqüència de 5 dígits).
+  const ordre = sp.ordre === 'numero' ? 'numero' : 'data';
+  const dir: 'asc' | 'desc' = sp.dir === 'asc' ? 'asc' : 'desc';
+  const orderBy: Prisma.FacturaOrderByWithRelationInput =
+    ordre === 'numero' ? { numero: dir } : { data: dir };
+  const sortHref = (col: 'numero' | 'data') => {
+    const nextDir = ordre === col && dir === 'asc' ? 'desc' : 'asc';
+    const p = new URLSearchParams();
+    if (tipusParam !== 'totes') p.set('tipus', tipusParam);
+    p.set('ordre', col);
+    p.set('dir', nextDir);
+    return `/factures?${p.toString()}`;
+  };
+  const fletxa = (col: 'numero' | 'data') => (ordre === col ? (dir === 'asc' ? ' ↑' : ' ↓') : '');
+
   const totes = await prisma.factura.findMany({
     where: { deletedAt: null, ...filtreTipus },
-    orderBy: { data: 'desc' },
+    orderBy,
     take: 100,
     include: {
       estancia: {
@@ -81,9 +98,17 @@ export default async function FacturesPage({
         <Table>
           <Thead>
             <tr>
-              <Th>Número</Th>
+              <Th>
+                <a href={sortHref('numero')} className="inline-flex items-center hover:text-brand-700" title="Ordena per número">
+                  Número{fletxa('numero')}
+                </a>
+              </Th>
               <Th>Titular</Th>
-              <Th>Data</Th>
+              <Th>
+                <a href={sortHref('data')} className="inline-flex items-center hover:text-brand-700" title="Ordena per data">
+                  Data{fletxa('data')}
+                </a>
+              </Th>
               <Th>Base</Th>
               <Th>Total</Th>
               <Th>Estat</Th>
