@@ -60,6 +60,27 @@ function pad(line: string, len: number): string {
   return (line + '<'.repeat(len)).slice(0, len);
 }
 
+// Confusions típiques de l'OCR entre dígits i lletres semblants.
+const A_LLETRA: Record<string, string> = { '0': 'O', '1': 'I', '2': 'Z', '4': 'A', '5': 'S', '6': 'G', '8': 'B' };
+const A_DIGIT: Record<string, string> = { O: '0', D: '0', Q: '0', I: '1', L: '1', Z: '2', A: '4', S: '5', G: '6', B: '8' };
+
+/**
+ * Normalitza el camp de NÚMERO DE SUPORT espanyol (IDESP) al seu format real:
+ * 3 LLETRES + 6 DÍGITS. L'OCR sovint confon O/0, I/1, S/5, B/8… i llavors el
+ * dígit de control no quadra encara que la resta sigui correcta. Es corregeix per
+ * posició (les 3 primeres a lletres, les 6 següents a dígits) i qui valida el
+ * resultat és el mateix dígit de control (per això no s'inventa res).
+ */
+function normalitzaSuportEsp(field9: string): string {
+  const chars = pad(field9, 9).split('');
+  for (let i = 0; i < 9; i++) {
+    const c = chars[i]!;
+    if (c === '<') continue;
+    chars[i] = i < 3 ? A_LLETRA[c] ?? c : A_DIGIT[c] ?? c;
+  }
+  return chars.join('');
+}
+
 function toDate(yymmdd: string, kind: 'birth' | 'expiry'): string | undefined {
   if (!/^\d{6}$/.test(yymmdd)) return undefined;
   const yy = Number(yymmdd.slice(0, 2));
@@ -142,17 +163,29 @@ export function parseMrz(lines: string[]): MrzResult | null {
     const l2 = pad(td1[1]!, 30);
     const l3 = pad(td1[2]!, 30);
     // Camp "document number" ICAO (pos 5-13) + el seu dígit de control (pos 14).
-    const docFieldRaw = l1.slice(5, 14).replace(/</g, '');
+    const docRaw9 = l1.slice(5, 14);
     const birth = l2.slice(0, 6);
     const expiry = l2.slice(8, 14);
     const name = parseName(l3);
+    const issuingCountry = l1.slice(2, 5).replace(/</g, '');
+    // Dígit de control del suport: si el cru no quadra, per a DNI espanyol provem la
+    // versió normalitzada (3 lletres + 6 dígits) que arregla confusions O/0, I/1…
+    let docField9 = docRaw9;
+    let docCheckOk = checkDigit(docRaw9) === Number(l1[14]);
+    if (!docCheckOk && issuingCountry === 'ESP') {
+      const norm = normalitzaSuportEsp(docRaw9);
+      if (checkDigit(norm) === Number(l1[14])) {
+        docField9 = norm;
+        docCheckOk = true;
+      }
+    }
+    const docFieldRaw = docField9.replace(/</g, '');
     const valid =
-      checkDigit(l1.slice(5, 14)) === Number(l1[14]) &&
+      docCheckOk &&
       checkDigit(birth) === Number(l2[6]) &&
       checkDigit(expiry) === Number(l2[14]);
     // Camp opcional línia 1 (pos 15-29).
     let optFieldRaw = l1.slice(15, 29).replace(/</g, '').trim();
-    const issuingCountry = l1.slice(2, 5).replace(/</g, '');
     const nacionalitat = l2.slice(15, 18).replace(/</g, '');
 
     // NIE codificat: a la MRZ la lletra inicial del NIE (X/Y/Z) es guarda com un

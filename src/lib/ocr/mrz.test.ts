@@ -50,6 +50,19 @@ describe('parseMrz — TD1 (DNI/NIE)', () => {
     expect(r.dataNaixement).toBe('1974-08-12');
     expect(r.valid).toBe(true);
   });
+
+  it('corregeix confusions O/0 al número de suport espanyol (3 lletres + 6 dígits)', () => {
+    // Suport real BOK185492; l'OCR l'ha llegit "B0K185492" (O→0). El dígit de
+    // control (2) quadra amb la versió normalitzada, així que ha de validar igual.
+    const r = parseMrz([
+      'IDESPB0K185492239967959P<<<<<<',
+      '5912306M3104286ESP<<<<<<<<<<<0',
+      'EL<MRABET<EL<AMRI<<ABDELMALEK<',
+    ])!;
+    expect(r.valid).toBe(true);
+    expect(r.numSuport).toBe('BOK185492');
+    expect(r.numDocument).toBe('39967959P');
+  });
 });
 
 describe('findMrzLines + Spanish DNI', () => {
