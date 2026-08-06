@@ -36,6 +36,7 @@ export function DocumentScanner({
 }) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [msg, setMsg] = useState<{ tone: 'ok' | 'warn'; text: string; items?: string[]; mrz?: string[] } | null>(null);
@@ -59,6 +60,21 @@ export function DocumentScanner({
     setPreviews(urls);
     return () => { Object.values(urls).forEach(URL.revokeObjectURL); };
   }, [docs]);
+
+  // Safari (iPadOS): quan aquest escàner creix (afegeix miniatures o el resultat
+  // de l'OCR), el CSS grid del formulari a vegades NO recalcula l'alçada de la
+  // fila i les etiquetes de sota se solapen fins que recarregues. Forcem el
+  // reflow del grid contenidor amb un toggle de display (imperceptible; no afecta
+  // altres navegadors, que ja reflueixen bé).
+  useEffect(() => {
+    const grid = rootRef.current?.closest('.grid') as HTMLElement | null;
+    if (!grid) return;
+    const prev = grid.style.display;
+    grid.style.display = 'block';
+    void grid.offsetHeight; // força el reflow amb el nou contingut
+    grid.style.display = prev;
+    void grid.offsetHeight;
+  }, [docs, msg, busy, previews]);
 
   async function processFile(file: File) {
     setBusy(true);
@@ -160,7 +176,7 @@ export function DocumentScanner({
   const list = docs ?? [];
 
   return (
-    <div className="rounded-lg border border-dashed border-brand-300 bg-brand-50/40 p-3">
+    <div ref={rootRef} className="rounded-lg border border-dashed border-brand-300 bg-brand-50/40 p-3">
       {/* Càmera: força el dispositiu de captura al mòbil */}
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={onFile} />
       {/* Pujada: galeria / fitxers (sense capture) */}
