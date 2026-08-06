@@ -69,8 +69,14 @@ export default async function PersonalPage() {
                 <Td>
                   {t.preuHora
                     ? `${formatEur(Number(t.preuHora))}/h`
-                    : t.preuSortida
-                    ? `Tasques (S:${formatEur(Number(t.preuSortida))} M:${formatEur(Number(t.preuManteniment ?? 0))} Z:${formatEur(Number(t.preuZones ?? 0))})`
+                    : t.preuSortida || t.preuManteniment || t.preuZones
+                    ? `Tasques (${[
+                        t.preuSortida ? `Sortida: ${formatEur(Number(t.preuSortida))}` : null,
+                        t.preuManteniment ? `Manteniment: ${formatEur(Number(t.preuManteniment))}` : null,
+                        t.preuZones ? `Zones: ${formatEur(Number(t.preuZones))}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')})`
                     : '—'}
                 </Td>
                 <Td>{t._count.jornades}</Td>
