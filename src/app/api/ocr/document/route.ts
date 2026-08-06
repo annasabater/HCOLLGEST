@@ -111,12 +111,19 @@ export async function POST(req: Request) {
 
     const bytes = await file.arrayBuffer();
 
-    // Normalitza l'orientació (EXIF) i el format amb sharp. Si sharp falla (format
-    // rar), fem servir els bytes originals tal qual.
+    // Normalitza la imatge amb sharp abans de llegir-la: aplica l'orientació EXIF,
+    // converteix a JPEG (p. ex. HEIC de l'iPad → JPEG) i limita la mida (les fotos
+    // de tablet són de molts megapíxels i poden superar el límit de l'OCR). Això fa
+    // que funcioni igual des de qualsevol dispositiu. Si sharp falla, fem servir els
+    // bytes originals.
     let baseBuf: Buffer;
     let baseType: MediaType = mediaType;
     try {
-      baseBuf = await sharp(Buffer.from(bytes)).rotate().jpeg({ quality: 90 }).toBuffer();
+      baseBuf = await sharp(Buffer.from(bytes))
+        .rotate() // orientació segons EXIF
+        .resize(1800, 1800, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 90 })
+        .toBuffer();
       baseType = 'image/jpeg';
     } catch {
       baseBuf = Buffer.from(bytes);
