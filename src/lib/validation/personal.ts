@@ -6,9 +6,12 @@ const optStr = z.preprocess(
   (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
   z.string().trim().optional(),
 );
+// Buit ('') → undefined (no el toquis). null es CONSERVA (vol dir "esborra el
+// valor"): així, en canviar de mode de pagament, es pot netejar el preu de l'altre
+// mode i no queda un valor antic (p. ex. €/hora) enganxat.
 const optNum = z.preprocess(
-  (v) => (v === '' || v === null ? undefined : v),
-  z.coerce.number().min(0).optional(),
+  (v) => (v === '' ? undefined : v),
+  z.coerce.number().min(0).nullable().optional(),
 );
 
 export const TreballadorCreateSchema = z.object({
