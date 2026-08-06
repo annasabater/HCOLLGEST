@@ -7,9 +7,31 @@
  */
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifySessionToken } from '@/lib/auth/jwt';
+import { verifySessionToken, signSession, getSessionMaxAge } from '@/lib/auth/jwt';
 import { SESSION_COOKIE } from '@/lib/auth/types';
 import { esNomesLectura, teVistaRestringida } from '@/lib/auth/restriccions';
+
+/**
+ * Sessió lliscant: renova la cookie de sessió amb cada petició autenticada,
+ * així la sessió no caduca mentre s'està fent servir l'app (p. ex. omplint un
+ * formulari llarg). Sense això, caducava 8 h després del login encara que
+ * estiguessis treballant.
+ */
+async function renovaSessio(res: NextResponse, user: Parameters<typeof signSession>[0]): Promise<NextResponse> {
+  try {
+    const fresh = await signSession(user);
+    res.cookies.set(SESSION_COOKIE, fresh, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: getSessionMaxAge(),
+    });
+  } catch {
+    /* si la firma falla, deixem passar sense renovar (no bloquegem la petició) */
+  }
+  return res;
+}
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -74,7 +96,8 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/', req.url));
   }
 
-  return NextResponse.next();
+  // Tot correcte: deixem passar i renovem la sessió (sessió lliscant).
+  return renovaSessio(NextResponse.next(), user);
 }
 
 export const config = {
