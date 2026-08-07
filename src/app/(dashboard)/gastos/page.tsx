@@ -1142,8 +1142,10 @@ function GastosContent() {
       <PageHeader title="Despeses" subtitle="Gestió de despeses del hostal" />
       <FinancesNav />
 
-      {/* Sub-pestanyes Resum / Variables / Fixes / Personal */}
-      <div className="mb-6 flex gap-1 overflow-x-auto border-b border-slate-200">
+      {/* Sub-pestanyes Resum / Variables / Fixes / Personal.
+          flex-wrap perquè, si no hi caben en una línia, passin a la següent i es
+          vegin sempre TOTES (sense barra de desplaçament). */}
+      <div className="mb-6 flex flex-wrap gap-1 border-b border-slate-200">
         {(['resum', 'variables', 'fixes', 'personal'] as const).map((t) => (
           <button
             key={t}
