@@ -17,8 +17,8 @@ export async function GET() {
         gastos: {
           where: { deletedAt: null },
           orderBy: { data: 'desc' },
-          take: 3,
-          select: { id: true, data: true, import: true },
+          take: 36,
+          select: { id: true, data: true, import: true, adjuntPath: true, numFactura: true },
         },
       },
     });

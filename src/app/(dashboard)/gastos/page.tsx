@@ -78,7 +78,7 @@ interface GasFix {
   metodePagament: string;
   properaData: string;
   observacions: string | null;
-  gastos: { id: string; data: string; import: string }[];
+  gastos: { id: string; data: string; import: string; adjuntPath: string | null; numFactura: string | null }[];
 }
 
 // ─── Gastos fixes ─────────────────────────────────────────────────────────────
@@ -197,7 +197,14 @@ function GastosFixesTab() {
   const [showNew, setShowNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [payingId, setPayingId] = useState<string | null>(null);
+
+  // Registrar la factura d'una despesa fixa (puja foto → crea la despesa).
+  const [registrarG, setRegistrarG] = useState<GasFix | null>(null);
+  const [regForm, setRegForm] = useState({ data: toISODate(new Date()), import: '', esFianca: false, metodePagament: 'TRANSFERENCIA' });
+  const [regFile, setRegFile] = useState<File | null>(null);
+  const [regBusy, setRegBusy] = useState(false);
+  const [regScan, setRegScan] = useState(false);
+  const [regError, setRegError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -220,14 +227,61 @@ function GastosFixesTab() {
   async function handleEdit(id: string, form: FormStateFix) {
     try {
       setSaving(true);
-      await patchJSON(`/api/gastos-fixos/${id}`, { activitat: form.activitat, frequencia: form.frequencia, importPrevist: form.importPrevist ? parseFloat(form.importPrevist) : null, metodePagament: form.metodePagament, properaData: form.properaData, observacions: form.observacions || null });
+      // Mateix model que /serveis (ServeiRecurrent): usem el seu endpoint.
+      await patchJSON(`/api/serveis-recurrents/${id}`, { activitat: form.activitat, frequencia: form.frequencia, importPrevist: form.importPrevist ? parseFloat(form.importPrevist) : null, metodePagament: form.metodePagament, properaData: form.properaData, observacions: form.observacions || null });
       setEditingId(null); await load();
-    } catch { setError('Error actualitzant el gasto fix'); } finally { setSaving(false); }
+    } catch { setError('Error actualitzant la despesa fixa'); } finally { setSaving(false); }
   }
 
-  async function handlePagar(id: string) {
-    try { setPayingId(id); await postJSON(`/api/gastos-fixos/${id}/pagar`, {}); await load(); }
-    catch { setError('Error registrant el pagament'); } finally { setPayingId(null); }
+  function obreRegistrar(g: GasFix) {
+    setRegistrarG(g);
+    setRegForm({
+      data: toISODate(new Date(g.properaData) < new Date() ? new Date(g.properaData) : new Date()),
+      import: g.importPrevist != null ? String(Number(g.importPrevist)) : '',
+      esFianca: false,
+      metodePagament: g.metodePagament,
+    });
+    setRegFile(null); setRegError(null);
+  }
+
+  // En triar la foto de la factura, l'escaneja (OCR) per proposar import i data.
+  async function regTriaFitxer(f: File | null) {
+    setRegFile(f);
+    if (!f || !f.type.startsWith('image/')) return;
+    setRegScan(true);
+    try {
+      const fd = new FormData(); fd.append('image', f);
+      const res = await fetch('/api/ocr/gasto', { method: 'POST', body: fd });
+      if (res.ok) {
+        const { result } = (await res.json()) as { result: { import?: number; data?: string } };
+        setRegForm((p) => ({ ...p, import: result.import != null ? String(result.import) : p.import, data: result.data || p.data }));
+      }
+    } catch { /* ignore */ } finally { setRegScan(false); }
+  }
+
+  async function registrarFactura() {
+    if (!registrarG) return;
+    if (!regForm.import) { setRegError('Cal l’import de la factura.'); return; }
+    setRegBusy(true); setRegError(null);
+    try {
+      let adjuntPath: string | undefined;
+      if (regFile) {
+        const fd = new FormData(); fd.append('file', regFile);
+        const up = await fetch('/api/uploads', { method: 'POST', body: fd });
+        if (!up.ok) throw new ApiError('No s\'ha pogut pujar la factura', up.status);
+        adjuntPath = (await up.json()).path;
+      }
+      await postJSON(`/api/serveis-recurrents/${registrarG.id}/registrar`, {
+        data: regForm.data,
+        import: Number(regForm.import),
+        esFianca: regForm.esFianca,
+        metodePagament: regForm.metodePagament,
+        adjuntPath,
+      });
+      setRegistrarG(null); setRegFile(null); await load();
+    } catch (err) {
+      setRegError(err instanceof ApiError ? err.message : 'Error registrant la factura');
+    } finally { setRegBusy(false); }
   }
 
   const monthKeys = getNext6MonthKeys();
@@ -272,19 +326,32 @@ function GastosFixesTab() {
                       <div className="text-sm text-slate-600"><span className="font-medium">Propera data:</span> {formatDate(g.properaData)}</div>
                       <div className="text-sm text-slate-600"><span className="font-medium">Pagament:</span> {METODE_LABELS_FIX[g.metodePagament] ?? g.metodePagament}</div>
                       {g.observacions && <p className="text-xs text-slate-500">{g.observacions}</p>}
-                      {g.gastos.length > 0 && (
-                        <div className="space-y-1">
-                          <p className="text-xs font-medium text-slate-500">Darrers pagaments</p>
-                          {g.gastos.map((p) => (
-                            <div key={p.id} className="flex justify-between text-xs text-slate-600">
-                              <span>{formatDate(p.data)}</span>
-                              <span>{formatEur(p.import)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-slate-500">
+                          Factures registrades {g.gastos.length > 0 && <span className="text-slate-400">({g.gastos.length})</span>}
+                        </p>
+                        {g.gastos.length === 0 ? (
+                          <p className="text-xs text-slate-400">Cap factura encara. Puja&apos;n una amb «Registrar factura».</p>
+                        ) : (
+                          <div className="max-h-40 space-y-0.5 overflow-y-auto">
+                            {g.gastos.map((p) => (
+                              <div key={p.id} className="flex items-center justify-between gap-2 text-xs text-slate-600">
+                                <span className="whitespace-nowrap">{formatDate(p.data)}</span>
+                                <span className="flex items-center gap-1.5">
+                                  {formatEur(p.import)}
+                                  {p.adjuntPath && (
+                                    <a href={`/api/files?path=${encodeURIComponent(p.adjuntPath)}`} target="_blank" rel="noreferrer" className="text-brand-600" title="Veure la factura">
+                                      <Paperclip className="h-3.5 w-3.5" />
+                                    </a>
+                                  )}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                       <div className="flex gap-2 pt-1">
-                        <Button size="sm" variant="primary" onClick={() => handlePagar(g.id)} disabled={payingId === g.id}>{payingId === g.id ? 'Registrant...' : 'Registrar pagament'}</Button>
+                        <Button size="sm" variant="primary" onClick={() => obreRegistrar(g)}>Registrar factura</Button>
                         <Button size="sm" variant="secondary" onClick={() => setEditingId(g.id)}>Editar</Button>
                       </div>
                     </>
@@ -322,6 +389,51 @@ function GastosFixesTab() {
             })}
           </div>
         </section>
+      )}
+
+      {/* Modal: registrar la factura d'una despesa fixa (crea la despesa) */}
+      {registrarG && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !regBusy && setRegistrarG(null)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <h3 className="font-serif text-lg font-semibold text-slate-800">Registrar factura · {registrarG.activitat}</h3>
+              <button onClick={() => setRegistrarG(null)} className="shrink-0 text-slate-400 hover:text-slate-700"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-3">
+              <Field label="Foto de la factura (opcional)" hint="Es llegeixen sols l'import i la data.">
+                <div className="flex items-center gap-2">
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
+                    <Upload className="h-4 w-4" /> Pujar factura
+                    <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => regTriaFitxer(e.target.files?.[0] ?? null)} />
+                  </label>
+                  {regScan && <span className="text-xs font-medium text-brand-700">Llegint…</span>}
+                  {regFile && <span className="max-w-40 truncate text-xs text-slate-500">{regFile.name}</span>}
+                </div>
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Data" required><Input type="date" value={regForm.data} onChange={(e) => setRegForm({ ...regForm, data: e.target.value })} /></Field>
+                <Field label="Import €" required><Input type="number" step="0.01" value={regForm.import} onChange={(e) => setRegForm({ ...regForm, import: e.target.value })} /></Field>
+              </div>
+              <Field label="Mètode de pagament">
+                <Select value={regForm.metodePagament} onChange={(e) => setRegForm({ ...regForm, metodePagament: e.target.value })}>
+                  {optionsFrom(metodeCobramentValues, METODE_COBRAMENT_LABELS).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </Select>
+              </Field>
+              <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2 text-sm">
+                <input type="checkbox" className="mt-0.5 accent-amber-600" checked={regForm.esFianca} onChange={(e) => setRegForm({ ...regForm, esFianca: e.target.checked })} />
+                <span>
+                  <span className="font-medium text-amber-800">És una fiança</span>
+                  <span className="block text-xs text-amber-700/80">Recuperable: no compta com a despesa al balanç.</span>
+                </span>
+              </label>
+              {regError && <p className="text-sm text-red-600">{regError}</p>}
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <Button size="sm" variant="ghost" onClick={() => setRegistrarG(null)} disabled={regBusy}>Cancel·lar</Button>
+                <Button size="sm" onClick={registrarFactura} disabled={regBusy}>{regBusy ? 'Registrant…' : 'Registrar factura'}</Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
