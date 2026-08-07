@@ -3,6 +3,7 @@ import { getSessionUser } from '@/lib/auth/session';
 import { teVistaRestringida } from '@/lib/auth/restriccions';
 import { PageHeader } from '@/components/ui/page-header';
 import { FinancesNav } from '@/components/balanc/finances-nav';
+import { TrimestreIvaCard } from '@/components/balanc/trimestre-iva-card';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { Eur, HideAmountsButton } from '@/components/finances/amounts-visibility';
 import { EstatFacturaToggle, EliminarFacturaIcona } from '@/components/factura/factures-llista-accions';
@@ -83,6 +84,12 @@ export default async function FacturesPage({
       />
 
       <FinancesNav />
+
+      {!restringit && (
+        <div className="mb-6">
+          <TrimestreIvaCard />
+        </div>
+      )}
 
       <FacturaFiltreTipus actual={tipusParam} />
 
