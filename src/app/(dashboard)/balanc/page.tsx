@@ -132,6 +132,8 @@ interface BalancSituacio {
 }
 
 type Mode = 'mes' | 'rang' | 'any' | 'situacio';
+// La pestanya "Situació" es manté al codi però NO es mostra. Posa-ho a true per tornar-la.
+const MOSTRA_SITUACIO = false;
 const MESOS = ['Gen', 'Feb', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Des'];
 const marge = (benefici: number, ingressos: number) =>
   ingressos > 0 ? Math.round((benefici / ingressos) * 100) : 0;
@@ -650,13 +652,16 @@ export default function BalancPage() {
                 </button>
               </div>
             )}
-            <button
-              onClick={() => setMode(mode === 'situacio' ? 'mes' : 'situacio')}
-              className={cn('rounded-lg border px-3 py-1.5 text-sm', mode === 'situacio' ? 'border-brand-700 bg-brand-700 text-white' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50')}
-            >
-              <Scale className="mr-1 inline h-3.5 w-3.5" />
-              Situació
-            </button>
+            {/* Pestanya "Situació" amagada (no eliminada): posa MOSTRA_SITUACIO=true per tornar-la. */}
+            {MOSTRA_SITUACIO && (
+              <button
+                onClick={() => setMode(mode === 'situacio' ? 'mes' : 'situacio')}
+                className={cn('rounded-lg border px-3 py-1.5 text-sm', mode === 'situacio' ? 'border-brand-700 bg-brand-700 text-white' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50')}
+              >
+                <Scale className="mr-1 inline h-3.5 w-3.5" />
+                Situació
+              </button>
+            )}
             <Button variant="outline" size="sm" onClick={exporta}>
               <Download className="h-4 w-4" /> CSV
             </Button>
