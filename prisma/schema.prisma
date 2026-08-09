@@ -401,6 +401,9 @@ model Estancia {
   numContracte        String        @map("num_contracte")
   anyContracte        Int           @map("any_contracte")
   dataFormalitzacio   DateTime      @map("data_formalitzacio")
+  // Bugaderia d'aquesta estada: articles a netejar (manteniment/sortida), amb
+  // quantitats. { manteniment: [{ article, qty }], sortida: [{ article, qty }] }.
+  bugaderia           Json?
   dataEntrada         DateTime?     @map("data_entrada")
   dataSortida         DateTime?     @map("data_sortida")
   // Sortida anticipada: marca que l'estada va finalitzar abans del previst i guarda
@@ -562,6 +565,9 @@ model Habitacio {
   descripcio String?
   capacitat  Int?
   estat      String?
+  // Bugaderia: articles per defecte a netejar per tipus de tasca. Format:
+  // { manteniment: [{ article, qty }], sortida: [{ article, qty }] } (article = nom del catàleg).
+  bugaderiaDefault Json? @map("bugaderia_default")
 
   estancies        Estancia[]
   actius           Actiu[]
@@ -576,6 +582,22 @@ model Habitacio {
   deletedAt DateTime? @map("deleted_at")
 
   @@map("habitacio")
+}
+
+// Catàleg d'articles de bugaderia (llençols, tovalloles, protectors…) amb preu.
+// La "neteja vacacional" (repàs/sortida) NO hi entra: ja es compta a part.
+model ArticleBugaderia {
+  id    String  @id @default(cuid())
+  nom   String
+  preu  Decimal @db.Decimal(10, 2)
+  ordre Int     @default(0)
+  actiu Boolean @default(true)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("article_bugaderia")
 }
 
 model TascaNeteja {
