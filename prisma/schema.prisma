@@ -444,6 +444,7 @@ model Estancia {
   tasquesNeteja    TascaNeteja[]
   diposits         Diposit[]
   emailsProgramats EmailProgramat[]
+  pagamentsPrevistos PagamentPrevist[]
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -731,6 +732,27 @@ model Pressupost {
   deletedAt DateTime? @map("deleted_at")
 
   @@map("pressupost")
+}
+
+// Cobrament PREVIST/pendent: un hoste que no ho paga tot el primer dia i ha de
+// pagar un import un dia concret. El tauler avisa des del dia abans (fins que es
+// marca com a pagat). Va lligat a l'estada (agafa el nom del titular).
+model PagamentPrevist {
+  id           String    @id @default(cuid())
+  estanciaId   String    @map("estancia_id")
+  estancia     Estancia  @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+  import       Decimal   @db.Decimal(10, 2)
+  dataPrevista DateTime  @map("data_prevista")
+  concepte     String?
+  pagat        Boolean   @default(false)
+  dataPagament DateTime? @map("data_pagament")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([estanciaId])
+  @@index([dataPrevista])
+  @@map("pagament_previst")
 }
 
 model LiniaPressupost {

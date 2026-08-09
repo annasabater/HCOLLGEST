@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Send, Receipt, FileSignature, Pencil, Mail } from 'lucide-react';
+import { Send, Receipt, FileSignature, Pencil, Mail, Clock } from 'lucide-react';
 import { BackLink } from '@/components/ui/back-link';
 import { prisma } from '@/lib/db';
 import { habitacioLlibre } from '@/lib/habitacio-llibre';
@@ -8,7 +8,6 @@ import { formataRebuigMossos } from '@/lib/mossos/errors';
 import { getSessionUser } from '@/lib/auth/session';
 import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
 import { MascotesPanel } from '@/components/huesped/mascotes-panel';
-import { BugaderiaPanel } from '@/components/estancia/bugaderia-panel';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
@@ -25,6 +24,7 @@ import { ConvertirAEnCurs } from '@/components/estancia/convertir-a-en-curs';
 import { EmailsPanel } from '@/components/estancia/emails-panel';
 import { FacturaPanel } from '@/components/factura/factura-panel';
 import { PagamentsPanel } from '@/components/factura/pagaments-panel';
+import { PagamentsPrevistos } from '@/components/estancia/pagaments-previstos';
 import { formatDate, cn } from '@/lib/utils';
 import { toISODate, ageAt } from '@/lib/dates';
 import {
@@ -62,6 +62,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
       factures: { where: { deletedAt: null }, orderBy: { data: 'desc' } },
       cobraments: { include: { factura: { select: { numero: true } }, periodes: true }, orderBy: { data: 'asc' } },
       diposits: { include: { factura: { select: { numero: true } }, periodes: true }, orderBy: { createdAt: 'desc' } },
+      pagamentsPrevistos: { orderBy: { dataPrevista: 'asc' } },
       origen: { select: { id: true, numContracte: true, anyContracte: true } },
       ampliacions: {
         where: { deletedAt: null },
@@ -402,8 +403,6 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             </CardBody>
           </Card>
 
-          {/* Bugaderia / neteja d'aquesta estada (articles a netejar) */}
-          {canWrite && <BugaderiaPanel estanciaId={estancia.id} />}
 
           {/* Mascotes de l'hoste — col·lapsable (plegat si no en té; desplega per afegir) */}
           {titular && (
@@ -413,6 +412,27 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
               canWrite={canWrite}
               mascotes={titular.animals.map((a) => ({ id: a.id, nom: a.nom, especie: a.especie, mida: a.mida }))}
             />
+          )}
+
+          {/* Cobraments pendents (avís al tauler el dia abans) — reception + admin */}
+          {canWrite && (
+            <CollapsibleCard
+              title="Cobraments pendents"
+              icon={<Clock className="h-4 w-4 text-brand-600" />}
+              count={estancia.pagamentsPrevistos.filter((p) => !p.pagat).length}
+              defaultOpen={estancia.pagamentsPrevistos.some((p) => !p.pagat)}
+            >
+              <PagamentsPrevistos
+                estanciaId={estancia.id}
+                previstos={estancia.pagamentsPrevistos.map((p) => ({
+                  id: p.id,
+                  import: Number(p.import),
+                  dataPrevista: p.dataPrevista.toISOString(),
+                  concepte: p.concepte,
+                  pagat: p.pagat,
+                }))}
+              />
+            </CollapsibleCard>
           )}
 
           {/* Pagaments i fiances — sota mascotes, col·lapsable i compacte */}

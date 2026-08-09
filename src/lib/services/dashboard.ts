@@ -168,6 +168,7 @@ export async function getResum(opts?: FinanceOpts) {
     establimentBenv,
     sortidesTodayRaw,
     estadesAFacturarRaw,
+    cobramentsPendentsRaw,
   ] = await Promise.all([
     prisma.estancia.findMany({
       where: {
@@ -325,6 +326,22 @@ export async function getResum(opts?: FinanceOpts) {
       take: 50,
       include: { viatgers: { where: { esTitular: true }, include: { huesped: true } } },
     }),
+    // Cobraments PREVISTOS pendents que toca avisar: no pagats i amb data prevista
+    // fins DEMÀ (surten des del dia abans) o ja vençuts.
+    prisma.pagamentPrevist.findMany({
+      where: {
+        pagat: false,
+        dataPrevista: { lt: new Date(todayStart.getTime() + 2 * 86_400_000) },
+        estancia: { deletedAt: null },
+      },
+      orderBy: { dataPrevista: 'asc' },
+      take: 30,
+      include: {
+        estancia: {
+          select: { id: true, numContracte: true, anyContracte: true, viatgers: { where: { esTitular: true }, take: 1, include: { huesped: { select: { nom: true, cognom1: true } } } } },
+        },
+      },
+    }),
   ]);
 
   const num = (d: { _sum: { import: unknown } }) => Number(d._sum.import ?? 0);
@@ -394,6 +411,19 @@ export async function getResum(opts?: FinanceOpts) {
       dataSortida: e.dataSortida?.toISOString() ?? null,
     }));
 
+  // Cobraments previstos pendents (avís des del dia abans o vençuts).
+  const cobramentsPendents = cobramentsPendentsRaw.map((p) => {
+    const t = p.estancia.viatgers[0]?.huesped;
+    return {
+      id: p.id,
+      estanciaId: p.estancia.id,
+      titular: t ? `${t.nom} ${t.cognom1}`.trim() : `Contracte ${p.estancia.numContracte}/${p.estancia.anyContracte}`,
+      import: Number(p.import),
+      dataPrevista: p.dataPrevista.toISOString(),
+      concepte: p.concepte,
+    };
+  });
+
   // Avisos descartats manualment ("amaga per sempre"): es treuen de les llistes.
   const descartats = await prisma.avisDescartat.findMany({ select: { tipus: true, entitatId: true } });
   const amagat = new Set(descartats.map((d) => `${d.tipus}:${d.entitatId}`));
@@ -417,6 +447,7 @@ export async function getResum(opts?: FinanceOpts) {
     properesSortides,
     sortidesToday,
     estadesAFacturar,
+    cobramentsPendents,
     serveisProxims: serveisProximsList,
     serveisPendentsFactura,
     vigenciesProximes: vigenciesProximesList,
