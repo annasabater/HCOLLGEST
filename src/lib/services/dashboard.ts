@@ -439,6 +439,9 @@ export async function getResum(opts?: FinanceOpts) {
     }));
 
   return {
+    // Avisos amagats "per sempre" (tipus:entitatId) perquè la pàgina filtri també
+    // les targetes que es construeixen allà (dades pendents, cobraments, etc.).
+    avisosDescartats: descartats,
     pendentsEnviament: pendentsEnviamentVis,
     pendentsFirmaCount: pendentsFirma.length,
     pendentsFirma,

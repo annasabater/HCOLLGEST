@@ -7,7 +7,15 @@ import { created, handleApiError } from '@/lib/http';
 // POST /api/avisos/descartar { tipus, entitatId } — amaga un avís del taulell
 // per sempre (no torna a sortir). Idempotent.
 const Schema = z.object({
-  tipus: z.enum(['MOSSOS', 'FIRMA', 'ENVIAMENT_ERROR']),
+  tipus: z.enum([
+    'MOSSOS',
+    'FIRMA',
+    'ENVIAMENT_ERROR',
+    'DADES_PENDENTS',
+    'FACTURAR',
+    'SERVEI_FACTURA',
+    'COBRAMENT',
+  ]),
   entitatId: z.string().min(1),
 });
 

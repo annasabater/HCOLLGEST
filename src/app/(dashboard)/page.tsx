@@ -101,6 +101,8 @@ export default async function DashboardPage() {
     nom: e.titular,
     sub: `Contracte ${e.contracte}${e.dataSortida ? ` · sortida ${formatDate(e.dataSortida)}` : ''}`,
     href: `/estancies/${e.id}`,
+    tipus: 'FACTURAR',
+    entitatId: e.id,
   }));
   // Fitxes amb dades obligatòries pendents (mateixa validació que /justificants).
   const itemsFitxes: AvisItem[] = fitxesPendents.map((f) => ({
@@ -108,6 +110,8 @@ export default async function DashboardPage() {
     nom: `${f.nom} · ${f.contracte}`,
     sub: `Falta: ${f.resum}`,
     href: `/estancies/${f.id}`,
+    tipus: 'DADES_PENDENTS',
+    entitatId: f.id,
   }));
   // Serveis fixos vençuts en mode recordatori: falta pujar-ne la factura.
   const itemsFixes: AvisItem[] = resum.serveisPendentsFactura.map((s) => ({
@@ -115,6 +119,8 @@ export default async function DashboardPage() {
     nom: s.activitat,
     sub: `Vençut ${formatDate(s.properaData)}${s.import != null ? ` · ${formatEur(s.import)}` : ''} · puja la factura`,
     href: '/serveis',
+    tipus: 'SERVEI_FACTURA',
+    entitatId: s.id,
   }));
   // Cobraments previstos que toca avisar (des del dia abans o vençuts).
   const itemsCobrar: AvisItem[] = resum.cobramentsPendents.map((c) => ({
@@ -122,7 +128,19 @@ export default async function DashboardPage() {
     nom: `${c.titular} · ${formatEur(c.import)}`,
     sub: `Ha de pagar el ${formatDate(c.dataPrevista)}${c.concepte ? ` · ${c.concepte}` : ''}`,
     href: `/estancies/${c.estanciaId}`,
+    tipus: 'COBRAMENT',
+    entitatId: c.id,
   }));
+
+  // Treu els avisos amagats "per sempre" també d'aquestes targetes (les de dalt
+  // —Mossos/Firma/Error— ja venen filtrades del servei).
+  const amagatSet = new Set(resum.avisosDescartats.map((d) => `${d.tipus}:${d.entitatId}`));
+  const senseAmagats = (items: AvisItem[]) =>
+    items.filter((i) => !(i.tipus && i.entitatId && amagatSet.has(`${i.tipus}:${i.entitatId}`)));
+  const itemsFacturarVis = senseAmagats(itemsFacturar);
+  const itemsFitxesVis = senseAmagats(itemsFitxes);
+  const itemsFixesVis = senseAmagats(itemsFixes);
+  const itemsCobrarVis = senseAmagats(itemsCobrar);
 
   const alertes: { label: string; value: number; icon: React.ElementType; ok: boolean; href: string; color: ColorKey }[] = [
     { label: 'Serveis/renovacions pròximes',value: resum.alertes.serveisProxims,      icon: Wrench,      ok: resum.alertes.serveisProxims === 0,        href: '/serveis',                 color: 'sky'     },
@@ -246,14 +264,14 @@ export default async function DashboardPage() {
 
       {/* Cards d'alerta */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <TargetaAvis label="Cobraments pendents" ok={itemsCobrar.length === 0} color="rose" iconKey="Coins" items={itemsCobrar} dismissable={false} />
-        <TargetaAvis label="Fitxes amb dades pendents" ok={itemsFitxes.length === 0} color="amber" iconKey="FileEdit" items={itemsFitxes} dismissable={false} />
-        <TargetaAvis label="Factures fixes pendents de pujar" ok={itemsFixes.length === 0} color="amber" iconKey="Receipt" items={itemsFixes} dismissable={false} />
+        <TargetaAvis label="Cobraments pendents" ok={itemsCobrarVis.length === 0} color="rose" iconKey="Coins" items={itemsCobrarVis} />
+        <TargetaAvis label="Fitxes amb dades pendents" ok={itemsFitxesVis.length === 0} color="amber" iconKey="FileEdit" items={itemsFitxesVis} />
+        <TargetaAvis label="Factures fixes pendents de pujar" ok={itemsFixesVis.length === 0} color="amber" iconKey="Receipt" items={itemsFixesVis} />
         <TargetaAvis label="Pendents d'enviar a Mossos" ok={itemsMossos.length === 0} color="amber" iconKey="Send" items={itemsMossos} />
         <TargetaAvis label="Firmes pendents" ok={itemsFirma.length === 0} color="violet" iconKey="PenLine" items={itemsFirma} />
         <TargetaAvis label="Enviaments amb error" ok={itemsError.length === 0} color="red" iconKey="FileWarning" items={itemsError} />
         {isAdmin && (
-          <TargetaAvis label="Estades a facturar" ok={itemsFacturar.length === 0} color="emerald" iconKey="Receipt" items={itemsFacturar} dismissable={false} />
+          <TargetaAvis label="Estades a facturar" ok={itemsFacturarVis.length === 0} color="emerald" iconKey="Receipt" items={itemsFacturarVis} />
         )}
         {alertes.map((a) => {
           const Icon = a.icon;

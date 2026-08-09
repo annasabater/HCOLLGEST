@@ -15,7 +15,14 @@ const COLORS = {
   rose: { bg: 'bg-rose-50', icon: 'bg-rose-100 text-rose-700', border: 'border-rose-200', num: 'text-rose-800' },
 } as const;
 
-export type AvisTipus = 'MOSSOS' | 'FIRMA' | 'ENVIAMENT_ERROR';
+export type AvisTipus =
+  | 'MOSSOS'
+  | 'FIRMA'
+  | 'ENVIAMENT_ERROR'
+  | 'DADES_PENDENTS'
+  | 'FACTURAR'
+  | 'SERVEI_FACTURA'
+  | 'COBRAMENT';
 export interface AvisItem {
   key: string;
   nom: string;
