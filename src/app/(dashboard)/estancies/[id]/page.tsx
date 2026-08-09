@@ -38,7 +38,7 @@ function Dl({ label, value, wide }: { label: string; value: React.ReactNode; wid
   return (
     <div className={wide ? 'col-span-2' : ''}>
       <dt className="text-xs uppercase text-slate-400">{label}</dt>
-      <dd className="break-all text-sm text-slate-800">{value || '—'}</dd>
+      <dd className="break-words text-sm text-slate-800">{value || '—'}</dd>
     </div>
   );
 }
@@ -294,8 +294,8 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+      <div className="grid gap-6 xl:grid-cols-3">
+        <div className="space-y-6 xl:col-span-2">
           {/* Datos de la estancia */}
           <Card>
             <CardHeader>
