@@ -19,6 +19,7 @@ export interface PressupostData {
   clientNom: string;
   clientNif: string;
   clientAdreca: string;
+  clientLocalitat: string;
   compte: string;
   notes: string;
   ivaPercent: number;
@@ -57,6 +58,7 @@ export function PressupostForm({ inicial }: { inicial: PressupostData }) {
         clientNom: v.clientNom,
         clientNif: v.clientNif,
         clientAdreca: v.clientAdreca,
+        clientLocalitat: v.clientLocalitat,
         compte: v.compte,
         notes: v.notes,
         ivaPercent: Number(v.ivaPercent) || 0,
@@ -123,8 +125,11 @@ export function PressupostForm({ inicial }: { inicial: PressupostData }) {
           <Field label="NIF / CIF">
             <Input uppercase value={v.clientNif} onChange={(e) => set('clientNif', e.target.value)} />
           </Field>
-          <Field label="Adreça" className="xl:col-span-3">
+          <Field label="Adreça" className="xl:col-span-2">
             <Input value={v.clientAdreca} onChange={(e) => set('clientAdreca', e.target.value)} />
+          </Field>
+          <Field label="Localitat">
+            <Input value={v.clientLocalitat} onChange={(e) => set('clientLocalitat', e.target.value)} />
           </Field>
         </CardBody>
       </Card>

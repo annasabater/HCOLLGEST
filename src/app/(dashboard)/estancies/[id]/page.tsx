@@ -8,6 +8,7 @@ import { formataRebuigMossos } from '@/lib/mossos/errors';
 import { getSessionUser } from '@/lib/auth/session';
 import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
 import { MascotesPanel } from '@/components/huesped/mascotes-panel';
+import { CrearPressupostEstada } from '@/components/pressupost/crear-pressupost-estada';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
@@ -248,6 +249,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   />
                 )}
                 {estancia.esBorrany && <TreureEsborrany estanciaId={estancia.id} />}
+                {isAdmin && <CrearPressupostEstada estanciaId={estancia.id} />}
                 <EliminarEstada
                   id={estancia.id}
                   contracte={`${estancia.numContracte}/${estancia.anyContracte}`}
@@ -402,7 +404,6 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
               })}
             </CardBody>
           </Card>
-
 
           {/* Mascotes de l'hoste — col·lapsable (plegat si no en té; desplega per afegir) */}
           {titular && (

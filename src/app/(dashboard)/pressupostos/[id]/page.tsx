@@ -27,6 +27,7 @@ export default async function PressupostDetailPage({ params }: { params: Promise
     clientNom: p.clientNom ?? '',
     clientNif: p.clientNif ?? '',
     clientAdreca: p.clientAdreca ?? '',
+    clientLocalitat: p.clientLocalitat ?? '',
     compte: p.compte ?? '',
     notes: p.notes ?? '',
     ivaPercent: Number(p.ivaPercent),

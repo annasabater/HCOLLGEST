@@ -14,6 +14,7 @@ export const PressupostSaveSchema = z.object({
   clientNom: optStr,
   clientNif: optStr,
   clientAdreca: optStr,
+  clientLocalitat: optStr,
   compte: optStr,
   notes: optStr,
   ivaPercent: z.coerce.number().min(0).default(21),

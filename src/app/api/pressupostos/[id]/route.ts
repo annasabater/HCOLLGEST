@@ -30,6 +30,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
           clientNom: input.clientNom ?? null,
           clientNif: input.clientNif ?? null,
           clientAdreca: input.clientAdreca ?? null,
+          clientLocalitat: input.clientLocalitat ?? null,
           compte: input.compte ?? null,
           notes: input.notes ?? null,
           ivaPercent: input.ivaPercent,

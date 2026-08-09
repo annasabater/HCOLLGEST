@@ -445,6 +445,7 @@ model Estancia {
   diposits         Diposit[]
   emailsProgramats EmailProgramat[]
   pagamentsPrevistos PagamentPrevist[]
+  pressupostos     Pressupost[]
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -715,9 +716,13 @@ model Pressupost {
   numero       String   @unique // "00001" (editable; proposat = següent)
   data         DateTime @default(now())
   validesa     DateTime? // vàlid fins a (opcional)
-  clientNom    String?  @map("client_nom")
-  clientNif    String?  @map("client_nif")
-  clientAdreca String?  @map("client_adreca")
+  // Enllaç OPCIONAL a una estada (si el pressupost és per a un hoste concret).
+  estanciaId   String?    @map("estancia_id")
+  estancia     Estancia?  @relation(fields: [estanciaId], references: [id], onDelete: SetNull)
+  clientNom      String?  @map("client_nom")
+  clientNif      String?  @map("client_nif")
+  clientAdreca   String?  @map("client_adreca")
+  clientLocalitat String? @map("client_localitat")
   compte       String? // IBAN / número de compte on pagar (opcional)
   notes        String?
   base         Decimal  @default(0) @db.Decimal(10, 2)
