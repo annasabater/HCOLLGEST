@@ -78,10 +78,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     --slate:#3A2A44;
     --muted:#8A7E93;
     --line:#E7DFEE;
-    /* Lila: per distingir-lo de la factura (granate). */
-    --accent:#7C3AED;
-    --accent-soft:#EDE9FE;
-    --warm-tint:#F5F3FF;
+    /* Lila fosc i discret: per distingir-lo de la factura (granate). */
+    --accent:#574B90;
+    --accent-soft:#E9E6F1;
+    --warm-tint:#F2F0F7;
     --paper:#FFFDFF;
     --app:#EFEAF4;
   }
@@ -108,7 +108,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   .btn.ghost{ background:#fff; color:var(--ink); border-color:var(--ink); }
   .btn.ghost:hover{ background:var(--accent-soft); }
   .btn.solid{ background:var(--accent); color:#fff; border-color:var(--accent); }
-  .btn.solid:hover{ background:#6D28D9; }
+  .btn.solid:hover{ background:#453A73; }
   .app{ padding:24px 16px 48px; }
   .invoice{
     width:100%; max-width:820px; margin:0 auto; background:var(--paper);
@@ -164,7 +164,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
        padding:2px 4px; margin:-2px -4px; border-radius:5px; }
   textarea.in{ resize:none; overflow:hidden; line-height:1.4; white-space:pre-wrap; word-break:break-word;
        display:block; min-height:1.4em; }
-  .in:focus{ outline:none; background:var(--accent-soft); box-shadow:inset 0 0 0 1px rgba(124,58,237,.3); }
+  .in:focus{ outline:none; background:var(--accent-soft); box-shadow:inset 0 0 0 1px rgba(87,75,144,.35); }
   .in::placeholder{ color:#C5BCD0; }
   .v .in{ text-align:right; }
   .issuer .in{ text-align:right; }
@@ -172,7 +172,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   .iva-pct{ text-align:right; font-variant-numeric:tabular-nums; }
   .del{ border:0; background:transparent; cursor:pointer; color:#C2BCC8; font-size:18px; line-height:1;
         width:24px; height:24px; border-radius:6px; }
-  .del:hover{ background:var(--accent-soft); color:#6D28D9; }
+  .del:hover{ background:var(--accent-soft); color:#453A73; }
   @media (max-width:680px){
     .invoice{ padding:34px 22px 30px; }
     .brand{ font-size:34px; }
