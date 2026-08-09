@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Shirt, RotateCcw } from 'lucide-react';
+import { Shirt, RotateCcw, MessageCircle, Copy, Check } from 'lucide-react';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Eur } from '@/components/finances/amounts-visibility';
@@ -19,9 +19,11 @@ export function BugaderiaPanel({ estanciaId }: { estanciaId: string }) {
   const [mant, setMant] = useState<Record<string, number>>({});
   const [sort, setSort] = useState<Record<string, number>>({});
   const [def, setDef] = useState<Seleccio | null>(null);
+  const [habitacio, setHabitacio] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [copiat, setCopiat] = useState(false);
 
   useEffect(() => {
     let cancel = false;
@@ -30,6 +32,7 @@ export function BugaderiaPanel({ estanciaId }: { estanciaId: string }) {
       .then((d) => {
         if (cancel) return;
         setArticles(d.articles ?? []);
+        setHabitacio(d.habitacio ?? null);
         setDef((d.habDefault as Seleccio | null) ?? null);
         const src = (d.seleccio as Seleccio | null) ?? (d.habDefault as Seleccio | null) ?? { manteniment: [], sortida: [] };
         setMant(toMap(src.manteniment));
@@ -72,6 +75,20 @@ export function BugaderiaPanel({ estanciaId }: { estanciaId: string }) {
     }
   }
 
+  // Missatge per a la Mireia amb els articles a netejar.
+  const llista = (m: Record<string, number>) =>
+    articles.filter((a) => (m[a.nom] ?? 0) > 0).map((a) => `${m[a.nom]}× ${a.nom}`).join(', ') || '—';
+  const missatge = () =>
+    `Hostal Coll · ${habitacio ? `Habitació ${habitacio}` : 'Habitació'} — bugaderia\n\n` +
+    `Manteniment: ${llista(mant)}\nSortida: ${llista(sort)}`;
+  async function copiar() {
+    try {
+      await navigator.clipboard.writeText(missatge());
+      setCopiat(true);
+      setTimeout(() => setCopiat(false), 2000);
+    } catch { /* ignore */ }
+  }
+
   const Stepper = ({ which, nom }: { which: 'm' | 's'; nom: string }) => {
     const map = which === 'm' ? mant : sort;
     const q = map[nom] ?? 0;
@@ -88,7 +105,13 @@ export function BugaderiaPanel({ estanciaId }: { estanciaId: string }) {
     <Card>
       <CardHeader className="flex flex-wrap items-center justify-between gap-2">
         <CardTitle className="flex items-center gap-2"><Shirt className="h-4 w-4 text-brand-600" /> Bugaderia / neteja</CardTitle>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <a href={`https://api.whatsapp.com/send?text=${encodeURIComponent(missatge())}`} target="_blank" rel="noreferrer">
+            <Button size="sm" variant="outline"><MessageCircle className="h-4 w-4" /> Enviar a la Mireia</Button>
+          </a>
+          <Button size="sm" variant="ghost" onClick={copiar} title="Copiar el missatge">
+            {copiat ? <><Check className="h-4 w-4" /> Copiat</> : <><Copy className="h-4 w-4" /> Copiar</>}
+          </Button>
           {def && <Button size="sm" variant="ghost" onClick={restaura} title="Tornar als valors per defecte de l'habitació"><RotateCcw className="h-4 w-4" /> Per defecte</Button>}
           <Button size="sm" onClick={desar} disabled={saving || !dirty}>{saving ? 'Desant…' : 'Desar'}</Button>
         </div>
