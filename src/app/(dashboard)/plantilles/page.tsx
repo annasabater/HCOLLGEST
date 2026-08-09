@@ -65,11 +65,15 @@ function loadTpls(kind: 'hoste' | 'neteja' | 'benvinguda'): Record<Lang, string>
   (Object.keys(base) as Lang[]).forEach((l) => {
     const key = `plantilla_${kind}_${l}`;
     const saved = lsGet(key, base[l]);
-    // Descarta plantilles de neteja desades amb un FORMAT ANTIC (feien servir
-    // {data} o {zones}, variables que ja no existeixen): així es mostra el format
-    // nou (🛏️ Habitacions una línia per habitació, i zones fixes al text) sense
-    // haver de restaurar-les a mà.
-    if (kind === 'neteja' && (saved.includes('{data}') || saved.includes('{zones}'))) {
+    // Descarta plantilles de neteja desades amb un FORMAT ANTIC: les que feien
+    // servir {data} o {zones} (variables que ja no existeixen) o, sobretot, les
+    // que NO tenen el marcador {habitacions} (sense ell, les habitacions no
+    // s'omplen i surt "no hay habitaciones asignadas" + una data fixa antiga).
+    // Així es restaura el format bo automàticament, sense haver-ho de fer a mà.
+    if (
+      kind === 'neteja' &&
+      (saved.includes('{data}') || saved.includes('{zones}') || !saved.includes('{habitacions}'))
+    ) {
       try { window.localStorage.removeItem(key); } catch { /* ignora */ }
       out[l] = base[l];
     } else {
