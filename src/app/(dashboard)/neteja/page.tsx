@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Save, Check, Undo2, CheckCheck, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
+import { BugaderiaMensualCard } from '@/components/estancia/bugaderia-mensual-card';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -279,6 +280,10 @@ export default function NetejaPage() {
   return (
     <div>
       <PageHeader title="Neteja" subtitle="Full de neteja diari per persona" />
+
+      <div className="mb-4">
+        <BugaderiaMensualCard />
+      </div>
 
       <Card className="mb-4">
         <CardBody>
