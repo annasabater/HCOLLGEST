@@ -85,7 +85,7 @@ export function BugaderiaPanel({ estanciaId }: { estanciaId: string }) {
   };
 
   return (
-    <CollapsibleCard title="Bugaderia / neteja" icon={<Shirt className="h-4 w-4 text-brand-600" />}>
+    <CollapsibleCard title="Bugaderia" icon={<Shirt className="h-4 w-4 text-brand-600" />}>
       {loading ? (
         <p className="text-sm text-slate-400">Carregant…</p>
       ) : articles.length === 0 ? (
