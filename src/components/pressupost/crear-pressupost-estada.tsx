@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { postJSON, ApiError } from '@/lib/api';
@@ -11,6 +12,7 @@ import { postJSON, ApiError } from '@/lib/api';
  * No modifica l'estada; només és una drecera per quan cal fer una oferta a un hoste.
  */
 export function CrearPressupostEstada({ estanciaId }: { estanciaId: string }) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,6 +22,7 @@ export function CrearPressupostEstada({ estanciaId }: { estanciaId: string }) {
     try {
       const res = await postJSON<{ id: string }>('/api/pressupostos', { estanciaId });
       window.open(`/imprimir/pressupost/${res.id}`, '_blank', 'noopener');
+      router.refresh();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'No s’ha pogut crear el pressupost');
     } finally {

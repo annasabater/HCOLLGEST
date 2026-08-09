@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Send, Receipt, FileSignature, Pencil, Mail, Clock } from 'lucide-react';
+import { Send, Receipt, FileSignature, Pencil, Mail, Clock, FileText } from 'lucide-react';
 import { BackLink } from '@/components/ui/back-link';
 import { prisma } from '@/lib/db';
 import { habitacioLlibre } from '@/lib/habitacio-llibre';
@@ -27,7 +27,7 @@ import { EmailsPanel } from '@/components/estancia/emails-panel';
 import { FacturaPanel } from '@/components/factura/factura-panel';
 import { PagamentsPanel } from '@/components/factura/pagaments-panel';
 import { PagamentsPrevistos } from '@/components/estancia/pagaments-previstos';
-import { formatDate, cn } from '@/lib/utils';
+import { formatDate, formatEur, cn } from '@/lib/utils';
 import { toISODate, ageAt } from '@/lib/dates';
 import {
   TIPUS_PAGAMENT_LABELS,
@@ -65,6 +65,11 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
       cobraments: { include: { factura: { select: { numero: true } }, periodes: true }, orderBy: { data: 'asc' } },
       diposits: { include: { factura: { select: { numero: true } }, periodes: true }, orderBy: { createdAt: 'desc' } },
       pagamentsPrevistos: { orderBy: { dataPrevista: 'asc' } },
+      pressupostos: {
+        where: { deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, numero: true, data: true, total: true },
+      },
       origen: { select: { id: true, numContracte: true, anyContracte: true } },
       ampliacions: {
         where: { deletedAt: null },
@@ -250,7 +255,6 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   />
                 )}
                 {estancia.esBorrany && <TreureEsborrany estanciaId={estancia.id} />}
-                {isAdmin && <CrearPressupostEstada estanciaId={estancia.id} />}
                 <EliminarEstada
                   id={estancia.id}
                   contracte={`${estancia.numContracte}/${estancia.anyContracte}`}
@@ -437,6 +441,40 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   pagat: p.pagat,
                 }))}
               />
+            </CollapsibleCard>
+          )}
+
+          {/* Pressupostos enllaçats a aquesta estada (ofertes) — ADMIN */}
+          {isAdmin && (
+            <CollapsibleCard
+              title="Pressupostos"
+              icon={<FileText className="h-4 w-4 text-brand-600" />}
+              count={estancia.pressupostos.length}
+              defaultOpen={estancia.pressupostos.length > 0}
+            >
+              <div className="space-y-2">
+                {estancia.pressupostos.length === 0 ? (
+                  <p className="text-sm text-slate-400">Cap pressupost enllaçat a aquesta estada.</p>
+                ) : (
+                  estancia.pressupostos.map((p) => (
+                    <a
+                      key={p.id}
+                      href={`/imprimir/pressupost/${p.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm transition-colors hover:bg-slate-50"
+                    >
+                      <span className="font-medium text-slate-800">Pressupost {p.numero}</span>
+                      <span className="text-slate-500">
+                        {formatDate(p.data)} · {formatEur(Number(p.total))}
+                      </span>
+                    </a>
+                  ))
+                )}
+                <div className="pt-1">
+                  <CrearPressupostEstada estanciaId={estancia.id} />
+                </div>
+              </div>
             </CollapsibleCard>
           )}
 
