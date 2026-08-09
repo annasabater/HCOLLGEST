@@ -8,6 +8,7 @@ import { formataRebuigMossos } from '@/lib/mossos/errors';
 import { getSessionUser } from '@/lib/auth/session';
 import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
 import { MascotesPanel } from '@/components/huesped/mascotes-panel';
+import { BugaderiaPanel } from '@/components/estancia/bugaderia-panel';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
@@ -400,6 +401,9 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
               })}
             </CardBody>
           </Card>
+
+          {/* Bugaderia / neteja d'aquesta estada (articles a netejar) */}
+          {canWrite && <BugaderiaPanel estanciaId={estancia.id} />}
 
           {/* Mascotes de l'hoste — col·lapsable (plegat si no en té; desplega per afegir) */}
           {titular && (
