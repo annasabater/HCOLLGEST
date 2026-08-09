@@ -614,6 +614,9 @@ model TascaNeteja {
   vinculadaSortidaId String?      @map("vinculada_sortida_id")
   vinculadaSortida   Estancia?    @relation(fields: [vinculadaSortidaId], references: [id], onDelete: SetNull)
   notes              String?
+  // Articles de bugaderia que la persona de neteja fa en aquesta tasca (opt-in).
+  // Array [{ article, qty }]. null/buit = la bugaderia NO la fa ella (no compta).
+  bugaderia          Json?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

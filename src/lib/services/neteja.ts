@@ -4,6 +4,7 @@
  * d'habitacions que una persona neteja un dia concret.
  */
 import 'server-only';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../db';
 import { audit } from '../audit';
 import { TascaNetejaDiaSchema } from '../validation/neteja';
@@ -42,6 +43,12 @@ export async function desarFullDia(
     const zonesItem = input.items.find((i) => i.habitacioId === null);
     const marcades = new Set(habitacioItems.map((i) => i.habitacioId));
 
+    // Bugaderia opt-in: només els articles amb qty > 0; buit → null (no compta).
+    const bugaderiaDe = (items?: { article: string; qty: number }[]) => {
+      const nets = (items ?? []).filter((i) => i.qty > 0);
+      return nets.length ? nets : null;
+    };
+
     // 1) Habitacions marcades: crea o actualitza la tasca d'aquesta persona.
     for (const item of habitacioItems) {
       const meva = existing.find(
@@ -51,11 +58,12 @@ export async function desarFullDia(
         (t) => t.habitacioId === item.habitacioId && t.assignadaA === null,
       );
       const target = meva ?? lliure;
+      const bugaderia = bugaderiaDe(item.bugaderia);
 
       if (target) {
         await tx.tascaNeteja.update({
           where: { id: target.id },
-          data: { tipus: item.tipus, notes: item.notes ?? null, assignadaA: personId },
+          data: { tipus: item.tipus, notes: item.notes ?? null, assignadaA: personId, bugaderia: bugaderia ?? Prisma.DbNull },
         });
       } else {
         await tx.tascaNeteja.create({
@@ -66,6 +74,7 @@ export async function desarFullDia(
             notes: item.notes ?? null,
             assignadaA: personId,
             estat: 'PENDENT',
+            bugaderia: bugaderia ?? Prisma.DbNull,
           },
         });
       }

@@ -1,16 +1,13 @@
 import { prisma } from '@/lib/db';
 import { authorize } from '@/lib/auth/guard';
 import { ok, badRequest, handleApiError } from '@/lib/http';
-import { addDays, endOfToday } from '@/lib/dates';
 
 interface Item { article: string; qty: number }
-interface Seleccio { manteniment?: Item[]; sortida?: Item[] }
 
 // GET /api/bugaderia/mensual?mes=YYYY-MM
-// Total estimat de bugaderia del mes: un REPÀS (manteniment) per setmana mentre
-// l'hoste hi és, més la SORTIDA al checkout. Cada neteja compta al mes en què
-// passa (no es compten neteges futures). Serveix per comprovar la factura mensual
-// de la bugaderia (la Mireia).
+// Total de bugaderia del mes: suma els articles marcats a les TASQUES DE NETEJA
+// d'aquell mes (opt-in). Només compta el que s'ha marcat de veritat que fa la
+// persona de neteja. Serveix per comprovar la factura mensual (la Mireia).
 export async function GET(req: Request) {
   try {
     const auth = await authorize();
@@ -21,63 +18,37 @@ export async function GET(req: Request) {
     const [y, m] = mes.split('-').map(Number);
     const start = new Date(y!, m! - 1, 1, 0, 0, 0, 0);
     const end = new Date(y!, m!, 0, 23, 59, 59, 999);
-    // No comptar neteges futures: sostre = mín(final del mes, avui).
-    const avui = endOfToday();
-    const sostre = end.getTime() < avui.getTime() ? end : avui;
 
-    const [articles, estades] = await Promise.all([
+    const [articles, tasques] = await Promise.all([
       prisma.articleBugaderia.findMany({ where: { deletedAt: null }, select: { nom: true, preu: true } }),
-      prisma.estancia.findMany({
-        // Estades que solapen el mes (van entrar abans del final del mes).
-        where: { deletedAt: null, estat: { not: 'CANCELLADA' }, dataEntrada: { not: null, lte: end } },
-        select: {
-          id: true, dataEntrada: true, dataSortida: true, dataSortidaPrevista: true, bugaderia: true,
-          habitacio: { select: { nom: true } },
-          viatgers: { where: { esTitular: true }, take: 1, select: { huesped: { select: { nom: true, cognom1: true } } } },
-        },
+      prisma.tascaNeteja.findMany({
+        where: { data: { gte: start, lte: end } },
+        select: { id: true, data: true, tipus: true, bugaderia: true, habitacio: { select: { nom: true } } },
+        orderBy: { data: 'asc' },
       }),
     ]);
 
-    const preu = new Map(articles.map((a) => [a.nom, Number(a.preu)]));
+    // Normalitza (NFC) el nom per casar preus encara que la codificació Unicode
+    // dels accents difereixi entre l'article desat i el catàleg.
+    const clau = (s: string) => s.normalize('NFC');
+    const preu = new Map(articles.map((a) => [clau(a.nom), Number(a.preu)]));
     const totalDe = (items?: Item[]) =>
-      Math.round((items ?? []).reduce((s, i) => s + (preu.get(i.article) ?? 0) * i.qty, 0) * 100) / 100;
-    const dins = (d: Date) => d.getTime() >= start.getTime() && d.getTime() <= end.getTime() && d.getTime() <= sostre.getTime();
+      Math.round((items ?? []).reduce((s, i) => s + (preu.get(clau(i.article)) ?? 0) * i.qty, 0) * 100) / 100;
 
-    const detall = estades
-      .filter((e) => e.bugaderia != null && e.dataEntrada != null)
-      .map((e) => {
-        const sel = (e.bugaderia as Seleccio | null) ?? {};
-        const costMant = totalDe(sel.manteniment);
-        const costSort = totalDe(sel.sortida);
-        const entrada = e.dataEntrada!;
-        // Fi de l'ocupació per generar repassos: sortida real, o prevista, o avui (si segueix).
-        const fiOcupacio = e.dataSortida ?? e.dataSortidaPrevista ?? avui;
-
-        // Un repàs cada 7 dies des de l'entrada, mentre encara hi és (< fiOcupacio).
-        let repassos = 0;
-        for (let d = addDays(entrada, 7); d.getTime() < fiOcupacio.getTime(); d = addDays(d, 7)) {
-          if (dins(d)) repassos += 1;
-        }
-        // La sortida compta si l'hoste ja ha marxat aquest mes.
-        const sortidaComptada = e.dataSortida != null && dins(e.dataSortida);
-
-        const mant = Math.round(repassos * costMant * 100) / 100;
-        const sort = sortidaComptada ? costSort : 0;
-        const h = e.viatgers[0]?.huesped;
+    const detall = tasques
+      .filter((t) => Array.isArray(t.bugaderia) && (t.bugaderia as unknown[]).length > 0)
+      .map((t) => {
+        const items = t.bugaderia as unknown as Item[];
         return {
-          id: e.id,
-          titular: h ? `${h.nom} ${h.cognom1}` : '—',
-          habitacio: e.habitacio?.nom ?? null,
-          dataSortida: e.dataSortida?.toISOString() ?? null,
-          repassos,
-          sortidaComptada,
-          manteniment: mant,
-          sortida: sort,
-          total: Math.round((mant + sort) * 100) / 100,
+          id: t.id,
+          data: t.data.toISOString(),
+          habitacio: t.habitacio?.nom ?? null,
+          tipus: t.tipus as 'CANVI_COMPLET' | 'REPAS',
+          articles: items.map((i) => `${i.qty}× ${i.article}`).join(', '),
+          total: totalDe(items),
         };
       })
-      .filter((r) => r.total > 0 || r.repassos > 0 || r.sortidaComptada)
-      .sort((a, b) => (a.dataSortida ?? '9999').localeCompare(b.dataSortida ?? '9999'));
+      .filter((r) => r.total > 0);
 
     const total = Math.round(detall.reduce((s, d) => s + d.total, 0) * 100) / 100;
 

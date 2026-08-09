@@ -156,12 +156,12 @@ export function enviaWhatsApp(phone: string | null | undefined, text: string, qu
 // "mantenimiento" = repàs/manteniment lleuger. La distinció importa per la tarifa.
 const NETEJA_TXT: Record<
   Lang,
-  { sing: string; plur: string; art: string; i: string; salida: string; repas: string; none: string; sep: string; zones: string; num: string; petPrefix: string }
+  { sing: string; plur: string; art: string; i: string; salida: string; repas: string; none: string; sep: string; zones: string; num: string; petPrefix: string; rentar: string }
 > = {
-  ca: { sing: "l’habitació", plur: "les habitacions", art: "la ", i: " i ", salida: "sortida", repas: "manteniment", none: "cap habitació assignada", sep: ". ", zones: "les zones comunes (passadís, vorera i pati)", num: "Núm. ", petPrefix: "hi ha un animal de companyia, " },
-  es: { sing: "la habitación", plur: "las habitaciones", art: "la ", i: " y ", salida: "salida", repas: "mantenimiento", none: "no hay habitaciones asignadas", sep: ". ", zones: "las zonas comunes (pasillo, acera y patio)", num: "Núm. ", petPrefix: "hay un animal de compañía, " },
-  fr: { sing: "la chambre", plur: "les chambres", art: "la ", i: " et ", salida: "départ", repas: "entretien", none: "aucune chambre assignée", sep: ". ", zones: "les parties communes (couloir, trottoir et cour)", num: "Nº ", petPrefix: "il y a un animal de compagnie, " },
-  en: { sing: "room", plur: "rooms", art: "", i: " and ", salida: "checkout", repas: "maintenance", none: "no rooms assigned", sep: ". ", zones: "common areas (hallway, sidewalk and patio)", num: "Room ", petPrefix: "there is a pet, " },
+  ca: { sing: "l’habitació", plur: "les habitacions", art: "la ", i: " i ", salida: "sortida", repas: "manteniment", none: "cap habitació assignada", sep: ". ", zones: "les zones comunes (passadís, vorera i pati)", num: "Núm. ", petPrefix: "hi ha un animal de companyia, ", rentar: "Cal rentar: " },
+  es: { sing: "la habitación", plur: "las habitaciones", art: "la ", i: " y ", salida: "salida", repas: "mantenimiento", none: "no hay habitaciones asignadas", sep: ". ", zones: "las zonas comunes (pasillo, acera y patio)", num: "Núm. ", petPrefix: "hay un animal de compañía, ", rentar: "Hay que lavar: " },
+  fr: { sing: "la chambre", plur: "les chambres", art: "la ", i: " et ", salida: "départ", repas: "entretien", none: "aucune chambre assignée", sep: ". ", zones: "les parties communes (couloir, trottoir et cour)", num: "Nº ", petPrefix: "il y a un animal de compagnie, ", rentar: "À laver : " },
+  en: { sing: "room", plur: "rooms", art: "", i: " and ", salida: "checkout", repas: "maintenance", none: "no rooms assigned", sep: ". ", zones: "common areas (hallway, sidewalk and patio)", num: "Room ", petPrefix: "there is a pet, ", rentar: "To wash: " },
 };
 
 /** Etiqueta curta del tipus de neteja (per a selectors). */
@@ -177,7 +177,7 @@ export function tipusNetejaLabel(tipus: 'CANVI_COMPLET' | 'REPAS', lang: Lang): 
  * Si una tasca porta `animal` (p. ex. "un gat"), s'hi afegeix la nota d'animal.
  */
 export function descriuTasques(
-  tasques: { habitacio: string | null; tipus: 'CANVI_COMPLET' | 'REPAS'; notes?: string | null; animal?: string | null }[],
+  tasques: { habitacio: string | null; tipus: 'CANVI_COMPLET' | 'REPAS'; notes?: string | null; animal?: string | null; bugaderia?: string | null }[],
   lang: Lang = 'es',
 ): string {
   const t = NETEJA_TXT[lang];
@@ -195,6 +195,8 @@ export function descriuTasques(
     if (x.notes && x.notes.trim()) extres.push(x.notes.trim());
     if (x.animal && x.animal.trim()) extres.push(`${t.petPrefix}${x.animal.trim()}`);
     line += extres.length ? `, ${extres.join(', ')}.` : '.';
+    // Bugaderia (opcional): "Cal rentar: 1× Llençol individual, 1× Tovallola gran."
+    if (x.bugaderia && x.bugaderia.trim()) line += ` ${t.rentar}${x.bugaderia.trim()}.`;
     linies.push(line);
   }
   // Zones comunes (tasques sense habitació), cadascuna a la seva línia.

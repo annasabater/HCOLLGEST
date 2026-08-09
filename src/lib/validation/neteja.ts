@@ -27,6 +27,8 @@ export const TascaNetejaUpdateSchema = z.object({
 // Full de neteja d'un dia per a una persona: substitueix d'un cop totes les
 // habitacions que aquella persona neteja aquell dia. Les habitacions no
 // incloses deixen d'estar-li assignades.
+const BugaderiaItemSchema = z.object({ article: z.string().min(1), qty: z.coerce.number().int().min(0) });
+
 export const TascaNetejaDiaSchema = z.object({
   data: z.coerce.date(),
   assignadaA: z.string().min(1, 'Cal una persona'),
@@ -36,6 +38,8 @@ export const TascaNetejaDiaSchema = z.object({
       habitacioId: z.string().nullable(),
       tipus: z.enum(tipusNetejaValues),
       notes: optStr,
+      // Articles de bugaderia d'aquesta tasca (opt-in). Absent = no en fa.
+      bugaderia: z.array(BugaderiaItemSchema).optional(),
     }),
   ),
 });

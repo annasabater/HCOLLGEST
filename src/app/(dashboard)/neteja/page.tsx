@@ -27,6 +27,7 @@ interface Treballador {
   preuManteniment: number | null;
   preuZones: number | null;
 }
+interface BugItem { article: string; qty: number }
 interface Tasca {
   id: string;
   data: string;
@@ -36,6 +37,7 @@ interface Tasca {
   assignadaA: string | null;
   notes: string | null;
   vinculadaSortidaId: string | null;
+  bugaderia: BugItem[] | null;
   habitacio: { nom: string } | null;
   treballador: { nom: string } | null;
 }
@@ -49,6 +51,8 @@ interface Row {
   estat?: 'PENDENT' | 'FETA';
   sortida: boolean;
   altraPersona?: string;
+  // Bugaderia opt-in: undefined = no en fa; Record article→qty = la fa la Mireia.
+  bugaderia?: Record<string, number>;
 }
 
 export default function NetejaPage() {
@@ -69,6 +73,21 @@ export default function NetejaPage() {
   const [pagMsg, setPagMsg] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
   const [jornades, setJornades] = useState<{ id: string; notes: string | null; import: number }[]>([]);
   const [confirmElimJornada, setConfirmElimJornada] = useState<string | null>(null);
+  // Bugaderia: catàleg d'articles i valors per defecte per habitació (segons l'estada).
+  const [bugArticles, setBugArticles] = useState<{ id: string; nom: string; preu: number }[]>([]);
+  const [bugDefaults, setBugDefaults] = useState<Record<string, { manteniment: BugItem[]; sortida: BugItem[] }>>({});
+
+  // Carrega catàleg + defaults de bugaderia per al dia triat.
+  useEffect(() => {
+    getJSON<{ articles: { id: string; nom: string; preu: number }[]; habitacions: { id: string; manteniment: BugItem[]; sortida: BugItem[] }[] }>(
+      `/api/neteja/bugaderia?data=${data}`,
+    )
+      .then((r) => {
+        setBugArticles(r.articles);
+        setBugDefaults(Object.fromEntries(r.habitacions.map((h) => [h.id, { manteniment: h.manteniment, sortida: h.sortida }])));
+      })
+      .catch(() => {});
+  }, [data]);
 
   const loadJornades = useCallback(async () => {
     if (!personId || !data) return;
@@ -173,6 +192,9 @@ export default function NetejaPage() {
           estat: meva?.estat,
           sortida,
           altraPersona: altra?.treballador?.nom ?? undefined,
+          bugaderia: meva?.bugaderia && meva.bugaderia.length
+            ? Object.fromEntries(meva.bugaderia.map((i) => [i.article, i.qty]))
+            : undefined,
         };
       }),
     );
@@ -183,17 +205,38 @@ export default function NetejaPage() {
     setRows((rs) => rs.map((r) => (r.habitacioId === habitacioId ? { ...r, ...patch } : r)));
   }
 
+  // Activa/desactiva la bugaderia opt-in d'una habitació. En activar-la,
+  // preomple amb els valors per defecte (segons manteniment/sortida).
+  function toggleBugaderia(r: Row) {
+    if (r.bugaderia) {
+      setRow(r.habitacioId, { bugaderia: undefined });
+      return;
+    }
+    const def = bugDefaults[r.habitacioId];
+    const base = r.tipus === 'CANVI_COMPLET' ? def?.sortida : def?.manteniment;
+    setRow(r.habitacioId, { bugaderia: Object.fromEntries((base ?? []).map((i) => [i.article, i.qty])) });
+  }
+  function setBugQty(r: Row, article: string, qty: number) {
+    const next = { ...(r.bugaderia ?? {}), [article]: Math.max(0, qty) };
+    setRow(r.habitacioId, { bugaderia: next });
+  }
+  const bugCost = (map?: Record<string, number>) =>
+    Math.round(bugArticles.reduce((s, a) => s + (map?.[a.nom] ?? 0) * a.preu, 0) * 100) / 100;
+
   async function desar() {
     if (!personId) return;
     setSaving(true);
     try {
-      const items: { habitacioId: string | null; tipus: 'CANVI_COMPLET' | 'REPAS'; notes?: string }[] = [
+      const items: { habitacioId: string | null; tipus: 'CANVI_COMPLET' | 'REPAS'; notes?: string; bugaderia?: BugItem[] }[] = [
         ...rows
           .filter((r) => r.checked)
           .map((r) => ({
             habitacioId: r.habitacioId,
             tipus: r.tipus,
             notes: r.notes.trim() || undefined,
+            bugaderia: r.bugaderia
+              ? Object.entries(r.bugaderia).map(([article, qty]) => ({ article, qty })).filter((i) => i.qty > 0)
+              : undefined,
           })),
         ...(zonesComunes ? [{ habitacioId: null, tipus: 'REPAS' as const }] : []),
       ];
@@ -399,6 +442,55 @@ export default function NetejaPage() {
                     </>
                   )}
                 </div>
+
+                {/* Bugaderia opt-in: què neteja la Mireia (llençols, tovalloles…) */}
+                {r.checked && (
+                  <div className="mt-2 border-t border-slate-100 pt-2">
+                    {!r.bugaderia ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleBugaderia(r)}
+                        className="text-xs font-medium text-brand-700 hover:underline"
+                      >
+                        🧺 Afegir bugaderia (la Mireia neteja llençols/tovalloles…)
+                      </button>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-semibold text-slate-500">🧺 Bugaderia:</span>
+                          {bugArticles
+                            .filter((a) => (r.bugaderia?.[a.nom] ?? 0) > 0)
+                            .map((a) => (
+                              <span key={a.id} className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1 py-0.5 text-xs">
+                                <button type="button" className="px-1 text-slate-500 hover:bg-slate-100" onClick={() => setBugQty(r, a.nom, (r.bugaderia?.[a.nom] ?? 0) - 1)}>−</button>
+                                <span className="font-medium text-slate-700">{r.bugaderia?.[a.nom]}× {a.nom}</span>
+                                <button type="button" className="px-1 text-slate-500 hover:bg-slate-100" onClick={() => setBugQty(r, a.nom, (r.bugaderia?.[a.nom] ?? 0) + 1)}>+</button>
+                              </span>
+                            ))}
+                          {bugArticles.every((a) => (r.bugaderia?.[a.nom] ?? 0) === 0) && (
+                            <span className="text-xs text-slate-400">cap article — afegeix-ne o treu la bugaderia</span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <Select
+                            className="h-7 max-w-48 text-xs"
+                            value=""
+                            onChange={(e) => { if (e.target.value) setBugQty(r, e.target.value, (r.bugaderia?.[e.target.value] ?? 0) + 1); }}
+                          >
+                            <option value="">＋ afegir article…</option>
+                            {bugArticles
+                              .filter((a) => (r.bugaderia?.[a.nom] ?? 0) === 0)
+                              .map((a) => (
+                                <option key={a.id} value={a.nom}>{a.nom} ({a.preu.toFixed(2)} €)</option>
+                              ))}
+                          </Select>
+                          <span className="text-xs text-slate-500">Total: <strong className="text-slate-700">{bugCost(r.bugaderia).toFixed(2)} €</strong></span>
+                          <button type="button" onClick={() => toggleBugaderia(r)} className="text-xs text-slate-400 hover:text-red-600">Treure bugaderia</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
 

@@ -39,6 +39,7 @@ interface Tasca {
   tipus: 'CANVI_COMPLET' | 'REPAS';
   notes: string | null;
   assignadaA: string | null;
+  bugaderia: { article: string; qty: number }[] | null;
 }
 interface Estancia {
   id: string;
@@ -195,6 +196,7 @@ function NetejaCard() {
   const [tasques, setTasques] = useState<Tasca[]>([]);
   const [mostrarHora, setMostrarHora] = useState(false);
   const [hora, setHora] = useState('15:00');
+  const [incloureBugaderia, setIncloureBugaderia] = useState(false);
   const [lang, setLang] = useState<Lang>('es');
   const [tpls, setTpls] = useState<Record<Lang, string>>(PLANTILLA_NETEJA);
   const [editLang, setEditLang] = useState<Lang>('es');
@@ -275,7 +277,10 @@ function NetejaCard() {
             meves.map((t) => {
               const hab = t.habitacio?.nom ?? null;
               const animal = hab ? descriuMascota(mascotesPerHab[hab] ?? [], lang) : '';
-              return { habitacio: hab, tipus: t.tipus, notes: t.notes, animal };
+              const bugaderia = incloureBugaderia && t.bugaderia && t.bugaderia.length
+                ? t.bugaderia.map((i) => `${i.qty}× ${i.article}`).join(', ')
+                : '';
+              return { habitacio: hab, tipus: t.tipus, notes: t.notes, animal, bugaderia };
             }),
             lang,
           ),
@@ -283,7 +288,7 @@ function NetejaCard() {
         }),
       ),
     );
-  }, [tpls, lang, treballador, tasques, mascotesPerHab, mostrarHora, hora]);
+  }, [tpls, lang, treballador, tasques, mascotesPerHab, mostrarHora, hora, incloureBugaderia]);
 
   // Canvia el tipus d'una habitació (salida/repàs) i ho desa a la tasca.
   async function setTipus(id: string, tipus: 'CANVI_COMPLET' | 'REPAS') {
@@ -342,6 +347,16 @@ function NetejaCard() {
             </div>
           </Field>
         </div>
+
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            className="h-4 w-4 accent-brand-700"
+            checked={incloureBugaderia}
+            onChange={(e) => setIncloureBugaderia(e.target.checked)}
+          />
+          Incloure la bugaderia (llençols, tovalloles…) al missatge, segons el que hagis marcat a Neteja
+        </label>
 
         {/* Habitacions assignades a la persona aquest dia: salida (a fons) o repàs */}
         {tasquesPersona.length === 0 ? (
