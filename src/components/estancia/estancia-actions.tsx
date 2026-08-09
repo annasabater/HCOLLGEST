@@ -78,7 +78,7 @@ export function EstanciaActions({
       )}
       <div className="flex flex-wrap items-center gap-2">
         <Button onClick={() => setConfirmaEnviar(true)} disabled={enviant}>
-          <Send className="h-4 w-4" /> {enviant ? 'Pujant a Mossos…' : 'Pujar a Mossos (automàtic)'}
+          <Send className="h-4 w-4" /> {enviant ? 'Pujant a Mossos…' : 'Pujar a Mossos'}
         </Button>
         <GenerarFitxerButton
           estanciaId={estanciaId}
@@ -113,10 +113,19 @@ export function EstanciaActions({
                 </p>
               </div>
             )}
+            <p className="mb-2 text-sm font-medium text-slate-800">
+              Segur que vols enviar{' '}
+              {contracte ? (
+                <>el contracte <span className="text-brand-700">{contracte}</span></>
+              ) : (
+                'aquesta estada'
+              )}{' '}
+              a Mossos?
+            </p>
             <p className="text-sm text-slate-600">
               L’app obrirà el portal de Mossos en un navegador remot, farà login amb les teves
               credencials i <strong>comunicarà oficialment</strong> les dades dels viatgers (com a
-              «Pagament a destinació»). Pot trigar uns segons. Vols continuar?
+              «Pagament a destinació»). Pot trigar uns segons.
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setConfirmaEnviar(false)} disabled={enviant}>
