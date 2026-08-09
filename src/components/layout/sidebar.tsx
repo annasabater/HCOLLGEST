@@ -15,6 +15,7 @@ import {
   UserCog,
   Truck,
   Receipt,
+  FileText,
   Tag,
   Wallet,
 } from 'lucide-react';
@@ -55,6 +56,7 @@ const GROUPS: NavGroup[] = [
       { href: '/personal', label: 'Treballadors', icon: UserCog, roles: ['ADMIN'], hideRestringit: true },
       { href: '/balanc', label: 'Balanç', icon: PiggyBank, roles: ['ADMIN'] },
       { href: '/factures', label: 'Facturació', icon: Receipt },
+      { href: '/pressupostos', label: 'Pressupostos', icon: FileText, roles: ['ADMIN'] },
       { href: '/tarifes', label: 'Tarifes', icon: Tag, roles: ['ADMIN'] },
       { href: '/gastos', label: 'Despeses', icon: Wallet },
       { href: '/serveis', label: 'Proveïdors i serveis', icon: Truck },
