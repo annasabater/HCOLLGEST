@@ -1078,8 +1078,8 @@ export function MasterForm({
                 )}
               </div>
             </CardHeader>
-            <CardBody className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
-              <div className="sm:col-span-2 lg:col-span-3">
+            <CardBody className="space-y-4">
+              <div>
                 <HosteSearch onSelect={(h) => applyHuesped(i, h)} />
                 {(v.huespedId || v._recurrent) && (
                   <button
@@ -1092,7 +1092,7 @@ export function MasterForm({
                 )}
               </div>
               {(v._noAcollir || v._avisAlerta || (v._anotacions && v._anotacions.length > 0)) && (
-                <div className="space-y-2 sm:col-span-2 lg:col-span-3">
+                <div className="space-y-2">
                   {v._avisAlerta && (
                     <div className="rounded-lg border border-red-300 bg-red-100 px-3 py-2 text-sm font-medium text-red-800">
                       🚫 Avís intern: {v._avisAlerta}. Valora <strong>no acollir</strong> aquesta persona.
@@ -1120,6 +1120,8 @@ export function MasterForm({
                   ))}
                 </div>
               )}
+              {/* Nom i cognoms */}
+              <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
               <Field label="Nom" required error={err(P('nom'))}>
                 <Input uppercase value={v.nom} onChange={(e) => setV(i, { nom: e.target.value })} onBlur={() => checkAvis(i)} />
               </Field>
@@ -1134,18 +1136,24 @@ export function MasterForm({
               >
                 <Input uppercase value={v.cognom2} onChange={(e) => setV(i, { cognom2: e.target.value })} />
               </Field>
+              </div>
 
+              {/* Documents d'identitat: bloc a part, FORA de cap graella, perquè quan
+                  creix (miniatures/OCR) no descol·loqui els camps a Safari (iPad). */}
+              {!esReserva && (
+                <DocumentScanner
+                  onExtract={(ocr) => applyOcr(i, ocr)}
+                  onImage={(file) => addDoc(i, file)}
+                  docs={v._docs ?? []}
+                  onRemoveDoc={(docId) => removeDoc(i, docId)}
+                  onTipusDoc={(docId, tipus) => setDocTipus(i, docId, tipus)}
+                />
+              )}
+
+              {/* Document + dades personals + adreça */}
+              <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
               {!esReserva && (
                 <>
-                  <div className="sm:col-span-2 lg:col-span-3">
-                    <DocumentScanner
-                      onExtract={(ocr) => applyOcr(i, ocr)}
-                      onImage={(file) => addDoc(i, file)}
-                      docs={v._docs ?? []}
-                      onRemoveDoc={(docId) => removeDoc(i, docId)}
-                      onTipusDoc={(docId, tipus) => setDocTipus(i, docId, tipus)}
-                    />
-                  </div>
                   <Field label="Tipus de document" required={!menor} error={err(P('tipusDocument'))}>
                     <Select
                       value={v.tipusDocument}
@@ -1355,6 +1363,7 @@ export function MasterForm({
                   </Field>
                 </>
               )}
+              </div>
             </CardBody>
           </Card>
         );
