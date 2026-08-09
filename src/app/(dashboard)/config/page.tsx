@@ -1,4 +1,4 @@
-import { Download, ShieldCheck, BookOpen, Mail, CloudUpload } from 'lucide-react';
+import { Download, ShieldCheck, BookOpen, Mail, CloudUpload, Shirt } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { PageHeader } from '@/components/ui/page-header';
@@ -6,6 +6,7 @@ import { CollapsibleCard } from '@/components/ui/collapsible-card';
 import { ConfigForm } from '@/components/config/config-form';
 import { BackupEmailButton } from '@/components/config/backup-email-button';
 import { DriveConnect } from '@/components/config/drive-connect';
+import { BugaderiaConfig } from '@/components/config/bugaderia-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,6 +94,13 @@ export default async function ConfigPage({
             mascotes&hellip;) i no conté contrasenyes. Queda registrada a l&apos;auditoria.
           </p>
         </div>
+      </CollapsibleCard>
+
+      <CollapsibleCard
+        title="Bugaderia (catàleg i valors per habitació)"
+        icon={<Shirt className="h-4 w-4 text-brand-600" />}
+      >
+        <BugaderiaConfig />
       </CollapsibleCard>
 
       <CollapsibleCard
