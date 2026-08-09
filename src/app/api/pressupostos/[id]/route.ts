@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db';
 import { authorize, clientIp } from '@/lib/auth/guard';
 import { ROLES_ADMIN } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
-import { ok, handleApiError } from '@/lib/http';
+import { ok, badRequest, handleApiError } from '@/lib/http';
 import { PressupostSaveSchema } from '@/lib/validation/pressupost';
 import { calculaTotalsPressupost } from '@/lib/services/pressupost';
 
@@ -19,12 +19,28 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
     const totals = calculaTotalsPressupost(input.linies, input.ivaPercent);
 
+    // Enllaç a estada: absent → no es toca; ""/null → desassignar; id → validar i assignar.
+    let estanciaId: string | null | undefined;
+    if (input.estanciaId === undefined) {
+      estanciaId = undefined;
+    } else if (!input.estanciaId) {
+      estanciaId = null;
+    } else {
+      const est = await prisma.estancia.findFirst({
+        where: { id: input.estanciaId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!est) return badRequest('Estada no trobada');
+      estanciaId = est.id;
+    }
+
     await prisma.$transaction([
       prisma.liniaPressupost.deleteMany({ where: { pressupostId: id } }),
       prisma.pressupost.update({
         where: { id },
         data: {
           numero: input.numero,
+          estanciaId,
           data: input.data ? new Date(input.data) : undefined,
           validesa: input.validesa ? new Date(input.validesa) : null,
           clientNom: input.clientNom ?? null,

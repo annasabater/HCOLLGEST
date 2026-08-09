@@ -15,7 +15,10 @@ export default async function PressupostDetailPage({ params }: { params: Promise
 
   const p = await prisma.pressupost.findFirst({
     where: { id, deletedAt: null },
-    include: { linies: { orderBy: { createdAt: 'asc' } } },
+    include: {
+      linies: { orderBy: { createdAt: 'asc' } },
+      estancia: { select: { numContracte: true, anyContracte: true } },
+    },
   });
   if (!p) notFound();
 
@@ -24,6 +27,8 @@ export default async function PressupostDetailPage({ params }: { params: Promise
     numero: p.numero,
     data: toISODate(p.data),
     validesa: p.validesa ? toISODate(p.validesa) : null,
+    estanciaId: p.estanciaId,
+    estanciaLabel: p.estancia ? `Contracte ${p.estancia.numContracte}/${p.estancia.anyContracte}` : null,
     clientNom: p.clientNom ?? '',
     clientNif: p.clientNif ?? '',
     clientAdreca: p.clientAdreca ?? '',

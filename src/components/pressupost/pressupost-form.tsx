@@ -9,6 +9,7 @@ import { Field } from '@/components/ui/field';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { patchJSON, delJSON, ApiError } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { EstadaPicker } from '@/components/pressupost/estada-picker';
 import { formatEur } from '@/lib/utils';
 
 export interface PressupostData {
@@ -16,6 +17,8 @@ export interface PressupostData {
   numero: string;
   data: string; // ISO yyyy-mm-dd
   validesa: string | null;
+  estanciaId: string | null;
+  estanciaLabel: string | null;
   clientNom: string;
   clientNif: string;
   clientAdreca: string;
@@ -55,6 +58,7 @@ export function PressupostForm({ inicial }: { inicial: PressupostData }) {
         numero: v.numero.trim(),
         data: v.data || undefined,
         validesa: v.validesa || undefined,
+        estanciaId: v.estanciaId, // id = assignar; null = desassignar
         clientNom: v.clientNom,
         clientNif: v.clientNif,
         clientAdreca: v.clientAdreca,
@@ -112,6 +116,20 @@ export function PressupostForm({ inicial }: { inicial: PressupostData }) {
           </Field>
           <Field label="Vàlid fins a" hint="Opcional">
             <Input type="date" value={v.validesa ?? ''} onChange={(e) => set('validesa', e.target.value)} />
+          </Field>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Estada (opcional)</CardTitle></CardHeader>
+        <CardBody>
+          <Field label="Enllaça aquest pressupost a una estada" hint="Apareixerà al panell «Pressupostos» de l’estada. Deixa-ho buit si és un pressupost solt.">
+            <EstadaPicker
+              estanciaId={v.estanciaId}
+              estanciaLabel={v.estanciaLabel}
+              onSelect={(id, label) => setV((p) => ({ ...p, estanciaId: id, estanciaLabel: label }))}
+              onClear={() => setV((p) => ({ ...p, estanciaId: null, estanciaLabel: null }))}
+            />
           </Field>
         </CardBody>
       </Card>
