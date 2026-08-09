@@ -705,6 +705,48 @@ model LiniaFactura {
   @@map("linia_factura")
 }
 
+// Pressupost: document INDEPENDENT (no lligat a cap estada) per oferir un preu a
+// un client/empresa. Numeració pròpia editable (00001, 00002…). Mateix estil que
+// la factura simplificada però en un altre color. Pot portar un número de compte
+// perquè el client hi pagui.
+model Pressupost {
+  id           String   @id @default(cuid())
+  numero       String   @unique // "00001" (editable; proposat = següent)
+  data         DateTime @default(now())
+  validesa     DateTime? // vàlid fins a (opcional)
+  clientNom    String?  @map("client_nom")
+  clientNif    String?  @map("client_nif")
+  clientAdreca String?  @map("client_adreca")
+  compte       String? // IBAN / número de compte on pagar (opcional)
+  notes        String?
+  base         Decimal  @default(0) @db.Decimal(10, 2)
+  ivaPercent   Decimal  @default(21) @map("iva_percent") @db.Decimal(5, 2)
+  iva          Decimal  @default(0) @db.Decimal(10, 2)
+  total        Decimal  @default(0) @db.Decimal(10, 2)
+
+  linies LiniaPressupost[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("pressupost")
+}
+
+model LiniaPressupost {
+  id           String     @id @default(cuid())
+  pressupostId String     @map("pressupost_id")
+  pressupost   Pressupost @relation(fields: [pressupostId], references: [id], onDelete: Cascade)
+  descripcio   String
+  import       Decimal    @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([pressupostId])
+  @@map("linia_pressupost")
+}
+
 model TasaTuristica {
   id               String   @id @default(cuid())
   estanciaId       String   @map("estancia_id")

@@ -70,7 +70,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // Mòduls només per a ADMIN (diners i gestió): si no ho és, fora.
-  const ADMIN_ONLY = ['/factures', '/balanc', '/tarifes', '/verifactu', '/gastos', '/personal', '/config'];
+  const ADMIN_ONLY = ['/factures', '/balanc', '/tarifes', '/verifactu', '/gastos', '/personal', '/config', '/pressupostos'];
   const isAdminOnly = ADMIN_ONLY.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   if (isAdminOnly && user.role !== 'ADMIN') {
     return NextResponse.redirect(new URL('/', req.url));

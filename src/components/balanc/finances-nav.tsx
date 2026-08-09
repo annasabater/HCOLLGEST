@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 const TABS = [
   { href: '/balanc', label: 'Balanç' },
   { href: '/factures', label: 'Facturació' },
+  { href: '/pressupostos', label: 'Pressupostos' },
   { href: '/tarifes', label: 'Tarifes' },
   { href: '/gastos', label: 'Despeses' },
   { href: '/serveis', label: 'Proveïdors i serveis' },
