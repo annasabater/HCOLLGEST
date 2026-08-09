@@ -9,7 +9,7 @@ import { getSessionUser } from '@/lib/auth/session';
 import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
 import { MascotesPanel } from '@/components/huesped/mascotes-panel';
 import { BugaderiaPanel } from '@/components/estancia/bugaderia-panel';
-import { CrearPressupostEstada } from '@/components/pressupost/crear-pressupost-estada';
+import { PressupostosEstadaList } from '@/components/pressupost/pressupostos-estada-list';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
@@ -27,7 +27,7 @@ import { EmailsPanel } from '@/components/estancia/emails-panel';
 import { FacturaPanel } from '@/components/factura/factura-panel';
 import { PagamentsPanel } from '@/components/factura/pagaments-panel';
 import { PagamentsPrevistos } from '@/components/estancia/pagaments-previstos';
-import { formatDate, formatEur, cn } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
 import { toISODate, ageAt } from '@/lib/dates';
 import {
   TIPUS_PAGAMENT_LABELS,
@@ -452,29 +452,15 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
               count={estancia.pressupostos.length}
               defaultOpen={estancia.pressupostos.length > 0}
             >
-              <div className="space-y-2">
-                {estancia.pressupostos.length === 0 ? (
-                  <p className="text-sm text-slate-400">Cap pressupost enllaçat a aquesta estada.</p>
-                ) : (
-                  estancia.pressupostos.map((p) => (
-                    <a
-                      key={p.id}
-                      href={`/imprimir/pressupost/${p.id}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm transition-colors hover:bg-slate-50"
-                    >
-                      <span className="font-medium text-slate-800">Pressupost {p.numero}</span>
-                      <span className="text-slate-500">
-                        {formatDate(p.data)} · {formatEur(Number(p.total))}
-                      </span>
-                    </a>
-                  ))
-                )}
-                <div className="pt-1">
-                  <CrearPressupostEstada estanciaId={estancia.id} />
-                </div>
-              </div>
+              <PressupostosEstadaList
+                estanciaId={estancia.id}
+                items={estancia.pressupostos.map((p) => ({
+                  id: p.id,
+                  numero: p.numero,
+                  data: p.data.toISOString(),
+                  total: Number(p.total),
+                }))}
+              />
             </CollapsibleCard>
           )}
 

@@ -347,8 +347,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     return m[3] + '-' + mm + '-' + dd;
   }
 
-  document.getElementById('save').addEventListener('click', async () => {
-    const btn = document.getElementById('save');
+  // Desa a la base de dades (mateix endpoint que el formulari /pressupostos/[id],
+  // així els canvis fets aquí també hi apareixen). Retorna true si s'ha desat.
+  async function desa() {
     const rows = Array.from(document.querySelectorAll('#items tbody tr.item'));
     const linies = rows.map(r => {
       const c = r.querySelector('.concept');
@@ -369,18 +370,24 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       linies,
     };
 
+    const res = await fetch('/api/pressupostos/${p.id}', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.error || 'Error desant els canvis');
+    }
+    return true;
+  }
+
+  document.getElementById('save').addEventListener('click', async () => {
+    const btn = document.getElementById('save');
     const orig = btn.textContent;
     btn.disabled = true; btn.textContent = 'Desant…';
     try {
-      const res = await fetch('/api/pressupostos/${p.id}', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error(d.error || 'Error desant els canvis');
-      }
+      await desa();
       btn.textContent = 'Desat ✓';
       setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1600);
     } catch (e) {
@@ -389,7 +396,21 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     }
   });
 
-  document.getElementById('print').addEventListener('click', () => window.print());
+  // Imprimir: primer desa (perquè el PDF reflecteixi el que queda guardat) i,
+  // si va bé, obre el diàleg d'impressió. Si el desat falla, avisa i no imprimeix.
+  document.getElementById('print').addEventListener('click', async () => {
+    const btn = document.getElementById('print');
+    const orig = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Desant…';
+    try {
+      await desa();
+      btn.disabled = false; btn.textContent = orig;
+      window.print();
+    } catch (e) {
+      alert(e && e.message ? e.message : "No s'ha pogut desar abans d'imprimir");
+      btn.disabled = false; btn.textContent = orig;
+    }
+  });
 </script>
 </body>
 </html>`;
