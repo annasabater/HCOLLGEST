@@ -31,8 +31,10 @@ export async function PATCH(req: Request, ctx: Ctx) {
           clientNif: input.clientNif ?? null,
           clientAdreca: input.clientAdreca ?? null,
           clientLocalitat: input.clientLocalitat ?? null,
-          compte: input.compte ?? null,
-          notes: input.notes ?? null,
+          // compte/notes: si no venen al cos (p. ex. des de l'editor d'impressió,
+          // que ja no els mostra), es conserven tal com estan.
+          compte: input.compte === undefined ? undefined : input.compte,
+          notes: input.notes === undefined ? undefined : input.notes,
           ivaPercent: input.ivaPercent,
           base: totals.base,
           iva: totals.iva,

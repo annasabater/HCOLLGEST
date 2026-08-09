@@ -264,17 +264,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       <div class="sum-row grand"><span class="lab">Total</span><span class="val" id="total">${money(total)}</span></div>
     </div>
 
-    <footer class="footer">
-      <div class="pay">
-        <div class="pay-lab">Forma de pagament</div>
-        Transferència al compte <input id="compte" class="in" aria-label="Compte" value="${esc(p.compte)}" placeholder="IBAN / número de compte" style="font-weight:600">
-      </div>
-      <div class="notes-wrap">
-        <div class="notes-lab">Notes</div>
-        <textarea id="notes" class="in" rows="1" aria-label="Notes" placeholder="Condicions, observacions…">${esc(p.notes)}</textarea>
-      </div>
-    </footer>
-
   </div>
 </div>
 
@@ -376,8 +365,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       clientNif: document.getElementById('clientNif').value,
       clientAdreca: document.getElementById('clientAdreca').value,
       clientLocalitat: document.getElementById('clientLocalitat').value,
-      compte: document.getElementById('compte').value,
-      notes: document.getElementById('notes').value,
       ivaPercent: num(document.getElementById('ivaPercent').value),
       linies,
     };
