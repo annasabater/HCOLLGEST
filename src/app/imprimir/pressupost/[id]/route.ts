@@ -27,10 +27,30 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     where: { id, deletedAt: null },
     include: {
       linies: { orderBy: { createdAt: 'asc' } },
-      estancia: { select: { id: true, numContracte: true, anyContracte: true } },
+      estancia: {
+        select: {
+          id: true,
+          numContracte: true,
+          anyContracte: true,
+          viatgers: {
+            where: { esTitular: true },
+            take: 1,
+            include: { huesped: true },
+          },
+        },
+      },
     },
   });
   if (!p) return new Response('Not found', { status: 404 });
+
+  // Si el pressupost està enllaçat a una estada i els camps de client són buits,
+  // els omplim amb les dades del titular (com fa la factura fiscal). En imprimir
+  // es desa, així queden materialitzats al pressupost.
+  const titular = p.estancia?.viatgers[0]?.huesped ?? null;
+  const clientNom = p.clientNom || (titular ? [titular.nom, titular.cognom1, titular.cognom2].filter(Boolean).join(' ') : '');
+  const clientNif = p.clientNif || (titular?.numDocument ? `${titular.tipusDocument ?? 'DNI'} ${titular.numDocument}` : '');
+  const clientAdreca = p.clientAdreca || titular?.adreca || '';
+  const clientLocalitat = p.clientLocalitat || (titular ? [titular.codiPostal, titular.municipi || titular.localitat].filter(Boolean).join(' ') : '');
 
   const establiment = await prisma.establiment.findFirst();
   const emNom = esc(establiment?.raoSocial || establiment?.nom || 'Hostal Coll');
@@ -228,10 +248,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     <section class="head-grid">
       <div class="bill-to">
         <div class="eyebrow">Per a</div>
-        <div class="client-name"><input id="clientNom" class="in" aria-label="Nom del client" value="${esc(p.clientNom)}" placeholder="Nom del client / empresa"></div>
-        <div><input id="clientNif" class="in" aria-label="NIF/CIF" value="${esc(p.clientNif)}" placeholder="NIF / CIF (opcional)"></div>
-        <div><input id="clientAdreca" class="in" aria-label="Adreça" value="${esc(p.clientAdreca)}" placeholder="Domicili (opcional)"></div>
-        <div><input id="clientLocalitat" class="in" aria-label="Localitat" value="${esc(p.clientLocalitat)}" placeholder="Localitat (opcional)"></div>
+        <div class="client-name"><input id="clientNom" class="in" aria-label="Nom del client" value="${esc(clientNom)}" placeholder="Nom del client / empresa"></div>
+        <div><input id="clientNif" class="in" aria-label="NIF/CIF" value="${esc(clientNif)}" placeholder="NIF / CIF (opcional)"></div>
+        <div><input id="clientAdreca" class="in" aria-label="Adreça" value="${esc(clientAdreca)}" placeholder="Domicili (opcional)"></div>
+        <div><input id="clientLocalitat" class="in" aria-label="Localitat" value="${esc(clientLocalitat)}" placeholder="Localitat (opcional)"></div>
       </div>
       <div class="meta">
         <div class="meta-title">Pressupost</div>

@@ -17,10 +17,19 @@ export default async function PressupostDetailPage({ params }: { params: Promise
     where: { id, deletedAt: null },
     include: {
       linies: { orderBy: { createdAt: 'asc' } },
-      estancia: { select: { numContracte: true, anyContracte: true } },
+      estancia: {
+        select: {
+          numContracte: true,
+          anyContracte: true,
+          viatgers: { where: { esTitular: true }, take: 1, include: { huesped: true } },
+        },
+      },
     },
   });
   if (!p) notFound();
+
+  // Si està enllaçat a una estada i el client és buit, mostra les dades del titular.
+  const titular = p.estancia?.viatgers[0]?.huesped ?? null;
 
   const inicial: PressupostData = {
     id: p.id,
@@ -29,10 +38,10 @@ export default async function PressupostDetailPage({ params }: { params: Promise
     validesa: p.validesa ? toISODate(p.validesa) : null,
     estanciaId: p.estanciaId,
     estanciaLabel: p.estancia ? `Contracte ${p.estancia.numContracte}/${p.estancia.anyContracte}` : null,
-    clientNom: p.clientNom ?? '',
-    clientNif: p.clientNif ?? '',
-    clientAdreca: p.clientAdreca ?? '',
-    clientLocalitat: p.clientLocalitat ?? '',
+    clientNom: p.clientNom || (titular ? [titular.nom, titular.cognom1, titular.cognom2].filter(Boolean).join(' ') : ''),
+    clientNif: p.clientNif || (titular?.numDocument ? `${titular.tipusDocument ?? 'DNI'} ${titular.numDocument}` : ''),
+    clientAdreca: p.clientAdreca || titular?.adreca || '',
+    clientLocalitat: p.clientLocalitat || (titular ? [titular.codiPostal, titular.municipi || titular.localitat].filter(Boolean).join(' ') : ''),
     compte: p.compte ?? '',
     notes: p.notes ?? '',
     ivaPercent: Number(p.ivaPercent),
