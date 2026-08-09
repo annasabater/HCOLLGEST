@@ -125,6 +125,7 @@ export function PressupostForm({ inicial }: { inicial: PressupostData }) {
         <CardBody>
           <Field label="Enllaça aquest pressupost a una estada" hint="Apareixerà al panell «Pressupostos» de l’estada. Deixa-ho buit si és un pressupost solt.">
             <EstadaPicker
+              pressupostId={v.id}
               estanciaId={v.estanciaId}
               estanciaLabel={v.estanciaLabel}
               onSelect={(id, label) => setV((p) => ({ ...p, estanciaId: id, estanciaLabel: label }))}
