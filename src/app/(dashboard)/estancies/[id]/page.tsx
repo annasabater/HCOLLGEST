@@ -410,61 +410,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             </CardBody>
           </Card>
 
-          {/* Bugaderia / neteja d'aquesta estada (articles a netejar) */}
-          {canWrite && <BugaderiaPanel estanciaId={estancia.id} />}
-
-          {/* Mascotes de l'hoste — col·lapsable (plegat si no en té; desplega per afegir) */}
-          {titular && (
-            <MascotesPanel
-              title="Mascotes de l’hoste"
-              huespedId={titular.id}
-              canWrite={canWrite}
-              mascotes={titular.animals.map((a) => ({ id: a.id, nom: a.nom, especie: a.especie, mida: a.mida }))}
-            />
-          )}
-
-          {/* Cobraments pendents (avís al tauler el dia abans) — reception + admin */}
-          {canWrite && (
-            <CollapsibleCard
-              title="Cobraments pendents"
-              icon={<Clock className="h-4 w-4 text-brand-600" />}
-              count={estancia.pagamentsPrevistos.filter((p) => !p.pagat).length}
-              defaultOpen={estancia.pagamentsPrevistos.some((p) => !p.pagat)}
-            >
-              <PagamentsPrevistos
-                estanciaId={estancia.id}
-                previstos={estancia.pagamentsPrevistos.map((p) => ({
-                  id: p.id,
-                  import: Number(p.import),
-                  dataPrevista: p.dataPrevista.toISOString(),
-                  concepte: p.concepte,
-                  pagat: p.pagat,
-                }))}
-              />
-            </CollapsibleCard>
-          )}
-
-          {/* Pressupostos enllaçats a aquesta estada (ofertes) — ADMIN */}
-          {isAdmin && (
-            <CollapsibleCard
-              title="Pressupostos"
-              icon={<FileText className="h-4 w-4 text-brand-600" />}
-              count={estancia.pressupostos.length}
-              defaultOpen={estancia.pressupostos.length > 0}
-            >
-              <PressupostosEstadaList
-                estanciaId={estancia.id}
-                items={estancia.pressupostos.map((p) => ({
-                  id: p.id,
-                  numero: p.numero,
-                  data: p.data.toISOString(),
-                  total: Number(p.total),
-                }))}
-              />
-            </CollapsibleCard>
-          )}
-
-          {/* Pagaments i fiances — sota mascotes, col·lapsable i compacte */}
+          {/* Pagaments i fiances — col·lapsable i compacte */}
           {isAdmin && (
             <CollapsibleCard
               title="Pagaments i fiances"
@@ -569,6 +515,60 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
               />
             </CollapsibleCard>
           )}
+
+          {/* Cobraments pendents (avís al tauler el dia abans) — reception + admin */}
+          {canWrite && (
+            <CollapsibleCard
+              title="Cobraments pendents"
+              icon={<Clock className="h-4 w-4 text-brand-600" />}
+              count={estancia.pagamentsPrevistos.filter((p) => !p.pagat).length}
+              defaultOpen={estancia.pagamentsPrevistos.some((p) => !p.pagat)}
+            >
+              <PagamentsPrevistos
+                estanciaId={estancia.id}
+                previstos={estancia.pagamentsPrevistos.map((p) => ({
+                  id: p.id,
+                  import: Number(p.import),
+                  dataPrevista: p.dataPrevista.toISOString(),
+                  concepte: p.concepte,
+                  pagat: p.pagat,
+                }))}
+              />
+            </CollapsibleCard>
+          )}
+
+          {/* Pressupostos enllaçats a aquesta estada (ofertes) — ADMIN */}
+          {isAdmin && (
+            <CollapsibleCard
+              title="Pressupostos"
+              icon={<FileText className="h-4 w-4 text-brand-600" />}
+              count={estancia.pressupostos.length}
+              defaultOpen={estancia.pressupostos.length > 0}
+            >
+              <PressupostosEstadaList
+                estanciaId={estancia.id}
+                items={estancia.pressupostos.map((p) => ({
+                  id: p.id,
+                  numero: p.numero,
+                  data: p.data.toISOString(),
+                  total: Number(p.total),
+                }))}
+              />
+            </CollapsibleCard>
+          )}
+
+          {/* Mascotes de l'hoste — col·lapsable (plegat si no en té; desplega per afegir) */}
+          {titular && (
+            <MascotesPanel
+              title="Mascotes de l’hoste"
+              huespedId={titular.id}
+              canWrite={canWrite}
+              mascotes={titular.animals.map((a) => ({ id: a.id, nom: a.nom, especie: a.especie, mida: a.mida }))}
+            />
+          )}
+
+          {/* Bugaderia d'aquesta estada (valors per defecte que preomplen Neteja) */}
+          {canWrite && <BugaderiaPanel estanciaId={estancia.id} />}
         </div>
 
         {/* Mossos */}
