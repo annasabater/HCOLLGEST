@@ -105,8 +105,8 @@ export function TargetaAvis({
             items.map((it) => (
               <div key={it.key} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/70">
                 <Link href={it.href} className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-slate-800">{it.nom}</span>
-                  {it.sub && <span className="block truncate text-xs text-slate-400">{it.sub}</span>}
+                  <span className="block break-words text-sm font-medium text-slate-800">{it.nom}</span>
+                  {it.sub && <span className="block break-words text-xs text-slate-400">{it.sub}</span>}
                 </Link>
                 {dismissable && (
                   <button
