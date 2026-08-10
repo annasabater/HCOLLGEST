@@ -212,6 +212,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     .invoice{ box-shadow:none; border:none; border-radius:0; max-width:none; padding:0; animation:none; }
     .it-del,.del{ display:none !important; }
     .in:focus{ background:transparent; box-shadow:none; }
+    /* Camps buits: ni placeholder ni fila visible en imprimir. */
+    .in::placeholder{ color:transparent !important; opacity:0 !important; }
+    .print-hide{ display:none !important; }
     *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   }
 </style>
@@ -320,9 +323,35 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   }
   function growAll() { document.querySelectorAll('textarea.in').forEach(autoGrow); }
 
+  // Abans d'imprimir: amaga tot el que estigui buit (no s'ha omplert) perquè no
+  // surti al PDF (ni el text de placeholder ni la fila). Es restaura després.
+  const buit = el => !el || !String(el.value || '').trim();
+  function prepararImpressio() {
+    // Camps de client: amaga la línia buida; si tots són buits, amaga tot el "Per a".
+    const clientIds = ['clientNom', 'clientNif', 'clientAdreca', 'clientLocalitat'];
+    const clientEls = clientIds.map(id => document.getElementById(id)).filter(Boolean);
+    clientEls.forEach(el => { if (buit(el)) el.parentElement.classList.add('print-hide'); });
+    if (clientEls.every(buit)) {
+      const billTo = document.querySelector('.bill-to');
+      if (billTo) billTo.classList.add('print-hide');
+    }
+    // "Vàlid fins a" buit: amaga tota la fila.
+    const val = document.getElementById('validesa');
+    if (buit(val)) { const row = val && val.closest('.meta-row'); if (row) row.classList.add('print-hide'); }
+    // Línies de concepte totalment buides (sense text ni import): fora.
+    document.querySelectorAll('#items tbody tr.item').forEach(tr => {
+      const c = tr.querySelector('.concept'); const a = tr.querySelector('.amount');
+      if (buit(c) && (buit(a) || num(a.value) === 0)) tr.classList.add('print-hide');
+    });
+  }
+  function restaurarImpressio() {
+    document.querySelectorAll('.print-hide').forEach(el => el.classList.remove('print-hide'));
+  }
+
   document.addEventListener('DOMContentLoaded', () => { recalc(); growAll(); });
   window.addEventListener('load', growAll);
-  window.addEventListener('beforeprint', growAll);
+  window.addEventListener('beforeprint', () => { growAll(); prepararImpressio(); });
+  window.addEventListener('afterprint', restaurarImpressio);
 
   document.addEventListener('input', e => {
     if (e.target.matches('textarea.in')) autoGrow(e.target);
