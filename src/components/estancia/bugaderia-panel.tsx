@@ -129,7 +129,7 @@ export function BugaderiaPanel({ estanciaId }: { estanciaId: string }) {
               </tfoot>
             </table>
             <p className="mt-2 text-xs text-slate-400">
-              Valors per defecte d&apos;aquest hoste. Preomplen la bugaderia quan marques la neteja a <strong>Neteja</strong> (allà és on compta i on es genera l&apos;avís a la Mireia).
+              Valors per defecte d&apos;aquesta estada. Preomplen la bugaderia quan marques la neteja a <strong>Neteja</strong> (allà és on compta i on es genera l&apos;avís a la Mireia).
             </p>
           </div>
         </div>
