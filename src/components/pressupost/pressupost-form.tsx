@@ -52,7 +52,7 @@ export function PressupostForm({ inicial }: { inicial: PressupostData }) {
   const addLinia = () => setV((p) => ({ ...p, linies: [...p.linies, { descripcio: '', import: '' }] }));
   const removeLinia = (i: number) => setV((p) => ({ ...p, linies: p.linies.filter((_, k) => k !== i) }));
 
-  async function desa() {
+  async function desa(): Promise<boolean> {
     setSaving(true);
     setError(null);
     try {
@@ -74,11 +74,20 @@ export function PressupostForm({ inicial }: { inicial: PressupostData }) {
           .map((l) => ({ descripcio: l.descripcio, import: parseFloat(l.import.replace(',', '.')) || 0 })),
       });
       router.refresh();
+      return true;
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'No s’ha pogut desar');
+      return false;
     } finally {
       setSaving(false);
     }
+  }
+
+  // Desa primer (perquè el full reflecteixi l'idioma i la resta de canvis) i,
+  // si va bé, obre la pàgina d'impressió.
+  async function imprimeix() {
+    const ok = await desa();
+    if (ok) window.open(`/imprimir/pressupost/${v.id}`, '_blank', 'noopener');
   }
 
   async function elimina() {
@@ -97,11 +106,9 @@ export function PressupostForm({ inicial }: { inicial: PressupostData }) {
         <Button onClick={desa} disabled={saving}>
           <Save className="h-4 w-4" /> {saving ? 'Desant…' : 'Desar'}
         </Button>
-        <a href={`/imprimir/pressupost/${v.id}`} target="_blank" rel="noreferrer">
-          <Button variant="outline">
-            <Printer className="h-4 w-4" /> Imprimir / PDF
-          </Button>
-        </a>
+        <Button variant="outline" onClick={imprimeix} disabled={saving}>
+          <Printer className="h-4 w-4" /> {saving ? 'Desant…' : 'Imprimir / PDF'}
+        </Button>
         <Button variant="ghost" onClick={() => setConfirmDel(true)} className="text-red-600">
           <Trash2 className="h-4 w-4" /> Eliminar
         </Button>
