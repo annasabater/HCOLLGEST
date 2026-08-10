@@ -36,6 +36,7 @@ export default async function PressupostDetailPage({ params }: { params: Promise
     numero: p.numero,
     data: toISODate(p.data),
     validesa: p.validesa ? toISODate(p.validesa) : null,
+    idioma: (['ca', 'es', 'fr', 'en'].includes(p.idioma) ? p.idioma : 'ca') as 'ca' | 'es' | 'fr' | 'en',
     estanciaId: p.estanciaId,
     estanciaLabel: p.estancia ? `Contracte ${p.estancia.numContracte}/${p.estancia.anyContracte}` : null,
     clientNom: p.clientNom || (titular ? [titular.nom, titular.cognom1, titular.cognom2].filter(Boolean).join(' ') : ''),

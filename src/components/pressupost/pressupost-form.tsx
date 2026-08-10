@@ -4,12 +4,13 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Trash2, Printer, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input, Textarea } from '@/components/ui/input';
+import { Input, Textarea, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { patchJSON, delJSON, ApiError } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EstadaPicker } from '@/components/pressupost/estada-picker';
+import { LANGS, type Lang } from '@/lib/plantilles';
 import { formatEur } from '@/lib/utils';
 
 export interface PressupostData {
@@ -17,6 +18,7 @@ export interface PressupostData {
   numero: string;
   data: string; // ISO yyyy-mm-dd
   validesa: string | null;
+  idioma: Lang;
   estanciaId: string | null;
   estanciaLabel: string | null;
   clientNom: string;
@@ -58,6 +60,7 @@ export function PressupostForm({ inicial }: { inicial: PressupostData }) {
         numero: v.numero.trim(),
         data: v.data || undefined,
         validesa: v.validesa || undefined,
+        idioma: v.idioma,
         estanciaId: v.estanciaId, // id = assignar; null = desassignar
         clientNom: v.clientNom,
         clientNif: v.clientNif,
@@ -116,6 +119,15 @@ export function PressupostForm({ inicial }: { inicial: PressupostData }) {
           </Field>
           <Field label="Vàlid fins a" hint="Opcional">
             <Input type="date" value={v.validesa ?? ''} onChange={(e) => set('validesa', e.target.value)} />
+          </Field>
+          <Field label="Idioma del document" hint="En quin idioma es genera el pressupost imprès.">
+            <Select value={v.idioma} onChange={(e) => set('idioma', e.target.value as Lang)}>
+              {LANGS.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.label}
+                </option>
+              ))}
+            </Select>
           </Field>
         </CardBody>
       </Card>

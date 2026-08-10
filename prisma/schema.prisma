@@ -719,6 +719,7 @@ model Pressupost {
   numero       String   @unique // "00001" (editable; proposat = següent)
   data         DateTime @default(now())
   validesa     DateTime? // vàlid fins a (opcional)
+  idioma       String   @default("ca") // idioma del document imprès: ca/es/fr/en
   // Enllaç OPCIONAL a una estada (si el pressupost és per a un hoste concret).
   estanciaId   String?    @map("estancia_id")
   estancia     Estancia?  @relation(fields: [estanciaId], references: [id], onDelete: SetNull)

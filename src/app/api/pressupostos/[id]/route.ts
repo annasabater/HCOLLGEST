@@ -41,6 +41,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
         data: {
           numero: input.numero,
           estanciaId,
+          idioma: input.idioma ?? undefined,
           data: input.data ? new Date(input.data) : undefined,
           validesa: input.validesa ? new Date(input.validesa) : null,
           clientNom: input.clientNom ?? null,

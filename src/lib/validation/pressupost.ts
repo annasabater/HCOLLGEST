@@ -11,6 +11,7 @@ export const PressupostSaveSchema = z.object({
   numero: z.string().trim().min(1, 'Cal el número'),
   data: optStr, // ISO "yyyy-mm-dd"
   validesa: optStr,
+  idioma: z.enum(['ca', 'es', 'fr', 'en']).optional(),
   // Enllaç a una estada: absent = no es toca; null o "" = desassignar; id = assignar.
   estanciaId: z.union([z.string(), z.null()]).optional(),
   clientNom: optStr,

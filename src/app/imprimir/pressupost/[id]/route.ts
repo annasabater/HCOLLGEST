@@ -52,9 +52,19 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const clientAdreca = p.clientAdreca || titular?.adreca || '';
   const clientLocalitat = p.clientLocalitat || (titular ? [titular.codiPostal, titular.municipi || titular.localitat].filter(Boolean).join(' ') : '');
 
+  // Traduccions de les etiquetes del document imprès (per defecte català).
+  const idioma = (['ca', 'es', 'fr', 'en'].includes(p.idioma) ? p.idioma : 'ca') as 'ca' | 'es' | 'fr' | 'en';
+  const DICT = {
+    ca: { doc: 'Pressupost', oferta: 'Oferta', casa: 'Casa de Hostes', per: 'Per a', numero: 'Número', data: 'Data', valid: 'Vàlid fins a', estada: 'Estada · contracte', concepte: 'Concepte', import: 'Import (€)', base: 'Base', iva: 'IVA', total: 'Total', formaPag: 'Forma de pagament', phCli: 'Nom del client / empresa', phNif: 'NIF / CIF (opcional)', phDom: 'Domicili (opcional)', phLoc: 'Localitat (opcional)', phData: 'dd/mm/aaaa' },
+    es: { doc: 'Presupuesto', oferta: 'Oferta', casa: 'Casa de Huéspedes', per: 'Para', numero: 'Número', data: 'Fecha', valid: 'Válido hasta', estada: 'Estancia · contrato', concepte: 'Concepto', import: 'Importe (€)', base: 'Base', iva: 'IVA', total: 'Total', formaPag: 'Forma de pago', phCli: 'Nombre del cliente / empresa', phNif: 'NIF / CIF (opcional)', phDom: 'Domicilio (opcional)', phLoc: 'Localidad (opcional)', phData: 'dd/mm/aaaa' },
+    fr: { doc: 'Devis', oferta: 'Offre', casa: "Maison d'hôtes", per: 'Pour', numero: 'Numéro', data: 'Date', valid: "Valable jusqu'au", estada: 'Séjour · contrat', concepte: 'Description', import: 'Montant (€)', base: 'Base', iva: 'TVA', total: 'Total', formaPag: 'Mode de paiement', phCli: 'Nom du client / entreprise', phNif: 'NIF / CIF (facultatif)', phDom: 'Adresse (facultatif)', phLoc: 'Ville (facultatif)', phData: 'jj/mm/aaaa' },
+    en: { doc: 'Quote', oferta: 'Offer', casa: 'Guest House', per: 'For', numero: 'Number', data: 'Date', valid: 'Valid until', estada: 'Stay · contract', concepte: 'Description', import: 'Amount (€)', base: 'Subtotal', iva: 'VAT', total: 'Total', formaPag: 'Payment method', phCli: 'Client / company name', phNif: 'Tax ID (optional)', phDom: 'Address (optional)', phLoc: 'City (optional)', phData: 'dd/mm/yyyy' },
+  } as const;
+  const T = DICT[idioma];
+
   const establiment = await prisma.establiment.findFirst();
   const emNom = esc(establiment?.raoSocial || establiment?.nom || 'Hostal Coll');
-  const emDescriptor = esc(establiment?.poblacio ? `Casa de Hostes · ${establiment.poblacio}` : 'Casa de Hostes · Calella');
+  const emDescriptor = esc(establiment?.poblacio ? `${T.casa} · ${establiment.poblacio}` : `${T.casa} · Calella`);
   // Emissor (dades del hostal) — igual que a la factura fiscal.
   const emTitular = esc(establiment?.facturaTitular || 'Elisabet Nualart Coll');
   const emNif = esc(establiment?.facturaNif ? `NIF ${establiment.facturaNif}` : 'NIF 38835174L');
@@ -215,6 +225,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     /* Camps buits: ni placeholder ni fila visible en imprimir. */
     .in::placeholder{ color:transparent !important; opacity:0 !important; }
     .print-hide{ display:none !important; }
+    /* Encara que el bloc "Per a" s'amagui, el bloc Pressupost/Número/Data
+       s'ha de mantenir a la DRETA (no saltar a l'esquerra). */
+    .meta{ margin-left:auto; }
     *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   }
 </style>
@@ -250,19 +263,19 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
     <section class="head-grid">
       <div class="bill-to">
-        <div class="eyebrow">Per a</div>
-        <div class="client-name"><input id="clientNom" class="in" aria-label="Nom del client" value="${esc(clientNom)}" placeholder="Nom del client / empresa"></div>
-        <div><input id="clientNif" class="in" aria-label="NIF/CIF" value="${esc(clientNif)}" placeholder="NIF / CIF (opcional)"></div>
-        <div><input id="clientAdreca" class="in" aria-label="Adreça" value="${esc(clientAdreca)}" placeholder="Domicili (opcional)"></div>
-        <div><input id="clientLocalitat" class="in" aria-label="Localitat" value="${esc(clientLocalitat)}" placeholder="Localitat (opcional)"></div>
+        <div class="eyebrow">${T.per}</div>
+        <div class="client-name"><input id="clientNom" class="in" aria-label="${T.phCli}" value="${esc(clientNom)}" placeholder="${T.phCli}"></div>
+        <div><input id="clientNif" class="in" aria-label="${T.phNif}" value="${esc(clientNif)}" placeholder="${T.phNif}"></div>
+        <div><input id="clientAdreca" class="in" aria-label="${T.phDom}" value="${esc(clientAdreca)}" placeholder="${T.phDom}"></div>
+        <div><input id="clientLocalitat" class="in" aria-label="${T.phLoc}" value="${esc(clientLocalitat)}" placeholder="${T.phLoc}"></div>
       </div>
       <div class="meta">
-        <div class="meta-title">Pressupost</div>
-        <div class="meta-badge">Oferta</div>
-        <div class="meta-row"><span class="k">Número</span><span class="v"><input id="numero" class="in" aria-label="Número" value="${esc(p.numero)}"></span></div>
-        <div class="meta-row"><span class="k">Data</span><span class="v"><input id="data" class="in" aria-label="Data" value="${fmtDate(p.data)}" placeholder="dd/mm/aaaa"></span></div>
-        <div class="meta-row"><span class="k">Vàlid fins a</span><span class="v"><input id="validesa" class="in" aria-label="Vàlid fins a" value="${p.validesa ? fmtDate(p.validesa) : ''}" placeholder="dd/mm/aaaa"></span></div>
-        ${estadaRef ? `<div class="estada-ref">Estada · contracte <b>${estadaRef}</b></div>` : ''}
+        <div class="meta-title">${T.doc}</div>
+        <div class="meta-badge">${T.oferta}</div>
+        <div class="meta-row"><span class="k">${T.numero}</span><span class="v"><input id="numero" class="in" aria-label="${T.numero}" value="${esc(p.numero)}"></span></div>
+        <div class="meta-row"><span class="k">${T.data}</span><span class="v"><input id="data" class="in" aria-label="${T.data}" value="${fmtDate(p.data)}" placeholder="${T.phData}"></span></div>
+        <div class="meta-row"><span class="k">${T.valid}</span><span class="v"><input id="validesa" class="in" aria-label="${T.valid}" value="${p.validesa ? fmtDate(p.validesa) : ''}" placeholder="${T.phData}"></span></div>
+        ${estadaRef ? `<div class="estada-ref">${T.estada} <b>${estadaRef}</b></div>` : ''}
       </div>
     </section>
 
@@ -270,8 +283,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       <table class="items" id="items">
         <thead>
           <tr>
-            <th>Concepte</th>
-            <th class="c-amt">Import (€)</th>
+            <th>${T.concepte}</th>
+            <th class="c-amt">${T.import}</th>
             <th aria-hidden="true"></th>
           </tr>
         </thead>
@@ -282,9 +295,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     </div>
 
     <div class="summary">
-      <div class="sum-row"><span class="lab">Base</span><span class="val" id="base">${money(base)}</span></div>
-      <div class="sum-row"><span class="lab">IVA (<input id="ivaPercent" class="in iva-pct" inputmode="decimal" aria-label="Percentatge IVA" value="${ivaPercent}">%)</span><span class="val" id="iva">${money(iva)}</span></div>
-      <div class="sum-row grand"><span class="lab">Total</span><span class="val" id="total">${money(total)}</span></div>
+      <div class="sum-row"><span class="lab">${T.base}</span><span class="val" id="base">${money(base)}</span></div>
+      <div class="sum-row"><span class="lab">${T.iva} (<input id="ivaPercent" class="in iva-pct" inputmode="decimal" aria-label="${T.iva} %" value="${ivaPercent}">%)</span><span class="val" id="iva">${money(iva)}</span></div>
+      <div class="sum-row grand"><span class="lab">${T.total}</span><span class="val" id="total">${money(total)}</span></div>
     </div>
 
   </div>
