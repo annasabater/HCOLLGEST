@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle, LogIn, LogOut,
-  Clock, Wrench, CalendarClock, ShieldAlert,
+  Wrench, CalendarClock, ShieldAlert,
   Sparkles, TrendingUp, ChevronRight,
 } from 'lucide-react';
 import { getResum } from '@/lib/services/dashboard';
@@ -15,7 +15,6 @@ import { Badge } from '@/components/ui/badge';
 import { BenvingudesPendents } from '@/components/dashboard/benvingudes-pendents';
 import { CalculadoraPreu } from '@/components/dashboard/calculadora-preu';
 import { GlobalSearch } from '@/components/layout/global-search';
-import { DescartarAvisMossos } from '@/components/estancia/descartar-avis-mossos';
 import { TargetaAvis, type AvisItem } from '@/components/dashboard/targeta-avis';
 import { formatDate, formatEur } from '@/lib/utils';
 
@@ -50,23 +49,6 @@ export default async function DashboardPage() {
   const resum = await getResum({ excloureMetodeAltres: teVistaRestringida(user) });
   const fitxesPendents = await fitxesDadesPendents();
   const isAdmin = user?.role === 'ADMIN';
-
-  const araMs = Date.now();
-  const DIA_MS = 86_400_000;
-  const fmtDur = (ms: number) => {
-    const abs = Math.abs(ms);
-    const h = Math.floor(abs / 3_600_000);
-    const m = Math.floor((abs % 3_600_000) / 60_000);
-    return `${h}h ${m}m`;
-  };
-  const termini24 = resum.pendentsEnviament
-    .filter((e) => e.estat === 'EN_CURS')
-    .map((e) => {
-      const restMs = (e.dataEntrada ? new Date(e.dataEntrada).getTime() : araMs) + DIA_MS - araMs;
-      return { e, restMs, vencut: restMs < 0 };
-    })
-    .sort((a, b) => a.restMs - b.restMs);
-  const vencuts24 = termini24.filter((t) => t.vencut);
 
   type ColorKey = keyof typeof colorMap;
 
@@ -187,26 +169,6 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* Termini vençut */}
-      {vencuts24.length > 0 && (
-        <div className="flex items-start gap-4 rounded-2xl border border-red-300 bg-gradient-to-br from-red-50 to-rose-50 px-5 py-4">
-          <div className="rounded-xl bg-red-100 p-2.5"><AlertTriangle className="h-5 w-5 text-red-600" /></div>
-          <div>
-            <p className="font-semibold text-red-900">
-              {vencuts24.length} {vencuts24.length === 1 ? 'estada' : 'estades'} amb termini de 24 h VENÇUT
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {vencuts24.slice(0, 6).map((t) => (
-                <Link key={t.e.id} href={`/estancies/${t.e.id}`}
-                  className="rounded-lg bg-red-100 px-2.5 py-1 text-xs font-medium text-red-800 hover:bg-red-200">
-                  {titularNom(t.e.viatgers)} · fa {fmtDur(t.restMs)}
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
       {!isFormatConfirmat() && (
         <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
@@ -215,31 +177,6 @@ export default async function DashboardPage() {
             <p className="mt-0.5 text-amber-700">Verifica&apos;l amb el Manual i configura el <code>file_identifier</code> abans d&apos;usar-lo en real.</p>
           </div>
         </div>
-      )}
-
-      {/* Termini 24h */}
-      {termini24.length > 0 && (
-        <Card>
-          <CardHeader className="flex items-center gap-2">
-            <div className="rounded-lg bg-brand-100 p-1.5"><Clock className="h-4 w-4 text-brand-700" /></div>
-            <CardTitle>Termini Mossos (24 h)</CardTitle>
-          </CardHeader>
-          <CardBody className="space-y-1 p-3">
-            {termini24.map((t) => (
-              <div key={t.e.id} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm hover:bg-slate-50">
-                <Link href={`/estancies/${t.e.id}`} className="font-medium text-slate-800 hover:text-brand-700 hover:underline">
-                  {titularNom(t.e.viatgers)}
-                </Link>
-                <div className="flex items-center gap-2">
-                  <Badge tone={t.vencut ? 'danger' : t.restMs < 6 * 3_600_000 ? 'warning' : 'info'}>
-                    {t.vencut ? `Vençut fa ${fmtDur(t.restMs)}` : `Queden ${fmtDur(t.restMs)}`}
-                  </Badge>
-                  <DescartarAvisMossos estanciaId={t.e.id} />
-                </div>
-              </div>
-            ))}
-          </CardBody>
-        </Card>
       )}
 
       {/* Vigències */}
