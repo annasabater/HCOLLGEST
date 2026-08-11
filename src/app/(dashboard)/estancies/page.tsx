@@ -115,12 +115,11 @@ export default async function EstanciesPage({
 
   // Comptadors per estat EFECTIU (mateixa lògica que el filtre).
   const base: Prisma.EstanciaWhereInput = { deletedAt: null };
-  const [cTotes, cReserva, cEnCurs, cFinalitzada, cCancellada] = await Promise.all([
+  const [cTotes, cReserva, cEnCurs, cFinalitzada] = await Promise.all([
     prisma.estancia.count({ where: base }),
     prisma.estancia.count({ where: { ...base, ...whereEstat('RESERVA') } }),
     prisma.estancia.count({ where: { ...base, ...whereEstat('EN_CURS') } }),
     prisma.estancia.count({ where: { ...base, ...whereEstat('FINALITZADA') } }),
-    prisma.estancia.count({ where: { ...base, ...whereEstat('CANCELLADA') } }),
   ]);
 
   const tabs: { key: string; label: string; count?: number }[] = [
@@ -128,7 +127,6 @@ export default async function EstanciesPage({
     { key: 'EN_CURS', label: 'En curs', count: cEnCurs },
     { key: 'RESERVA', label: 'Reserva', count: cReserva },
     { key: 'FINALITZADA', label: 'Finalitzada', count: cFinalitzada },
-    { key: 'CANCELLADA', label: 'Cancel·lada', count: cCancellada },
   ];
 
   return (
