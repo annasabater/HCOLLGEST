@@ -81,10 +81,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const iva = Number(p.iva);
   const total = Number(p.total);
 
-  const estadaRef = p.estancia
-    ? esc(`${p.estancia.anyContracte}/${p.estancia.numContracte}`)
-    : '';
-
   const linesHtml = p.linies
     .map(
       (l) => `
@@ -163,8 +159,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   .meta-row{ display:flex; justify-content:flex-end; align-items:baseline; gap:10px; }
   .meta-row .k{ font-size:10px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); }
   .meta-row .v{ font-weight:600; color:var(--slate); min-width:110px; }
-  .estada-ref{ margin-top:6px; font-size:11px; color:var(--muted); }
-  .estada-ref b{ color:var(--accent); font-weight:600; }
   table.items{ width:100%; border-collapse:collapse; }
   table.items th{
     font-size:10.5px; text-transform:uppercase; letter-spacing:1.4px; color:var(--muted);
@@ -275,7 +269,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         <div class="meta-row"><span class="k">${T.numero}</span><span class="v"><input id="numero" class="in" aria-label="${T.numero}" value="${esc(p.numero)}"></span></div>
         <div class="meta-row"><span class="k">${T.data}</span><span class="v"><input id="data" class="in" aria-label="${T.data}" value="${fmtDate(p.data)}" placeholder="${T.phData}"></span></div>
         <div class="meta-row"><span class="k">${T.valid}</span><span class="v"><input id="validesa" class="in" aria-label="${T.valid}" value="${p.validesa ? fmtDate(p.validesa) : ''}" placeholder="${T.phData}"></span></div>
-        ${estadaRef ? `<div class="estada-ref">${T.estada} <b>${estadaRef}</b></div>` : ''}
       </div>
     </section>
 
