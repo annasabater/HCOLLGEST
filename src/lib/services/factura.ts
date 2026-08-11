@@ -47,9 +47,11 @@ export async function proximNumeroFactura(
 }
 
 /**
- * Número de factura basat en el NÚMERO DE CONTRACTE de l'estada: la primera
- * factura és el número de contracte tal qual (p. ex. "26004") i les següents de
- * la mateixa estada hi afegeixen ".1", ".2"… Inclou factures esborrades perquè el
+ * Número de factura basat en el NÚMERO DE CONTRACTE de l'estada, en una SÈRIE
+ * ÚNICA per estada (base + ampliacions): la primera factura és el número de
+ * contracte ARREL tal qual (p. ex. "26005") i les següents de la mateixa estada
+ * O de qualsevol de les seves ampliacions hi afegeixen ".1", ".2", ".3"… Així no
+ * hi ha números niats (mai "26005.1.1"). Inclou factures esborrades perquè el
  * número és @unique i no es pot reutilitzar. Retorna '' si no hi ha núm. contracte.
  */
 export async function proximNumeroFacturaContracte(
@@ -58,22 +60,23 @@ export async function proximNumeroFacturaContracte(
 ): Promise<string> {
   const est = await client.estancia.findUnique({
     where: { id: estanciaId },
-    select: { numContracte: true },
+    select: { numContracte: true, origen: { select: { numContracte: true } } },
   });
-  const base = (est?.numContracte ?? '').trim();
+  // Arrel del grup: si és una ampliació, el número de contracte de l'origen.
+  const base = ((est?.origen?.numContracte ?? est?.numContracte) ?? '').trim();
   if (!base) return '';
   const existents = await client.factura.findMany({
     where: { OR: [{ numero: base }, { numero: { startsWith: `${base}.` } }] },
     select: { numero: true },
   });
-  const nums = existents.map((f) => f.numero);
-  if (!nums.includes(base)) return base;
+  const nums = new Set(existents.map((f) => f.numero));
+  if (!nums.has(base)) return base;
+  // Només sufixos d'UN sol enter ("26005.1", "26005.2"…); ignora niats o altres.
+  const re = new RegExp(`^${base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.(\\d+)$`);
   let max = 0;
   for (const n of nums) {
-    if (n.startsWith(`${base}.`)) {
-      const s = parseInt(n.slice(base.length + 1), 10);
-      if (!isNaN(s) && s > max) max = s;
-    }
+    const m = n.match(re);
+    if (m) { const s = Number(m[1]); if (s > max) max = s; }
   }
   return `${base}.${max + 1}`;
 }
