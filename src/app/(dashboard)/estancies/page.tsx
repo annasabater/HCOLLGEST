@@ -76,8 +76,20 @@ export default async function EstanciesPage({
   const estatSel = estat && ['RESERVA', 'EN_CURS', 'FINALITZADA', 'CANCELLADA'].includes(estat) ? estat : '';
   const whereEstat = (e: string): Prisma.EstanciaWhereInput => {
     switch (e) {
-      case 'RESERVA': return { estat: 'RESERVA' };
-      case 'EN_CURS': return { estat: 'EN_CURS', OR: [{ dataSortida: null }, { dataSortida: { gt: now } }] };
+      // Reserva: les guardades com a RESERVA + els trams EN_CURS que encara no han
+      // començat (entrada futura, p. ex. una ampliació que arrenca més endavant).
+      case 'RESERVA':
+        return { OR: [{ estat: 'RESERVA' }, { estat: 'EN_CURS', dataEntrada: { gt: now } }] };
+      // En curs = l'hoste hi és ARA: entrada ja passada (o sense data) i sortida
+      // encara no arribada (o sense data).
+      case 'EN_CURS':
+        return {
+          estat: 'EN_CURS',
+          AND: [
+            { OR: [{ dataEntrada: null }, { dataEntrada: { lte: now } }] },
+            { OR: [{ dataSortida: null }, { dataSortida: { gt: now } }] },
+          ],
+        };
       case 'FINALITZADA': return { OR: [{ estat: 'FINALITZADA' }, { estat: 'EN_CURS', dataSortida: { lte: now } }] };
       case 'CANCELLADA': return { estat: 'CANCELLADA' };
       default: return {};
@@ -187,10 +199,15 @@ export default async function EstanciesPage({
             const estaAra =
               e.estat !== 'CANCELLADA' && !!e.dataEntrada && !!e.dataSortida && e.dataEntrada <= now && e.dataSortida > now;
             const estatColor: EstatEstada = estaAra ? (e.diposits.length > 0 ? 'taronja' : 'verd') : 'vermell';
-            // Estat EFECTIU: si consta EN_CURS però la data de sortida ja ha passat,
-            // en realitat ja ha finalitzat (l'estat guardat pot quedar desactualitzat).
+            // Estat EFECTIU (per dates): un tram EN_CURS amb la sortida ja passada
+            // en realitat ha finalitzat; i un amb l'entrada encara futura (p. ex. una
+            // ampliació que arrenca més endavant) és, ara mateix, una reserva.
             const estatEfectiu: EstatEstancia =
-              e.estat === 'EN_CURS' && !!e.dataSortida && e.dataSortida <= now ? 'FINALITZADA' : e.estat;
+              e.estat === 'EN_CURS' && !!e.dataSortida && e.dataSortida <= now
+                ? 'FINALITZADA'
+                : e.estat === 'EN_CURS' && !!e.dataEntrada && e.dataEntrada > now
+                  ? 'RESERVA'
+                  : e.estat;
             const cfg = ESTAT_CONFIG[estatEfectiu];
             // Color del badge coordinat amb l'avatar: verd hi és · taronja amb fiança ·
             // vermell no hi és (reserva futura en blau, cancel·lada en neutre).
