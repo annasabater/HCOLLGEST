@@ -67,7 +67,6 @@ export function AmpliarEstada({
   const sel = disp.find((r) => r.id === habitacioId) ?? null;
   const limit = sel?.lliureFins ?? null;
   const sobrepassa = !!(limit && dataSortida && dataSortida > limit);
-  const ocupada = sel?.occupat ?? false;
 
   function labelRoom(d: RoomDisp): string {
     if (d.occupat) return `${d.nom} · ocupada`;
@@ -130,7 +129,9 @@ export function AmpliarEstada({
             onChange={(e) => setDataSortida(e.target.value)}
           />
         </Field>
-        <Button type="submit" size="sm" disabled={saving || !dataSortida || sobrepassa || ocupada}>
+        {/* Ocupada/sobrepassa són AVISOS, no bloquejos: l'hostal a vegades comparteix
+            habitació. Només bloquegem si falta la data de sortida. */}
+        <Button type="submit" size="sm" disabled={saving || !dataSortida}>
           {saving ? 'Ampliant…' : 'Crear ampliació'}
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
@@ -158,7 +159,7 @@ export function AmpliarEstada({
       {sel && (
         <p className="text-xs text-slate-500">
           {sel.occupat
-            ? `⚠ L'habitació ${sel.nom} ja està ocupada el ${formatDate(dataEntrada)}. Tria'n una altra.`
+            ? `⚠ L'habitació ${sel.nom} ja consta ocupada el ${formatDate(dataEntrada)} per una altra estada. Pots crear l'ampliació igualment (si comparteixen habitació) o triar-ne una altra.`
             : sel.lliureFins
               ? `L'habitació ${sel.nom} està lliure fins al ${formatDate(sel.lliureFins)}.`
               : `L'habitació ${sel.nom} està lliure (sense reserves posteriors).`}
