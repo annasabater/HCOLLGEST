@@ -93,15 +93,37 @@ export function BenvingudesPendents({
           const lang = langs[p.id] ?? 'es';
           const recs = recipients(p);
           return (
-            <div key={p.id} className="rounded-lg border border-slate-200 p-3">
-              <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
-                <span className="font-medium text-slate-700">
-                  {p.habitacio ? `Habitació ${p.habitacio}` : 'Sense habitació'}
-                </span>
+            <div key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-slate-200 p-3 text-sm">
+              <span className="font-medium text-slate-700">
+                {p.habitacio ? `Habitació ${p.habitacio}` : 'Sense habitació'}
+              </span>
+              {recs.length === 0 ? (
+                <span className="text-xs text-slate-400">Cap hoste adult amb dades.</span>
+              ) : (
+                recs.map((v, i) => (
+                  <span key={i} className="flex items-center gap-2">
+                    <span className="text-slate-700">
+                      {v.nom} {v.cognom1}
+                      {v.esTitular ? ' · titular' : ''}
+                    </span>
+                    <span className="text-xs text-slate-400">{v.telefon ?? 'sense telèfon'}</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={!v.telefon}
+                      title={v.telefon ? undefined : 'Aquest hoste no té telèfon'}
+                      onClick={() => enviaWhatsApp(v.telefon, msg(lang, v.nom, p.habitacio, p.id), `${v.nom} ${v.cognom1}`)}
+                    >
+                      <MessageCircle className="h-4 w-4" /> WhatsApp
+                    </Button>
+                  </span>
+                ))
+              )}
+              <div className="ml-auto flex items-center gap-2">
                 <Select
                   value={lang}
                   onChange={(ev) => setLangs({ ...langs, [p.id]: ev.target.value as Lang })}
-                  className="ml-auto h-8 w-28"
+                  className="h-8 w-28"
                 >
                   {LANGS.map((l) => (
                     <option key={l.code} value={l.code}>
@@ -112,29 +134,6 @@ export function BenvingudesPendents({
                 <Button type="button" size="sm" variant="ghost" onClick={() => marcar(p.id)} disabled={busy === p.id}>
                   <Check className="h-4 w-4" /> Feta
                 </Button>
-              </div>
-              <div className="space-y-1.5">
-                {recs.length === 0 && <p className="text-xs text-slate-400">Cap hoste adult amb dades.</p>}
-                {recs.map((v, i) => (
-                  <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="text-slate-700">
-                      {v.nom} {v.cognom1}
-                      {v.esTitular ? ' · titular' : ''}
-                    </span>
-                    <span className="text-xs text-slate-400">{v.telefon ?? 'sense telèfon'}</span>
-                    <div className="ml-auto">
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={!v.telefon}
-                        title={v.telefon ? undefined : 'Aquest hoste no té telèfon'}
-                        onClick={() => enviaWhatsApp(v.telefon, msg(lang, v.nom, p.habitacio, p.id), `${v.nom} ${v.cognom1}`)}
-                      >
-                        <MessageCircle className="h-4 w-4" /> WhatsApp
-                      </Button>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
           );
