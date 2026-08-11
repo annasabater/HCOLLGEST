@@ -214,11 +214,13 @@ export function parseMrz(lines: string[]): MrzResult | null {
       // NIE codificat (0/1/2 → X/Y/Z) al final del camp, només si no és espanyol.
       if (nacionalitat !== 'ESP') {
         const enc = cand.match(/([012][0-9]{7}[A-Z])$/);
-        if (enc) cand = cand.slice(0, cand.length - enc[1].length) + NIE_PREFIX[enc[1][0]!]! + enc[1].slice(1);
+        const tok = enc?.[1];
+        if (tok) cand = cand.slice(0, cand.length - tok.length) + NIE_PREFIX[tok[0]!]! + tok.slice(1);
       }
       const m = cand.match(/([0-9]{8}[A-Z]|[XYZ][0-9]{7}[A-Z])$/);
-      if (m) {
-        numDocument = m[1]; // DNI/NIF o NIE real
+      const doc = m?.[1];
+      if (doc) {
+        numDocument = doc; // DNI/NIF o NIE real
         numSuport = docFieldRaw || undefined; // número de suport (IDESP)
       }
     }
