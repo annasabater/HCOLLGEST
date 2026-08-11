@@ -142,7 +142,9 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
           ? { label: 'Sortida anticipada', tone: 'warning' }
           : estancia.dataEntrada && avuiIso < toISODate(estancia.dataEntrada)
             ? { label: 'Reserva', tone: 'info' }
-            : estancia.dataSortida && avuiIso < toISODate(estancia.dataSortida)
+            : // Allotjat ara: ja ha entrat i encara no ha marxat (sortida futura o
+              // SENSE sortida —estada oberta—).
+              estancia.dataEntrada && (!estancia.dataSortida || avuiIso < toISODate(estancia.dataSortida))
               ? { label: 'Allotjat ara', tone: 'success' }
               : { label: 'Estada acabada', tone: 'neutral' };
 

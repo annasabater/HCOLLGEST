@@ -197,9 +197,12 @@ export default async function EstanciesPage({
               .filter((v) => v.huespedId !== titularRow?.huespedId && v.huesped)
               .map((v) => `${v.huesped!.nom} ${v.huesped!.cognom1}${v.huesped!.cognom2 ? ` ${v.huesped!.cognom2}` : ''}`);
             const env = e.enviaments[0];
-            // Hi és ara si les dates cobreixen avui i no està cancel·lada.
+            // Hi és ara: ha entrat (entrada ja passada) i encara no ha marxat (sortida
+            // futura o SENSE sortida —estada oberta—), i no està cancel·lada.
             const estaAra =
-              e.estat !== 'CANCELLADA' && !!e.dataEntrada && !!e.dataSortida && e.dataEntrada <= now && e.dataSortida > now;
+              e.estat !== 'CANCELLADA' &&
+              !!e.dataEntrada && e.dataEntrada <= now &&
+              (!e.dataSortida || e.dataSortida > now);
             const estatColor: EstatEstada = estaAra ? (e.diposits.length > 0 ? 'taronja' : 'verd') : 'vermell';
             // Estat EFECTIU (per dates): un tram EN_CURS amb la sortida ja passada
             // en realitat ha finalitzat; i un amb l'entrada encara futura (p. ex. una
