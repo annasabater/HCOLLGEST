@@ -746,10 +746,18 @@ export async function createFacturaSeleccio(
 
     if (pagaments.length + fiances.length === 0) throw new Error('Cap element seleccionat');
 
-    // La factura porta la data d'ENTRADA de l'estada (no el dia en què es genera):
-    // sovint es factura dies després de l'estada i l'usuari vol que el document
-    // reflecteixi quan va ser l'allotjament, no quan s'ha polsat el botó.
-    const dataFactura = estancia.dataEntrada ?? new Date();
+    // Data del document: la del PAGAMENT seleccionat (o la més recent si n'hi ha
+    // diversos). Així un rebut d'un resident de llarga estada porta la data d'aquell
+    // pagament (p. ex. la mensualitat), no la de l'entrada original. Si només hi ha
+    // fiança, s'usa la seva data; en últim cas, l'entrada de l'estada.
+    const totesDates: Date[] = [
+      ...pagaments.map((p) => p.data),
+      ...fiances.map((f) => f.data),
+    ].filter((d): d is Date => !!d);
+    const dataFactura =
+      totesDates.length > 0
+        ? totesDates.reduce((a, b) => (a > b ? a : b))
+        : estancia.dataEntrada ?? new Date();
 
     const esFiscal = input.tipusDocument === 'FACTURA';
     const totalPag = round2(pagaments.reduce((a, p) => a + Number(p.import), 0));
