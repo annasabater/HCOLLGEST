@@ -341,8 +341,22 @@ export async function ampliarEstancia(
       // Habitació de l'ampliació: la indicada o, per defecte, la de l'estada.
       const habId = dates.habitacioId !== undefined ? dates.habitacioId : root.habitacioId;
 
-      const count = await tx.estancia.count({ where: { estanciaOrigenId: rootId } });
-      const numContracte = `${root.numContracte}.${count + 1}`;
+      // Numeració de l'ampliació sense forats: agafa el número lliure més baix
+      // (.1, .2, .3…) entre les ampliacions VIVES. Si se n'ha esborrat alguna, el
+      // seu número torna a quedar disponible i no salta ni deixa forat.
+      const germanes = await tx.estancia.findMany({
+        where: { estanciaOrigenId: rootId, deletedAt: null },
+        select: { numContracte: true },
+      });
+      const usats = new Set(
+        germanes
+          .map((g) => g.numContracte.match(/\.(\d+)$/)?.[1])
+          .filter((s): s is string => s != null)
+          .map(Number),
+      );
+      let seq = 1;
+      while (usats.has(seq)) seq += 1;
+      const numContracte = `${root.numContracte}.${seq}`;
 
       const nova = await tx.estancia.create({
         data: {
