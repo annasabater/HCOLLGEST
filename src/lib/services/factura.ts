@@ -955,8 +955,17 @@ export async function createFacturaDupla(
     );
     const teFianca = fiances.length > 0;
     const descAllot = input.descripcioAllotjament?.trim() || CONCEPTE_LINIA_LABELS.ALLOTJAMENT;
-    // La factura porta la data d'ENTRADA de l'estada (no el dia en què es genera).
-    const dataFactura = estancia.dataEntrada ?? new Date();
+    // Data del document: la del PAGAMENT seleccionat (o la més recent si n'hi ha
+    // diversos), igual que la factura normal. Si només hi ha fiança, la seva data;
+    // en últim cas, l'entrada de l'estada.
+    const totesDates: Date[] = [
+      ...pagaments.map((p) => p.data),
+      ...fiances.map((f) => f.data),
+    ].filter((d): d is Date => !!d);
+    const dataFactura =
+      totesDates.length > 0
+        ? totesDates.reduce((a, b) => (a > b ? a : b))
+        : estancia.dataEntrada ?? new Date();
     const year = dataFactura.getFullYear();
     const liniaData = () =>
       total > 0

@@ -192,7 +192,7 @@ export function parseMrz(lines: string[]): MrzResult | null {
     const docFieldRaw = docField9.replace(/</g, '');
     const valid = docCheckOk && birthOk && expiryOk;
     // Camp opcional línia 1 (pos 15-29).
-    let optFieldRaw = l1.slice(15, 29).replace(/</g, '').trim();
+    const optFieldRaw = l1.slice(15, 29).replace(/</g, '').trim();
     const nacionalitat = l2.slice(15, 18).replace(/</g, '');
 
     // NIE codificat: a la MRZ la lletra inicial del NIE (X/Y/Z) es guarda com un
@@ -505,7 +505,7 @@ export function parseDniReverso(rawText: string): ViatgerOcr | null {
 
 /** Converteix el resultat MRZ als camps del formulari de viatger. */
 export function mrzToViatger(m: MrzResult): ViatgerOcr {
-  return {
+  return corregeixDocSuportEsp({
     nom: m.nom,
     cognom1: m.cognom1,
     cognom2: m.cognom2,
@@ -516,5 +516,42 @@ export function mrzToViatger(m: MrzResult): ViatgerOcr {
     dataNaixement: m.dataNaixement,
     nacionalitat: NACIONALITAT_LABELS[m.nacionalitat] ?? (m.nacionalitat || undefined),
     valid: m.valid,
-  };
+  });
+}
+
+/**
+ * Xarxa de seguretat per a documents espanyols: el DNI/NIE i el número de suport
+ * tenen formats inequívocs (DNI = 8 dígits + lletra; NIE = X/Y/Z + 7 dígits +
+ * lletra; suport = 3 lletres + 6 dígits, p. ex. BNA147552). Si per soroll de
+ * l'OCR han quedat INTERCANVIATS (el "document" té format de suport i el "suport"
+ * acaba en DNI/NIE), els torna a col·locar bé. I si el document porta el DNI/NIE
+ * amb caràcters extra al davant (p. ex. un dígit de control), el neteja. No toca
+ * res si ja estan correctes.
+ */
+export function corregeixDocSuportEsp(v: ViatgerOcr): ViatgerOcr {
+  const norm = (s?: string) => (s ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const doc = norm(v.numDocument);
+  const sup = norm(v.numSuport);
+  const esSuport = (s: string) => /^[A-Z]{3}[0-9]{6}$/.test(s);
+  const dniNieFinal = (s: string) => s.match(/([0-9]{8}[A-Z]|[XYZ][0-9]{7}[A-Z])$/)?.[1];
+  const tipusPer = (d: string): 'DNI_NIF' | 'NIE' => (/^[0-9]{8}[A-Z]$/.test(d) ? 'DNI_NIF' : 'NIE');
+
+  // Cas 1: intercanviats — el "document" té format de suport i el "suport" porta
+  // el DNI/NIE (amb possible soroll al davant).
+  if (esSuport(doc)) {
+    const dni = dniNieFinal(sup);
+    if (dni) {
+      v.numDocument = dni;
+      v.numSuport = doc;
+      v.tipusDocument = tipusPer(dni);
+      return v;
+    }
+  }
+  // Cas 2: el document porta un DNI/NIE amb caràcters extra al davant → neteja'l.
+  const dniDoc = dniNieFinal(doc);
+  if (dniDoc && dniDoc !== doc) {
+    v.numDocument = dniDoc;
+    if (!v.tipusDocument || v.tipusDocument === 'ALTRES') v.tipusDocument = tipusPer(dniDoc);
+  }
+  return v;
 }
