@@ -299,7 +299,7 @@ export async function editFactura(
     let numero = factura.numero;
     if (input.numero && input.numero.trim() !== factura.numero) {
       const exist = await tx.factura.findFirst({ where: { numero: input.numero.trim(), id: { not: facturaId } } });
-      if (exist) throw new Error(`El número "${input.numero.trim()}" ja existeix`);
+      if (exist) throw new Error(`Validación fallida: el número "${input.numero.trim()}" ja existeix en una altra factura. Tria un número diferent.`);
       numero = input.numero.trim();
     }
 
