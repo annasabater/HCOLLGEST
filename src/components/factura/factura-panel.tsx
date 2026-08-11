@@ -29,6 +29,8 @@ interface FacturaLite {
   total: string | number;
   estat: 'PENDENT' | 'COBRADA';
   tipusDocument?: string;
+  /** Contracte al qual pertany (per mostrar-lo si l'estada té ampliacions). */
+  contracte?: string;
 }
 interface PagamentLite {
   id: string;
@@ -343,6 +345,11 @@ export function FacturaPanel({
               {f.tipusDocument && (
                 <span className="truncate text-xs font-normal text-slate-400">
                   {tipusDocumentLabel(f.tipusDocument, Number(f.total))}
+                </span>
+              )}
+              {f.contracte && (
+                <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-normal text-slate-500">
+                  {f.contracte}
                 </span>
               )}
             </a>

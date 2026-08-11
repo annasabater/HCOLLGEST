@@ -104,6 +104,19 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
     orderBy: [{ dataEntrada: 'asc' }],
   });
 
+  // Factures de TOTA l'estada (base + ampliacions), com una sola sèrie contínua.
+  // Cada estada té les seves factures arxivades, però es mostren totes juntes.
+  const teAmpliacions = cadena.length > 1;
+  const grupFacturesRaw = await prisma.factura.findMany({
+    where: { deletedAt: null, estancia: { OR: [{ id: rootId }, { estanciaOrigenId: rootId }] } },
+    select: {
+      id: true, numero: true, total: true, estat: true, tipusDocument: true,
+      estancia: { select: { numContracte: true } },
+    },
+  });
+  const sufixFactura = (n: string) => { const m = n.match(/\.(\d+)$/); return m ? Number(m[1]) : 0; };
+  const grupFactures = grupFacturesRaw.sort((a, b) => sufixFactura(a.numero) - sufixFactura(b.numero));
+
   const user = await getSessionUser();
   const isAdmin = user?.role === 'ADMIN';
   const canWrite = user ? hasRole(user.role, ROLES_WRITE) : false;
@@ -493,8 +506,8 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             <CollapsibleCard
               title="Facturació"
               icon={<Receipt className="h-4 w-4 text-brand-600" />}
-              count={estancia.factures.length}
-              defaultOpen={estancia.factures.length > 0}
+              count={grupFactures.length}
+              defaultOpen={grupFactures.length > 0}
             >
               <FacturaPanel
                 estanciaId={estancia.id}
@@ -535,12 +548,13 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   estat: d.estat,
                   facturaId: d.facturaId ?? null,
                 }))}
-                factures={estancia.factures.map((f) => ({
+                factures={grupFactures.map((f) => ({
                   id: f.id,
                   numero: f.numero,
                   total: Number(f.total),
                   estat: f.estat,
                   tipusDocument: f.tipusDocument,
+                  contracte: teAmpliacions ? f.estancia?.numContracte : undefined,
                 }))}
               />
             </CollapsibleCard>
