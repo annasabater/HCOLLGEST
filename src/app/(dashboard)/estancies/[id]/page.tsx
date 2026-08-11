@@ -91,7 +91,16 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
   const rootId = estancia.origen?.id ?? estancia.id;
   const cadena = await prisma.estancia.findMany({
     where: { deletedAt: null, OR: [{ id: rootId }, { estanciaOrigenId: rootId }] },
-    select: { id: true, numContracte: true, anyContracte: true, dataEntrada: true, dataSortida: true },
+    select: {
+      id: true,
+      numContracte: true,
+      anyContracte: true,
+      dataEntrada: true,
+      dataSortida: true,
+      estat: true,
+      // Cobraments previstos NO pagats d'aquest tram (per marcar-lo en lila).
+      pagamentsPrevistos: { where: { pagat: false }, select: { id: true }, take: 1 },
+    },
     orderBy: [{ dataEntrada: 'asc' }],
   });
 
@@ -277,23 +286,42 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
           <div className="flex flex-wrap gap-2">
             {cadena.map((c) => {
               const actual = c.id === estancia.id;
+              // Lila: en Reserva/En curs (encara no finalitzat ni cancel·lat) i amb
+              // algun cobrament previst sense pagar.
+              const cobramentPendent =
+                c.estat !== 'CANCELLADA' &&
+                (!c.dataSortida || toISODate(c.dataSortida) >= avuiIso) &&
+                c.pagamentsPrevistos.length > 0;
               return (
                 <Link
                   key={c.id}
                   href={`/estancies/${c.id}`}
                   aria-current={actual ? 'page' : undefined}
+                  title={cobramentPendent ? 'Té cobraments pendents de pagar' : undefined}
                   className={cn(
                     'rounded-lg border px-3 py-1.5 transition-colors',
-                    actual
-                      ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-500'
-                      : 'border-slate-200 hover:bg-slate-50',
+                    cobramentPendent
+                      ? actual
+                        ? 'border-violet-500 bg-violet-50 ring-1 ring-violet-500'
+                        : 'border-violet-300 bg-violet-50/60 hover:bg-violet-50'
+                      : actual
+                        ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-500'
+                        : 'border-slate-200 hover:bg-slate-50',
                   )}
                 >
-                  <div className={cn('flex items-center gap-1.5 text-sm font-medium', actual ? 'text-brand-800' : 'text-slate-700')}>
+                  <div
+                    className={cn(
+                      'flex items-center gap-1.5 text-sm font-medium',
+                      cobramentPendent ? 'text-violet-800' : actual ? 'text-brand-800' : 'text-slate-700',
+                    )}
+                  >
                     {c.numContracte}/{c.anyContracte}
+                    {cobramentPendent && (
+                      <span className="rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-white">€ pendent</span>
+                    )}
                     {actual && <span className="rounded bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-white">Aquí</span>}
                   </div>
-                  <div className="text-xs text-slate-400">
+                  <div className={cn('text-xs', cobramentPendent ? 'text-violet-400' : 'text-slate-400')}>
                     {formatDate(c.dataEntrada)} – {formatDate(c.dataSortida)}
                   </div>
                 </Link>

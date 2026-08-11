@@ -108,6 +108,8 @@ export default async function EstanciesPage({
       enviaments: { orderBy: { createdAt: 'desc' }, take: 1 },
       habitacio: true,
       diposits: { where: { estat: 'EN_CUSTODIA' }, select: { id: true }, take: 1 },
+      // Cobraments previstos NO pagats (per marcar l'estada en lila).
+      pagamentsPrevistos: { where: { pagat: false }, select: { id: true }, take: 1 },
     },
   });
 
@@ -217,10 +219,14 @@ export default async function EstanciesPage({
               : estatColor === 'verd' ? 'success'
               : estatColor === 'taronja' ? 'warning'
               : 'danger';
+            // Cobrament pendent (lila): en Reserva/En curs amb algun cobrament previst
+            // sense pagar. No es marca si ja ha finalitzat o s'ha cancel·lat.
+            const teCobramentPendent =
+              e.pagamentsPrevistos.length > 0 && estatEfectiu !== 'FINALITZADA' && estatEfectiu !== 'CANCELLADA';
 
             return (
               <Link key={e.id} href={`/estancies/${e.id}`}
-                className={`group flex items-center gap-4 rounded-2xl border border-l-4 border-slate-200 bg-white px-4 py-3.5 transition-all hover:shadow-md hover:border-slate-300 ${STATUS_BORDER[estatColor]}`}>
+                className={`group flex items-center gap-4 rounded-2xl border border-l-4 bg-white px-4 py-3.5 transition-all hover:shadow-md ${teCobramentPendent ? 'border-violet-300 border-l-violet-500 hover:border-violet-400' : `border-slate-200 hover:border-slate-300 ${STATUS_BORDER[estatColor]}`}`}>
 
                 <Initials nom={nomTitular} estat={estatColor} />
 
@@ -233,6 +239,11 @@ export default async function EstanciesPage({
                       {e.numContracte}/{e.anyContracte}
                     </span>
                     <Badge tone={badgeTone}>{cfg.label}</Badge>
+                    {teCobramentPendent && (
+                      <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-medium text-violet-700">
+                        € Cobrament pendent
+                      </span>
+                    )}
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500">
                     <span className="flex items-center gap-1">
