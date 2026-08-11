@@ -200,26 +200,27 @@ export function parseMrz(lines: string[]): MrzResult | null {
     // porta el NIE amb aquesta codificació (p.ex. "21717102L" = Z1717102L). Com que
     // un espanyol no té NIE, només ho descodifiquem si la nacionalitat NO és ESP.
     const NIE_PREFIX: Record<string, string> = { '0': 'X', '1': 'Y', '2': 'Z' };
-    if (
-      issuingCountry === 'ESP' &&
-      nacionalitat !== 'ESP' &&
-      /^[012][0-9]{7}[A-Z]$/.test(optFieldRaw)
-    ) {
-      optFieldRaw = NIE_PREFIX[optFieldRaw[0]!]! + optFieldRaw.slice(1);
-    }
 
     // Documents espanyols (DNI, TIE d'estranger…): el camp "document number"
-    // (pos 5-13) porta el NÚMERO DE SUPORT (IDESP, p.ex. BMK169866) i el número
-    // real (DNI/NIF o NIE) va al camp opcional (pos 15-29). Ho detectem: si el camp
-    // opcional té format de DNI (8 dígits+lletra) o NIE (X/Y/Z+7 dígits+lletra),
-    // aquell és el document i el de pos 5-13 és el suport. Només per a emissor ESP.
-    const esDniNie = (s: string) =>
-      /^[0-9]{8}[A-Z]$/.test(s) || /^[XYZ][0-9]{7}[A-Z]$/.test(s);
+    // (pos 5-13) porta el NÚMERO DE SUPORT (IDESP, p.ex. BMK169866) i el DNI/NIE
+    // real va al camp opcional (pos 15-29). Per soroll de l'OCR el camp opcional pot
+    // dur caràcters extra al davant (p. ex. el dígit de control), així que extraiem
+    // el DNI/NIE VÀLID del FINAL de la cadena. Si el trobem: aquell és el document i
+    // el camp de pos 5-13 és el suport. Només per a emissor ESP.
     let numDocument = docFieldRaw;
     let numSuport = optFieldRaw.length >= 3 ? optFieldRaw : undefined;
-    if (issuingCountry === 'ESP' && esDniNie(optFieldRaw)) {
-      numDocument = optFieldRaw; // DNI/NIF o NIE real
-      numSuport = docFieldRaw || undefined; // número de suport (IDESP)
+    if (issuingCountry === 'ESP') {
+      let cand = optFieldRaw;
+      // NIE codificat (0/1/2 → X/Y/Z) al final del camp, només si no és espanyol.
+      if (nacionalitat !== 'ESP') {
+        const enc = cand.match(/([012][0-9]{7}[A-Z])$/);
+        if (enc) cand = cand.slice(0, cand.length - enc[1].length) + NIE_PREFIX[enc[1][0]!]! + enc[1].slice(1);
+      }
+      const m = cand.match(/([0-9]{8}[A-Z]|[XYZ][0-9]{7}[A-Z])$/);
+      if (m) {
+        numDocument = m[1]; // DNI/NIF o NIE real
+        numSuport = docFieldRaw || undefined; // número de suport (IDESP)
+      }
     }
     return {
       format: 'TD1',
