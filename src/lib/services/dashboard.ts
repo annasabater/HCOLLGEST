@@ -365,8 +365,12 @@ export async function getResum(opts?: FinanceOpts) {
     generaDespesa: s.generaDespesa,
   }));
   // Factures fixes pendents de pujar: serveis en mode "només recordatori"
-  // (no auto-generen) que ja han vençut i encara no s'han registrat.
-  const serveisPendentsFactura = serveisProximsList.filter((s) => !s.generaDespesa && s.vencut);
+  // (no auto-generen). Avisa quan s'apropa la data (3 dies abans) o ja ha vençut,
+  // perquè l'usuari pugi la factura (import + data) i entri al llibre d'IVA.
+  const finestraFactura = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+  const serveisPendentsFactura = serveisProximsList.filter(
+    (s) => !s.generaDespesa && s.properaData <= finestraFactura,
+  );
 
   const vigenciesProximesList = vigenciesProximes.map((s) => ({
     id: s.id,

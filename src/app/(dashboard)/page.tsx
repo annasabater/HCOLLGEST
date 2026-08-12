@@ -95,11 +95,11 @@ export default async function DashboardPage() {
     tipus: 'DADES_PENDENTS',
     entitatId: f.id,
   }));
-  // Serveis fixos vençuts en mode recordatori: falta pujar-ne la factura.
+  // Serveis fixos en mode recordatori (data a prop o vençuda): falta pujar-ne la factura.
   const itemsFixes: AvisItem[] = resum.serveisPendentsFactura.map((s) => ({
     key: s.id,
     nom: s.activitat,
-    sub: `Vençut ${formatDate(s.properaData)}${s.import != null ? ` · ${formatEur(s.import)}` : ''} · puja la factura`,
+    sub: `${s.vencut ? 'Vençut' : 'Venç'} ${formatDate(s.properaData)}${s.import != null ? ` · ${formatEur(s.import)}` : ''} · puja la factura`,
     href: '/serveis',
     tipus: 'SERVEI_FACTURA',
     entitatId: s.id,
