@@ -26,6 +26,7 @@ function fmtDateShort(d: string | null | undefined): string {
 interface FacturaLite {
   id: string;
   numero: string;
+  data?: string;
   total: string | number;
   estat: 'PENDENT' | 'COBRADA';
   tipusDocument?: string;
@@ -806,7 +807,8 @@ export function FacturaPanel({
                 <label key={f.id} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm">
                   <input type="checkbox" checked={selSimples.has(f.id)} onChange={() => toggleSimple(f.id)} />
                   <span className="font-medium text-slate-800">{f.numero}</span>
-                  {f.contracte && <span className="text-xs text-slate-400">{f.contracte}</span>}
+                  {f.data && <span className="text-xs text-slate-400">{formatDate(f.data)}</span>}
+                  {f.contracte && <span className="text-xs text-slate-400">· {f.contracte}</span>}
                   <span className="ml-auto font-medium text-slate-700">{formatEur(Number(f.total))}</span>
                 </label>
               ))}

@@ -110,7 +110,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
   const grupFacturesRaw = await prisma.factura.findMany({
     where: { deletedAt: null, estancia: { OR: [{ id: rootId }, { estanciaOrigenId: rootId }] } },
     select: {
-      id: true, numero: true, total: true, estat: true, tipusDocument: true, estanciaId: true,
+      id: true, numero: true, data: true, total: true, estat: true, tipusDocument: true, estanciaId: true,
       facturaFiscal: { select: { numero: true } },
       estancia: { select: { numContracte: true } },
     },
@@ -552,6 +552,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 factures={grupFactures.map((f) => ({
                   id: f.id,
                   numero: f.numero,
+                  data: f.data.toISOString(),
                   total: Number(f.total),
                   estat: f.estat,
                   tipusDocument: f.tipusDocument,
