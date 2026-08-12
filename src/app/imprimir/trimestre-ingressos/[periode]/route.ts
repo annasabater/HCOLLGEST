@@ -111,7 +111,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     { key: 'nif', label: 'NIF', num: false, del: false, w: 54 },
     { key: 'proveidor', label: 'Nombre proveedor', num: false, del: false, left: true, w: 88 },
     { key: 'numFactura', label: 'Nº factura', num: false, del: false, w: 46 },
-    ...COLUMNES_GASTO.map((c) => ({ key: c, label: COLUMNA_GASTO_LABELS[c], num: true, del: true, w: c === 'reparaciones' ? 57 : 54 })),
+    ...COLUMNES_GASTO.map((c) => ({ key: c, label: COLUMNA_GASTO_LABELS[c], num: true, del: true, w: 54 })),
     { key: 'iva5', label: 'IVA 5%', num: true, del: true, w: 42 },
     { key: 'iva10', label: 'IVA 10%', num: true, del: true, w: 42 },
     { key: 'iva21', label: 'IVA 21%', num: true, del: true, w: 42 },
