@@ -86,6 +86,7 @@ export function FacturaPanel({
   const esFiscal = tipus === 'FACTURA';
   const [numero, setNumero] = useState('');
   const [dataFac, setDataFac] = useState(''); // data del document (yyyy-mm-dd)
+  const [dataTocada, setDataTocada] = useState(false); // l'usuari l'ha canviada a mà
   const [selPag, setSelPag] = useState<Set<string>>(new Set());
   const [selFi, setSelFi] = useState<Set<string>>(new Set());
   // Simple: si la fiança seleccionada compta al total (fiscal sempre la inclou).
@@ -187,10 +188,27 @@ export function FacturaPanel({
     return nomHab ? `${habLabel}${personesLabel}${datesLabel}` : 'Allotjament';
   }
 
-  const togglePag = (id: string) =>
-    setSelPag((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  const toggleFi = (id: string) =>
-    setSelFi((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  // Data per defecte = la del pagament/fiança SELECCIONAT més recent. No es toca
+  // si l'usuari ja l'ha canviada a mà (tocada).
+  function recalcData(selP: Set<string>, selF: Set<string>, tocada: boolean) {
+    if (tocada) return;
+    const dts = [
+      ...pagamentsLliures.filter((p) => selP.has(p.id)).map((p) => p.data),
+      ...fiancesLliures.filter((f) => selF.has(f.id)).map((f) => f.data),
+    ].filter(Boolean).sort();
+    setDataFac((dts[dts.length - 1] ?? new Date().toISOString()).slice(0, 10));
+  }
+
+  const togglePag = (id: string) => {
+    const n = new Set(selPag); if (n.has(id)) n.delete(id); else n.add(id);
+    setSelPag(n);
+    recalcData(n, selFi, dataTocada);
+  };
+  const toggleFi = (id: string) => {
+    const n = new Set(selFi); if (n.has(id)) n.delete(id); else n.add(id);
+    setSelFi(n);
+    recalcData(selPag, n, dataTocada);
+  };
 
   async function obrir(mode: 'simple' | 'fiscal' | 'dupla') {
     const t = mode === 'fiscal' ? 'FACTURA' : 'FACTURA_SIMPLIFICADA';
@@ -199,11 +217,13 @@ export function FacturaPanel({
     setError(null);
     setAmbFianca(true);
     // Preselecciona tots els pendents (el cas habitual: facturar-ho tot).
-    setSelPag(new Set(pagamentsLliures.map((p) => p.id)));
-    setSelFi(new Set(fiancesLliures.map((f) => f.id)));
-    // Data per defecte: la del pagament pendent més recent (o avui).
-    const dts = pagamentsLliures.map((p) => p.data).filter(Boolean).sort();
-    setDataFac((dts[dts.length - 1] ?? new Date().toISOString()).slice(0, 10));
+    const selP = new Set(pagamentsLliures.map((p) => p.id));
+    const selF = new Set(fiancesLliures.map((f) => f.id));
+    setSelPag(selP);
+    setSelFi(selF);
+    // Data per defecte: la del pagament/fiança SELECCIONAT més recent (o avui).
+    setDataTocada(false);
+    recalcData(selP, selF, false);
     if (mode === 'dupla') {
       setNumero(''); // números automàtics (fiscal NN/YY + contracte)
     } else {
@@ -512,7 +532,7 @@ export function FacturaPanel({
               type="date"
               className="h-9 w-44"
               value={dataFac}
-              onChange={(e) => setDataFac(e.target.value)}
+              onChange={(e) => { setDataFac(e.target.value); setDataTocada(true); }}
             />
           </label>
 
