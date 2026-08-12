@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
-import { Receipt, ShieldCheck, ShieldOff, Pencil, Trash2, Undo2 } from 'lucide-react';
+import { Receipt, ShieldCheck, ShieldOff, Pencil, Trash2, Undo2, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +31,8 @@ interface FacturaLite {
   tipusDocument?: string;
   /** Contracte al qual pertany (per mostrar-lo si l'estada té ampliacions). */
   contracte?: string;
+  /** True si la factura és d'un altre tram/contracte de l'estada (no d'aquest). */
+  esAltra?: boolean;
 }
 interface PagamentLite {
   id: string;
@@ -74,6 +76,10 @@ export function FacturaPanel({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  // Factures d'aquest tram vs. d'altres trams de l'estada (aquestes, plegades).
+  const propies = factures.filter((f) => !f.esAltra);
+  const altres = factures.filter((f) => f.esAltra);
+  const [mostraAltres, setMostraAltres] = useState(false);
   // Es tria en obrir: "Factura simple" (fiança a part) o "Factura fiscal" (fiança
   // sempre inclosa al total, sèrie NN/YY).
   const [tipus, setTipus] = useState<'FACTURA_SIMPLIFICADA' | 'FACTURA'>('FACTURA_SIMPLIFICADA');
@@ -326,12 +332,7 @@ export function FacturaPanel({
     }
   }
 
-  return (
-    <div className="space-y-3">
-      {factures.length === 0 && !open && (
-        <p className="text-sm text-slate-400 italic">Sense factures.</p>
-      )}
-      {factures.map((f) => (
+  const renderFila = (f: FacturaLite) => (
         <div key={f.id} className="rounded-lg border border-slate-200">
           <div className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
             <a
@@ -442,7 +443,32 @@ export function FacturaPanel({
             </div>
           )}
         </div>
-      ))}
+  );
+
+  return (
+    <div className="space-y-3">
+      {propies.length === 0 && altres.length === 0 && !open && (
+        <p className="text-sm text-slate-400 italic">Sense factures.</p>
+      )}
+      {propies.map(renderFila)}
+
+      {altres.length > 0 && (
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50/60">
+          <button
+            type="button"
+            onClick={() => setMostraAltres((v) => !v)}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
+            aria-expanded={mostraAltres}
+          >
+            <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${mostraAltres ? 'rotate-180' : ''}`} />
+            <span className="font-medium text-slate-600">Factures d&apos;altres trams de l&apos;estada</span>
+            <span className="text-slate-400">({altres.length})</span>
+          </button>
+          {mostraAltres && (
+            <div className="space-y-2 border-t border-slate-100 p-2">{altres.map(renderFila)}</div>
+          )}
+        </div>
+      )}
 
       {open ? (
         <form onSubmit={crear} className="space-y-3 rounded-lg border border-slate-200 p-3">

@@ -110,7 +110,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
   const grupFacturesRaw = await prisma.factura.findMany({
     where: { deletedAt: null, estancia: { OR: [{ id: rootId }, { estanciaOrigenId: rootId }] } },
     select: {
-      id: true, numero: true, total: true, estat: true, tipusDocument: true,
+      id: true, numero: true, total: true, estat: true, tipusDocument: true, estanciaId: true,
       estancia: { select: { numContracte: true } },
     },
   });
@@ -555,6 +555,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   estat: f.estat,
                   tipusDocument: f.tipusDocument,
                   contracte: teAmpliacions ? f.estancia?.numContracte : undefined,
+                  esAltra: f.estanciaId !== estancia.id,
                 }))}
               />
             </CollapsibleCard>
