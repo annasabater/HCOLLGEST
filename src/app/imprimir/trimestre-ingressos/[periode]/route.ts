@@ -403,7 +403,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       </colgroup>
       <thead>
         <tr>
-          ${COLS_LIBRO.map((c) => `<th data-col="${c.key}" class="${c.num ? 'n' : ''}${c.left ? ' lft' : ''}${hid(c.key)}">${esc(c.label)}${c.del ? '<button class="delcol" type="button" title="Treure aquesta columna">×</button>' : ''}<span class="resizer"></span></th>`).join('')}
+          ${COLS_LIBRO.map((c) => `<th data-col="${c.key}" class="${c.num ? 'n' : ''}${c.left ? ' lft' : ''}${hid(c.key)}">${esc(c.label).replace(/\//g, '/​')}${c.del ? '<button class="delcol" type="button" title="Treure aquesta columna">×</button>' : ''}<span class="resizer"></span></th>`).join('')}
           <th class="c-del"></th>
         </tr>
       </thead>
