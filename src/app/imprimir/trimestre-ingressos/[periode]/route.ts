@@ -386,10 +386,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       </tfoot>
     </table>
     <div class="add"><button id="addGasto" type="button">+ Afegir despesa</button></div>
-    <p class="note">Per defecte les despeses es calculen amb IVA 21% inclòs (escrivint el total). Per a un
-    LLOGUER o servei amb retenció, escriu la <strong>base</strong>, el <strong>% IVA</strong> (21) i el
-    <strong>% IRPF</strong> (19): l'IVA, l'IRPF i el total (base + IVA − IRPF) es calculen sols. El nº de
-    factura s'omple a mà. IRPF total del trimestre: <span id="g-irpf2">0,00</span> € (per al model 115).</p>
   </div>
 
   <!-- ── Libro de gastos (editable: base per columna + IVA per tipus) ── -->
@@ -423,11 +419,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       <button id="addLibro" type="button">+ Afegir fila</button>
       <button id="restoreCols" type="button">Restaurar columnes</button>
     </div>
-    <p class="note">Es pre-omple de les teves despeses (per categoria) i nòmines del trimestre, però és
-    <strong>editable</strong>: pots canviar imports, <strong>eixamplar/estrènyer</strong> columnes
-    (arrossega la vora dreta de la capçalera) i <strong>treure columnes</strong> amb la ×. Prem
-    <strong>Desar</strong> per guardar-ho per aquest trimestre. En imprimir, la pàgina ja surt en
-    <strong>horitzontal</strong> i la taula s'ajusta sola perquè hi càpiga tot.</p>
   </div>
 
   <!-- ── Resumen IVA: Repercutido / Soportado → a ingresar ───────────── -->
@@ -462,8 +453,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       <div class="resum-row"><span>IVA soportado</span><span id="s-sop">0,00 €</span></div>
       <div class="resum-row grand"><span id="s-lab">Resultado a ingresar</span><span id="s-res">0,00 €</span></div>
     </div>
-    <p class="note">Resultado = IVA repercutido − IVA soportado. Si sale positivo es a <strong>ingresar</strong>
-    a Hacienda; si sale negativo, a <strong>compensar/devolver</strong> (modelo 303).</p>
   </div>
 
 </div>
@@ -543,7 +532,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     document.getElementById('g-iva').textContent = plain(gi);
     document.getElementById('g-irpf').textContent = plain(girpf);
     document.getElementById('g-total').textContent = plain(gt);
-    document.getElementById('g-irpf2').textContent = plain(girpf);
     setLiq('s-rep-base', tb); setLiq('s-rep-iva', ti); setLiq('s-sop-base', gb); setLiq('s-sop-iva', gi);
     const repIva = num(document.getElementById('s-rep-iva').value);
     const sopIva = num(document.getElementById('s-sop-iva').value);
