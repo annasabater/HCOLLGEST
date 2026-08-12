@@ -220,7 +220,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
      columnes) fa scroll horizontal a dins amb lletra petita. */
   .wide-scroll{ overflow-x:auto; }
   table.lg{ font-size:8.5px; }
-  table.lg th{ font-size:7px; padding:0 3px 5px 3px; letter-spacing:.1px; line-height:1.15;
+  table.lg th{ font-size:6.5px; padding:0 2px 5px 2px; letter-spacing:0; line-height:1.15;
     white-space:normal; overflow-wrap:break-word; vertical-align:bottom; }
   table.lg td{ padding:1px 2px; }
   table.lg .in{ padding:2px 3px; }
