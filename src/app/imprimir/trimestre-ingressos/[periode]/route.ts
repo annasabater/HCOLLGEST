@@ -107,10 +107,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
 
   // Descriptor de columnes (ordre, etiqueta, tipus, si es pot treure, amplada).
   const COLS_LIBRO: { key: string; label: string; num: boolean; del: boolean; left?: boolean; w: number }[] = [
-    { key: 'data', label: 'Fecha', num: false, del: false, w: 66 },
-    { key: 'nif', label: 'NIF', num: false, del: false, w: 74 },
-    { key: 'proveidor', label: 'Nombre proveedor', num: false, del: false, left: true, w: 118 },
-    { key: 'numFactura', label: 'Nº factura', num: false, del: false, w: 76 },
+    { key: 'data', label: 'Fecha', num: false, del: false, w: 48 },
+    { key: 'nif', label: 'NIF', num: false, del: false, w: 54 },
+    { key: 'proveidor', label: 'Nombre proveedor', num: false, del: false, left: true, w: 88 },
+    { key: 'numFactura', label: 'Nº factura', num: false, del: false, w: 56 },
     ...COLUMNES_GASTO.map((c) => ({ key: c, label: COLUMNA_GASTO_LABELS[c], num: true, del: true, w: 70 })),
     { key: 'iva5', label: 'IVA 5%', num: true, del: true, w: 58 },
     { key: 'iva10', label: 'IVA 10%', num: true, del: true, w: 58 },
