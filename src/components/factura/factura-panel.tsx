@@ -841,9 +841,6 @@ export function FacturaPanel({
           <Button variant="outline" size="sm" onClick={() => obrir('fiscal')}>
             <Receipt className="h-4 w-4" /> Factura fiscal
           </Button>
-          <Button variant="outline" size="sm" onClick={() => obrir('dupla')}>
-            <Receipt className="h-4 w-4" /> Simple + Fiscal
-          </Button>
           {simplesDisponibles.length > 0 && (
             <Button variant="outline" size="sm" onClick={obrirFiscalDeSimples} title="Agrupa factures simplificades en una factura fiscal">
               <Receipt className="h-4 w-4" /> Fiscal de simplificades
