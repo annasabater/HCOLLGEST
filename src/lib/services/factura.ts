@@ -755,9 +755,10 @@ export async function createFacturaSeleccio(
       ...fiances.map((f) => f.data),
     ].filter((d): d is Date => !!d);
     const dataFactura =
-      totesDates.length > 0
+      input.data ?? // data indicada manualment al diàleg (té prioritat)
+      (totesDates.length > 0
         ? totesDates.reduce((a, b) => (a > b ? a : b))
-        : estancia.dataEntrada ?? new Date();
+        : estancia.dataEntrada ?? new Date());
 
     const esFiscal = input.tipusDocument === 'FACTURA';
     const totalPag = round2(pagaments.reduce((a, p) => a + Number(p.import), 0));
@@ -963,9 +964,10 @@ export async function createFacturaDupla(
       ...fiances.map((f) => f.data),
     ].filter((d): d is Date => !!d);
     const dataFactura =
-      totesDates.length > 0
+      input.data ?? // data indicada manualment al diàleg (té prioritat)
+      (totesDates.length > 0
         ? totesDates.reduce((a, b) => (a > b ? a : b))
-        : estancia.dataEntrada ?? new Date();
+        : estancia.dataEntrada ?? new Date());
     const year = dataFactura.getFullYear();
     const liniaData = () =>
       total > 0

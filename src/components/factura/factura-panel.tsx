@@ -85,6 +85,7 @@ export function FacturaPanel({
   const [tipus, setTipus] = useState<'FACTURA_SIMPLIFICADA' | 'FACTURA'>('FACTURA_SIMPLIFICADA');
   const esFiscal = tipus === 'FACTURA';
   const [numero, setNumero] = useState('');
+  const [dataFac, setDataFac] = useState(''); // data del document (yyyy-mm-dd)
   const [selPag, setSelPag] = useState<Set<string>>(new Set());
   const [selFi, setSelFi] = useState<Set<string>>(new Set());
   // Simple: si la fiança seleccionada compta al total (fiscal sempre la inclou).
@@ -200,6 +201,9 @@ export function FacturaPanel({
     // Preselecciona tots els pendents (el cas habitual: facturar-ho tot).
     setSelPag(new Set(pagamentsLliures.map((p) => p.id)));
     setSelFi(new Set(fiancesLliures.map((f) => f.id)));
+    // Data per defecte: la del pagament pendent més recent (o avui).
+    const dts = pagamentsLliures.map((p) => p.data).filter(Boolean).sort();
+    setDataFac((dts[dts.length - 1] ?? new Date().toISOString()).slice(0, 10));
     if (mode === 'dupla') {
       setNumero(''); // números automàtics (fiscal NN/YY + contracte)
     } else {
@@ -223,6 +227,17 @@ export function FacturaPanel({
     }
     setSaving(true);
     setError(null);
+    // Descripció: allotjament + el concepte dels pagaments seleccionats (p. ex.
+    // "A compte") en una segona línia, sense repetits.
+    const notesPag = [
+      ...new Set(
+        pagamentsLliures
+          .filter((p) => selPag.has(p.id))
+          .map((p) => (p.descripcio ?? '').trim())
+          .filter(Boolean),
+      ),
+    ];
+    const desc = notesPag.length ? `${buildDesc()}\n${notesPag.join(' · ')}` : buildDesc();
     try {
       if (dupla) {
         const res = await postJSON<{ fiscal: { id: string } }>(
@@ -230,7 +245,8 @@ export function FacturaPanel({
           {
             pagamentIds: [...selPag],
             fiancaIds: [...selFi],
-            descripcioAllotjament: buildDesc(),
+            data: dataFac || undefined,
+            descripcioAllotjament: desc,
           },
         );
         setOpen(false);
@@ -248,7 +264,8 @@ export function FacturaPanel({
           tipusDocument: tipus,
           ambFianca: incloureFianca,
           numero: numero.trim() || undefined,
-          descripcioAllotjament: buildDesc(),
+          data: dataFac || undefined,
+          descripcioAllotjament: desc,
         },
       );
       setOpen(false);
@@ -492,6 +509,17 @@ export function FacturaPanel({
               />
             </label>
           )}
+
+          {/* Data del document (per defecte, la del pagament) */}
+          <label className="flex items-center gap-2 text-sm">
+            <span className="text-xs font-medium text-slate-500">Data factura:</span>
+            <Input
+              type="date"
+              className="h-9 w-44"
+              value={dataFac}
+              onChange={(e) => setDataFac(e.target.value)}
+            />
+          </label>
 
           {/* Si hi ha viatgers amb habitació separada, tria quina habitació surt a la factura */}
           {opcionsHab.length > 1 && (
