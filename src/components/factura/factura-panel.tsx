@@ -227,17 +227,12 @@ export function FacturaPanel({
     }
     setSaving(true);
     setError(null);
-    // Descripció: allotjament + el concepte dels pagaments seleccionats (p. ex.
-    // "A compte") en una segona línia, sense repetits.
-    const notesPag = [
-      ...new Set(
-        pagamentsLliures
-          .filter((p) => selPag.has(p.id))
-          .map((p) => (p.descripcio ?? '').trim())
-          .filter(Boolean),
-      ),
-    ];
-    const desc = notesPag.length ? `${buildDesc()}\n${notesPag.join(' · ')}` : buildDesc();
+    // Descripció: allotjament + "A compte" en una segona línia NOMÉS si algun
+    // pagament seleccionat és "A compte" (els altres conceptes no s'hi afegeixen).
+    const teACompte = pagamentsLliures
+      .filter((p) => selPag.has(p.id))
+      .some((p) => (p.descripcio ?? '').trim().toLowerCase() === 'a compte');
+    const desc = teACompte ? `${buildDesc()}\nA compte` : buildDesc();
     try {
       if (dupla) {
         const res = await postJSON<{ fiscal: { id: string } }>(
