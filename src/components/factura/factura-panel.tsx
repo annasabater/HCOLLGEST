@@ -33,6 +33,8 @@ interface FacturaLite {
   contracte?: string;
   /** True si la factura és d'un altre tram/contracte de l'estada (no d'aquest). */
   esAltra?: boolean;
+  /** Si és una simplificada amb factura fiscal vinculada, el número de la fiscal. */
+  fiscalNum?: string;
 }
 interface PagamentLite {
   id: string;
@@ -96,6 +98,14 @@ export function FacturaPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Factura FISCAL a partir de simplificades existents (quan l'hoste la demana).
+  const [fiscalOpen, setFiscalOpen] = useState(false);
+  const [selSimples, setSelSimples] = useState<Set<string>>(new Set());
+  const [fiscalNumero, setFiscalNumero] = useState('');
+  const [fiscalData, setFiscalData] = useState('');
+  const [fiscalBusy, setFiscalBusy] = useState(false);
+  const [fiscalError, setFiscalError] = useState<string | null>(null);
+
   // Edició inline d'una factura (número + línies) sense sortir de l'estada.
   const [editId, setEditId] = useState<string | null>(null);
   const [editNumero, setEditNumero] = useState('');
@@ -118,6 +128,42 @@ export function FacturaPanel({
   const totalDevolucions = Math.abs(devolucions.reduce((a, p) => a + p.import, 0));
   const facturesSimples = factures.filter((f) => f.tipusDocument !== 'FACTURA');
   const potRectificar = factures.length > 0 && devolucions.length > 0;
+  // Simplificades que encara NO tenen factura fiscal vinculada i són positives
+  // (candidates a agrupar en una factura fiscal quan l'hoste la demana).
+  const simplesDisponibles = facturesSimples.filter((f) => !f.fiscalNum && Number(f.total) > 0);
+  const totalSimplesSel = simplesDisponibles
+    .filter((f) => selSimples.has(f.id))
+    .reduce((a, f) => a + Number(f.total), 0);
+
+  function obrirFiscalDeSimples() {
+    setFiscalError(null);
+    setSelSimples(new Set(simplesDisponibles.map((f) => f.id))); // per defecte, totes
+    setFiscalNumero('');
+    setFiscalData('');
+    setFiscalOpen(true);
+  }
+  const toggleSimple = (id: string) =>
+    setSelSimples((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+
+  async function crearFiscalDeSimples(e: React.FormEvent) {
+    e.preventDefault();
+    if (selSimples.size === 0) { setFiscalError('Selecciona almenys una factura simplificada.'); return; }
+    setFiscalBusy(true);
+    setFiscalError(null);
+    try {
+      const res = await postJSON<{ factura: { id: string } }>(
+        `/api/estancies/${estanciaId}/factura-fiscal-simples`,
+        { simplesIds: [...selSimples], numero: fiscalNumero.trim() || undefined, data: fiscalData || undefined },
+      );
+      setFiscalOpen(false);
+      if (res?.factura?.id) window.open(`/imprimir/factura/${res.factura.id}`, '_blank', 'noopener,noreferrer');
+      router.refresh();
+    } catch (err) {
+      setFiscalError(err instanceof ApiError ? err.message : 'Error creant la factura fiscal');
+    } finally {
+      setFiscalBusy(false);
+    }
+  }
 
   function obrirRectificativa() {
     setRectError(null);
@@ -383,6 +429,11 @@ export function FacturaPanel({
               {f.contracte && (
                 <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-normal text-slate-500">
                   {f.contracte}
+                </span>
+              )}
+              {f.fiscalNum && (
+                <span className="shrink-0 rounded bg-brand-50 px-1.5 py-0.5 text-xs font-normal text-brand-700" title="Factura fiscal vinculada">
+                  → fiscal {f.fiscalNum}
                 </span>
               )}
             </a>
@@ -738,6 +789,50 @@ export function FacturaPanel({
             </button>
           </div>
         </form>
+      ) : fiscalOpen ? (
+        <form onSubmit={crearFiscalDeSimples} className="space-y-3 rounded-lg border border-brand-200 bg-brand-50/30 p-3">
+          <p className="text-sm font-semibold text-slate-800">Factura fiscal a partir de simplificades</p>
+          <p className="text-xs text-slate-500">
+            Tria les factures simplificades que vols agrupar en una factura fiscal. Es conserven com a
+            rebut; al Llibre d&apos;IVA hi comptaran un sol cop (la fiscal surt a la seva columna «F.»).
+          </p>
+          {simplesDisponibles.length === 0 ? (
+            <p className="text-xs italic text-slate-400">
+              No hi ha simplificades disponibles (ja tenen fiscal, o són abonos).
+            </p>
+          ) : (
+            <div className="space-y-1">
+              {simplesDisponibles.map((f) => (
+                <label key={f.id} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm">
+                  <input type="checkbox" checked={selSimples.has(f.id)} onChange={() => toggleSimple(f.id)} />
+                  <span className="font-medium text-slate-800">{f.numero}</span>
+                  {f.contracte && <span className="text-xs text-slate-400">{f.contracte}</span>}
+                  <span className="ml-auto font-medium text-slate-700">{formatEur(Number(f.total))}</span>
+                </label>
+              ))}
+            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-xs font-medium text-slate-500">Data:</span>
+              <Input type="date" className="h-9 w-40" value={fiscalData} onChange={(e) => setFiscalData(e.target.value)} />
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-xs font-medium text-slate-500">Núm. fiscal:</span>
+              <Input className="h-9 w-28" placeholder="auto (01/26)" value={fiscalNumero} onChange={(e) => setFiscalNumero(e.target.value)} />
+            </label>
+            <span className="ml-auto text-sm text-slate-700">Total: <strong>{formatEur(totalSimplesSel)}</strong></span>
+          </div>
+          {fiscalError && <p className="text-sm text-red-600">{fiscalError}</p>}
+          <div className="flex items-center gap-3">
+            <Button type="submit" disabled={fiscalBusy || selSimples.size === 0}>
+              {fiscalBusy ? 'Creant…' : 'Crear factura fiscal'}
+            </Button>
+            <button type="button" className="text-sm text-slate-500 hover:underline" onClick={() => setFiscalOpen(false)}>
+              Cancel·lar
+            </button>
+          </div>
+        </form>
       ) : (
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => obrir('simple')}>
@@ -749,6 +844,11 @@ export function FacturaPanel({
           <Button variant="outline" size="sm" onClick={() => obrir('dupla')}>
             <Receipt className="h-4 w-4" /> Simple + Fiscal
           </Button>
+          {simplesDisponibles.length > 0 && (
+            <Button variant="outline" size="sm" onClick={obrirFiscalDeSimples} title="Agrupa factures simplificades en una factura fiscal">
+              <Receipt className="h-4 w-4" /> Fiscal de simplificades
+            </Button>
+          )}
           {potRectificar && (
             <Button variant="outline" size="sm" onClick={obrirRectificativa} title="S'han retornat diners: crea una factura de reducció">
               <Undo2 className="h-4 w-4" /> Factura simple devolució

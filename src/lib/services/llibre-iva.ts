@@ -176,6 +176,8 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
     },
     orderBy: [{ numero: 'asc' }],
     include: {
+      facturaFiscal: { select: { numero: true } },
+      simplificades: { select: { id: true }, take: 1 },
       estancia: {
         select: {
           dataEntrada: true,
@@ -190,33 +192,39 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
     },
   });
 
-  const files: FilaIngres[] = factures.map((f) => {
-    const esFiscal = f.tipusDocument === 'FACTURA';
-    const h = f.estancia?.viatgers[0]?.huesped ?? null;
-    const nom = h ? [h.nom, h.cognom1, h.cognom2].filter(Boolean).join(' ').toUpperCase() : '—';
-    const total = Number(f.total);
-    const esAbono = total < 0;
-    const { base, iva, ivaPercent } = desglossaIva(total, Number(f.base), Number(f.iva));
-    const periode =
-      f.estancia?.dataEntrada && f.estancia?.dataSortida
-        ? `${fmtCurt(f.estancia.dataEntrada)} - ${fmtCurt(f.estancia.dataSortida)}`
-        : '';
-    // Número sense el prefix d'any intern (2026-0001 → 0001); les simplificades
-    // per contracte (26001, 26001.1) es queden tal qual.
-    const numeroNet = f.numero.replace(/^\d{4}-/, '');
-    return {
-      data: f.data.toISOString(),
-      numeroSimple: esFiscal ? '' : numeroNet,
-      numeroFiscal: esFiscal ? numeroNet : '',
-      client: esAbono ? `${nom} (ABONO)` : nom,
-      periode,
-      base,
-      ivaPercent,
-      iva,
-      total,
-      esAbono,
-    };
-  });
+  const net = (n: string) => n.replace(/^\d{4}-/, '');
+  const files: FilaIngres[] = factures
+    // Una factura FISCAL que cobreix simplificades NO fa fila pròpia: el seu número
+    // ja surt a la columna "F." de cada simplificada que cobreix (no duplica l'IVA).
+    .filter((f) => !(f.tipusDocument === 'FACTURA' && f.simplificades.length > 0))
+    .map((f) => {
+      const esFiscal = f.tipusDocument === 'FACTURA';
+      const h = f.estancia?.viatgers[0]?.huesped ?? null;
+      const nom = h ? [h.nom, h.cognom1, h.cognom2].filter(Boolean).join(' ').toUpperCase() : '—';
+      const total = Number(f.total);
+      const esAbono = total < 0;
+      const { base, iva, ivaPercent } = desglossaIva(total, Number(f.base), Number(f.iva));
+      const periode =
+        f.estancia?.dataEntrada && f.estancia?.dataSortida
+          ? `${fmtCurt(f.estancia.dataEntrada)} - ${fmtCurt(f.estancia.dataSortida)}`
+          : '';
+      // Número sense el prefix d'any intern (2026-0001 → 0001); les simplificades
+      // per contracte (26001, 26001.1) es queden tal qual.
+      return {
+        data: f.data.toISOString(),
+        numeroSimple: esFiscal ? '' : net(f.numero),
+        // Si la simplificada té una fiscal vinculada, el seu número surt a la
+        // columna "F." (la mateixa fila) i la fiscal no compta a part.
+        numeroFiscal: esFiscal ? net(f.numero) : f.facturaFiscal ? net(f.facturaFiscal.numero) : '',
+        client: esAbono ? `${nom} (ABONO)` : nom,
+        periode,
+        base,
+        ivaPercent,
+        iva,
+        total,
+        esAbono,
+      };
+    });
 
   return {
     any: year,

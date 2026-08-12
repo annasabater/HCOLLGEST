@@ -153,6 +153,16 @@ export const FacturaSeleccioSchema = z.object({
   { message: 'Selecciona almenys un pagament o fiança' },
 );
 
+// Factura FISCAL creada a partir d'una o més factures SIMPLIFICADES ja existents
+// (quan l'hoste demana factura fiscal). La fiscal agrupa els seus imports i cada
+// simplificada hi queda vinculada (al Llibre d'IVA surten en la mateixa fila).
+export const FacturaFiscalDeSimplesSchema = z.object({
+  simplesIds: z.array(z.string().min(1)).min(1, 'Selecciona almenys una factura simplificada'),
+  numero: z.string().trim().min(1).optional(),
+  data: z.coerce.date().optional(), // data del document (si no, la de la darrera simplificada)
+  descripcioAllotjament: z.string().trim().min(1).optional(),
+});
+
 // Factura rectificativa (reducció): nova factura simplificada amb import NEGATIU
 // que redueix una factura anterior (p. ex. per sortida anticipada amb devolució).
 export const FacturaRectificativaSchema = z.object({

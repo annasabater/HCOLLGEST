@@ -670,6 +670,14 @@ model Factura {
   tipusDocument TipusDocumentFiscal @default(RECIBO) @map("tipus_document")
   fiancaInclosa Boolean?            @map("fianca_inclosa")
 
+  // Enllaç d'una factura SIMPLIFICADA a la factura FISCAL que la cobreix (quan
+  // l'hoste demana factura fiscal). Al Llibre d'IVA la simplificada mostra el
+  // número de la fiscal a la columna "N° Factura F." i la fiscal NO surt com a
+  // fila pròpia (evita duplicar l'IVA). Una fiscal pot cobrir diverses simplificades.
+  facturaFiscalId String?   @map("factura_fiscal_id")
+  facturaFiscal   Factura?  @relation("SimpleAFiscal", fields: [facturaFiscalId], references: [id], onDelete: SetNull)
+  simplificades   Factura[] @relation("SimpleAFiscal")
+
   // Sobreescriptures manuals editades a la impressió (p. ex. facturar a una
   // empresa en lloc del viatger, o corregir puntualment l'emissor). Si són
   // buides, la impressió calcula els valors a partir de l'hoste/establiment.

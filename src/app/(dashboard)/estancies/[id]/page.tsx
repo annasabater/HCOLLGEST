@@ -111,6 +111,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
     where: { deletedAt: null, estancia: { OR: [{ id: rootId }, { estanciaOrigenId: rootId }] } },
     select: {
       id: true, numero: true, total: true, estat: true, tipusDocument: true, estanciaId: true,
+      facturaFiscal: { select: { numero: true } },
       estancia: { select: { numContracte: true } },
     },
   });
@@ -556,6 +557,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   tipusDocument: f.tipusDocument,
                   contracte: teAmpliacions ? f.estancia?.numContracte : undefined,
                   esAltra: f.estanciaId !== estancia.id,
+                  fiscalNum: f.facturaFiscal?.numero,
                 }))}
               />
             </CollapsibleCard>

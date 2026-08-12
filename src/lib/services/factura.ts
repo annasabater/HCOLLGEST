@@ -19,6 +19,7 @@ import {
   DipositCreateSchema,
   FinalitzarAnticipadaSchema,
   FacturaRectificativaSchema,
+  FacturaFiscalDeSimplesSchema,
 } from '../validation/factura';
 import { CONCEPTE_LINIA_LABELS } from '../validation/enums';
 
@@ -989,6 +990,9 @@ export async function createFacturaDupla(
       data: {
         estanciaId, numero: numSimple, data: dataFactura, base: total, iva: 0, total,
         estat: 'COBRADA', tipusDocument: 'FACTURA_SIMPLIFICADA',
+        // La simplificada apunta a la fiscal: al Llibre d'IVA surten en UNA fila
+        // (la fiscal no compta a part) i no es duplica la base ni l'IVA.
+        facturaFiscalId: fiscal.id,
         fiancaInclosa: teFianca ? true : undefined, linies: liniaData(),
       },
     });
@@ -1014,5 +1018,87 @@ export async function createFacturaDupla(
     );
 
     return { fiscal, simple };
+  });
+}
+
+/**
+ * Crea una factura FISCAL a partir d'una o més factures SIMPLIFICADES existents
+ * (l'hoste ha demanat factura fiscal). La fiscal agrupa l'import de les
+ * simplificades i cada simplificada hi queda VINCULADA (facturaFiscalId). Les
+ * simplificades es conserven; al Llibre d'IVA surten en la mateixa fila que la
+ * fiscal (a la columna "F.") i NO es duplica la base ni l'IVA. No toca els
+ * pagaments/fiances (segueixen vinculats a les simplificades).
+ */
+export async function createFacturaFiscalDeSimples(
+  estanciaId: string,
+  raw: unknown,
+  actor: { id: string } | null,
+  ip: string | null,
+) {
+  const input = FacturaFiscalDeSimplesSchema.parse(raw);
+  return prisma.$transaction(async (tx) => {
+    const simples = await tx.factura.findMany({
+      where: { id: { in: input.simplesIds }, deletedAt: null, tipusDocument: 'FACTURA_SIMPLIFICADA' },
+      select: { id: true, total: true, data: true, facturaFiscalId: true },
+    });
+    if (simples.length === 0) throw new Error('Validación fallida: cap factura simplificada vàlida seleccionada');
+    if (simples.some((s) => s.facturaFiscalId)) {
+      throw new Error('Validación fallida: alguna de les simplificades ja té una factura fiscal vinculada');
+    }
+
+    const total = round2(simples.reduce((a, s) => a + Number(s.total), 0));
+    const dates = simples.map((s) => s.data).filter((d): d is Date => !!d);
+    const dataFactura =
+      input.data ?? (dates.length > 0 ? dates.reduce((a, b) => (a > b ? a : b)) : new Date());
+    const year = dataFactura.getFullYear();
+
+    let numero: string;
+    if (input.numero?.trim()) {
+      const exist = await tx.factura.findFirst({ where: { numero: input.numero.trim() } });
+      if (exist) {
+        throw new Error(`Validación fallida: el número "${input.numero.trim()}" ja existeix. Tria'n un altre.`);
+      }
+      numero = input.numero.trim();
+    } else {
+      numero = await proximNumeroFacturaFiscal(tx, year);
+    }
+
+    const descAllot = input.descripcioAllotjament?.trim() || CONCEPTE_LINIA_LABELS.ALLOTJAMENT;
+    const fiscal = await tx.factura.create({
+      data: {
+        estanciaId,
+        numero,
+        data: dataFactura,
+        base: total,
+        iva: 0,
+        total,
+        estat: 'COBRADA',
+        tipusDocument: 'FACTURA',
+        linies:
+          total !== 0
+            ? { create: [{ concepte: 'ALLOTJAMENT' as const, descripcio: descAllot, import: total }] }
+            : undefined,
+      },
+    });
+
+    // Vincula les simplificades a la nova fiscal (es conserven com a document).
+    await tx.factura.updateMany({
+      where: { id: { in: simples.map((s) => s.id) } },
+      data: { facturaFiscalId: fiscal.id },
+    });
+
+    await audit(
+      {
+        usuariId: actor?.id ?? null,
+        accio: 'CREACIO',
+        entitat: 'factura',
+        entitatId: fiscal.id,
+        detall: { fiscalDeSimples: simples.map((s) => s.id), numero, total },
+        ip,
+      },
+      tx,
+    );
+
+    return fiscal;
   });
 }
