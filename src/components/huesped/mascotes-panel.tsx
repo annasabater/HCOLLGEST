@@ -18,6 +18,8 @@ export interface Mascota {
   mida: 'PETIT' | 'MITJA' | 'GRAN' | null;
 }
 
+const ESPECIES = ['Gos', 'Gat', 'Altres'] as const;
+
 export function MascotesPanel({
   huespedId,
   mascotes,
@@ -124,7 +126,11 @@ export function MascotesPanel({
                       </div>
                       <div className="w-28">
                         <label className="mb-1 block text-xs text-slate-500">Espècie</label>
-                        <Input value={editEspecie} onChange={(e) => setEditEspecie(e.target.value)} />
+                        <Select value={editEspecie} onChange={(e) => setEditEspecie(e.target.value)}>
+                          {(ESPECIES.includes(editEspecie as (typeof ESPECIES)[number]) ? ESPECIES : [editEspecie, ...ESPECIES]).map((e) => (
+                            <option key={e} value={e}>{e}</option>
+                          ))}
+                        </Select>
                       </div>
                       <div className="w-28">
                         <label className="mb-1 block text-xs text-slate-500">Mida</label>
@@ -200,7 +206,11 @@ export function MascotesPanel({
               </div>
               <div className="w-28">
                 <label className="mb-1 block text-xs text-slate-500">Espècie</label>
-                <Input value={especie} onChange={(e) => setEspecie(e.target.value)} placeholder="Gos, gat…" />
+                <Select value={especie} onChange={(e) => setEspecie(e.target.value)}>
+                  {ESPECIES.map((e) => (
+                    <option key={e} value={e}>{e}</option>
+                  ))}
+                </Select>
               </div>
               <div className="w-28">
                 <label className="mb-1 block text-xs text-slate-500">Mida</label>
