@@ -212,7 +212,7 @@ function buildViatgerLine(p: ParteViatgers, v: Viatger): string {
     field(c.numHabitacions != null ? c.numHabitacions : ''), // 20 núm habitacions
     field(CODES.boolSiNo(c.teInternet)), // 21 internet S/N
     field(CODES.tipusPagament[c.tipusPagament]), // 22 tipus pagament
-    field(v.telefon ?? ''), // 23 telèfon
+    field((v.telefon ?? '').replace(/\D/g, '')), // 23 telèfon (només dígits: Mossos no accepta '+', espais ni guions)
     field(v.parentesc ? CODES.parentesc[v.parentesc] : ''), // 24 parentesc
     field(v.email ?? ''), // 25 email
     field(up(v.numSuport)), // 26 núm suport (9 car.)
