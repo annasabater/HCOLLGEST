@@ -143,18 +143,18 @@ export function CobramentsList({ cobraments }: { cobraments: Cobrament[] }) {
                 onClick={() => obrir(c)}
                 disabled={busy}
                 title="Editar cobrament"
-                className="text-slate-400 opacity-0 transition hover:text-slate-700 group-hover:opacity-100"
+                className="p-2 touch-manipulation text-slate-400 transition hover:text-slate-700"
               >
-                <Pencil className="h-3.5 w-3.5" />
+                <Pencil className="h-4 w-4" />
               </button>
               <button
                 type="button"
                 onClick={() => eliminar(c)}
                 disabled={busy}
                 title="Eliminar cobrament"
-                className="text-slate-400 opacity-0 transition hover:text-red-600 group-hover:opacity-100"
+                className="p-2 touch-manipulation text-slate-400 transition hover:text-red-600"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-4 w-4" />
               </button>
             </span>
           </li>

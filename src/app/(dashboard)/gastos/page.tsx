@@ -773,7 +773,7 @@ function GastosVariablesTab() {
                     <span className="flex items-center gap-1 text-xs text-slate-600">
                       <Paperclip className="h-3.5 w-3.5 text-slate-400" />
                       <span className="max-w-40 truncate">{file.name}</span>
-                      <button type="button" onClick={() => { setFile(null); setScanWarnings([]); setScanNouProv(null); if (cameraRef.current) cameraRef.current.value = ''; if (fileRef.current) fileRef.current.value = ''; }} className="text-slate-400 hover:text-red-600" aria-label="Treure l'adjunt"><X className="h-3.5 w-3.5" /></button>
+                      <button type="button" onClick={() => { setFile(null); setScanWarnings([]); setScanNouProv(null); if (cameraRef.current) cameraRef.current.value = ''; if (fileRef.current) fileRef.current.value = ''; }} className="p-2 touch-manipulation text-slate-400 hover:text-red-600" aria-label="Treure l'adjunt"><X className="h-3.5 w-3.5" /></button>
                     </span>
                   )}
                 </div>
@@ -888,7 +888,7 @@ function GastosVariablesTab() {
                 <Td>
                   <div className="flex items-center justify-end gap-1">
                     <button
-                      className="text-slate-400 hover:text-brand-600"
+                      className="p-2 touch-manipulation text-slate-400 hover:text-brand-600"
                       onClick={() => (editId === g.id ? setEditId(null) : startEdit(g))}
                       title="Editar despesa"
                     >
@@ -901,7 +901,7 @@ function GastosVariablesTab() {
                     >
                       {g.esFianca ? <ShieldOff className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
                     </button>
-                    <button className="text-slate-400 hover:text-red-600" onClick={() => esborrar(g.id)}><Trash2 className="h-4 w-4" /></button>
+                    <button className="p-2 touch-manipulation text-slate-400 hover:text-red-600" onClick={() => esborrar(g.id)}><Trash2 className="h-4 w-4" /></button>
                   </div>
                 </Td>
               </Tr>

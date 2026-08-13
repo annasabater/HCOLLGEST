@@ -200,7 +200,7 @@ export function JornadesSection({
                   </button>
                 </Td>
                 <Td>
-                  <button className="text-slate-400 hover:text-red-600" onClick={() => setConfirmEsborrar(j.id)}>
+                  <button className="p-2 touch-manipulation text-slate-400 hover:text-red-600" onClick={() => setConfirmEsborrar(j.id)}>
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </Td>

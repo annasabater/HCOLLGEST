@@ -587,7 +587,7 @@ export default function NetejaPage() {
                       <span className="font-medium text-slate-800">{formatEur(j.import)}</span>
                       <button
                         type="button"
-                        className="text-slate-400 hover:text-red-600"
+                        className="p-2 touch-manipulation text-slate-400 hover:text-red-600"
                         onClick={() => setConfirmElimJornada(j.id)}
                         title="Eliminar pagament"
                       >

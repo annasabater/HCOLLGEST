@@ -103,7 +103,7 @@ export function BugaderiaConfig() {
                 <Input type="number" step="0.01" className="w-24 text-right" defaultValue={a.preu} onBlur={(e) => Number(e.target.value) !== a.preu && desarArticle(a, { preu: Number(e.target.value) })} />
                 <span className="text-sm text-slate-400">€</span>
               </div>
-              <button type="button" className="text-slate-400 hover:text-red-600" onClick={() => esborraArticle(a.id)} aria-label="Eliminar"><Trash2 className="h-4 w-4" /></button>
+              <button type="button" className="p-2 touch-manipulation text-slate-400 hover:text-red-600" onClick={() => esborraArticle(a.id)} aria-label="Eliminar"><Trash2 className="h-4 w-4" /></button>
             </div>
           ))}
         </div>

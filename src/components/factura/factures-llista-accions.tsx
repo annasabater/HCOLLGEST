@@ -45,7 +45,7 @@ export function EliminarFacturaIcona({ id, numero }: { id: string; numero: strin
     }
   }
   return (
-    <button type="button" onClick={del} title="Eliminar factura" className="text-slate-400 hover:text-red-600">
+    <button type="button" onClick={del} title="Eliminar factura" className="p-2 touch-manipulation text-slate-400 hover:text-red-600">
       <Trash2 className="h-4 w-4" />
     </button>
   );

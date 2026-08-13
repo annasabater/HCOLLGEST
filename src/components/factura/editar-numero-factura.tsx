@@ -51,7 +51,7 @@ export function EditarNumeroFactura({
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="text-slate-400 hover:text-brand-600"
+          className="p-2 touch-manipulation text-slate-400 hover:text-brand-600"
           title="Editar número"
         >
           <Pencil className="h-4 w-4" />

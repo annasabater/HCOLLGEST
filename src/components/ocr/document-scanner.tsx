@@ -290,7 +290,7 @@ export function DocumentScanner({
                 {thumb && (
                   <button
                     type="button"
-                    className="text-slate-400 hover:text-brand-600"
+                    className="p-2 touch-manipulation text-slate-400 hover:text-brand-600"
                     onClick={() => setLightbox(thumb)}
                     title="Veure imatge gran"
                   >
@@ -299,7 +299,7 @@ export function DocumentScanner({
                 )}
                 <button
                   type="button"
-                  className="text-slate-400 hover:text-red-600"
+                  className="p-2 touch-manipulation text-slate-400 hover:text-red-600"
                   onClick={() => onRemoveDoc?.(d.id)}
                   aria-label="Treure document"
                 >

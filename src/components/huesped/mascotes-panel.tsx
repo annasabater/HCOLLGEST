@@ -170,7 +170,7 @@ export function MascotesPanel({
                       <div className="ml-auto flex items-center gap-1">
                         <button
                           type="button"
-                          className="text-slate-400 hover:text-brand-600"
+                          className="p-2 touch-manipulation text-slate-400 hover:text-brand-600"
                           onClick={() => startEdit(m)}
                           title="Editar"
                         >
@@ -178,7 +178,7 @@ export function MascotesPanel({
                         </button>
                         <button
                           type="button"
-                          className="text-slate-400 hover:text-red-600"
+                          className="p-2 touch-manipulation text-slate-400 hover:text-red-600"
                           onClick={() => eliminar(m.id)}
                           title="Eliminar"
                         >

@@ -114,7 +114,7 @@ export function PagamentsPrevistos({
                       Desfer
                     </Button>
                   )}
-                  <button type="button" className="text-slate-400 hover:text-red-600" onClick={() => elimina(p.id)} disabled={busy === p.id} title="Eliminar">
+                  <button type="button" className="p-2 touch-manipulation text-slate-400 hover:text-red-600" onClick={() => elimina(p.id)} disabled={busy === p.id} title="Eliminar">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>

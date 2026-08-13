@@ -134,7 +134,7 @@ export function NotesPanel({
                       </button>
                       <button
                         onClick={() => esborrar(n.id)}
-                        className="text-slate-400 hover:text-red-600"
+                        className="p-2 touch-manipulation text-slate-400 hover:text-red-600"
                         title="Eliminar nota"
                         aria-label="Eliminar nota"
                       >
