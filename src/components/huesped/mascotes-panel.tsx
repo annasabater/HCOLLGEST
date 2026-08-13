@@ -82,7 +82,7 @@ export function MascotesPanel({
 
   async function afegir(e: React.FormEvent) {
     e.preventDefault();
-    if (!nom.trim() || !especie.trim()) return;
+    if (!especie.trim()) return;
     setSaving(true);
     try {
       await postJSON('/api/animals', { nom, especie, mida: mida || undefined, huespedId });
@@ -149,8 +149,14 @@ export function MascotesPanel({
                     className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   >
                     <PawPrint className="h-4 w-4 text-brand-600" />
-                    <span className="font-medium text-slate-800">{m.nom}</span>
-                    <span className="text-slate-400">· {m.especie}</span>
+                    {m.nom ? (
+                      <>
+                        <span className="font-medium text-slate-800">{m.nom}</span>
+                        <span className="text-slate-400">· {m.especie}</span>
+                      </>
+                    ) : (
+                      <span className="font-medium text-slate-800">{m.especie}</span>
+                    )}
                     {m.mida && (
                       <Badge tone="neutral">{MIDA_ANIMAL_LABELS[m.mida]}</Badge>
                     )}

@@ -38,7 +38,7 @@ export const ActiuHistorialCreateSchema = z.object({
 });
 
 export const AnimalCreateSchema = z.object({
-  nom: z.string().trim().min(1, 'Cal un nom'),
+  nom: z.string().trim().default(''), // opcional (una mascota pot no tenir nom)
   especie: z.string().trim().min(1, 'Cal l’espècie'),
   mida: z.preprocess((v) => (v === '' || v === null ? undefined : v), z.enum(midaAnimalValues).optional()),
   dataNaixement: optDate,
