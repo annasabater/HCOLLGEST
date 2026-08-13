@@ -81,9 +81,9 @@ export function BugaderiaConfig() {
     const q = map[nom] ?? 0;
     return (
       <div className="inline-flex items-center rounded-md border border-slate-200">
-        <button type="button" className="px-2 text-slate-500 hover:bg-slate-100" onClick={() => set((p) => ({ ...p, [nom]: Math.max(0, q - 1) }))}>−</button>
+        <button type="button" className="px-3 py-1.5 touch-manipulation text-slate-500 hover:bg-slate-100" onClick={() => set((p) => ({ ...p, [nom]: Math.max(0, q - 1) }))}>−</button>
         <span className={`w-6 text-center text-sm ${q > 0 ? 'font-semibold text-slate-800' : 'text-slate-300'}`}>{q}</span>
-        <button type="button" className="px-2 text-slate-500 hover:bg-slate-100" onClick={() => set((p) => ({ ...p, [nom]: q + 1 }))}>+</button>
+        <button type="button" className="px-3 py-1.5 touch-manipulation text-slate-500 hover:bg-slate-100" onClick={() => set((p) => ({ ...p, [nom]: q + 1 }))}>+</button>
       </div>
     );
   };

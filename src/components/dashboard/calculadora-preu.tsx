@@ -116,6 +116,7 @@ export function CalculadoraPreu() {
                     <span className="text-slate-400">Del {fmt(s.desde)} al {fmt(s.fins)} · {s.nits} {s.nits === 1 ? 'nit' : 'nits'}</span>
                   </div>
                 )}
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <tbody>
                     {s.linies.map((l, i) => (
@@ -128,6 +129,7 @@ export function CalculadoraPreu() {
                     ))}
                   </tbody>
                 </table>
+                </div>
                 {multi && (
                   <div className="mt-1 text-right text-xs text-slate-500">Subtotal: <strong>{formatEur(s.subtotal)}</strong></div>
                 )}

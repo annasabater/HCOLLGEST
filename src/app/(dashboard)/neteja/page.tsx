@@ -462,9 +462,9 @@ export default function NetejaPage() {
                             .filter((a) => (r.bugaderia?.[a.nom] ?? 0) > 0)
                             .map((a) => (
                               <span key={a.id} className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1 py-0.5 text-xs">
-                                <button type="button" className="px-1 text-slate-500 hover:bg-slate-100" onClick={() => setBugQty(r, a.nom, (r.bugaderia?.[a.nom] ?? 0) - 1)}>−</button>
+                                <button type="button" className="px-2.5 py-1 touch-manipulation text-slate-500 hover:bg-slate-100" onClick={() => setBugQty(r, a.nom, (r.bugaderia?.[a.nom] ?? 0) - 1)}>−</button>
                                 <span className="font-medium text-slate-700">{r.bugaderia?.[a.nom]}× {a.nom}</span>
-                                <button type="button" className="px-1 text-slate-500 hover:bg-slate-100" onClick={() => setBugQty(r, a.nom, (r.bugaderia?.[a.nom] ?? 0) + 1)}>+</button>
+                                <button type="button" className="px-2.5 py-1 touch-manipulation text-slate-500 hover:bg-slate-100" onClick={() => setBugQty(r, a.nom, (r.bugaderia?.[a.nom] ?? 0) + 1)}>+</button>
                               </span>
                             ))}
                           {bugArticles.every((a) => (r.bugaderia?.[a.nom] ?? 0) === 0) && (
