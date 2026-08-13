@@ -370,7 +370,7 @@ export function PagamentsPanel({
                   <div className="ml-auto flex items-center gap-1">
                     <button
                       type="button"
-                      className="text-slate-400 hover:text-brand-600"
+                      className="p-2 touch-manipulation text-slate-400 hover:text-brand-600"
                       onClick={(e) => { e.preventDefault(); startEditPag(p); }}
                       title="Editar"
                     >
@@ -378,7 +378,7 @@ export function PagamentsPanel({
                     </button>
                     <button
                       type="button"
-                      className="text-slate-400 hover:text-red-600"
+                      className="p-2 touch-manipulation text-slate-400 hover:text-red-600"
                       onClick={(e) => { e.preventDefault(); eliminarPagament(p.id); }}
                       title="Eliminar"
                     >
@@ -455,7 +455,7 @@ export function PagamentsPanel({
                   <div className="ml-auto flex items-center gap-1">
                     <button
                       type="button"
-                      className="text-slate-400 hover:text-brand-600"
+                      className="p-2 touch-manipulation text-slate-400 hover:text-brand-600"
                       onClick={(e) => { e.preventDefault(); startEditFianca(f); }}
                       title="Editar"
                     >
@@ -463,7 +463,7 @@ export function PagamentsPanel({
                     </button>
                     <button
                       type="button"
-                      className="text-slate-400 hover:text-red-600"
+                      className="p-2 touch-manipulation text-slate-400 hover:text-red-600"
                       onClick={(e) => { e.preventDefault(); eliminarFianca(f.id); }}
                       title="Eliminar"
                     >
@@ -555,7 +555,7 @@ export function PagamentsPanel({
                     </button>
                     <button
                       type="button"
-                      className="text-slate-400 hover:text-red-600"
+                      className="p-2 touch-manipulation text-slate-400 hover:text-red-600"
                       title="Eliminar aquesta fiança"
                       onClick={(e) => { e.preventDefault(); eliminarFianca(f.id); }}
                     >
@@ -665,7 +665,7 @@ export function PagamentsPanel({
                   />
                   <button
                     type="button"
-                    className="text-slate-400 hover:text-red-600"
+                    className="p-2 touch-manipulation text-slate-400 hover:text-red-600"
                     onClick={() => treuPeriode(i)}
                     title="Treure aquest període"
                   >

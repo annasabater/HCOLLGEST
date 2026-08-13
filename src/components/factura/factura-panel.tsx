@@ -454,7 +454,7 @@ export function FacturaPanel({
                 type="button"
                 onClick={() => (editId === f.id ? setEditId(null) : obrirEdicio(f))}
                 title="Editar la factura aquí"
-                className="text-slate-400 hover:text-brand-600"
+                className="p-2 touch-manipulation text-slate-400 hover:text-brand-600"
               >
                 <Pencil className="h-4 w-4" />
               </button>
@@ -462,7 +462,7 @@ export function FacturaPanel({
                 type="button"
                 onClick={() => eliminarFactura(f.id, f.numero)}
                 title="Eliminar"
-                className="text-slate-400 hover:text-red-600"
+                className="p-2 touch-manipulation text-slate-400 hover:text-red-600"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -495,7 +495,7 @@ export function FacturaPanel({
                   {editLinies.length > 1 && (
                     <button
                       type="button"
-                      className="text-slate-400 hover:text-red-600"
+                      className="p-2 touch-manipulation text-slate-400 hover:text-red-600"
                       title="Treure línia"
                       onClick={() => setEditLinies((p) => p.filter((_, xi) => xi !== i))}
                     >
