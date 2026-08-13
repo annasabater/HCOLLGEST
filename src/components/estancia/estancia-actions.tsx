@@ -122,11 +122,6 @@ export function EstanciaActions({
               )}{' '}
               a Mossos?
             </p>
-            <p className="text-sm text-slate-600">
-              L’app obrirà el portal de Mossos en un navegador remot, farà login amb les teves
-              credencials i <strong>comunicarà oficialment</strong> les dades dels viatgers (com a
-              «Pagament a destinació»). Pot trigar uns segons.
-            </p>
             <div className="mt-5 flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setConfirmaEnviar(false)} disabled={enviant}>
                 Cancel·lar
