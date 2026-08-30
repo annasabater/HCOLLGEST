@@ -104,10 +104,18 @@ export const CobramentEditSchema = z
     metode: z.enum(metodeCobramentValues).optional(),
     import: z.coerce.number().positive("L'import ha de ser positiu").optional(),
     data: z.coerce.date().optional(),
+    descripcio: z.string().trim().optional(),
+    observacions: z.string().trim().optional(),
   })
-  .refine((d) => d.metode !== undefined || d.import !== undefined || d.data !== undefined, {
-    message: 'Res a modificar',
-  });
+  .refine(
+    (d) =>
+      d.metode !== undefined ||
+      d.import !== undefined ||
+      d.data !== undefined ||
+      d.descripcio !== undefined ||
+      d.observacions !== undefined,
+    { message: 'Res a modificar' },
+  );
 
 export const PagamentEstadaSchema = z
   .object({

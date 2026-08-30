@@ -28,6 +28,7 @@ export interface Pagament {
   metode: keyof typeof METODE_COBRAMENT_LABELS;
   concepte: keyof typeof CONCEPTE_LINIA_LABELS;
   descripcio: string | null;
+  observacions: string | null;
   data: string;
   facturaId: string | null;
   facturaNumero: string | null;
@@ -138,6 +139,7 @@ export function PagamentsPanel({
   const [editPagImport, setEditPagImport] = useState('');
   const [editPagMetode, setEditPagMetode] = useState('EFECTIU');
   const [editPagData, setEditPagData] = useState('');
+  const [editPagObservacions, setEditPagObservacions] = useState('');
   const [editPagBusy, setEditPagBusy] = useState(false);
 
   // Edit fiança inline
@@ -175,6 +177,7 @@ export function PagamentsPanel({
     setEditPagImport(String(p.import));
     setEditPagMetode(p.metode);
     setEditPagData(p.data.slice(0, 10));
+    setEditPagObservacions(p.observacions ?? '');
   }
 
   async function desarPagament(id: string) {
@@ -184,6 +187,7 @@ export function PagamentsPanel({
         import: Number(editPagImport),
         metode: editPagMetode,
         data: editPagData || undefined,
+        observacions: editPagObservacions.trim(),
       });
       setEditPagId(null);
       router.refresh();
@@ -351,6 +355,10 @@ export function PagamentsPanel({
                     <label className="mb-1 block text-xs text-slate-500">Data</label>
                     <Input type="date" value={editPagData} onChange={(e) => setEditPagData(e.target.value)} />
                   </div>
+                  <div className="min-w-48 flex-1">
+                    <label className="mb-1 block text-xs text-slate-500">Observacions internes</label>
+                    <Input value={editPagObservacions} onChange={(e) => setEditPagObservacions(e.target.value)} placeholder="No apareix a la factura" />
+                  </div>
                   <Button type="button" size="sm" onClick={() => desarPagament(p.id)} disabled={editPagBusy}>
                     <Check className="h-4 w-4" /> Desar
                   </Button>
@@ -386,6 +394,9 @@ export function PagamentsPanel({
                     </button>
                   </div>
                 </div>
+                {p.observacions && (
+                  <p className="mt-1 text-xs italic text-slate-500">📝 {p.observacions}</p>
+                )}
                 {periodesResum(p.periodes) && (
                   <p className="mt-0.5 text-xs text-slate-400">{periodesResum(p.periodes)}</p>
                 )}
@@ -485,19 +496,21 @@ export function PagamentsPanel({
         <div className="space-y-1 border-t border-slate-100 pt-2">
           <p className="text-xs font-medium text-slate-500">Ja en una factura</p>
           {facturats.map((p) => (
-            <div
-              key={p.id}
-              className="flex items-center justify-between rounded-lg px-3 py-1.5 text-sm text-slate-500"
-            >
-              <span>
-                {formatEur(p.import)} · {METODE_COBRAMENT_LABELS[p.metode]} · {formatDate(p.data)}
-              </span>
-              {p.facturaId && (
-                <Link href={`/factures/${p.facturaId}`}>
-                  <Badge tone="neutral">
-                    {p.facturaNumero ? `Contracte ${p.facturaNumero}` : numContracte ? `Contracte ${numContracte}` : 'Factura'}
-                  </Badge>
-                </Link>
+            <div key={p.id} className="rounded-lg px-3 py-1.5 text-sm text-slate-500">
+              <div className="flex items-center justify-between">
+                <span>
+                  {formatEur(p.import)} · {METODE_COBRAMENT_LABELS[p.metode]} · {formatDate(p.data)}
+                </span>
+                {p.facturaId && (
+                  <Link href={`/factures/${p.facturaId}`}>
+                    <Badge tone="neutral">
+                      {p.facturaNumero ? `Contracte ${p.facturaNumero}` : numContracte ? `Contracte ${numContracte}` : 'Factura'}
+                    </Badge>
+                  </Link>
+                )}
+              </div>
+              {p.observacions && (
+                <p className="mt-0.5 text-xs italic text-slate-400">📝 {p.observacions}</p>
               )}
             </div>
           ))}

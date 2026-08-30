@@ -472,6 +472,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   metode: c.metode,
                   concepte: c.concepte,
                   descripcio: c.descripcio,
+                  observacions: c.observacions,
                   data: c.data.toISOString(),
                   facturaId: c.facturaId,
                   facturaNumero: c.factura?.numero ?? null,

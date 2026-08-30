@@ -400,6 +400,8 @@ export async function editCobrament(
     if (input.import !== undefined) {
       data.import = Number(existing.import) < 0 ? -input.import : input.import;
     }
+    if (input.descripcio !== undefined) data.descripcio = input.descripcio || null;
+    if (input.observacions !== undefined) data.observacions = input.observacions || null;
 
     const cobrament = await tx.cobrament.update({ where: { id: cobramentId }, data });
 
