@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { authorize, clientIp } from '@/lib/auth/guard';
 import { ROLES_WRITE } from '@/lib/auth/rbac';
@@ -84,9 +85,18 @@ export async function PATCH(req: Request, ctx: Ctx) {
     const body = await req.json().catch(() => null);
     const data = TascaNetejaUpdateSchema.parse(body);
 
+    // La bugaderia és JSON: només compten els articles amb qty > 0; llista buida
+    // o null → DbNull (aquesta neteja no porta bugaderia).
+    const { bugaderia, ...camps } = data;
+    const nets = bugaderia?.filter((i) => i.qty > 0) ?? [];
     const tasca = await prisma.tascaNeteja.update({
       where: { id },
-      data,
+      data: {
+        ...camps,
+        ...(bugaderia !== undefined
+          ? { bugaderia: nets.length ? nets : Prisma.DbNull }
+          : {}),
+      },
       include: { habitacio: true, treballador: true },
     });
 

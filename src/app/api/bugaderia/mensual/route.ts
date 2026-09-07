@@ -20,7 +20,11 @@ export async function GET(req: Request) {
     const end = new Date(y!, m!, 0, 23, 59, 59, 999);
 
     const [articles, tasques] = await Promise.all([
-      prisma.articleBugaderia.findMany({ where: { deletedAt: null }, select: { nom: true, preu: true } }),
+      prisma.articleBugaderia.findMany({
+        where: { deletedAt: null },
+        orderBy: { ordre: 'asc' },
+        select: { id: true, nom: true, preu: true, actiu: true },
+      }),
       prisma.tascaNeteja.findMany({
         where: { data: { gte: start, lte: end } },
         select: { id: true, data: true, tipus: true, bugaderia: true, habitacio: { select: { nom: true } } },
@@ -45,6 +49,8 @@ export async function GET(req: Request) {
           habitacio: t.habitacio?.nom ?? null,
           tipus: t.tipus as 'CANVI_COMPLET' | 'REPAS',
           articles: items.map((i) => `${i.qty}× ${i.article}`).join(', '),
+          // Items en cru: els necessita l'editor de la targeta per modificar-los.
+          items: items.filter((i) => i.qty > 0),
           total: totalDe(items),
         };
       })
@@ -52,7 +58,15 @@ export async function GET(req: Request) {
 
     const total = Math.round(detall.reduce((s, d) => s + d.total, 0) * 100) / 100;
 
-    return ok({ mes, total, detall });
+    return ok({
+      mes,
+      total,
+      detall,
+      // Catàleg (per afegir articles i editar preus des de la mateixa targeta).
+      articles: articles
+        .filter((a) => a.actiu)
+        .map((a) => ({ id: a.id, nom: a.nom, preu: Number(a.preu) })),
+    });
   } catch (err) {
     return handleApiError(err);
   }
