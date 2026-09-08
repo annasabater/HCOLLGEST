@@ -118,13 +118,33 @@ export async function DELETE(req: Request, ctx: Ctx) {
     if (auth instanceof Response) return auth;
     const { id } = await ctx.params;
 
-    const exists = await prisma.estancia.findFirst({ where: { id, deletedAt: null }, select: { id: true } });
+    const exists = await prisma.estancia.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true, viatgers: { select: { huespedId: true } } },
+    });
     if (!exists) return notFound();
+
+    // ?hostes=1 → treu també del CRM els clients que es quedarien sense cap
+    // estada visible. Es recalcula aquí (no es confia en el client) i va dins
+    // la mateixa transacció, perquè no quedi a mitges.
+    const ambHostes = new URL(req.url).searchParams.get('hostes') === '1';
+    const orfes: string[] = [];
+    if (ambHostes) {
+      for (const huespedId of new Set(exists.viatgers.map((v) => v.huespedId))) {
+        const altres = await prisma.estanciaViatger.count({
+          where: { huespedId, estanciaId: { not: id }, estancia: { deletedAt: null } },
+        });
+        if (altres === 0) orfes.push(huespedId);
+      }
+    }
 
     const now = new Date();
     await prisma.$transaction([
       prisma.factura.updateMany({ where: { estanciaId: id, deletedAt: null }, data: { deletedAt: now } }),
       prisma.estancia.update({ where: { id }, data: { deletedAt: now } }),
+      ...(orfes.length
+        ? [prisma.huesped.updateMany({ where: { id: { in: orfes }, deletedAt: null }, data: { deletedAt: now } })]
+        : []),
     ]);
 
     await audit({
@@ -132,9 +152,20 @@ export async function DELETE(req: Request, ctx: Ctx) {
       accio: 'ELIMINACIO',
       entitat: 'estancia',
       entitatId: id,
+      detall: orfes.length ? { hostesEliminats: orfes } : undefined,
       ip: clientIp(req),
     });
-    return ok({ ok: true });
+    for (const huespedId of orfes) {
+      await audit({
+        usuariId: auth.id,
+        accio: 'ELIMINACIO',
+        entitat: 'huesped',
+        entitatId: huespedId,
+        detall: { motiu: 'sense estades en eliminar l’estada', estanciaId: id },
+        ip: clientIp(req),
+      });
+    }
+    return ok({ ok: true, hostesEliminats: orfes });
   } catch (err) {
     return handleApiError(err);
   }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, Trash2, X } from 'lucide-react';
 import { Button } from './button';
@@ -13,6 +13,8 @@ interface Props {
   onConfirm: () => void;
   onCancel: () => void;
   danger?: boolean;
+  /** Contingut opcional sota el missatge (avisos, caselles de confirmació…). */
+  extra?: ReactNode;
 }
 
 export function ConfirmDialog({
@@ -23,6 +25,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
   danger = true,
+  extra,
 }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   // El diàleg es porta al <body> amb un portal: així no l'afecten els estils
@@ -71,6 +74,8 @@ export function ConfirmDialog({
             <X className="h-4 w-4" />
           </button>
         </div>
+
+        {extra}
 
         <div className="mt-6 flex flex-wrap justify-end gap-2">
           <Button type="button" variant="outline" size="sm" className="w-auto" onClick={onCancel}>

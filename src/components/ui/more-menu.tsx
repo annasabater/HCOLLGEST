@@ -28,7 +28,12 @@ export function MoreMenu({ children, label = 'Més' }: { children: ReactNode; la
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as HTMLElement | null;
+      // Els diàlegs que obren els fills es renderitzen al <body> (portal), així
+      // que un clic dins seu compta com a "fora" del menú. Si el tanquéssim,
+      // desmuntaríem el diàleg a mitja interacció.
+      if (t?.closest('dialog, [role="dialog"]')) return;
+      if (ref.current && t && !ref.current.contains(t)) setOpen(false);
     };
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
