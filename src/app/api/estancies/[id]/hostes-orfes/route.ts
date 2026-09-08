@@ -5,9 +5,9 @@ import { ok, notFound, handleApiError } from '@/lib/http';
 type Ctx = { params: Promise<{ id: string }> };
 
 // GET /api/estancies/:id/hostes-orfes
-// Clients d'aquesta estada que, si s'elimina, es quedarien sense cap estada
-// visible (no en tenen cap altra de no esborrada). Serveix per avisar-ne abans
-// d'eliminar i oferir treure'ls també del CRM.
+// Estat al CRM de cada client d'aquesta estada, per poder dir-ho clar al diàleg
+// d'eliminar: quants li'n quedarien (0 = quedaria sense cap estada i s'ofereix
+// treure'l del CRM) i si ja estava eliminat d'abans.
 export async function GET(_req: Request, ctx: Ctx) {
   try {
     const auth = await authorize();
@@ -26,21 +26,24 @@ export async function GET(_req: Request, ctx: Ctx) {
     });
     if (!estancia) return notFound();
 
-    const hostes: { id: string; nom: string }[] = [];
+    const viatgers: { id: string; nom: string; altresEstades: number; eliminatEl: string | null }[] = [];
     const vistos = new Set<string>();
     for (const v of estancia.viatgers) {
       const h = v.huesped;
-      if (!h || h.deletedAt || vistos.has(h.id)) continue;
+      if (!h || vistos.has(h.id)) continue;
       vistos.add(h.id);
-      const altres = await prisma.estanciaViatger.count({
+      const altresEstades = await prisma.estanciaViatger.count({
         where: { huespedId: h.id, estanciaId: { not: id }, estancia: { deletedAt: null } },
       });
-      if (altres === 0) {
-        hostes.push({ id: h.id, nom: [h.nom, h.cognom1, h.cognom2].filter(Boolean).join(' ') });
-      }
+      viatgers.push({
+        id: h.id,
+        nom: [h.nom, h.cognom1, h.cognom2].filter(Boolean).join(' '),
+        altresEstades,
+        eliminatEl: h.deletedAt ? h.deletedAt.toISOString() : null,
+      });
     }
 
-    return ok({ hostes });
+    return ok({ viatgers });
   } catch (err) {
     return handleApiError(err);
   }

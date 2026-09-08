@@ -120,7 +120,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
 
     const exists = await prisma.estancia.findFirst({
       where: { id, deletedAt: null },
-      select: { id: true, viatgers: { select: { huespedId: true } } },
+      select: { id: true, viatgers: { select: { huespedId: true, huesped: { select: { deletedAt: true } } } } },
     });
     if (!exists) return notFound();
 
@@ -130,7 +130,8 @@ export async function DELETE(req: Request, ctx: Ctx) {
     const ambHostes = new URL(req.url).searchParams.get('hostes') === '1';
     const orfes: string[] = [];
     if (ambHostes) {
-      for (const huespedId of new Set(exists.viatgers.map((v) => v.huespedId))) {
+      const vius = exists.viatgers.filter((v) => !v.huesped.deletedAt).map((v) => v.huespedId);
+      for (const huespedId of new Set(vius)) {
         const altres = await prisma.estanciaViatger.count({
           where: { huespedId, estanciaId: { not: id }, estancia: { deletedAt: null } },
         });
