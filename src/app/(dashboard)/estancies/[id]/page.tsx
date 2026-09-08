@@ -423,7 +423,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                         <ViatgerFirma
                           estanciaId={estancia.id}
                           viatgerId={ev.id}
-                          signatura={ev.signatura ? { data: ev.signatura.data, hora: ev.signatura.hora, refusaComercial: ev.signatura.refusaComercial, autoritzaComercialAltres: ev.signatura.autoritzaComercialAltres } : null}
+                          signatura={ev.signatura ? { data: ev.signatura.data, hora: ev.signatura.hora, imatge: ev.signatura.imatge, llocSignatura: ev.signatura.llocSignatura, refusaComercial: ev.signatura.refusaComercial, autoritzaComercialAltres: ev.signatura.autoritzaComercialAltres } : null}
                         />
                       </div>
                     </div>
