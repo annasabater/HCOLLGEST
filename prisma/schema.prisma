@@ -617,6 +617,9 @@ model TascaNeteja {
   // Articles de bugaderia que la persona de neteja fa en aquesta tasca (opt-in).
   // Array [{ article, qty }]. null/buit = la bugaderia NO la fa ella (no compta).
   bugaderia          Json?
+  // La bugaderia també se li paga: data en què s'ha liquidat. null = pendent
+  // (o la tasca no porta bugaderia).
+  bugaderiaPagadaEl  DateTime?    @map("bugaderia_pagada_el")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

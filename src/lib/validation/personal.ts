@@ -49,6 +49,27 @@ export const JornadaCreateSchema = z.object({
   notes: optStr,
 });
 
+// Marcar com a pagat el compte d'un treballador: o bé una sola línia (una
+// jornada o la bugaderia d'una neteja), o bé tot un període sencer.
+export const CompteMarcarSchema = z.discriminatedUnion('abast', [
+  z.object({
+    abast: z.literal('LINIA'),
+    tipus: z.enum(['NETEJA', 'BUGADERIA']),
+    id: z.string().trim().min(1),
+    pagat: z.boolean(),
+  }),
+  z.object({
+    abast: z.literal('PERIODE'),
+    // Dies, no dates: els moviments es desen a mitjanit UTC i convertir-los
+    // amb l'hora local els desplaçaria un dia.
+    desde: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inicial no vàlida'),
+    fins: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data final no vàlida'),
+    // Sense tipus, marca els dos conceptes.
+    tipus: z.enum(['NETEJA', 'BUGADERIA']).optional(),
+    pagat: z.boolean(),
+  }),
+]);
+
 export const AbsenciaCreateSchema = z.object({
   tipus: z.enum(tipusAbsenciaValues),
   dataInici: z.coerce.date(),

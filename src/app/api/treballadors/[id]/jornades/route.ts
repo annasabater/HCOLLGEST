@@ -18,7 +18,8 @@ export async function GET(req: Request, ctx: Ctx) {
     const url = new URL(req.url);
     const desde = url.searchParams.get('desde');
     const fins = url.searchParams.get('fins');
-    const where: Record<string, unknown> = { treballadorId: id, deletedAt: null };
+    // Jornada no té esborrat lògic: filtrar per deletedAt feia petar la consulta.
+    const where: Record<string, unknown> = { treballadorId: id };
     if (desde) where.data = { ...(where.data as object ?? {}), gte: new Date(desde) };
     if (fins) {
       const finsDate = new Date(fins);

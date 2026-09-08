@@ -133,6 +133,12 @@ Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
   **4** Gastos (categorías, proveedores, adjuntos, filtros) ·
   **5** Activos (alertas garantía/antigüedad, historial) + animales ·
   **6** Personal (trabajadores, ausencias, nóminas) ·
+- **Compte del treballador** (`/personal/:id`): neteja y bugadería en **una sola lista** filtrada por
+  un rango «des de – fins a» (con atajos mes / mes pasado / 3 meses / año / tot), resumen
+  total–pagado–pendiente y marcado de pagos a tres niveles (período, concepto, línea). La bugadería
+  se cobra igual que una jornada: `TascaNeteja.bugaderiaPagadaEl`. Lógica en
+  `src/lib/services/compte-treballador.ts`, API `PATCH /api/treballadors/:id/compte` y export Excel
+  del período en `.../compte/export`. ·
   **7** Inteligencia (dashboard financiero, alertas automáticas, buscador global).
 - **Documentos de identidad**: subida CIFRADA (AES-256-GCM) de DNI/passaport en la ficha del
   huésped (`DocumentoPujat`), visualización autorizada+auditada y borrado lógico —
