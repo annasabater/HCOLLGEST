@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, Trash2, X } from 'lucide-react';
 import { Button } from './button';
 
@@ -24,6 +25,11 @@ export function ConfirmDialog({
   danger = true,
 }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  // El diàleg es porta al <body> amb un portal: així no l'afecten els estils
+  // del contenidor que l'obre (p. ex. el menú "⋯ Més", que uniformitza tots
+  // els seus botons a w-full i els deixaria fora de la vista).
+  const [muntat, setMuntat] = useState(false);
+  useEffect(() => setMuntat(true), []);
 
   useEffect(() => {
     const el = dialogRef.current;
@@ -44,12 +50,12 @@ export function ConfirmDialog({
     return () => el.removeEventListener('cancel', handleClose);
   }, [onCancel]);
 
-  if (!open) return null;
+  if (!open || !muntat) return null;
 
-  return (
+  return createPortal(
     <dialog
       ref={dialogRef}
-      className="m-auto w-full max-w-sm rounded-2xl border-0 p-0 shadow-2xl backdrop:bg-slate-900/50"
+      className="m-auto box-border w-[calc(100vw-2rem)] max-w-sm rounded-2xl border-0 p-0 shadow-2xl backdrop:bg-slate-900/50"
       onClick={(e) => { if (e.target === dialogRef.current) onCancel(); }}
     >
       <div className="p-6">
@@ -61,26 +67,27 @@ export function ConfirmDialog({
             <h2 className="font-semibold text-slate-900">{title}</h2>
             <p className="mt-1 text-sm text-slate-500">{message}</p>
           </div>
-          <button onClick={onCancel} className="shrink-0 text-slate-400 hover:text-slate-600">
+          <button onClick={onCancel} aria-label="Tancar" className="h-6 w-6 shrink-0 text-slate-400 hover:text-slate-600">
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
+          <Button type="button" variant="outline" size="sm" className="w-auto" onClick={onCancel}>
             Cancel·lar
           </Button>
           <Button
             type="button"
             size="sm"
             onClick={onConfirm}
-            className={danger ? 'bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700' : ''}
+            className={`w-auto ${danger ? 'bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700' : ''}`}
           >
             {danger && <Trash2 className="h-4 w-4" />}
             {confirmLabel}
           </Button>
         </div>
       </div>
-    </dialog>
+    </dialog>,
+    document.body,
   );
 }

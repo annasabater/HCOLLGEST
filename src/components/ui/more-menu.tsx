@@ -4,6 +4,18 @@ import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+// Uniformitza els fills (Link/Button heterogenis) com a files de menú: amplada
+// completa, alineats a l'esquerra i sense vora individual.
+// Els selectors són de FILL DIRECTE (o de botó dins d'un enllaç fill) a posta:
+// amb `[&_button]` els estils s'escapaven cap als diàlegs que obren aquests
+// mateixos fills (eliminar estada, sortida anticipada) i hi deixaven els botons
+// a w-full i transparents, empenyent el de confirmar fora de la vista.
+const FILES_MENU = [
+  '[&>a]:w-full',
+  '[&>a>button]:w-full [&>a>button]:justify-start [&>a>button]:border-0 [&>a>button]:bg-transparent [&>a>button]:font-normal [&>a>button:hover]:bg-slate-100',
+  '[&>button]:w-full [&>button]:justify-start [&>button]:border-0 [&>button]:bg-transparent [&>button]:font-normal [&>button:hover]:bg-slate-100',
+].join(' ');
+
 /**
  * Menú "⋯ Més": agrupa accions secundàries en un desplegable per no atapeir la
  * capçalera. Els fills (botons/enllaços) es passen com a children i es mostren
@@ -35,9 +47,7 @@ export function MoreMenu({ children, label = 'Més' }: { children: ReactNode; la
           onClick={(e) => {
             if ((e.target as HTMLElement).closest('a')) setOpen(false);
           }}
-          // Uniformitza els fills (Link/Button heterogenis) com a files de menú:
-          // amplada completa, alineats a l'esquerra i sense vora individual.
-          className="absolute right-0 z-30 mt-1 flex min-w-52 flex-col gap-0.5 rounded-lg border border-slate-200 bg-white p-1.5 shadow-lg [&>*]:w-full [&_a]:w-full [&_button]:w-full [&_button]:justify-start [&_button]:border-0 [&_button]:bg-transparent [&_button]:font-normal [&_button:hover]:bg-slate-100"
+          className={`absolute right-0 z-30 mt-1 flex min-w-52 flex-col gap-0.5 rounded-lg border border-slate-200 bg-white p-1.5 shadow-lg ${FILES_MENU}`}
         >
           {children}
         </div>
