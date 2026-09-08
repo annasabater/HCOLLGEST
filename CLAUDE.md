@@ -131,6 +131,13 @@ Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
   **2** CRM (dedup, ficha editable, anotaciones §7, aviso "no acollir") ·
   **3** Facturación (factura/línies, tasa IEET configurable, cobros) ·
   **4** Gastos (categorías, proveedores, adjuntos, filtros) ·
+- **Despeses per període** (`/gastos`): un solo rango «des de – fins a» manda sobre las cuatro
+  pestañas, y el total se desglosa exactamente en ellas (Variables = `Gasto` sin servicio recurrente,
+  Fixes = `Gasto` con servicio recurrente, Personal = nóminas + jornadas + bugadería). Las fianzas
+  quedan **fuera** del total. Resum trae gráfico anual apilado, desglose por categoría (clicable: va a
+  la pestaña de donde viene la mayor parte) y «Què ve ara» con los vencimientos de fijos. Lógica en
+  `src/lib/services/despeses.ts` (`GET /api/gastos/resum?desde&fins`); rangos en `src/lib/periode.ts`
+  (testeado). Una nómina cuenta el día que cierra su mes. ·
   **5** Activos (alertas garantía/antigüedad, historial) + animales ·
   **6** Personal (trabajadores, ausencias, nóminas) ·
 - **Compte del treballador** (`/personal/:id`): neteja y bugadería en **una sola lista** filtrada por

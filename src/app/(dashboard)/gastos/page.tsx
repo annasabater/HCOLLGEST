@@ -2,14 +2,14 @@
 
 import { Fragment, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Plus, Trash2, Paperclip, Filter, Camera, Upload, X, Users, ShieldCheck, ShieldOff, Pencil, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Paperclip, Filter, Camera, Upload, X, ShieldCheck, ShieldOff, Pencil, Check } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { FinancesNav } from '@/components/balanc/finances-nav';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
-import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardBody } from '@/components/ui/card';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { Eur, HideAmountsButton } from '@/components/finances/amounts-visibility';
 import { getJSON, postJSON, patchJSON, ApiError } from '@/lib/api';
@@ -102,51 +102,6 @@ function statusInfo(properaData: string): { label: string; tone: 'success' | 'wa
   return { label: 'Al dia', tone: 'success' };
 }
 
-function advanceDateFix(date: Date, frequencia: string): Date {
-  const next = new Date(date);
-  switch (frequencia) {
-    case 'MENSUAL': next.setMonth(next.getMonth() + 1); break;
-    case 'TRIMESTRAL': next.setMonth(next.getMonth() + 3); break;
-    case 'SEMESTRAL': next.setMonth(next.getMonth() + 6); break;
-    case 'ANUAL': next.setMonth(next.getMonth() + 12); break;
-    case 'BIENNAL': next.setMonth(next.getMonth() + 24); break;
-  }
-  return next;
-}
-
-function getOccurrencesInNext6Months(g: GasFix): { monthKey: string }[] {
-  const now = new Date(); now.setHours(0, 0, 0, 0);
-  const end = new Date(now); end.setMonth(end.getMonth() + 6);
-  const results: { monthKey: string }[] = [];
-  if (g.frequencia === 'PUNTUAL') {
-    const d = new Date(g.properaData);
-    if (d >= now && d <= end) results.push({ monthKey: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` });
-    return results;
-  }
-  let cursor = new Date(g.properaData); let safe = 0;
-  while (cursor <= end && safe < 50) {
-    if (cursor >= now) {
-      const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
-      if (!results.find((r) => r.monthKey === key)) results.push({ monthKey: key });
-    }
-    cursor = advanceDateFix(cursor, g.frequencia); safe++;
-  }
-  return results;
-}
-
-function getNext6MonthKeys(): string[] {
-  const now = new Date();
-  return Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  });
-}
-
-function monthLabel(key: string): string {
-  const [y, m] = key.split('-');
-  return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('ca-ES', { month: 'long', year: 'numeric' });
-}
-
 interface FormStateFix {
   activitat: string; frequencia: string; importPrevist: string;
   metodePagament: string; properaData: string; observacions: string;
@@ -190,7 +145,7 @@ function GastoFixForm({ initial, onSave, onCancel, loading }: { initial: FormSta
   );
 }
 
-function GastosFixesTab() {
+function GastosFixesTab({ desde, fins }: { desde: string; fins: string }) {
   const [gastos, setGastos] = useState<GasFix[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -284,111 +239,125 @@ function GastosFixesTab() {
     } finally { setRegBusy(false); }
   }
 
-  const monthKeys = getNext6MonthKeys();
+  // Factures d'aquest contracte registrades dins del període triat a dalt.
+  const alPeriode = (g: GasFix) =>
+    g.gastos.filter((p) => p.data.slice(0, 10) >= desde && p.data.slice(0, 10) <= fins);
+  const totalPeriode = gastos.reduce(
+    (a, g) => a + alPeriode(g).reduce((b, p) => b + Number(p.import), 0),
+    0,
+  );
+  const editant = gastos.find((g) => g.id === editingId) ?? null;
+  const initialDe = (g: GasFix): FormStateFix => ({
+    activitat: g.activitat,
+    frequencia: g.frequencia,
+    importPrevist: g.importPrevist ?? '',
+    metodePagament: g.metodePagament,
+    properaData: g.properaData.slice(0, 10),
+    observacions: g.observacions ?? '',
+  });
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-end">
-        <Button size="sm" onClick={() => { setShowNew(true); setEditingId(null); }}>+ Nova despesa fixa</Button>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm text-slate-500">
+          Els contractes es veuen sempre; «Al període» és el que s&apos;hi ha registrat.
+        </p>
+        <Button size="sm" className="ml-auto" onClick={() => { setShowNew(true); setEditingId(null); }}>
+          <Plus className="h-4 w-4" /> Nova despesa fixa
+        </Button>
       </div>
 
       {error && <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}<button className="ml-2 underline" onClick={() => setError(null)}>Tancar</button></div>}
 
       {showNew && <GastoFixForm initial={EMPTY_FIX} onSave={handleCreate} onCancel={() => setShowNew(false)} loading={saving} />}
+      {editant && (
+        <GastoFixForm
+          initial={initialDe(editant)}
+          onSave={(form) => handleEdit(editant.id, form)}
+          onCancel={() => setEditingId(null)}
+          loading={saving}
+        />
+      )}
 
       {loading ? (
         <p className="text-sm text-slate-500">Carregant...</p>
       ) : gastos.length === 0 ? (
-        <p className="text-sm text-slate-500">Cap despesa fixa registrada. Fes clic a &quot;Nova despesa fixa&quot; per afegir-ne una.</p>
+        <EmptyState>Cap despesa fixa. Fes clic a «Nova despesa fixa» per afegir-ne una.</EmptyState>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {gastos.map((g) => {
-            const status = statusInfo(g.properaData);
-            const isEditing = editingId === g.id;
-            const editInitial: FormStateFix = { activitat: g.activitat, frequencia: g.frequencia, importPrevist: g.importPrevist ?? '', metodePagament: g.metodePagament, properaData: g.properaData.slice(0, 10), observacions: g.observacions ?? '' };
-            return (
-              <Card key={g.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-base">{g.activitat}</CardTitle>
-                    <Badge tone="neutral">{FREQ_LABELS[g.frequencia] ?? g.frequencia}</Badge>
-                  </div>
-                </CardHeader>
-                <CardBody className="space-y-3">
-                  {isEditing ? (
-                    <GastoFixForm initial={editInitial} onSave={(form) => handleEdit(g.id, form)} onCancel={() => setEditingId(null)} loading={saving} />
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <span className="text-lg font-semibold text-slate-800">{g.importPrevist != null ? formatEur(g.importPrevist) : '—'}</span>
-                        <Badge tone={status.tone}>{status.label}</Badge>
-                      </div>
-                      <div className="text-sm text-slate-600"><span className="font-medium">Propera data:</span> {formatDate(g.properaData)}</div>
-                      <div className="text-sm text-slate-600"><span className="font-medium">Pagament:</span> {METODE_LABELS_FIX[g.metodePagament] ?? g.metodePagament}</div>
-                      {g.observacions && <p className="text-xs text-slate-500">{g.observacions}</p>}
-                      <div className="space-y-1">
-                        <p className="text-xs font-medium text-slate-500">
-                          Factures registrades {g.gastos.length > 0 && <span className="text-slate-400">({g.gastos.length})</span>}
-                        </p>
-                        {g.gastos.length === 0 ? (
-                          <p className="text-xs text-slate-400">Cap factura encara. Puja&apos;n una amb «Registrar factura».</p>
-                        ) : (
-                          <div className="max-h-40 space-y-0.5 overflow-y-auto">
-                            {g.gastos.map((p) => (
-                              <div key={p.id} className="flex items-center justify-between gap-2 text-xs text-slate-600">
-                                <span className="whitespace-nowrap">{formatDate(p.data)}</span>
-                                <span className="flex items-center gap-1.5">
-                                  {formatEur(p.import)}
-                                  {p.adjuntPath && (
-                                    <a href={`/api/files?path=${encodeURIComponent(p.adjuntPath)}`} target="_blank" rel="noreferrer" className="text-brand-600" title="Veure la factura">
-                                      <Paperclip className="h-3.5 w-3.5" />
-                                    </a>
-                                  )}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex gap-2 pt-1">
-                        <Button size="sm" variant="primary" onClick={() => obreRegistrar(g)}>Registrar factura</Button>
-                        <Button size="sm" variant="secondary" onClick={() => setEditingId(g.id)}>Editar</Button>
-                      </div>
-                    </>
-                  )}
-                </CardBody>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      {gastos.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="font-serif text-xl font-semibold text-slate-800">Proxims 6 mesos</h2>
-          <div className="space-y-3">
-            {monthKeys.map((monthKey) => {
-              const gastosMes = gastos.filter((g) => getOccurrencesInNext6Months(g).some((o) => o.monthKey === monthKey));
-              if (gastosMes.length === 0) return null;
-              const now = new Date();
-              const [y, m] = monthKey.split('-');
-              const monthPast = new Date(Number(y), Number(m), 0) < now;
+        <Table>
+          <Thead>
+            <tr>
+              <Th>Contracte</Th>
+              <Th>Cada</Th>
+              <Th>Previst</Th>
+              <Th className="text-right">Al període</Th>
+              <Th>Propera</Th>
+              <Th>Estat</Th>
+              <Th></Th>
+            </tr>
+          </Thead>
+          <tbody>
+            {gastos.map((g) => {
+              const status = statusInfo(g.properaData);
+              const files = alPeriode(g);
+              const suma = files.reduce((a, p) => a + Number(p.import), 0);
               return (
-                <div key={monthKey} className="rounded-xl border border-slate-200 bg-white p-4">
-                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-brand-700">{monthLabel(monthKey)}</h3>
-                  <div className="space-y-2">
-                    {gastosMes.map((g) => (
-                      <div key={g.id} className="flex items-center justify-between text-sm">
-                        <span className={monthPast ? 'text-green-700' : 'text-slate-700'}>{monthPast ? '✓ ' : ''}{g.activitat}</span>
-                        <span className="font-medium text-slate-800">{g.importPrevist != null ? formatEur(g.importPrevist) : '—'}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <Tr key={g.id}>
+                  <Td>
+                    <span className="font-medium text-slate-800">{g.activitat}</span>
+                    {g.observacions && <span className="block text-xs text-slate-400">{g.observacions}</span>}
+                  </Td>
+                  <Td className="text-slate-500">{FREQ_LABELS[g.frequencia] ?? g.frequencia}</Td>
+                  <Td className="text-slate-500">{g.importPrevist != null ? formatEur(g.importPrevist) : '—'}</Td>
+                  <Td className="text-right">
+                    {files.length === 0 ? (
+                      <span className="text-slate-300">—</span>
+                    ) : (
+                      <>
+                        <span className="font-medium text-slate-800"><Eur value={suma} /></span>
+                        <span className="ml-1.5 inline-flex gap-1 align-middle">
+                          {files.filter((p) => p.adjuntPath).map((p) => (
+                            <a
+                              key={p.id}
+                              href={`/api/files?path=${encodeURIComponent(p.adjuntPath!)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-brand-600"
+                              title={`Factura del ${formatDate(p.data)}`}
+                            >
+                              <Paperclip className="h-3.5 w-3.5" />
+                            </a>
+                          ))}
+                        </span>
+                        {files.length > 1 && (
+                          <span className="block text-xs text-slate-400">{files.length} factures</span>
+                        )}
+                      </>
+                    )}
+                  </Td>
+                  <Td className="whitespace-nowrap text-slate-500">{formatDate(g.properaData)}</Td>
+                  <Td><Badge tone={status.tone}>{status.label}</Badge></Td>
+                  <Td className="whitespace-nowrap text-right">
+                    <Button size="sm" variant="outline" onClick={() => obreRegistrar(g)}>Registrar factura</Button>
+                    <button
+                      type="button"
+                      aria-label="Editar el contracte"
+                      className="ml-1 inline-flex h-9 w-9 touch-manipulation items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-brand-700"
+                      onClick={() => { setEditingId(g.id); setShowNew(false); }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  </Td>
+                </Tr>
               );
             })}
-          </div>
-        </section>
+            <Tr className="bg-brand-50">
+              <Td colSpan={3} className="font-semibold text-slate-700">Total fixes registrats al període</Td>
+              <Td className="text-right font-semibold text-brand-800"><Eur value={totalPeriode} /></Td>
+              <Td colSpan={3}></Td>
+            </Tr>
+          </tbody>
+        </Table>
       )}
 
       {/* Modal: registrar la factura d'una despesa fixa (crea la despesa) */}
@@ -467,17 +436,22 @@ function novaBuida() {
   };
 }
 
-function GastosVariablesTab() {
+function GastosVariablesTab({
+  desde,
+  fins,
+  catNom,
+  setCatNom,
+}: {
+  desde: string;
+  fins: string;
+  catNom: string | null;
+  setCatNom: (c: string | null) => void;
+}) {
   const [categories, setCategories] = useState<Cat[]>([]);
   const [proveidors, setProveidors] = useState<Prov[]>([]);
   const [habitacions, setHabitacions] = useState<Hab[]>([]);
   const [gastos, setGastos] = useState<Gasto[]>([]);
-  const [_total, setTotal] = useState(0);
   const [perCat, setPerCat] = useState<Record<string, number>>({});
-
-  const [fDesde, setFDesde] = useState('');
-  const [fFins, setFFins] = useState('');
-  const [fCat, setFCat] = useState('');
 
   const [showForm, setShowForm] = useState(false);
   const [nova, setNova] = useState(novaBuida);
@@ -497,15 +471,21 @@ function GastosVariablesTab() {
   const [editForm, setEditForm] = useState<EditForm>({ data: '', import: '', categoriaId: '', proveidorId: '', habitacioId: '', metodePagament: 'TARGETA', descripcio: '', numFactura: '' });
   const [editSaving, setEditSaving] = useState(false);
 
+  // Es demana el període sencer sense filtrar per categoria: així les pastilles
+  // de categoria mostren tot el que hi ha i filtrar és immediat, sense anar al servidor.
   const load = useCallback(async () => {
-    const p = new URLSearchParams();
-    p.set('variables', '1'); // només despeses variables (les fixes són a l'altra pestanya)
-    if (fDesde) p.set('desde', fDesde);
-    if (fFins) p.set('fins', fFins);
-    if (fCat) p.set('categoriaId', fCat);
+    const p = new URLSearchParams({ variables: '1', desde, fins });
     const res = await getJSON<{ gastos: Gasto[]; total: number; perCategoria: Record<string, number> }>(`/api/gastos?${p.toString()}`);
-    setGastos(res.gastos); setTotal(res.total); setPerCat(res.perCategoria);
-  }, [fDesde, fFins, fCat]);
+    setGastos(res.gastos); setPerCat(res.perCategoria);
+  }, [desde, fins]);
+
+  const visibles = catNom ? gastos.filter((g) => g.categoria.nom === catNom) : gastos;
+  const totalVisible = visibles
+    .filter((g) => !g.esFianca)
+    .reduce((a, g) => a + Number(g.import), 0);
+  const fiancaVisible = visibles
+    .filter((g) => g.esFianca)
+    .reduce((a, g) => a + Number(g.import), 0);
 
   useEffect(() => {
     getJSON<{ categories: Cat[] }>('/api/categories-gasto').then((r) => setCategories(r.categories));
@@ -712,10 +692,7 @@ function GastosVariablesTab() {
   return (
     <>
       <div className="mb-4 flex justify-end">
-        <div className="flex gap-2">
-          <HideAmountsButton />
-          <Button onClick={() => setShowForm((s) => !s)}><Plus className="h-4 w-4" /> Nova despesa</Button>
-        </div>
+        <Button onClick={() => setShowForm((s) => !s)}><Plus className="h-4 w-4" /> Nova despesa</Button>
       </div>
 
       {showForm && (
@@ -843,25 +820,29 @@ function GastosVariablesTab() {
         </Card>
       )}
 
-      <Card className="mb-6">
-        <CardBody className="flex flex-wrap items-end gap-3">
-          <Field label="Des de"><Input type="date" value={fDesde} onChange={(e) => setFDesde(e.target.value)} /></Field>
-          <Field label="Fins a"><Input type="date" value={fFins} onChange={(e) => setFFins(e.target.value)} /></Field>
-          <Field label="Categoria">
-            <Select className="min-w-44" value={fCat} onChange={(e) => setFCat(e.target.value)}>
-              <option value="">Totes</option>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}
-            </Select>
-          </Field>
-          <div className="ml-auto flex flex-wrap gap-2">
-            {Object.entries(perCat).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([nom, imp]) => (
-              <Badge key={nom} tone="neutral">{nom}: <Eur value={imp} /></Badge>
-            ))}
-          </div>
-        </CardBody>
-      </Card>
+      <div className="mb-4 flex flex-wrap items-center gap-1.5">
+        {Object.entries(perCat).sort((a, b) => b[1] - a[1]).map(([nom, imp]) => (
+          <button
+            key={nom}
+            type="button"
+            aria-pressed={catNom === nom}
+            onClick={() => setCatNom(catNom === nom ? null : nom)}
+            className={cn(
+              'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+              catNom === nom
+                ? 'border-brand-700 bg-brand-700 text-white'
+                : 'border-slate-300 text-slate-600 hover:border-brand-600 hover:text-brand-700',
+            )}
+          >
+            {nom} · <Eur value={imp} />
+          </button>
+        ))}
+        {catNom && (
+          <Button size="sm" variant="ghost" onClick={() => setCatNom(null)}>Treure el filtre</Button>
+        )}
+      </div>
 
-      {gastos.length === 0 ? (
+      {visibles.length === 0 ? (
         <EmptyState><Filter className="mx-auto mb-2 h-5 w-5 text-slate-300" /> Cap despesa en aquest període.</EmptyState>
       ) : (
         <Table>
@@ -869,7 +850,7 @@ function GastosVariablesTab() {
             <tr><Th>Data</Th><Th>Descripció</Th><Th>Categoria</Th><Th>Habitació</Th><Th>Proveïdor</Th><Th>Mètode</Th><Th className="text-right">Import</Th><Th></Th></tr>
           </Thead>
           <tbody>
-            {gastos.map((g) => (
+            {visibles.map((g) => (
               <Fragment key={g.id}>
               <Tr className={g.esFianca ? 'bg-amber-50/40' : undefined}>
                 <Td>{formatDate(g.data)}</Td>
@@ -946,6 +927,18 @@ function GastosVariablesTab() {
               )}
               </Fragment>
             ))}
+            <Tr className="bg-brand-50">
+              <Td colSpan={6} className="font-semibold text-slate-700">
+                Total variables{catNom ? ` · ${catNom}` : ''}
+                {fiancaVisible > 0 && (
+                  <span className="ml-2 font-normal text-amber-700">
+                    (fiances a part: <Eur value={fiancaVisible} />)
+                  </span>
+                )}
+              </Td>
+              <Td className="text-right font-semibold text-brand-800"><Eur value={totalVisible} /></Td>
+              <Td></Td>
+            </Tr>
           </tbody>
         </Table>
       )}
@@ -955,326 +948,497 @@ function GastosVariablesTab() {
 
 // ─── Pestanya Personal ────────────────────────────────────────────────────────
 
-interface JornadaRow {
-  id: string;
-  data: string;
-  import: string | number;
-  notes: string | null;
-  pagada: boolean;
-  treballador: { id: string; nom: string; carrec: string | null } | null;
-}
-
-function PersonalTab() {
-  const mesActual = toISODate(new Date()).slice(0, 7);
-  const [mes, setMes] = useState(mesActual);
-  const [jornades, setJornades] = useState<JornadaRow[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    getJSON<{ jornades: JornadaRow[] }>(`/api/jornades?mes=${mes}`)
-      .then((r) => setJornades(r.jornades))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [mes]);
-
-  const total = jornades.reduce((a, j) => a + Number(j.import), 0);
-  const pendent = jornades.filter((j) => !j.pagada).reduce((a, j) => a + Number(j.import), 0);
-
-  // Genera 12 mesos disponibles (mes actual + 11 anteriors)
-  const mesos = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - i);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  });
-
+// Qui ha cobrat què dins del període. Surt del mateix càlcul que la fitxa de
+// cada persona, així que hi entra la bugaderia i no només les jornades.
+function PersonalTab({ detall }: { detall: PersonaPeriode[] }) {
+  const router = useRouter();
+  if (detall.length === 0) {
+    return <EmptyState>Ningú ha treballat en aquest període.</EmptyState>;
+  }
+  const total = detall.reduce((a, p) => a + p.total, 0);
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 text-sm">
-          <span className="text-slate-600">Mes:</span>
-          <select
-            value={mes}
-            onChange={(e) => setMes(e.target.value)}
-            className="h-9 rounded-lg border border-slate-300 bg-white px-2 text-sm capitalize"
-          >
-            {mesos.map((m) => (
-              <option key={m} value={m}>
-                {new Date(`${m}-01T00:00:00`).toLocaleDateString('ca-ES', { month: 'long', year: 'numeric' })}
-              </option>
-            ))}
-          </select>
-        </label>
-        <span className="text-sm text-slate-600">
-          Total: <strong>{formatEur(total)}</strong>
-        </span>
-        {pendent > 0 && (
-          <span className="text-sm text-amber-600">
-            Pendent: <strong>{formatEur(pendent)}</strong>
-          </span>
-        )}
+      <p className="mb-3 text-sm text-slate-500">
+        Nòmines, neteja i bugaderia del període. Una nòmina compta el dia que tanca el seu mes,
+        així que només hi entra si el període cobreix el mes sencer.
+      </p>
+      <Table>
+        <Thead>
+          <tr>
+            <Th>Persona</Th>
+            <Th className="text-right">Nòmines</Th>
+            <Th className="text-right">Neteja</Th>
+            <Th className="text-right">Bugaderia</Th>
+            <Th className="text-right">Total</Th>
+            <Th>Pagat / pendent</Th>
+            <Th></Th>
+          </tr>
+        </Thead>
+        <tbody>
+          {detall.map((p) => (
+            <Tr key={p.id}>
+              <Td>
+                <span className="font-medium text-slate-800">{p.nom}</span>
+                {p.carrec && <span className="block text-xs text-slate-400">{p.carrec}</span>}
+              </Td>
+              <Td className="text-right">{p.nomines > 0 ? <Eur value={p.nomines} /> : <span className="text-slate-300">—</span>}</Td>
+              <Td className="text-right">{p.neteja > 0 ? <Eur value={p.neteja} /> : <span className="text-slate-300">—</span>}</Td>
+              <Td className="text-right">{p.bugaderia > 0 ? <Eur value={p.bugaderia} /> : <span className="text-slate-300">—</span>}</Td>
+              <Td className="text-right font-semibold text-slate-900"><Eur value={p.total} /></Td>
+              <Td>
+                <span className="flex h-1.5 w-24 overflow-hidden rounded-full bg-slate-200">
+                  <span className="bg-green-600" style={{ width: pct(p.pagat, p.pagat + p.pendent) }} />
+                  <span className="bg-amber-500" style={{ width: pct(p.pendent, p.pagat + p.pendent) }} />
+                </span>
+                <span className="text-xs text-slate-400">
+                  {p.pendent > 0 ? <>pendent <Eur value={p.pendent} /></> : 'tot pagat'}
+                </span>
+              </Td>
+              <Td className="text-right">
+                <Button size="sm" variant="outline" onClick={() => router.push(`/personal/${p.id}`)}>Obrir fitxa</Button>
+              </Td>
+            </Tr>
+          ))}
+          <Tr className="bg-brand-50">
+            <Td colSpan={4} className="font-semibold text-slate-700">Total personal al període</Td>
+            <Td className="text-right font-semibold text-brand-800"><Eur value={total} /></Td>
+            <Td colSpan={2}></Td>
+          </Tr>
+        </tbody>
+      </Table>
+    </>
+  );
+}
+
+// ─── Pestanya Resum ───────────────────────────────────────────────────────────
+
+const MESOS_CURT = ['Gen', 'Feb', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Des'];
+
+interface MesDespeses { mes: string; variables: number; fixes: number; personal: number }
+interface PersonaPeriode {
+  id: string; nom: string; carrec: string;
+  nomines: number; neteja: number; bugaderia: number; total: number;
+  pagat: number; pendent: number;
+}
+interface Resum {
+  desde: string; fins: string;
+  variables: number; fixes: number; personal: number; fiances: number; total: number;
+  nVariables: number; nFixes: number; personalPendent: number;
+  anterior: { desde: string; fins: string; total: number };
+  categories: { nom: string; import: number; variables: number; fixes: number; personal: number }[];
+  fiancesDetall: { proveidor: string; import: number }[];
+  personalDetall: PersonaPeriode[];
+  any: number;
+  mesos: MesDespeses[];
+}
+
+const pct = (part: number, tot: number) => `${tot > 0 ? (part / tot) * 100 : 0}%`;
+const eur0 = (n: number) =>
+  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+
+// Gràfic de l'any: una barra apilada per mes (variables + fixes + personal).
+// Els mesos que queden fora del període es veuen més fluixos, però es veuen: la
+// gràcia és no perdre la tendència quan mires una setmana concreta.
+function GraficAny({
+  mesos,
+  desde,
+  fins,
+  onMes,
+}: {
+  mesos: MesDespeses[];
+  desde: string;
+  fins: string;
+  onMes: (desde: string, fins: string) => void;
+}) {
+  const totals = mesos.map((m) => m.variables + m.fixes + m.personal);
+  const max = Math.max(...totals, 0);
+  const sostre = max > 0 ? Math.ceil(max / 500) * 500 : 500;
+  const alt = (v: number) => `${(v / sostre) * 88}%`;
+  const ultimDia = (mes: string) => {
+    const [y, m] = mes.split('-').map(Number);
+    return new Date(Date.UTC(y!, m!, 0)).toISOString().slice(0, 10);
+  };
+  const dinsRang = (mes: string) => mes <= fins.slice(0, 7) && mes >= desde.slice(0, 7);
+
+  return (
+    <div className="rounded-xl border border-slate-200 p-4">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-800">Com ha anat l&apos;any</h3>
+          <p className="text-xs text-slate-400">Clica una barra per posar el període en aquell mes</p>
+        </div>
+        <div className="flex flex-wrap gap-3 text-xs text-slate-600">
+          <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm bg-brand-700" /> Variables</span>
+          <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm bg-sky-700" /> Fixes</span>
+          <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm bg-amber-600" /> Personal</span>
+        </div>
       </div>
 
-      {loading ? (
-        <p className="text-sm text-slate-400">Carregant…</p>
-      ) : jornades.length === 0 ? (
-        <EmptyState>Sense registres de personal per a aquest mes.</EmptyState>
-      ) : (
-        <Table>
-          <Thead>
-            <tr>
-              <Th>Data</Th>
-              <Th>Treballador</Th>
-              <Th>Concepte</Th>
-              <Th>Estat</Th>
-              <Th className="text-right">Import</Th>
-            </tr>
-          </Thead>
-          <tbody>
-            {jornades.map((j) => (
-              <Tr key={j.id}>
-                <Td>{formatDate(j.data)}</Td>
-                <Td>
-                  <a href={`/personal/${j.treballador?.id}`} className="font-medium text-brand-700 hover:underline">
-                    {j.treballador?.nom ?? '—'}
-                  </a>
-                  {j.treballador?.carrec && (
-                    <span className="ml-1 text-xs text-slate-400">({j.treballador.carrec})</span>
-                  )}
-                </Td>
-                <Td className="text-sm text-slate-600">
-                  {j.notes
-                    ? j.notes.replace('[auto] ', '')
-                    : `${Number(j.import) > 0 ? 'Jornada' : '—'}`}
-                </Td>
-                <Td>
-                  {j.pagada
-                    ? <Badge tone="success">Pagat</Badge>
-                    : <Badge tone="warning">Pendent</Badge>}
-                </Td>
-                <Td className="text-right font-medium">{formatEur(Number(j.import))}</Td>
-              </Tr>
-            ))}
-          </tbody>
-        </Table>
-      )}
-    </>
+      <div className="relative flex h-48 items-end gap-0.5 border-b border-slate-300 pl-14">
+        {[sostre, sostre / 2].map((v) => (
+          <div
+            key={v}
+            className="pointer-events-none absolute left-14 right-0 border-t border-dashed border-slate-200"
+            style={{ bottom: alt(v) }}
+          >
+            <span className="absolute -left-14 -top-1.5 w-12 text-right text-[10px] leading-none text-slate-400">
+              {eur0(v)}
+            </span>
+          </div>
+        ))}
+        {mesos.map((m, i) => {
+          const dins = dinsRang(m.mes);
+          const tot = totals[i] ?? 0;
+          return (
+            <button
+              key={m.mes}
+              type="button"
+              onClick={() => onMes(`${m.mes}-01`, ultimDia(m.mes))}
+              title={`${MESOS_CURT[i]}: ${formatEur(tot)}`}
+              className="relative flex h-full flex-1 flex-col justify-end gap-0.5 px-0.5"
+            >
+              <span className="whitespace-nowrap text-center text-[10px] font-bold tabular-nums text-slate-600">
+                {dins && tot > 0 ? eur0(tot) : ' '}
+              </span>
+              <span className={cn('rounded-t bg-brand-700', !dins && 'opacity-55')} style={{ height: alt(m.variables) }} />
+              <span className={cn('bg-sky-700', !dins && 'opacity-55')} style={{ height: alt(m.fixes) }} />
+              <span className={cn('bg-amber-600', !dins && 'opacity-55')} style={{ height: alt(m.personal) }} />
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex gap-0.5 pl-14 pt-1.5">
+        {mesos.map((m, i) => (
+          <span
+            key={m.mes}
+            className={cn('flex-1 text-center text-[11px]', dinsRang(m.mes) ? 'font-bold text-slate-700' : 'text-slate-400')}
+          >
+            {MESOS_CURT[i]}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ResumTab({
+  resum,
+  onMes,
+  onCategoria,
+}: {
+  resum: Resum;
+  onMes: (desde: string, fins: string) => void;
+  onCategoria: (c: Resum['categories'][number]) => void;
+}) {
+  const [fixos, setFixos] = useState<GasFix[]>([]);
+  useEffect(() => {
+    getJSON<{ gastos: GasFix[] }>('/api/gastos-fixos')
+      .then((r) => setFixos(r.gastos))
+      .catch(() => setFixos([]));
+  }, []);
+
+  const maxCat = resum.categories[0]?.import ?? 0;
+  const totalCats = resum.categories.reduce((a, c) => a + c.import, 0);
+  const avui = toISODate(new Date());
+  const propers = [...fixos].sort((a, b) => a.properaData.localeCompare(b.properaData)).slice(0, 6);
+  const diesFins = (data: string) =>
+    Math.round(
+      (new Date(`${data.slice(0, 10)}T00:00:00.000Z`).getTime() -
+        new Date(`${avui}T00:00:00.000Z`).getTime()) / 86400000,
+    );
+
+  return (
+    <div className="space-y-4">
+      <GraficAny mesos={resum.mesos} desde={resum.desde} fins={resum.fins} onMes={onMes} />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border border-slate-200 p-4">
+          <h3 className="text-sm font-semibold text-slate-800">En què se&apos;n va</h3>
+          <p className="mb-3 text-xs text-slate-400">
+            Per categoria, dins del període. Clica&apos;n una per veure&apos;n les línies.
+          </p>
+          {resum.categories.length === 0 ? (
+            <p className="text-sm text-slate-400">Cap despesa en aquest període.</p>
+          ) : (
+            resum.categories.map((c) => (
+              <button
+                key={c.nom}
+                type="button"
+                onClick={() => onCategoria(c)}
+                className="flex w-full flex-col gap-1 rounded-lg px-1 py-1.5 text-left transition-colors hover:bg-brand-50"
+              >
+                <span className="flex items-baseline justify-between gap-3 text-sm">
+                  <span className="text-slate-600">
+                    {c.nom}
+                    <span className="ml-1.5 text-xs text-slate-400">
+                      {totalCats > 0 ? Math.round((c.import / totalCats) * 100) : 0}%
+                    </span>
+                  </span>
+                  <span className="font-semibold text-slate-800"><Eur value={c.import} /></span>
+                </span>
+                <span className="flex h-1.5 overflow-hidden rounded-full bg-slate-100">
+                  <span className="bg-brand-700" style={{ width: pct(c.variables, maxCat) }} />
+                  <span className="bg-sky-700" style={{ width: pct(c.fixes, maxCat) }} />
+                  <span className="bg-amber-600" style={{ width: pct(c.personal, maxCat) }} />
+                </span>
+              </button>
+            ))
+          )}
+          {resum.fiancesDetall.length > 0 && (
+            <div className="mt-3 border-t border-slate-100 pt-2">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-700">Fiances (a part)</p>
+              {resum.fiancesDetall.map((f) => (
+                <div key={f.proveidor} className="flex justify-between gap-3 py-0.5 text-sm text-amber-700">
+                  <span className="min-w-0 truncate">{f.proveidor}</span>
+                  <span className="shrink-0 font-medium"><Eur value={f.import} /></span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-slate-200 p-4">
+          <h3 className="text-sm font-semibold text-slate-800">Què ve ara</h3>
+          <p className="mb-2 text-xs text-slate-400">
+            Despeses fixes amb data de pagament pròxima, hi caigui el període o no.
+          </p>
+          {propers.length === 0 ? (
+            <p className="text-sm text-slate-400">Cap despesa fixa registrada.</p>
+          ) : (
+            propers.map((g) => {
+              const status = statusInfo(g.properaData);
+              const d = diesFins(g.properaData);
+              const quan = d < 0 ? `fa ${-d} dies` : d === 0 ? 'avui' : `en ${d} dies`;
+              return (
+                <div key={g.id} className="flex items-center gap-3 border-b border-slate-100 py-2 last:border-0">
+                  <Badge tone={status.tone}>{status.label}</Badge>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-slate-700">{g.activitat}</span>
+                    <span className="text-xs text-slate-400">{formatDate(g.properaData)} · {quan}</span>
+                  </span>
+                  <span className="shrink-0 text-sm font-semibold text-slate-800">
+                    {g.importPrevist != null ? formatEur(g.importPrevist) : '—'}
+                  </span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
 // ─── Pàgina principal ─────────────────────────────────────────────────────────
 
-const MESOS_CURT = ['Gen', 'Feb', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Des'];
-
-interface ResumSet { mesos: number[]; trimestres: number[]; anual: number }
-interface ResumData { senseFianca: ResumSet; ambFianca: ResumSet; total: ResumSet }
-type ResumMode = 'total' | 'senseFianca' | 'ambFianca';
-const RESUM_MODES: { key: ResumMode; label: string }[] = [
-  { key: 'total', label: 'Total' },
-  { key: 'senseFianca', label: 'Sense fiança' },
-  { key: 'ambFianca', label: 'Amb fiança' },
+type Preset = 'mes' | 'passat' | 'trim' | 'any' | 'tot';
+const PRESETS: { clau: Preset; etiqueta: string }[] = [
+  { clau: 'mes', etiqueta: 'Aquest mes' },
+  { clau: 'passat', etiqueta: 'Mes passat' },
+  { clau: 'trim', etiqueta: 'Aquest trimestre' },
+  { clau: 'any', etiqueta: 'Aquest any' },
+  { clau: 'tot', etiqueta: 'Tot' },
 ];
 
-interface DetallData {
-  categories: { nom: string; sense: number }[];
-  fiances: { proveidor: string; import: number }[];
-  personal: number;
+const ymd = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10);
+
+function rangDe(preset: Preset): { desde: string; fins: string } {
+  const avui = new Date();
+  const fins = toISODate(avui);
+  const y = avui.getFullYear();
+  const m = avui.getMonth(); // 0-11
+  if (preset === 'mes') return { desde: ymd(y, m, 1), fins };
+  if (preset === 'passat') return { desde: ymd(y, m - 1, 1), fins: ymd(y, m, 0) };
+  if (preset === 'trim') return { desde: ymd(y, Math.floor(m / 3) * 3, 1), fins };
+  if (preset === 'any') return { desde: ymd(y, 0, 1), fins };
+  return { desde: '2000-01-01', fins };
 }
-type Sel = { tipus: 'mes' | 'trimestre'; idx: number };
 
-// Resum de totals de despeses per mes, trimestre i anual. Es pot veure el total,
-// només les despeses reals (sense fiança) o les fiances. En clicar un mes o
-// trimestre es mostra el desglossament d'aquell període (per categoria + personal).
-function ResumGastos() {
-  const [year, setYear] = useState(() => new Date().getFullYear());
-  const [mode, setMode] = useState<ResumMode>('total');
-  const [resum, setResum] = useState<ResumData | null>(null);
-  const [sel, setSel] = useState<Sel | null>(null);
-  const [detall, setDetall] = useState<DetallData | null>(null);
-
-  useEffect(() => {
-    getJSON<{ year: number } & ResumData>(`/api/gastos/resum?year=${year}`)
-      .then((r) => setResum({ senseFianca: r.senseFianca, ambFianca: r.ambFianca, total: r.total }))
-      .catch(() => setResum(null));
-  }, [year]);
-
-  useEffect(() => {
-    if (!sel) { setDetall(null); return; }
-    const q = sel.tipus === 'mes' ? `mes=${sel.idx + 1}` : `trimestre=${sel.idx + 1}`;
-    getJSON<DetallData>(`/api/gastos/resum/detall?year=${year}&${q}`).then(setDetall).catch(() => setDetall(null));
-  }, [sel, year]);
-
-  const actual = resum ? resum[mode] : null;
-  const modeLabel = RESUM_MODES.find((m) => m.key === mode)?.label ?? '';
-
-  const toggleSel = (s: Sel) =>
-    setSel((prev) => (prev && prev.tipus === s.tipus && prev.idx === s.idx ? null : s));
-  const isSel = (tipus: Sel['tipus'], idx: number) => sel?.tipus === tipus && sel.idx === idx;
-
-  const selLabel = sel
-    ? sel.tipus === 'mes'
-      ? `${MESOS_CURT[sel.idx]} ${year}`
-      : `${sel.idx + 1}r trimestre ${year}`
-    : '';
-  // Desglossament segons el mode: despeses reals per categoria i, si és una
-  // fiança, per proveïdor (per identificar el dipòsit).
-  const conceptes: { nom: string; valor: number; fianca?: boolean }[] = [];
-  if (detall) {
-    if (mode !== 'ambFianca') {
-      for (const c of detall.categories) if (c.sense > 0.005) conceptes.push({ nom: c.nom, valor: c.sense });
-    }
-    if (mode !== 'senseFianca') {
-      for (const f of detall.fiances) if (f.import > 0.005) conceptes.push({ nom: `Fiança · ${f.proveidor}`, valor: f.import, fianca: true });
-    }
-    conceptes.sort((a, b) => b.valor - a.valor);
-  }
-  const personalVal = detall && mode !== 'ambFianca' ? detall.personal : 0;
-  const selTotal = conceptes.reduce((a, c) => a + c.valor, 0) + personalVal;
-
-  return (
-    <Card className="mb-6">
-      <CardHeader className="flex flex-wrap items-center justify-between gap-3">
-        <CardTitle>Resum de despeses</CardTitle>
-        <div className="flex items-center gap-1">
-          <button type="button" onClick={() => setYear((y) => y - 1)} className="rounded p-1 text-slate-500 hover:bg-slate-100" aria-label="Any anterior"><ChevronLeft className="h-4 w-4" /></button>
-          <span className="min-w-14 text-center text-sm font-semibold">{year}</span>
-          <button type="button" onClick={() => setYear((y) => y + 1)} className="rounded p-1 text-slate-500 hover:bg-slate-100" aria-label="Any següent"><ChevronRight className="h-4 w-4" /></button>
-        </div>
-      </CardHeader>
-      <CardBody className="space-y-4">
-        {/* Selector total / sense fiança / amb fiança */}
-        <div className="inline-flex rounded-lg border border-slate-200 p-0.5 text-sm">
-          {RESUM_MODES.map((m) => (
-            <button
-              key={m.key}
-              type="button"
-              onClick={() => setMode(m.key)}
-              className={cn(
-                'rounded-md px-3 py-1 font-medium transition-colors',
-                mode === m.key ? 'bg-brand-700 text-white' : 'text-slate-600 hover:bg-slate-100',
-              )}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Comparació ràpida dels tres totals anuals */}
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-          <span>Total: <span className="font-medium text-slate-700"><Eur value={resum?.total.anual ?? 0} /></span></span>
-          <span>Sense fiança: <span className="font-medium text-slate-700"><Eur value={resum?.senseFianca.anual ?? 0} /></span></span>
-          <span>Amb fiança: <span className="font-medium text-amber-700"><Eur value={resum?.ambFianca.anual ?? 0} /></span></span>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-5">
-          <div className="rounded-lg border border-brand-200 bg-brand-50/50 px-3 py-2">
-            <div className="text-xs text-brand-700">{modeLabel} · {year}</div>
-            <div className="text-lg font-semibold text-brand-800"><Eur value={actual?.anual ?? 0} /></div>
-          </div>
-          {[0, 1, 2, 3].map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => toggleSel({ tipus: 'trimestre', idx: t })}
-              className={cn(
-                'rounded-lg border px-3 py-2 text-left transition-colors',
-                isSel('trimestre', t) ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-500' : 'border-slate-200 hover:bg-slate-50',
-              )}
-            >
-              <div className="text-xs text-slate-500">{t + 1}r trimestre</div>
-              <div className="text-base font-medium"><Eur value={actual?.trimestres[t] ?? 0} /></div>
-            </button>
-          ))}
-        </div>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-          {MESOS_CURT.map((m, i) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => toggleSel({ tipus: 'mes', idx: i })}
-              className={cn(
-                'rounded-md px-2 py-1.5 text-center transition-colors',
-                isSel('mes', i) ? 'bg-brand-100 ring-1 ring-brand-500' : 'bg-slate-50 hover:bg-slate-100',
-              )}
-            >
-              <div className="text-[11px] uppercase tracking-wide text-slate-400">{m}</div>
-              <div className="text-sm font-medium text-slate-700"><Eur value={actual?.mesos[i] ?? 0} /></div>
-            </button>
-          ))}
-        </div>
-
-        {/* Desglossament del període seleccionat */}
-        {sel && (
-          <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-semibold text-slate-700">Desglossament · {selLabel} · {modeLabel}</span>
-              <button type="button" onClick={() => setSel(null)} className="rounded p-0.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600" aria-label="Tancar"><X className="h-4 w-4" /></button>
-            </div>
-            {conceptes.length === 0 && personalVal === 0 ? (
-              <p className="text-sm text-slate-400">Sense despeses en aquest període.</p>
-            ) : (
-              <ul className="divide-y divide-slate-200 text-sm">
-                {conceptes.map((c) => (
-                  <li key={c.nom} className="flex items-center justify-between gap-3 py-1.5">
-                    <span className={cn('min-w-0 truncate', c.fianca ? 'text-amber-700' : 'text-slate-600')}>{c.nom}</span>
-                    <span className={cn('shrink-0 font-medium', c.fianca ? 'text-amber-700' : 'text-slate-800')}><Eur value={c.valor} /></span>
-                  </li>
-                ))}
-                {personalVal > 0 && (
-                  <li className="flex items-center justify-between gap-3 py-1.5">
-                    <span className="text-slate-600">Personal (nòmines)</span>
-                    <span className="shrink-0 font-medium text-slate-800"><Eur value={personalVal} /></span>
-                  </li>
-                )}
-                <li className="flex items-center justify-between gap-3 py-1.5">
-                  <span className="font-semibold text-slate-700">Total {selLabel}</span>
-                  <span className="shrink-0 font-semibold text-brand-800"><Eur value={selTotal} /></span>
-                </li>
-              </ul>
-            )}
-          </div>
-        )}
-
-        <p className="text-xs text-slate-400">
-          «Total» = tot plegat. «Sense fiança» = despeses reals (variables, fixes i nòmines). «Amb fiança» = dipòsits recuperables.
-          Clica un mes o trimestre per veure’n el desglossament.
-        </p>
-      </CardBody>
-    </Card>
-  );
-}
+const fmtCurt = (dia: string) => { const p = dia.split('-'); return `${p[2]}/${p[1]}`; };
 
 function GastosContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const tab = searchParams.get('tab') ?? 'resum';
 
+  // El període mana sobre les quatre pestanyes.
+  const inicial = rangDe('mes');
+  const [desde, setDesde] = useState(inicial.desde);
+  const [fins, setFins] = useState(inicial.fins);
+  const [preset, setPreset] = useState<Preset | null>('mes');
+  const [catNom, setCatNom] = useState<string | null>(null);
+  const [resum, setResum] = useState<Resum | null>(null);
+  const [errResum, setErrResum] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancel = false;
+    getJSON<Resum>(`/api/gastos/resum?desde=${desde}&fins=${fins}`)
+      .then((r) => { if (!cancel) { setResum(r); setErrResum(null); } })
+      .catch((e) => {
+        if (!cancel) {
+          setResum(null);
+          setErrResum(e instanceof ApiError ? e.message : 'No s’ha pogut carregar el resum');
+        }
+      });
+    return () => { cancel = true; };
+  }, [desde, fins]);
+
+  const vesA = (t: string) => router.replace(t === 'resum' ? '/gastos' : `/gastos?tab=${t}`);
+  function posaRang(d: string, f: string) {
+    setDesde(d); setFins(f); setPreset(null);
+  }
+  function aplicaPreset(p: Preset) {
+    const r = rangDe(p);
+    setDesde(r.desde); setFins(r.fins); setPreset(p);
+  }
+
+  const delta = resum && resum.anterior.total > 0
+    ? Math.round(((resum.total - resum.anterior.total) / resum.anterior.total) * 100)
+    : null;
+
+  const parts: { clau: string; nom: string; color: string; valor: number; peu: string }[] = resum
+    ? [
+        {
+          clau: 'variables', nom: 'Variables', color: 'bg-brand-700', valor: resum.variables,
+          peu: `${resum.nVariables} ${resum.nVariables === 1 ? 'despesa' : 'despeses'}`,
+        },
+        {
+          clau: 'fixes', nom: 'Fixes', color: 'bg-sky-700', valor: resum.fixes,
+          peu: `${resum.nFixes} ${resum.nFixes === 1 ? 'rebut registrat' : 'rebuts registrats'}`,
+        },
+        {
+          clau: 'personal', nom: 'Personal', color: 'bg-amber-600', valor: resum.personal,
+          peu: resum.personalPendent > 0 ? `pendent de pagar ${formatEur(resum.personalPendent)}` : 'tot pagat',
+        },
+      ]
+    : [];
+
   return (
     <div>
       <PageHeader title="Despeses" subtitle="Gestió de despeses del hostal" />
       <FinancesNav />
 
+      {/* Període únic: mana sobre les quatre pestanyes */}
+      <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl bg-brand-50 px-4 py-3">
+        <Field label="Des de">
+          <Input type="date" value={desde} max={fins} onChange={(e) => { setDesde(e.target.value); setPreset(null); }} />
+        </Field>
+        <Field label="Fins a">
+          <Input type="date" value={fins} min={desde} onChange={(e) => { setFins(e.target.value); setPreset(null); }} />
+        </Field>
+        <div className="flex flex-wrap gap-1.5 sm:ml-auto">
+          {PRESETS.map((p) => (
+            <button
+              key={p.clau}
+              type="button"
+              aria-pressed={preset === p.clau}
+              onClick={() => aplicaPreset(p.clau)}
+              className={cn(
+                'rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+                preset === p.clau
+                  ? 'border-brand-700 bg-brand-700 text-white'
+                  : 'border-slate-300 bg-white text-slate-600 hover:border-brand-600 hover:text-brand-700',
+              )}
+            >
+              {p.etiqueta}
+            </button>
+          ))}
+          <HideAmountsButton className="rounded-full" />
+        </div>
+      </div>
+
+      {errResum && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{errResum}</div>}
+
+      {/* Total del període i les tres parts que el componen (que són les pestanyes) */}
+      <div className="mb-5 overflow-hidden rounded-xl border border-slate-200">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 px-4 py-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Despesa real del període</p>
+            <p className="text-3xl font-bold tracking-tight text-brand-800">
+              <Eur value={resum?.total ?? 0} />
+            </p>
+          </div>
+          {delta !== null && resum && (
+            <span className={cn(
+              'rounded-full px-2.5 py-0.5 text-sm font-semibold',
+              delta > 0 ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700',
+            )}>
+              {delta > 0 ? '▲ +' : '▼ '}{delta}%{' '}
+              <span className="font-normal opacity-80">
+                vs {fmtCurt(resum.anterior.desde)}–{fmtCurt(resum.anterior.fins)}
+              </span>
+            </span>
+          )}
+          {resum && resum.fiances > 0 && (
+            <span className="ml-auto rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700">
+              Fiances <Eur value={resum.fiances} />{' '}
+              <span className="font-normal opacity-85">· fora del total, són recuperables</span>
+            </span>
+          )}
+        </div>
+        <div className="grid gap-px bg-slate-200 sm:grid-cols-3">
+          {parts.map((p) => (
+            <button
+              key={p.clau}
+              type="button"
+              onClick={() => { setCatNom(null); vesA(p.clau); }}
+              className="flex flex-col gap-0.5 bg-white px-4 py-3 text-left transition-colors hover:bg-brand-50"
+            >
+              <span className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                <i className={cn('h-2.5 w-2.5 rounded-sm', p.color)} /> {p.nom}
+              </span>
+              <span className="text-xl font-bold tracking-tight text-slate-900"><Eur value={p.valor} /></span>
+              <span className="text-xs text-slate-400">{p.peu}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Sub-pestanyes Resum / Variables / Fixes / Personal.
           flex-wrap perquè, si no hi caben en una línia, passin a la següent i es
           vegin sempre TOTES (sense barra de desplaçament). */}
-      <div className="mb-6 flex flex-wrap gap-1 border-b border-slate-200">
+      <div className="mb-5 flex flex-wrap gap-1 border-b border-slate-200">
         {(['resum', 'variables', 'fixes', 'personal'] as const).map((t) => (
           <button
             key={t}
-            onClick={() => router.replace(t === 'resum' ? '/gastos' : `/gastos?tab=${t}`)}
+            onClick={() => { setCatNom(null); vesA(t); }}
             className={cn(
               '-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors',
               tab === t ? 'border-brand-700 text-brand-800' : 'border-transparent text-slate-500 hover:text-slate-800',
             )}
           >
-            {t === 'resum' ? 'Resum despeses' : t === 'variables' ? 'Variables' : t === 'fixes' ? 'Fixes' : (
-              <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> Personal</span>
-            )}
+            {t === 'resum' ? 'Resum' : t === 'variables' ? 'Variables' : t === 'fixes' ? 'Fixes' : 'Personal'}
           </button>
         ))}
       </div>
 
-      {tab === 'resum' ? <ResumGastos /> : tab === 'fixes' ? <GastosFixesTab /> : tab === 'personal' ? <PersonalTab /> : <GastosVariablesTab />}
+      {tab === 'resum' ? (
+        resum ? (
+          <ResumTab
+            resum={resum}
+            onMes={posaRang}
+            onCategoria={(c) => {
+              // Porta a la pestanya d'on ve la major part de la categoria: així
+              // no s'aterra mai en una llista buida.
+              const on = c.personal >= c.variables && c.personal >= c.fixes
+                ? 'personal'
+                : c.fixes > c.variables
+                  ? 'fixes'
+                  : 'variables';
+              setCatNom(on === 'variables' ? c.nom : null);
+              vesA(on);
+            }}
+          />
+        ) : (
+          <p className="text-sm text-slate-400">Carregant…</p>
+        )
+      ) : tab === 'fixes' ? (
+        <GastosFixesTab desde={desde} fins={fins} />
+      ) : tab === 'personal' ? (
+        resum ? <PersonalTab detall={resum.personalDetall} /> : <p className="text-sm text-slate-400">Carregant…</p>
+      ) : (
+        <GastosVariablesTab desde={desde} fins={fins} catNom={catNom} setCatNom={setCatNom} />
+      )}
     </div>
   );
 }

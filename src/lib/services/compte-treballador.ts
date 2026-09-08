@@ -31,7 +31,7 @@ export interface MovimentCompte {
   preuHora: number;
 }
 
-interface ItemBugaderia {
+export interface ItemBugaderia {
   article: string;
   qty: number;
 }
@@ -48,6 +48,20 @@ const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 const clau = (s: string) => s.normalize('NFC');
 
 const aDia = (d: Date) => d.toISOString().slice(0, 10);
+
+/** Preus del catàleg de bugaderia, indexats pel nom normalitzat. */
+export async function preusBugaderia(): Promise<Map<string, number>> {
+  const cataleg = await prisma.articleBugaderia.findMany({
+    where: { deletedAt: null },
+    select: { nom: true, preu: true },
+  });
+  return new Map(cataleg.map((a) => [clau(a.nom), Number(a.preu)]));
+}
+
+/** Cost dels articles d'una tasca segons el catàleg. */
+export function costBugaderia(items: ItemBugaderia[], preus: Map<string, number>): number {
+  return round2(items.reduce((s, i) => s + (preus.get(clau(i.article)) ?? 0) * i.qty, 0));
+}
 
 /** Filtre de dates de Prisma per al rang (o `undefined` si no n'hi ha). */
 function filtreData({ desde, fins }: RangCompte) {
@@ -73,7 +87,7 @@ export async function movimentsCompte(
 ): Promise<MovimentCompte[]> {
   const data = filtreData(rang);
 
-  const [jornades, cataleg, tasques] = await Promise.all([
+  const [jornades, preus, tasques] = await Promise.all([
     prisma.jornada.findMany({
       where: { treballadorId, ...(data ? { data } : {}) },
       orderBy: { data: 'desc' },
@@ -89,10 +103,7 @@ export async function movimentsCompte(
         dataPagament: true,
       },
     }),
-    prisma.articleBugaderia.findMany({
-      where: { deletedAt: null },
-      select: { nom: true, preu: true },
-    }),
+    preusBugaderia(),
     prisma.tascaNeteja.findMany({
       where: { assignadaA: treballadorId, ...(data ? { data } : {}) },
       orderBy: { data: 'desc' },
@@ -107,10 +118,6 @@ export async function movimentsCompte(
       },
     }),
   ]);
-
-  const preus = new Map(cataleg.map((a) => [clau(a.nom), Number(a.preu)]));
-  const costDe = (items: ItemBugaderia[]) =>
-    round2(items.reduce((s, i) => s + (preus.get(clau(i.article)) ?? 0) * i.qty, 0));
 
   const deJornades: MovimentCompte[] = jornades.map((j) => ({
     id: j.id,
@@ -135,7 +142,7 @@ export async function movimentsCompte(
         tipus: 'BUGADERIA' as const,
         dia: aDia(t.data),
         concepte: `${hab} · ${tipus} · ${items.map((i) => `${i.qty}× ${i.article}`).join(', ')}`,
-        import: costDe(items),
+        import: costBugaderia(items, preus),
         pagat: t.bugaderiaPagadaEl !== null,
         pagatEl: t.bugaderiaPagadaEl ? aDia(t.bugaderiaPagadaEl) : null,
         hores: 0,
