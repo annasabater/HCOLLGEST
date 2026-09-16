@@ -485,8 +485,8 @@ export function PagamentsPanel({
                   <TipusPill tipus="FIANCA" />
                   <span className="font-medium text-slate-800">{formatEur(f.import)}</span>
                   <span className="text-slate-400">
-                    · {FIANCA_ESTAT_LABEL[f.estat]}{f.notes ? ` · ${f.notes}` : ''} ·{' '}
-                    {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
+                    {f.notes ? ` · ${f.notes}` : ''} · {METODE_COBRAMENT_LABELS[f.metode]} ·{' '}
+                    {formatDate(f.data)}
                   </span>
                   <div className="ml-auto flex items-center gap-1">
                     <button
@@ -547,8 +547,10 @@ export function PagamentsPanel({
             >
               <span className="flex items-center gap-2">
                 <TipusPill tipus="FIANCA" />
-                {formatEur(f.import)} · {FIANCA_ESTAT_LABEL[f.estat]}{f.notes ? ` · ${f.notes}` : ''} ·{' '}
-                {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
+                {formatEur(f.import)}
+                {f.estat !== 'EN_CUSTODIA' ? ` · ${FIANCA_ESTAT_LABEL[f.estat]}` : ''}
+                {f.notes ? ` · ${f.notes}` : ''} · {METODE_COBRAMENT_LABELS[f.metode]} ·{' '}
+                {formatDate(f.data)}
               </span>
               {f.facturaId && (
                 <Link href={`/factures/${f.facturaId}`}>
