@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Trash2, Undo2, ShieldCheck, ChevronDown, Pencil, Check, X, CalendarRange } from 'lucide-react';
+import { Plus, Trash2, Undo2, ShieldCheck, ChevronDown, Pencil, Check, X, CalendarRange, Banknote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -57,10 +57,32 @@ function periodesResum(periodes: PeriodeCobrament[] | undefined): string | null 
 }
 
 const FIANCA_ESTAT_LABEL: Record<Fianca['estat'], string> = {
-  EN_CUSTODIA: 'Fiança',
+  EN_CUSTODIA: 'En custòdia',
   TORNAT: 'Tornada',
   RETINGUT: 'Retinguda (ingrés)',
 };
+
+/**
+ * Diu si la línia és un pagament o una fiança, davant de l'import. El tipus no
+ * depèn de cap text escrit a mà (l'etiqueta lliure de la fiança pot dir
+ * qualsevol cosa, o res), així que es llegeix sempre igual a totes les llistes.
+ */
+function TipusPill({ tipus }: { tipus: 'PAGAMENT' | 'FIANCA' }) {
+  const isFianca = tipus === 'FIANCA';
+  return (
+    <span
+      className={
+        'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ' +
+        (isFianca
+          ? 'border-amber-300 bg-amber-100 text-amber-800'
+          : 'border-brand-200 bg-brand-50 text-brand-700')
+      }
+    >
+      {isFianca ? <ShieldCheck className="h-3 w-3" /> : <Banknote className="h-3 w-3" />}
+      {isFianca ? 'Fiança' : 'Pagament'}
+    </span>
+  );
+}
 
 export function PagamentsPanel({
   estanciaId,
@@ -370,6 +392,7 @@ export function PagamentsPanel({
             ) : (
               <div key={p.id} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
                 <div className="flex items-center gap-2">
+                  <TipusPill tipus="PAGAMENT" />
                   <span className="font-medium text-slate-800">{formatEur(p.import)}</span>
                   <span className="text-slate-400">
                     {p.descripcio ? ` · ${p.descripcio}` : ''} · {METODE_COBRAMENT_LABELS[p.metode]} ·{' '}
@@ -459,9 +482,11 @@ export function PagamentsPanel({
             ) : (
               <div key={f.id} className="rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2 text-sm">
                 <div className="flex items-center gap-2">
+                  <TipusPill tipus="FIANCA" />
                   <span className="font-medium text-slate-800">{formatEur(f.import)}</span>
                   <span className="text-slate-400">
-                    · {f.notes ?? 'Fiança'} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
+                    · {FIANCA_ESTAT_LABEL[f.estat]}{f.notes ? ` · ${f.notes}` : ''} ·{' '}
+                    {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
                   </span>
                   <div className="ml-auto flex items-center gap-1">
                     <button
@@ -497,8 +522,9 @@ export function PagamentsPanel({
           <p className="text-xs font-medium text-slate-500">Ja en una factura</p>
           {facturats.map((p) => (
             <div key={p.id} className="rounded-lg px-3 py-1.5 text-sm text-slate-500">
-              <div className="flex items-center justify-between">
-                <span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2">
+                  <TipusPill tipus="PAGAMENT" />
                   {formatEur(p.import)} · {METODE_COBRAMENT_LABELS[p.metode]} · {formatDate(p.data)}
                 </span>
                 {p.facturaId && (
@@ -519,8 +545,10 @@ export function PagamentsPanel({
               key={f.id}
               className="flex items-center justify-between rounded-lg px-3 py-1.5 text-sm text-slate-500"
             >
-              <span>
-                {formatEur(f.import)} · {f.notes ?? 'Fiança'} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
+              <span className="flex items-center gap-2">
+                <TipusPill tipus="FIANCA" />
+                {formatEur(f.import)} · {FIANCA_ESTAT_LABEL[f.estat]}{f.notes ? ` · ${f.notes}` : ''} ·{' '}
+                {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
               </span>
               {f.facturaId && (
                 <Link href={`/factures/${f.facturaId}`}>
@@ -551,7 +579,8 @@ export function PagamentsPanel({
             <div className="mt-2 space-y-1">
               {fiances.filter((f) => f.estat !== 'EN_CUSTODIA').map((f) => (
                 <div key={f.id} className="flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-sm text-slate-500">
-                  <span>
+                  <span className="flex items-center gap-2">
+                    <TipusPill tipus="FIANCA" />
                     {formatEur(f.import)}{f.notes ? ` · ${f.notes}` : ''} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
                   </span>
                   <div className="flex items-center gap-1.5">
