@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import sharp from 'sharp';
 import { authorize } from '@/lib/auth/guard';
 import { handleApiError } from '@/lib/http';
 
@@ -118,13 +119,28 @@ export async function POST(req: Request) {
 
     const rawType = file.type || 'image/jpeg';
     const bytes = await file.arrayBuffer();
-    const base64 = Buffer.from(bytes).toString('base64');
-
-    // Bloc de contingut: PDF com a document; imatge (o qualsevol altre) com a imatge.
     const isPdf = rawType === 'application/pdf';
-    const mediaType = (
+
+    // Normalitza la imatge amb sharp (com a /api/ocr/document): orientació EXIF,
+    // HEIC de l'iPad → JPEG i mida limitada (les fotos de tablet superen el límit
+    // de 5 MB per imatge de Claude). Si sharp falla, enviem els bytes originals.
+    let buf: Buffer = Buffer.from(bytes);
+    let mediaType = (
       rawType === 'image/jpg' || !SUPPORTED_IMG.has(rawType) ? 'image/jpeg' : rawType
     ) as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+    if (!isPdf) {
+      try {
+        buf = await sharp(buf)
+          .rotate()
+          .resize(2000, 2000, { fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 88 })
+          .toBuffer();
+        mediaType = 'image/jpeg';
+      } catch { /* bytes originals */ }
+    }
+    const base64 = buf.toString('base64');
+
+    // Bloc de contingut: PDF com a document; imatge (o qualsevol altre) com a imatge.
     const contentBlock: Anthropic.ContentBlockParam = isPdf
       ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } }
       : { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } };

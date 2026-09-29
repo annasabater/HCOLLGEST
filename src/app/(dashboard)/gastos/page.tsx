@@ -15,6 +15,7 @@ import { Eur, HideAmountsButton } from '@/components/finances/amounts-visibility
 import { getJSON, postJSON, patchJSON, ApiError } from '@/lib/api';
 import { formatDate, formatEur, cn } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
+import { redueixImatge } from '@/lib/images/redueix-client';
 import { optionsFrom, metodeCobramentValues, METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 
 // ─── Tipus ────────────────────────────────────────────────────────────────────
@@ -205,7 +206,7 @@ function GastosFixesTab({ desde, fins }: { desde: string; fins: string }) {
     if (!f || !f.type.startsWith('image/')) return;
     setRegScan(true);
     try {
-      const fd = new FormData(); fd.append('image', f);
+      const fd = new FormData(); fd.append('image', await redueixImatge(f), f.name);
       const res = await fetch('/api/ocr/gasto', { method: 'POST', body: fd });
       if (res.ok) {
         const { result } = (await res.json()) as { result: { import?: number; data?: string } };
@@ -441,11 +442,13 @@ function GastosVariablesTab({
   fins,
   catNom,
   setCatNom,
+  onSavedDate,
 }: {
   desde: string;
   fins: string;
   catNom: string | null;
   setCatNom: (c: string | null) => void;
+  onSavedDate: (data: string) => void;
 }) {
   const [categories, setCategories] = useState<Cat[]>([]);
   const [proveidors, setProveidors] = useState<Prov[]>([]);
@@ -535,7 +538,9 @@ function GastosVariablesTab({
         esFianca: nova.esFianca,
       });
       setNova(novaBuida());
-      setFile(null); setScanWarnings([]); setScanNouProv(null); setShowForm(false); load();
+      setFile(null); setScanWarnings([]); setScanNouProv(null); setShowForm(false);
+      onSavedDate(nova.data);
+      await load();
     } catch (err) { setError(err instanceof ApiError ? err.message : 'Error desant la despesa'); } finally { setSaving(false); }
   }
 
@@ -572,11 +577,16 @@ function GastosVariablesTab({
   async function escaneja(f: File) {
     setScanning(true); setError(null);
     try {
-      const fd = new FormData(); fd.append('image', f);
+      const fd = new FormData(); fd.append('image', await redueixImatge(f), f.name);
       // Enviem la llista de categories perquè l'escàner en triï la més adient.
       fd.append('categories', JSON.stringify(categories.map((c) => c.nom)));
       const res = await fetch('/api/ocr/gasto', { method: 'POST', body: fd });
-      if (!res.ok) throw new ApiError('OCR', res.status);
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        const motiu = res.status === 413 ? 'el fitxer és massa gran' : body?.error ?? `error ${res.status}`;
+        setScanWarnings([`No s’ha pogut escanejar el fitxer (${motiu}). Omple les dades a mà.`]);
+        return;
+      }
       const { result } = (await res.json()) as { result: GastoOcrClient };
 
       const matchProv = result.proveidorNom
@@ -1292,6 +1302,12 @@ function GastosContent() {
     setDesde(r.desde); setFins(r.fins); setPreset(p);
   }
 
+  function mostraDespesa(data: string) {
+    if (data < desde) setDesde(data);
+    if (data > fins) setFins(data);
+    if (data < desde || data > fins) setPreset(null);
+  }
+
   const delta = resum && resum.anterior.total > 0
     ? Math.round(((resum.total - resum.anterior.total) / resum.anterior.total) * 100)
     : null;
@@ -1437,7 +1453,13 @@ function GastosContent() {
       ) : tab === 'personal' ? (
         resum ? <PersonalTab detall={resum.personalDetall} /> : <p className="text-sm text-slate-400">Carregant…</p>
       ) : (
-        <GastosVariablesTab desde={desde} fins={fins} catNom={catNom} setCatNom={setCatNom} />
+        <GastosVariablesTab
+          desde={desde}
+          fins={fins}
+          catNom={catNom}
+          setCatNom={setCatNom}
+          onSavedDate={mostraDespesa}
+        />
       )}
     </div>
   );

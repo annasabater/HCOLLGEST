@@ -13,6 +13,7 @@ import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { formatDate, formatEur } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
+import { redueixImatge } from '@/lib/images/redueix-client';
 import { optionsFrom, metodeCobramentValues, METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 import {
   frequenciaServeiValues,
@@ -115,7 +116,7 @@ export default function ServeisPage() {
     if (!f || !f.type.startsWith('image/')) return;
     setRegScan(true);
     try {
-      const fd = new FormData(); fd.append('image', f);
+      const fd = new FormData(); fd.append('image', await redueixImatge(f), f.name);
       const res = await fetch('/api/ocr/gasto', { method: 'POST', body: fd });
       if (res.ok) {
         const { result } = (await res.json()) as { result: { import?: number; data?: string } };
