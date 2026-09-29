@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Search, Trash2, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
+import { BackLink } from '@/components/ui/back-link';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -69,6 +70,7 @@ export default function AvisosPage() {
 
   return (
     <div className="space-y-6">
+      <BackLink fallback="/huespedes">Clients</BackLink>
       <PageHeader
         title="Avisos interns"
         subtitle="Persones a vigilar o no acollir, encara que no siguin clients (per nom o telèfon)"

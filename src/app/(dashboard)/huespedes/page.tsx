@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Paginacio } from '@/components/ui/paginacio';
 import { AvisosPanel } from '@/components/huesped/avisos-panel';
+import { AutoSubmitCheckbox } from '@/components/ui/auto-submit-checkbox';
 import { TIPUS_DOCUMENT_LABELS } from '@/lib/validation/enums';
 import { cn } from '@/lib/utils';
 
@@ -153,7 +154,7 @@ export default async function HuespedesPage({
         </div>
         <Button type="submit" variant="outline"><Search className="h-4 w-4" /></Button>
         <label className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="mascota" value="1" defaultChecked={nomesMascota} className="accent-brand-700" />
+          <AutoSubmitCheckbox name="mascota" value="1" defaultChecked={nomesMascota} className="accent-brand-700" />
           <PawPrint className="h-4 w-4 text-slate-400" /> Amb mascota
         </label>
       </form>

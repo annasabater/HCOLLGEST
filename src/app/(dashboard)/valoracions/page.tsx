@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
+import { BackLink } from '@/components/ui/back-link';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -57,6 +58,7 @@ export default async function ValoracionsPage() {
 
   return (
     <>
+      <BackLink fallback="/huespedes">Clients</BackLink>
       <PageHeader
         title="Valoracions"
         subtitle="El que ens diuen els hostes des de la pàgina de benvinguda, després de la primera nit."
