@@ -105,7 +105,7 @@ export async function GET(
       <td class="c-qty"><input class="in qty" inputmode="decimal" aria-label="Quantitat" value="1"></td>
       <td>
         <textarea class="in concept" rows="1" aria-label="Concepte">${label}</textarea>
-        ${needsDates ? `<input class="in detail" aria-label="Detall" value="${habDates}" placeholder="">` : ''}
+        ${needsDates ? `<textarea class="in detail" rows="1" aria-label="Detall">${habDates}</textarea>` : ''}
       </td>
       <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${plain(Number(l.import))}"></td>
       <td class="c-amt"><input class="in amount" inputmode="decimal" aria-label="Import" value="${plain(Number(l.import))}"></td>
@@ -233,7 +233,7 @@ export async function GET(
   .del{ border:0; background:transparent; cursor:pointer; color:#C2BFB6; font-size:18px; line-height:1;
         width:24px; height:24px; border-radius:6px; }
   .del:hover{ background:#F1E4E0; color:#A23A2B; }
-  @media (max-width:680px){
+  @media screen and (max-width:680px){
     .invoice{ padding:34px 22px 30px; }
     .brand{ font-size:34px; }
     .masthead,.head-grid,.footer{ flex-direction:column; gap:18px; }
@@ -249,8 +249,18 @@ export async function GET(
     body{ background:#fff; }
     .toolbar{ display:none !important; }
     .app{ padding:0; }
-    .invoice{ box-shadow:none; border:none; border-radius:0; max-width:none; padding:0; animation:none; }
+    .invoice{ box-shadow:none; border:none; border-radius:0; width:100% !important; max-width:none; padding:0; animation:none; }
+    /* A la tauleta (iPad/Android) el full imprès és més estret que la pantalla:
+       res pot tenir amplada mínima ni retallar, perquè si no es talla la dreta. */
+    html,body{ width:auto !important; min-width:0 !important; }
+    .items-wrap{ overflow:visible !important; }
+    table.items{ min-width:0 !important; table-layout:fixed; }
+    .c-qty{ width:40px; }
+    .c-amt{ width:90px; }
+    .issuer,.meta{ min-width:0; }
+    .brand-sub .in{ width:100% !important; }
     .it-del,.del{ display:none !important; }
+    table.items th:last-child{ display:none; }
     .in:focus{ background:transparent; box-shadow:none; }
     *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   }
