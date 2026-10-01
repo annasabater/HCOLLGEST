@@ -341,23 +341,30 @@ export async function ampliarEstancia(
       // Habitació de l'ampliació: la indicada o, per defecte, la de l'estada.
       const habId = dates.habitacioId !== undefined ? dates.habitacioId : root.habitacioId;
 
-      // Numeració de l'ampliació sense forats: agafa el número lliure més baix
-      // (_1, _2, _3…) entre les ampliacions VIVES. Si se n'ha esborrat alguna, el
-      // seu número torna a quedar disponible i no salta ni deixa forat. S'usa "_"
-      // (no ".") per distingir el CONTRACTE de les FACTURES (que sí usen ".").
-      const germanes = await tx.estancia.findMany({
-        where: { estanciaOrigenId: rootId, deletedAt: null },
-        select: { numContracte: true },
-      });
-      const usats = new Set(
-        germanes
-          .map((g) => g.numContracte.match(/_(\d+)$/)?.[1])
-          .filter((s): s is string => s != null)
-          .map(Number),
-      );
-      let seq = 1;
-      while (usats.has(seq)) seq += 1;
-      const numContracte = `${root.numContracte}_${seq}`;
+      // Si l'estada arrel encara NO té número de contracte (esborrany), l'ampliació
+      // tampoc en té: deixar-lo en blanc és vàlid (l'índex únic exclou els buits) i
+      // evita que dues estades-esborrany diferents generin el MATEIX sufix "_1" i
+      // xoquin entre elles. L'usuari sempre pot posar-ne un a mà després editant-la.
+      let numContracte = '';
+      if (root.numContracte.trim()) {
+        // Numeració de l'ampliació sense forats: agafa el número lliure més baix
+        // (_1, _2, _3…) entre les ampliacions VIVES. Si se n'ha esborrat alguna, el
+        // seu número torna a quedar disponible i no salta ni deixa forat. S'usa "_"
+        // (no ".") per distingir el CONTRACTE de les FACTURES (que sí usen ".").
+        const germanes = await tx.estancia.findMany({
+          where: { estanciaOrigenId: rootId, deletedAt: null },
+          select: { numContracte: true },
+        });
+        const usats = new Set(
+          germanes
+            .map((g) => g.numContracte.match(/_(\d+)$/)?.[1])
+            .filter((s): s is string => s != null)
+            .map(Number),
+        );
+        let seq = 1;
+        while (usats.has(seq)) seq += 1;
+        numContracte = `${root.numContracte}_${seq}`;
+      }
 
       const nova = await tx.estancia.create({
         data: {
