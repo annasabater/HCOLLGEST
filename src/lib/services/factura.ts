@@ -330,11 +330,11 @@ export async function editFactura(
       return { id: facturaId };
     }
 
-    // Conserva el % d'IVA i la tassa (no editables aquí): només canvien les línies.
+    // Conserva la tassa; el % d'IVA es conserva tret que s'enviï un de nou.
     const oldBase = Number(factura.base);
     const oldIva = Number(factura.iva);
     const tasaTotal = round2(Number(factura.total) - oldBase - oldIva);
-    const ivaPercent = oldBase > 0 ? (oldIva / oldBase) * 100 : 0;
+    const ivaPercent = input.ivaPercent ?? (oldBase > 0 ? (oldIva / oldBase) * 100 : 0);
 
     const base = round2(input.linies.reduce((a, l) => a + Number(l.import), 0));
     const iva = round2((base * ivaPercent) / 100);

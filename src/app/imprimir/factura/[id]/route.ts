@@ -90,12 +90,21 @@ export async function GET(
       '08370 Calella (Barcelona)',
   );
 
-  const clientNom = titular
-    ? esc([titular.nom, titular.cognom1, titular.cognom2].filter(Boolean).join(' '))
-    : '';
-  const clientNif = esc(titular?.numDocument ? `${titular.tipusDocument ?? 'DNI'} ${titular.numDocument}` : '');
-  const clientAdreca = esc(titular?.adreca ?? '');
-  const clientCpPob = esc([titular?.codiPostal, titular?.municipi || titular?.localitat].filter(Boolean).join(' '));
+  const clientNom = esc(
+    factura.clientNom ?? (titular ? [titular.nom, titular.cognom1, titular.cognom2].filter(Boolean).join(' ') : ''),
+  );
+  const clientNif = esc(
+    factura.clientNif ?? (titular?.numDocument ? `${titular.tipusDocument ?? 'DNI'} ${titular.numDocument}` : ''),
+  );
+  const clientAdreca = esc(factura.clientAdreca ?? titular?.adreca ?? '');
+  const clientCpPob = esc(
+    factura.clientLocalitat ?? [titular?.codiPostal, titular?.municipi || titular?.localitat].filter(Boolean).join(' '),
+  );
+
+  // Número: només la part seqüencial; el prefix d'any es recupera en desar.
+  const numeroPrefix = esc(factura.numero.match(/^(\d{4}-)/)?.[1] ?? '');
+  // Una factura ja registrada a Veri*Factu és immutable: no es pot desar.
+  const bloquejada = !!factura.verifactu;
 
   const periode = factura.estancia.dataEntrada && factura.estancia.dataSortida
     ? `Del periodo ${fmtDate(factura.estancia.dataEntrada)} al ${fmtDate(factura.estancia.dataSortida)}`
@@ -106,19 +115,17 @@ export async function GET(
     : null;
 
   const linesHtml = factura.linies.map((l) => {
-    const label = CONCEPTE_LABEL[l.concepte] ?? l.concepte;
-    const detail = l.descripcio && l.concepte !== 'ALLOTJAMENT'
-      ? l.descripcio
-      : periode;
+    const label = l.descripcio || (CONCEPTE_LABEL[l.concepte] ?? l.concepte);
+    const detail = l.concepte === 'ALLOTJAMENT' && !label.includes('Del ') ? periode : '';
     return `
-    <tr class="item">
+    <tr class="item" data-concepte="${esc(l.concepte)}">
       <td class="c-qty"><input class="in qty" inputmode="decimal" aria-label="Quantitat" value="1"></td>
       <td>
         <input class="in concept" aria-label="Concepte" value="${esc(label)}">
         <input class="in detail" aria-label="Detall" value="${esc(detail)}" placeholder="">
       </td>
-      <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${plain(Number(l.import))}"></td>
-      <td class="c-amt"><input class="in amount" inputmode="decimal" aria-label="Import" value="${plain(Number(l.import))}"></td>
+      <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${Number(l.import) ? plain(Number(l.import)) : ''}"></td>
+      <td class="c-amt"><input class="in amount" inputmode="decimal" aria-label="Import" value="${Number(l.import) ? plain(Number(l.import)) : ''}"></td>
       <td class="it-del"><button class="del" type="button" aria-label="Eliminar línia">×</button></td>
     </tr>`;
   }).join('');
@@ -287,6 +294,7 @@ export async function GET(
   <div class="tb-brand">Hostal Coll <span class="tb-badge">${ambFianca ? 'Factura fiscal amb fiança' : 'Factura fiscal'}</span></div>
   <div class="tb-actions">
     <button id="addLine" class="btn ghost">+ Afegir línia</button>
+    ${bloquejada ? '' : '<button id="save" class="btn ghost" title="Desa número, data, client, emissor, IVA i línies (queda guardat per sempre)">Desar canvis</button>'}
     <button id="print" class="btn solid">Imprimir / Guardar PDF</button>
   </div>
 </div>
@@ -300,10 +308,10 @@ export async function GET(
         <div class="brand-sub"><input class="in" aria-label="Descriptor" value="${emDescriptor}" style="width:280px"></div>
       </div>
       <div class="issuer">
-        <div class="issuer-name"><input class="in" aria-label="Titular" value="${emTitular}"></div>
-        <input class="in" aria-label="NIF" value="${emNif}"><br>
-        <input class="in" aria-label="Adreça" value="${emAdreca}"><br>
-        <input class="in" aria-label="CP i Localitat" value="${emLocalitat}"><br>
+        <div class="issuer-name"><input id="emTitular" class="in" aria-label="Titular" value="${emTitular}"></div>
+        <input id="emNif" class="in" aria-label="NIF" value="${emNif}"><br>
+        <input id="emAdreca" class="in" aria-label="Adreça" value="${emAdreca}"><br>
+        <input id="emLocalitat" class="in" aria-label="CP i Localitat" value="${emLocalitat}"><br>
         <input class="in" aria-label="Telèfon" value="${emTelefon}">
       </div>
     </header>
@@ -313,16 +321,16 @@ export async function GET(
     <section class="head-grid">
       <div class="bill-to">
         <div class="eyebrow">Client</div>
-        <div class="client-name"><input class="in" aria-label="Nom del client" value="${clientNom}"></div>
-        <div><input class="in" aria-label="NIF/DNI" value="${clientNif}" placeholder="NIF / DNI (opcional)"></div>
-        <div><input class="in" aria-label="Adreça" value="${clientAdreca}" placeholder="Domicili (opcional)"></div>
-        <div><input class="in" aria-label="Localitat" value="${clientCpPob}" placeholder="Localitat (opcional)"></div>
+        <div class="client-name"><input id="clientNom" class="in" aria-label="Nom del client" value="${clientNom}"></div>
+        <div><input id="clientNif" class="in" aria-label="NIF/DNI" value="${clientNif}" placeholder="NIF / DNI (opcional)"></div>
+        <div><input id="clientAdreca" class="in" aria-label="Adreça" value="${clientAdreca}" placeholder="Domicili (opcional)"></div>
+        <div><input id="clientLocalitat" class="in" aria-label="Localitat" value="${clientCpPob}" placeholder="Localitat (opcional)"></div>
       </div>
       <div class="meta">
         <div class="meta-title">Factura</div>
         <div class="meta-badge">${ambFianca ? '<span style="font-size:10px;color:#7A6868">Amb fiança</span>' : ''}</div>
-        <div class="meta-row"><span class="k">Número</span><span class="v"><input class="in" aria-label="Número" value="${esc(factura.numero.replace(/^\d{4}-/, ''))}"></span></div>
-        <div class="meta-row"><span class="k">Data</span><span class="v"><input class="in" aria-label="Data" value="${fmtDate(factura.data)}"></span></div>
+        <div class="meta-row"><span class="k">Número</span><span class="v"><input id="numero" class="in" aria-label="Número" value="${esc(factura.numero.replace(/^\d{4}-/, ''))}" data-prefix="${numeroPrefix}"></span></div>
+        <div class="meta-row"><span class="k">Data</span><span class="v"><input id="data" class="in" aria-label="Data" value="${fmtDate(factura.data)}" placeholder="dd/mm/aaaa"></span></div>
         ${habitacioLlibre(factura.estancia) ? `<div class="meta-row"><span class="k">Habitació</span><span class="v"><input class="in" aria-label="Habitació" value="${esc(habitacioLlibre(factura.estancia)!)}"></span></div>` : ''}
       </div>
     </section>
@@ -377,35 +385,47 @@ export async function GET(
   const money = n => n.toLocaleString('ca-ES', { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' €';
   const plain = n => n.toLocaleString('ca-ES', { minimumFractionDigits:2, maximumFractionDigits:2 });
 
+  const TASSA = ${tassa};
+
   function lineCalc(row) {
     const q = row.querySelector('.qty').value.trim();
     const p = row.querySelector('.price').value.trim();
-    if (q !== '' && p !== '') {
+    if (q !== '' && p !== '' && num(p) !== 0) {
       const v = num(q) * num(p);
       row.querySelector('.amount').value = v ? plain(v) : '';
     }
+  }
+
+  function syncPrice(row) {
+    if (!row) return;
+    const q = num(row.querySelector('.qty').value) || 1;
+    const a = num(row.querySelector('.amount').value);
+    row.querySelector('.price').value = a ? plain(a / q) : '';
   }
 
   function recalc() {
     let tot = 0;
     document.querySelectorAll('.amount').forEach(a => tot += num(a.value));
     const rate = num(document.getElementById('rate').value);
-    const base = rate ? tot / (1 + rate / 100) : tot;
-    const iva = tot - base;
+    // Els imports de línia són la BASE; l'IVA s'hi suma (igual que al servidor).
+    const base = tot;
+    const iva = Math.round(base * rate) / 100;
+    const totalFactura = base + iva + TASSA;
     document.getElementById('base').textContent = money(base);
     document.getElementById('iva').textContent = money(iva);
-    document.getElementById('total').textContent = money(tot);
+    document.getElementById('total').textContent = money(totalFactura);
     const tf = document.getElementById('totalAmbFianca');
     if (tf) {
       let fiances = 0;
       document.querySelectorAll('.custodia-val').forEach(v => fiances += num(v.textContent));
-      tf.textContent = money(tot + fiances);
+      tf.textContent = money(totalFactura + fiances);
     }
   }
 
   document.addEventListener('input', e => {
     if (e.target.matches('.qty, .price')) { lineCalc(e.target.closest('.item')); recalc(); }
-    else if (e.target.matches('.amount, #rate')) recalc();
+    else if (e.target.matches('.amount')) { syncPrice(e.target.closest('.item')); recalc(); }
+    else if (e.target.matches('#rate')) recalc();
   });
   // Xarxa de seguretat: en sortir del camp (o 'change') recomputa la línia si cal,
   // reformata i torna a sumar el total, encara que algun 'input' no s'hagi disparat.
@@ -429,6 +449,7 @@ export async function GET(
     const tmpl = document.querySelector('.item');
     const row = tmpl.cloneNode(true);
     row.querySelectorAll('.qty, .concept, .detail, .price, .amount').forEach(i => i.value = '');
+    row.setAttribute('data-concepte', 'EXTRA');
     tbody.appendChild(row);
     row.querySelector('.concept').focus();
     recalc();
@@ -440,6 +461,66 @@ export async function GET(
         e.target.closest('tr').remove();
         recalc();
       }
+    }
+  });
+
+  function parseDataEs(s) {
+    const m = String(s || '').trim().match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/);
+    if (!m) return s;
+    const dd = m[1].length < 2 ? '0' + m[1] : m[1];
+    const mm = m[2].length < 2 ? '0' + m[2] : m[2];
+    return m[3] + '-' + mm + '-' + dd;
+  }
+
+  // Desa línies, IVA, número, data, client i emissor a la factura.
+  const saveBtn = document.getElementById('save');
+  if (saveBtn) saveBtn.addEventListener('click', async () => {
+    const rows = Array.from(document.querySelectorAll('#items tbody tr.item'));
+    const linies = rows.map(r => {
+      const c = r.querySelector('.concept');
+      const a = r.querySelector('.amount');
+      return {
+        concepte: r.getAttribute('data-concepte') || 'EXTRA',
+        descripcio: (c && c.value ? c.value : '').trim(),
+        import: num(a ? a.value : 0)
+      };
+    }).filter(l => l.descripcio || l.import)
+      .map(l => ({ concepte: l.concepte, descripcio: l.descripcio || 'Concepte', import: l.import }));
+    if (!linies.length) { alert('Cal almenys una línia amb concepte o import.'); return; }
+
+    const numeroInput = document.getElementById('numero');
+    const body = {
+      linies,
+      ivaPercent: num(document.getElementById('rate').value),
+      numero: (numeroInput.dataset.prefix || '') + numeroInput.value.trim(),
+      data: parseDataEs(document.getElementById('data').value),
+      clientNom: document.getElementById('clientNom').value,
+      clientNif: document.getElementById('clientNif').value,
+      clientAdreca: document.getElementById('clientAdreca').value,
+      clientLocalitat: document.getElementById('clientLocalitat').value,
+      emissorTitular: document.getElementById('emTitular').value,
+      emissorNif: document.getElementById('emNif').value,
+      emissorAdreca: document.getElementById('emAdreca').value,
+      emissorLocalitat: document.getElementById('emLocalitat').value,
+    };
+
+    const orig = saveBtn.textContent;
+    saveBtn.disabled = true; saveBtn.textContent = 'Desant…';
+    try {
+      const res = await fetch('/api/factures/${factura.id}', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || 'Error desant els canvis');
+      }
+      saveBtn.textContent = 'Desat ✓';
+      setTimeout(() => { saveBtn.textContent = orig; saveBtn.disabled = false; }, 1600);
+    } catch (e) {
+      alert(e && e.message ? e.message : "No s'ha pogut desar");
+      saveBtn.textContent = orig; saveBtn.disabled = false;
     }
   });
 

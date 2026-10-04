@@ -88,6 +88,7 @@ export const FacturaEditSchema = z.object({
   data: z.coerce.date().optional(),
   estat: z.enum(['COBRADA', 'PENDENT']).optional(),
   fiancaInclosa: z.boolean().nullable().optional(),
+  ivaPercent: z.coerce.number().min(0).max(100).optional(),
   // Sobreescriptures manuals (impressió de la factura simple/fiscal). Buit = neteja.
   clientNom: overrideStr,
   clientNif: overrideStr,
