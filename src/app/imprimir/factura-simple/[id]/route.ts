@@ -107,8 +107,8 @@ export async function GET(
         <textarea class="in concept" rows="1" aria-label="Concepte">${label}</textarea>
         ${needsDates ? `<textarea class="in detail" rows="1" aria-label="Detall">${habDates}</textarea>` : ''}
       </td>
-      <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${plain(Number(l.import))}"></td>
-      <td class="c-amt"><input class="in amount" inputmode="decimal" aria-label="Import" value="${plain(Number(l.import))}"></td>
+      <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${Number(l.import) ? plain(Number(l.import)) : ''}"></td>
+      <td class="c-amt"><input class="in amount" inputmode="decimal" aria-label="Import" value="${Number(l.import) ? plain(Number(l.import)) : ''}"></td>
       <td class="it-del"><button class="del" type="button" aria-label="Eliminar línia">×</button></td>
     </tr>`;
   }).join('');
@@ -358,10 +358,19 @@ export async function GET(
   function lineCalc(row) {
     const q = row.querySelector('.qty').value.trim();
     const p = row.querySelector('.price').value.trim();
-    if (q !== '' && p !== '') {
+    if (q !== '' && p !== '' && num(p) !== 0) {
       const v = num(q) * num(p);
       row.querySelector('.amount').value = v ? plain(v) : '';
     }
+  }
+
+  // Si s'escriu directament l'import, el preu unitari el segueix (import / quantitat);
+  // així un recàlcul posterior (quantitat × preu) no esborra l'import escrit.
+  function syncPrice(row) {
+    if (!row) return;
+    const q = num(row.querySelector('.qty').value) || 1;
+    const a = num(row.querySelector('.amount').value);
+    row.querySelector('.price').value = a ? plain(a / q) : '';
   }
 
   function recalc() {
@@ -386,7 +395,7 @@ export async function GET(
   document.addEventListener('input', e => {
     if (e.target.matches('textarea.in')) autoGrow(e.target);
     if (e.target.matches('.qty, .price')) { lineCalc(e.target.closest('.item')); recalc(); }
-    else if (e.target.matches('.amount')) recalc();
+    else if (e.target.matches('.amount')) { syncPrice(e.target.closest('.item')); recalc(); }
   });
   // En sortir del camp (o en 'change'): recomputa la línia si cal, reformata i
   // torna a sumar el total. És una xarxa de seguretat perquè el total sempre
