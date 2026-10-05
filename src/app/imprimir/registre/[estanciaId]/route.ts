@@ -340,7 +340,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ estanciaId: str
     .toolbar { display:none; }
     .wrap { padding:0; }
     /* Marge 0 a la pàgina (així el navegador no hi imprimeix URL/data) i el marge el posa cada full. */
-    .sheet { width:100%; max-width:none; min-height:auto; margin:0; padding:10mm; box-sizing:border-box; }
+    /* Cada full ha de cabre en UNA pàgina (també a l'iPad, que afegeix marges propis): padding petit + una mica de zoom out. */
+    .sheet { width:100%; max-width:none; min-height:auto; margin:0; padding:6mm 8mm; box-sizing:border-box; zoom:.88; break-inside:avoid; }
   }
 </style>
 </head>
