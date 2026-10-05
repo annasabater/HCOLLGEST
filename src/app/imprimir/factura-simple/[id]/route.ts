@@ -222,7 +222,7 @@ export async function GET(
   .in{ font:inherit; color:inherit; letter-spacing:inherit; border:0; background:transparent; width:100%;
        padding:2px 4px; margin:-2px -4px; border-radius:5px; }
   textarea.in{ resize:none; overflow:hidden; line-height:1.4; white-space:pre-wrap; word-break:break-word;
-       display:block; min-height:1.4em; }
+       display:block; min-height:1.4em; field-sizing:content; }
   .in:focus{ outline:none; background:var(--accent-soft); box-shadow:inset 0 0 0 1px rgba(122,31,43,.3); }
   .in::placeholder{ color:#C8BFBE; }
   .v .in{ text-align:right; }
@@ -262,6 +262,8 @@ export async function GET(
     .brand-sub .in{ width:100% !important; }
     .it-del,.del{ display:none !important; }
     table.items th:last-child{ display:none; }
+    /* El text pot fer més salts de línia a l'ample del paper: l'alçada la decideix el contingut, no el JS de pantalla. */
+    textarea.in{ height:auto !important; field-sizing:content; }
     .in:focus{ background:transparent; box-shadow:none; }
     *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   }
@@ -392,6 +394,8 @@ export async function GET(
   document.addEventListener('DOMContentLoaded', () => { recalc(); growAll(); });
   window.addEventListener('load', growAll);
   window.addEventListener('beforeprint', growAll);
+  window.addEventListener('resize', growAll);
+  if (window.matchMedia) window.matchMedia('print').addEventListener('change', growAll);
 
   document.addEventListener('input', e => {
     if (e.target.matches('textarea.in')) autoGrow(e.target);
