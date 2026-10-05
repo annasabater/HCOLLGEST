@@ -251,6 +251,8 @@ export async function GET(
     .toolbar{ display:none !important; }
     .app{ padding:0; }
     .invoice{ box-shadow:none; border:none; border-radius:0; width:100% !important; max-width:none; padding:0; animation:none; }
+    /* Una mica de zoom out: més text per línia i res es talla al paper */
+    .invoice{ zoom:.85; }
     /* A la tauleta (iPad/Android) el full imprès és més estret que la pantalla:
        res pot tenir amplada mínima ni retallar, perquè si no es talla la dreta. */
     html,body{ width:auto !important; min-width:0 !important; }

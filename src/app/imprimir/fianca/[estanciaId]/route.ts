@@ -199,6 +199,8 @@ export async function GET(
     .toolbar{ display:none !important; }
     .app{ padding:0; }
     .invoice{ box-shadow:none; border:none; border-radius:0; max-width:none; padding:0; animation:none; }
+    /* Una mica de zoom out: més text per línia i res es talla al paper */
+    .invoice{ zoom:.85; }
     .it-del,.del{ display:none !important; }
     .in:focus{ background:transparent; box-shadow:none; }
     *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
