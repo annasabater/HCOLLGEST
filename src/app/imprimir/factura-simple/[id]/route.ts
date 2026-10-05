@@ -346,7 +346,7 @@ export async function GET(
     if (v == null) return 0;
     let s = String(v).trim(); if (!s) return 0;
     const hasDot = s.includes('.'), hasComma = s.includes(',');
-    if (hasDot && hasComma) s = s.replace(/\./g, '').replace(',', '.');
+    if (hasDot && hasComma) s = s.replace(/\\./g, '').replace(',', '.');
     else if (hasComma) s = s.replace(',', '.');
     else if (hasDot && !/^\\d+\\.\\d{1,2}$/.test(s)) s = s.replace(/\\./g, '');
     const n = parseFloat(s.replace(/[^0-9.\\-]/g, ''));
