@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
+import { PDF_CLIENT_SCRIPT } from '@/lib/pdf/client-script';
 
 export const dynamic = 'force-dynamic';
 
@@ -234,7 +235,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   <div class="tb-actions">
     <button id="addLine" class="btn ghost">+ Afegir línia</button>
     <button id="save" class="btn ghost" title="Desa número, data, client, línies i notes (queda guardat)">Desar canvis</button>
-    <button id="print" class="btn solid">Imprimir / Guardar PDF</button>
+    <button id="printPdf" class="btn solid">Imprimir PDF</button>
   </div>
 </div>
 
@@ -452,22 +453,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     }
   });
 
-  // Imprimir: primer desa (perquè el PDF reflecteixi el que queda guardat) i,
-  // si va bé, obre el diàleg d'impressió. Si el desat falla, avisa i no imprimeix.
-  document.getElementById('print').addEventListener('click', async () => {
-    const btn = document.getElementById('print');
-    const orig = btn.textContent;
-    btn.disabled = true; btn.textContent = 'Desant…';
-    try {
-      await desa();
-      btn.disabled = false; btn.textContent = orig;
-      window.print();
-    } catch (e) {
-      alert(e && e.message ? e.message : "No s'ha pogut desar abans d'imprimir");
-      btn.disabled = false; btn.textContent = orig;
-    }
-  });
+  // Imprimir PDF: primer desa (perquè el document quedi guardat tal com es veu);
+  // si el desat falla, l'script del PDF avisa i no el genera.
+  window.__beforePdf = desa;
 </script>
+<script>window.__pdfRef = ${JSON.stringify(p.id)}; window.__pdfTitle = ${JSON.stringify(`Pressupost ${p.numero}`)};</script>
+<script>${PDF_CLIENT_SCRIPT}</script>
 </body>
 </html>`;
 

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
+import { PDF_CLIENT_SCRIPT } from '@/lib/pdf/client-script';
 import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 
 export const dynamic = 'force-dynamic';
@@ -211,7 +212,7 @@ export async function GET(
   <div class="tb-brand">Hostal Coll<span class="tb-badge">Rebut de fiança</span></div>
   <div class="tb-actions">
     <button id="addLine" class="btn ghost">+ Afegir línia</button>
-    <button id="print" class="btn solid">Imprimir / Guardar PDF</button>
+    <button id="printPdf" class="btn solid">Imprimir PDF</button>
   </div>
 </div>
 
@@ -334,8 +335,9 @@ export async function GET(
       }
     }
   });
-  document.getElementById('print').addEventListener('click', () => window.print());
 </script>
+<script>window.__pdfRef = ${JSON.stringify(estancia.id)}; window.__pdfTitle = ${JSON.stringify(`Rebut fiança ${estancia.numContracte ?? ''}`)};</script>
+<script>${PDF_CLIENT_SCRIPT}</script>
 </body>
 </html>`;
 
