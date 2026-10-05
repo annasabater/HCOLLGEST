@@ -215,8 +215,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     .toolbar{ display:none !important; }
     .app{ padding:0; }
     .invoice{ box-shadow:none; border:none; border-radius:0; max-width:none; padding:0; animation:none; }
-    /* Una mica de zoom out: més text per línia i res es talla al paper */
-    .invoice{ zoom:.85; }
     .it-del,.del{ display:none !important; }
     .in:focus{ background:transparent; box-shadow:none; }
     /* Camps buits: ni placeholder ni fila visible en imprimir. */
