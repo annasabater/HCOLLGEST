@@ -7,6 +7,7 @@ import { Receipt, ShieldCheck, ShieldOff, Pencil, Trash2, Undo2, ChevronDown } f
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { formatEur, formatDate } from '@/lib/utils';
 import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 import { tipusDocumentLabel, estatFacturaLabel } from '@/lib/factura-display';
@@ -79,6 +80,8 @@ export function FacturaPanel({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  // Confirmació d'eliminar en un diàleg de l'app (el confirm() del navegador falla a la tauleta).
+  const [aEliminar, setAEliminar] = useState<{ id: string; num: string } | null>(null);
   // Factures d'aquest tram vs. d'altres trams de l'estada (aquestes, plegades).
   const propies = factures.filter((f) => !f.esAltra);
   const altres = factures.filter((f) => f.esAltra);
@@ -353,8 +356,7 @@ export function FacturaPanel({
       : `/imprimir/factura-simple/${f.id}`;
   }
 
-  async function eliminarFactura(id: string, num: string) {
-    if (!window.confirm(`Eliminar la factura ${num}?`)) return;
+  async function eliminarFactura(id: string) {
     try {
       await delJSON(`/api/factures/${id}`);
       router.refresh();
@@ -460,7 +462,7 @@ export function FacturaPanel({
               </button>
               <button
                 type="button"
-                onClick={() => eliminarFactura(f.id, f.numero)}
+                onClick={() => setAEliminar({ id: f.id, num: f.numero })}
                 title="Eliminar"
                 className="p-2 touch-manipulation text-slate-400 hover:text-red-600"
               >
@@ -531,6 +533,17 @@ export function FacturaPanel({
 
   return (
     <div className="space-y-3">
+      <ConfirmDialog
+        open={aEliminar !== null}
+        title={`Eliminar la factura ${aEliminar?.num ?? ''}?`}
+        message="Els pagaments tornen a «a compte» de l'estada."
+        onConfirm={() => {
+          const id = aEliminar?.id;
+          setAEliminar(null);
+          if (id) void eliminarFactura(id);
+        }}
+        onCancel={() => setAEliminar(null)}
+      />
       {propies.length === 0 && altres.length === 0 && !open && (
         <p className="text-sm text-slate-400 italic">Sense factures.</p>
       )}
