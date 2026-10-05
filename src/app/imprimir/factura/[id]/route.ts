@@ -276,9 +276,10 @@ export async function GET(
     .items-wrap{ overflow-x:auto; }
     table.items{ min-width:500px; }
   }
-  @page{ size:A4; margin:14mm; }
+  /* margin:0 fa que el navegador no imprimeixi capçalera/peu (URL, data, pàgina); el marge el posa el body */
+  @page{ size:A4; margin:0; }
   @media print{
-    body{ background:#fff; }
+    body{ background:#fff; padding:14mm; box-sizing:border-box; }
     .toolbar{ display:none !important; }
     .app{ padding:0; }
     .invoice{ box-shadow:none; border:none; border-radius:0; max-width:none; padding:0; animation:none; }
