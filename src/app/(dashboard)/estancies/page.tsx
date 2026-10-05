@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Paginacio } from '@/components/ui/paginacio';
 import { EstanciesOrdre } from '@/components/estancia/estancies-ordre';
+import { EstanciesCerca } from '@/components/estancia/estancies-cerca';
 import { formatDate } from '@/lib/utils';
 import { ESTAT_ENVIAMENT_LABELS } from '@/lib/validation/enums';
 import type { EstatEnviament, EstatEstancia, Prisma } from '@prisma/client';
@@ -61,9 +62,9 @@ const ORDRE_MAP: Record<string, Prisma.EstanciaOrderByWithRelationInput | Prisma
 export default async function EstanciesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ estat?: string; pagina?: string; perPagina?: string; ordre?: string }>;
+  searchParams: Promise<{ estat?: string; pagina?: string; perPagina?: string; ordre?: string; q?: string }>;
 }) {
-  const { estat, pagina: paginaStr, perPagina: perPaginaStr, ordre: ordreStr } = await searchParams;
+  const { estat, pagina: paginaStr, perPagina: perPaginaStr, ordre: ordreStr, q: qStr } = await searchParams;
   const ordre = ordreStr && ORDRE_MAP[ordreStr] ? ordreStr : 'entrada-desc';
 
   const perPagina = [10, 25, 50].includes(Number(perPaginaStr)) ? Number(perPaginaStr) : 25;
@@ -95,7 +96,34 @@ export default async function EstanciesPage({
       default: return {};
     }
   };
-  const where: Prisma.EstanciaWhereInput = { deletedAt: null, ...whereEstat(estatSel) };
+  // Cerca de client: cada paraula ha de coincidir amb el nom, cognoms o document de
+  // QUALSEVOL viatger de l'estada, o amb el número de contracte.
+  const q = (qStr ?? '').trim().slice(0, 80);
+  const tokens = q.split(/\s+/).filter(Boolean).slice(0, 6);
+  const cercaWhere: Prisma.EstanciaWhereInput = tokens.length
+    ? {
+        AND: tokens.map((t) => ({
+          OR: [
+            { numContracte: { contains: t, mode: 'insensitive' as const } },
+            {
+              viatgers: {
+                some: {
+                  huesped: {
+                    OR: [
+                      { nom: { contains: t, mode: 'insensitive' as const } },
+                      { cognom1: { contains: t, mode: 'insensitive' as const } },
+                      { cognom2: { contains: t, mode: 'insensitive' as const } },
+                      { numDocument: { contains: t, mode: 'insensitive' as const } },
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+        })),
+      }
+    : {};
+  const where: Prisma.EstanciaWhereInput = { AND: [{ deletedAt: null }, whereEstat(estatSel), cercaWhere] };
   const total = await prisma.estancia.count({ where });
 
   const estancies = await prisma.estancia.findMany({
@@ -114,12 +142,12 @@ export default async function EstanciesPage({
   });
 
   // Comptadors per estat EFECTIU (mateixa lògica que el filtre).
-  const base: Prisma.EstanciaWhereInput = { deletedAt: null };
+  const base: Prisma.EstanciaWhereInput = { AND: [{ deletedAt: null }, cercaWhere] };
   const [cTotes, cReserva, cEnCurs, cFinalitzada] = await Promise.all([
     prisma.estancia.count({ where: base }),
-    prisma.estancia.count({ where: { ...base, ...whereEstat('RESERVA') } }),
-    prisma.estancia.count({ where: { ...base, ...whereEstat('EN_CURS') } }),
-    prisma.estancia.count({ where: { ...base, ...whereEstat('FINALITZADA') } }),
+    prisma.estancia.count({ where: { AND: [base, whereEstat('RESERVA')] } }),
+    prisma.estancia.count({ where: { AND: [base, whereEstat('EN_CURS')] } }),
+    prisma.estancia.count({ where: { AND: [base, whereEstat('FINALITZADA')] } }),
   ]);
 
   const tabs: { key: string; label: string; count?: number }[] = [
@@ -149,6 +177,7 @@ export default async function EstanciesPage({
           const qs = new URLSearchParams();
           if (tab.key) qs.set('estat', tab.key);
           if (ordre !== 'entrada-desc') qs.set('ordre', ordre);
+          if (q) qs.set('q', q);
           const href = qs.toString() ? `/estancies?${qs.toString()}` : '/estancies';
           return (
             <Link key={tab.key} href={href}
@@ -167,7 +196,10 @@ export default async function EstanciesPage({
           );
         })}
         </div>
-        <EstanciesOrdre actual={ordre} />
+        <div className="flex flex-wrap items-center gap-3">
+          <EstanciesCerca actual={q} />
+          <EstanciesOrdre actual={ordre} />
+        </div>
       </div>
 
       {/* Llegenda del color de l'avatar */}
@@ -181,8 +213,14 @@ export default async function EstanciesPage({
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 py-16 text-center">
           <BedDouble className="h-10 w-10 text-slate-300" />
           <p className="text-sm text-slate-400">
-            Encara no hi ha estades.{' '}
-            <Link href="/estancies/nou" className="font-medium text-brand-700 underline">Crea la primera</Link>.
+            {q ? (
+              <>Cap estada coincideix amb «{q}».</>
+            ) : (
+              <>
+                Encara no hi ha estades.{' '}
+                <Link href="/estancies/nou" className="font-medium text-brand-700 underline">Crea la primera</Link>.
+              </>
+            )}
           </p>
         </div>
       ) : (
