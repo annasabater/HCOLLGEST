@@ -276,6 +276,7 @@ export async function GET(
   <div class="tb-actions">
     <button id="addLine" class="btn ghost">+ Afegir línia</button>
     <button id="save" class="btn ghost" title="Desa número, data, client, emissor i línies (queda guardat per sempre)">Desar canvis</button>
+    <a id="pdf" class="btn ghost" style="text-decoration:none" href="/api/factures/${factura.id}/pdf${ambCustodia ? '?custodia=true' : ''}" target="_blank" rel="noopener" title="PDF net, sense URL ni data del navegador. Mostra el que hi ha desat: prem Desar canvis abans.">Descarregar PDF</a>
     <button id="print" class="btn solid">Imprimir / Guardar PDF</button>
   </div>
 </div>
