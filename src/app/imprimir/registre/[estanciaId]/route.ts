@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { PARENTESC_LABELS } from '@/lib/validation/enums';
+import { LAYOUT_CLIENT_SCRIPT } from '@/lib/pdf/layout-script';
 
 export const dynamic = 'force-dynamic';
 
@@ -348,11 +349,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ estanciaId: str
 <body>
   <div class="toolbar">
     <div class="brand">Hostal Coll · Llibre de registre</div>
-    <button class="btn" onclick="window.print()">Imprimir / Guardar PDF</button>
+    <button id="printPdf" class="btn">Imprimir PDF</button>
   </div>
   <div class="wrap">
     ${sheets}
   </div>
+<script>window.__pdfRef = ${JSON.stringify(estanciaId)}; window.__pdfTitle = ${JSON.stringify(`Registre ${numRef || 'en blanc'}`.replace('/', '-'))};</script>
+<script>${LAYOUT_CLIENT_SCRIPT}</script>
 </body>
 </html>`;
 
