@@ -204,6 +204,17 @@ export function MasterForm({
   const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [confirmReset, setConfirmReset] = useState(false);
+  // Confirmacions en un diàleg de l'app (el confirm() del navegador falla a la tauleta i
+  // aleshores «Desar» semblava no fer res).
+  const [dlgConfirma, setDlgConfirma] = useState<{
+    title: string;
+    message: string;
+    detalls?: string[];
+    resolve: (ok: boolean) => void;
+  } | null>(null);
+  function confirma(title: string, message: string, detalls?: string[]): Promise<boolean> {
+    return new Promise((resolve) => setDlgConfirma({ title, message, detalls, resolve }));
+  }
   function resetForm() {
     setTipusRegistre('CONTRACTE_EN_CURS');
     setEstancia({
@@ -571,9 +582,10 @@ export function MasterForm({
         canvis.push(`Sortida: ${fmtD(initial.estancia.dataSortida)} → ${fmtD(estancia.dataSortida)}`);
       }
       if (canvis.length > 0) {
-        const ok = window.confirm(
-          `Vols canviar la data a la fitxa de registre?\n\n${canvis.join('\n')}\n\n` +
-            `Si acceptes, s'actualitzarà la fitxa de registre amb les noves dates.`,
+        const ok = await confirma(
+          'Vols canviar la data a la fitxa de registre?',
+          "Si acceptes, s'actualitzarà la fitxa de registre amb les noves dates.",
+          canvis,
         );
         if (!ok) return;
       }
@@ -582,9 +594,9 @@ export function MasterForm({
     // Desar SENSE número de contracte: no es bloqueja, però es confirma (p. ex.
     // estades que encara no s'envien a Mossos i no tenen número assignat).
     if (!borrany && !esReserva && !estancia.numContracte.trim() && !force) {
-      const ok = window.confirm(
-        "Vols desar l'estada SENSE número de contracte?\n\n" +
-          "El pots deixar en blanc ara i posar-l'hi més tard (per exemple, quan l'enviïs a Mossos).",
+      const ok = await confirma(
+        "Vols desar l'estada SENSE número de contracte?",
+        "El pots deixar en blanc ara i posar-l'hi més tard (per exemple, quan l'enviïs a Mossos).",
       );
       if (!ok) return;
     }
@@ -735,6 +747,30 @@ export function MasterForm({
           </button>
         </div>
       )}
+      <ConfirmDialog
+        open={dlgConfirma !== null}
+        title={dlgConfirma?.title}
+        message={dlgConfirma?.message ?? ''}
+        confirmLabel="Continuar"
+        danger={false}
+        extra={
+          dlgConfirma?.detalls?.length ? (
+            <ul className="mt-3 space-y-1 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+              {dlgConfirma.detalls.map((d) => (
+                <li key={d}>{d}</li>
+              ))}
+            </ul>
+          ) : undefined
+        }
+        onConfirm={() => {
+          dlgConfirma?.resolve(true);
+          setDlgConfirma(null);
+        }}
+        onCancel={() => {
+          dlgConfirma?.resolve(false);
+          setDlgConfirma(null);
+        }}
+      />
       <ConfirmDialog
         open={confirmReset}
         title="Buidar el formulari?"
