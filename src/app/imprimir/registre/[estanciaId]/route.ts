@@ -334,11 +334,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ estanciaId: str
     .top td.lbl, .viatgers td.lbl { width:22%; }
     .ctit { width:14%; }
   }
+  @page { size:A4; margin:0; }
   @media print {
     body { background:#fff; }
     .toolbar { display:none; }
     .wrap { padding:0; }
-    .sheet { width:auto; min-height:auto; margin:0; padding:0; }
+    /* Marge 0 a la pàgina (així el navegador no hi imprimeix URL/data) i el marge el posa cada full. */
+    .sheet { width:100%; max-width:none; min-height:auto; margin:0; padding:10mm; box-sizing:border-box; }
   }
 </style>
 </head>
