@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Plus, Trash2, Undo2, ShieldCheck, ChevronDown, Pencil, Check, X, CalendarRange, Banknote, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
@@ -631,11 +630,11 @@ export function PagamentsPanel({
                   {formatEur(p.import)} · {METODE_COBRAMENT_LABELS[p.metode]} · {formatDate(p.data)}
                 </span>
                 {p.facturaId && (
-                  <Link href={`/factures/${p.facturaId}`}>
+                  <a href={`/imprimir/factura-simple/${p.facturaId}`} target="_blank" rel="noopener noreferrer">
                     <Badge tone="neutral">
                       {p.facturaNumero ? `Contracte ${p.facturaNumero}` : numContracte ? `Contracte ${numContracte}` : 'Factura'}
                     </Badge>
-                  </Link>
+                  </a>
                 )}
               </div>
               {p.observacions && (
@@ -656,11 +655,11 @@ export function PagamentsPanel({
                 {formatDate(f.data)}
               </span>
               {f.facturaId && (
-                <Link href={`/factures/${f.facturaId}`}>
+                <a href={`/imprimir/factura-simple/${f.facturaId}`} target="_blank" rel="noopener noreferrer">
                   <Badge tone="neutral">
                     {f.facturaNumero ? `Contracte ${f.facturaNumero}` : numContracte ? `Contracte ${numContracte}` : 'Factura'}
                   </Badge>
-                </Link>
+                </a>
               )}
             </div>
           ))}
