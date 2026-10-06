@@ -70,22 +70,29 @@ const FIANCA_ESTAT_LABEL: Record<Fianca['estat'], string> = {
  * depèn de cap text escrit a mà (l'etiqueta lliure de la fiança pot dir
  * qualsevol cosa, o res), així que es llegeix sempre igual a totes les llistes.
  */
-function TipusPill({ tipus }: { tipus: 'PAGAMENT' | 'FIANCA' }) {
-  const isFianca = tipus === 'FIANCA';
+function TipusPill({ tipus }: { tipus: 'PAGAMENT' | 'FIANCA' | 'DIPOSIT' }) {
+  const estil =
+    tipus === 'DIPOSIT'
+      ? 'border-teal-300 bg-teal-50 text-teal-800'
+      : tipus === 'FIANCA'
+        ? 'border-amber-300 bg-amber-100 text-amber-800'
+        : 'border-brand-200 bg-brand-50 text-brand-700';
   return (
-    <span
-      className={
-        'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ' +
-        (isFianca
-          ? 'border-amber-300 bg-amber-100 text-amber-800'
-          : 'border-brand-200 bg-brand-50 text-brand-700')
-      }
-    >
-      {isFianca ? <ShieldCheck className="h-3 w-3" /> : <Banknote className="h-3 w-3" />}
-      {isFianca ? 'Dipòsit' : 'Pagament'}
+    <span className={'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ' + estil}>
+      {tipus === 'DIPOSIT' ? (
+        <FileText className="h-3 w-3" />
+      ) : tipus === 'FIANCA' ? (
+        <ShieldCheck className="h-3 w-3" />
+      ) : (
+        <Banknote className="h-3 w-3" />
+      )}
+      {tipus === 'DIPOSIT' ? 'Dipòsit' : tipus === 'FIANCA' ? 'Fiança' : 'Pagament'}
     </span>
   );
 }
+
+/** Fiança (sense document) o dipòsit (amb document numerat 26009.2). */
+const tipusDeFianca = (f: { facturaEsDiposit?: boolean }) => (f.facturaEsDiposit ? 'DIPOSIT' : 'FIANCA');
 
 export function PagamentsPanel({
   estanciaId,
@@ -105,8 +112,9 @@ export function PagamentsPanel({
   // Form state
   const [open, setOpen] = useState(false);
   const [tipus, setTipus] = useState<'PAGAMENT' | 'FIANCA'>('PAGAMENT');
-  // Dipòsit nou: crea també el seu document (factura simplificada sense IVA).
-  const [generarDocument, setGenerarDocument] = useState(true);
+  // «Afegir dipòsit» crea també el document (factura simplificada sense IVA);
+  // «Afegir fiança» és la fiança de sempre, sense document.
+  const [generarDocument, setGenerarDocument] = useState(false);
   // Diàlegs de l'app (el confirm()/prompt() del navegador fallen a la tauleta).
   const [aEliminar, setAEliminar] = useState<{ tipus: 'PAGAMENT' | 'DIPOSIT'; id: string; teDocument: boolean } | null>(null);
   const [aRetenir, setARetenir] = useState<string | null>(null);
@@ -190,7 +198,9 @@ export function PagamentsPanel({
   const fiancesCustodia = fiances.filter((f) => f.estat === 'EN_CUSTODIA' && (!f.facturaId || f.facturaEsDiposit));
   const fiancesFacturades = fiances.filter((f) => f.facturaId && !f.facturaEsDiposit);
 
-  function obrir(t: 'PAGAMENT' | 'FIANCA') {
+  function obrir(t: 'PAGAMENT' | 'FIANCA' | 'DIPOSIT') {
+    setGenerarDocument(t === 'DIPOSIT');
+    if (t === 'DIPOSIT') t = 'FIANCA';
     setTipus(t);
     setEtapa(t === 'PAGAMENT' ? 'A compte' : 'Cobro');
     setObservacions('');
@@ -340,7 +350,7 @@ export function PagamentsPanel({
       await patchJSON(`/api/diposits/${id}`, { estat, motiu });
       router.refresh();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "No s'ha pogut actualitzar el dipòsit");
+      alert(err instanceof ApiError ? err.message : "No s'ha pogut actualitzar la fiança");
     }
   }
 
@@ -385,10 +395,10 @@ export function PagamentsPanel({
         type="button"
         onClick={(e) => { e.preventDefault(); void generarDocumentDiposit(f.id); }}
         disabled={generantDoc === f.id}
-        className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50"
-        title="Crea el document del dipòsit (factura simplificada sense IVA, amb el número següent de l'estada)"
+        className="inline-flex items-center gap-1 rounded-lg border border-teal-300 bg-white px-2 py-1 text-xs font-medium text-teal-800 hover:bg-teal-50 disabled:opacity-50"
+        title="Converteix aquesta fiança en dipòsit amb document (factura simplificada sense IVA, número següent de l'estada)"
       >
-        <FileText className="h-3.5 w-3.5" /> {generantDoc === f.id ? 'Creant…' : 'Generar document'}
+        <FileText className="h-3.5 w-3.5" /> {generantDoc === f.id ? 'Creant…' : 'Fer document de dipòsit'}
       </button>
     );
   }
@@ -408,12 +418,16 @@ export function PagamentsPanel({
     <div className="space-y-4">
       <ConfirmDialog
         open={aEliminar !== null}
-        title={aEliminar?.tipus === 'DIPOSIT' ? 'Eliminar aquest dipòsit?' : 'Eliminar aquest pagament?'}
+        title={
+          aEliminar?.tipus === 'DIPOSIT'
+            ? aEliminar.teDocument ? 'Eliminar aquest dipòsit?' : 'Eliminar aquesta fiança?'
+            : 'Eliminar aquest pagament?'
+        }
         message={
           aEliminar?.tipus === 'DIPOSIT'
             ? aEliminar.teDocument
               ? "S'eliminarà el dipòsit i també el seu document (el número quedarà lliure)."
-              : "S'eliminarà el dipòsit definitivament."
+              : "S'eliminarà la fiança definitivament."
             : "S'eliminarà aquest pagament a compte de l'estada."
         }
         onConfirm={() => {
@@ -427,8 +441,8 @@ export function PagamentsPanel({
       />
       <ConfirmDialog
         open={aRetenir !== null}
-        title="Retenir el dipòsit?"
-        message="El dipòsit retingut passa a comptar com a ingrés."
+        title={fiances.find((x) => x.id === aRetenir)?.facturaEsDiposit ? 'Retenir el dipòsit?' : 'Retenir la fiança?'}
+        message="L'import retingut passa a comptar com a ingrés."
         confirmLabel="Retenir"
         danger={false}
         extra={
@@ -587,7 +601,7 @@ export function PagamentsPanel({
             ) : (
               <div key={f.id} className="rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2 text-sm">
                 <div className="flex items-center gap-2">
-                  <TipusPill tipus="FIANCA" />
+                  <TipusPill tipus={tipusDeFianca(f)} />
                   <span className="font-medium text-slate-800">{formatEur(f.import)}</span>
                   <span className="text-slate-400">
                     {f.notes ? ` · ${f.notes}` : ''} · {METODE_COBRAMENT_LABELS[f.metode]} ·{' '}
@@ -652,7 +666,7 @@ export function PagamentsPanel({
               className="flex items-center justify-between rounded-lg px-3 py-1.5 text-sm text-slate-500"
             >
               <span className="flex items-center gap-2">
-                <TipusPill tipus="FIANCA" />
+                <TipusPill tipus={tipusDeFianca(f)} />
                 {formatEur(f.import)}
                 {f.estat !== 'EN_CUSTODIA' ? ` · ${FIANCA_ESTAT_LABEL[f.estat]}` : ''}
                 {f.notes ? ` · ${f.notes}` : ''} · {METODE_COBRAMENT_LABELS[f.metode]} ·{' '}
@@ -679,7 +693,7 @@ export function PagamentsPanel({
             onClick={() => setFiancaOberta((o) => !o)}
           >
             <p className="flex items-center gap-1 text-xs font-medium text-slate-500">
-              <ShieldCheck className="h-3.5 w-3.5" /> Dipòsits resolts
+              <ShieldCheck className="h-3.5 w-3.5" /> Fiances i dipòsits resolts
             </p>
             <ChevronDown className={`h-3.5 w-3.5 transition-transform text-slate-400 ${fiancaOberta ? 'rotate-180' : ''}`} />
           </button>
@@ -688,7 +702,7 @@ export function PagamentsPanel({
               {fiances.filter((f) => f.estat !== 'EN_CUSTODIA').map((f) => (
                 <div key={f.id} className="flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-sm text-slate-500">
                   <span className="flex items-center gap-2">
-                    <TipusPill tipus="FIANCA" />
+                    <TipusPill tipus={tipusDeFianca(f)} />
                     {formatEur(f.import)}{f.notes ? ` · ${f.notes}` : ''} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
                   </span>
                   <div className="flex flex-wrap items-center justify-end gap-1.5">
@@ -707,7 +721,7 @@ export function PagamentsPanel({
                     <button
                       type="button"
                       className="p-2 touch-manipulation text-slate-400 hover:text-red-600"
-                      title="Eliminar aquest dipòsit"
+                      title="Eliminar"
                       onClick={(e) => { e.preventDefault(); setAEliminar({ tipus: 'DIPOSIT', id: f.id, teDocument: !!f.facturaEsDiposit }); }}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -774,21 +788,11 @@ export function PagamentsPanel({
             )}
           </div>
 
-          {tipus === 'FIANCA' && (
-            <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={generarDocument}
-                onChange={(e) => setGenerarDocument(e.target.checked)}
-              />
-              <span>
-                Genera el document de dipòsit
-                <span className="block text-xs text-slate-500">
-                  Factura simplificada amb una sola línia de dipòsit, sense IVA, amb el número següent de l&apos;estada. No compta com a ingrés.
-                </span>
-              </span>
-            </label>
+          {tipus === 'FIANCA' && generarDocument && (
+            <p className="rounded-lg border border-teal-200 bg-teal-50/70 px-3 py-2 text-xs text-teal-900">
+              Es crearà el <strong>document de dipòsit</strong>: factura simplificada amb una sola línia, sense IVA, amb el
+              número següent de l&apos;estada. No compta com a ingrés.
+            </p>
           )}
 
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -859,7 +863,7 @@ export function PagamentsPanel({
               size="sm"
               disabled={busy || (desglossar ? periodes.length === 0 || sumaPeriodes <= 0 : !importVal)}
             >
-              {tipus === 'FIANCA' ? 'Desar dipòsit' : 'Desar pagament'}
+              {tipus === 'FIANCA' ? (generarDocument ? 'Desar dipòsit' : 'Desar fiança') : 'Desar pagament'}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
               Cancel·lar
@@ -877,7 +881,16 @@ export function PagamentsPanel({
             className="border-orange-400 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
             onClick={() => obrir('FIANCA')}
           >
-            <ShieldCheck className="h-4 w-4" /> Afegir dipòsit
+            <ShieldCheck className="h-4 w-4" /> Afegir fiança
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-teal-400 text-teal-700 hover:bg-teal-50 hover:text-teal-800"
+            onClick={() => obrir('DIPOSIT')}
+            title="Dipòsit amb document numerat (factura simplificada sense IVA, no és ingrés)"
+          >
+            <FileText className="h-4 w-4" /> Afegir dipòsit
           </Button>
         </div>
       )}

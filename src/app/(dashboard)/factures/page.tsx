@@ -156,7 +156,7 @@ export default async function FacturesPage({
                     )}
                     {f.esDiposit && (
                       <span
-                        className="ml-1 inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200"
+                        className="ml-1 inline-flex items-center rounded-full bg-teal-50 px-1.5 py-0.5 text-[10px] font-medium text-teal-700 ring-1 ring-teal-200"
                         title="Document de dipòsit: sense IVA, no és un ingrés"
                       >
                         Dipòsit

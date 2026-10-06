@@ -441,7 +441,7 @@ export function FacturaPanel({
               )}
               {f.esDiposit && (
                 <span
-                  className="shrink-0 rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800"
+                  className="shrink-0 rounded-full border border-teal-300 bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-800"
                   title="Document de dipòsit: sense IVA, no és un ingrés"
                 >
                   Dipòsit
