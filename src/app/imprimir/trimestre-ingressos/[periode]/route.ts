@@ -302,7 +302,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <div class="doc-title">Facturas emitidas · Repercutidas</div>
     <table id="emeses" class="rz">
       <colgroup>
-        <col style="width:88px"><col style="width:95px"><col style="width:95px"><col style="width:205px"><col style="width:150px"><col style="width:88px"><col style="width:50px"><col style="width:85px"><col style="width:92px"><col style="width:92px"><col class="c-del" style="width:28px">
+        <col style="width:85px"><col style="width:85px"><col style="width:89px"><col style="width:322px"><col style="width:122px"><col style="width:85px"><col style="width:57px"><col style="width:61px"><col style="width:75px"><col style="width:58px"><col class="c-del" style="width:28px">
       </colgroup>
       <thead>
         <tr>
