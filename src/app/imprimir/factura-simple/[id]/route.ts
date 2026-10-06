@@ -347,7 +347,7 @@ export async function GET(
       <div class="sum-row"><span class="lab">Base imposable</span><span class="val">${money(0)}</span></div>
       <div class="sum-row"><span class="lab">IVA</span><span class="val">—</span></div>` : ''}
       <div class="sum-row grand"><span class="lab">${esDiposit ? 'Total dipòsit' : 'Total'}</span><span class="val" id="total">${money(totalCobraments)}</span></div>
-      ${esDiposit ? '<div class="iva-note">Dipòsit en custòdia, sense IVA. No és un ingrés: es retorna en sortir.</div>' : ''}
+      ${esDiposit ? '<div class="iva-note">Dipòsit, sense IVA.</div>' : ''}
     </div>
 
     <footer class="footer">

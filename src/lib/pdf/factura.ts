@@ -248,7 +248,7 @@ export async function buildFacturaPdf(factura: FacturaAmb, establiment: Establim
   y -= 48;
 
   if (factura.esDiposit) {
-    drawRight(page, 'Base 0,00 € · Sense IVA. Dipòsit en custòdia: no és un ingrés, es retorna en sortir.', right, y, 9, font, MUTED);
+    drawRight(page, 'Dipòsit, sense IVA.', right, y, 9, font, MUTED);
     y -= 16;
   }
 
