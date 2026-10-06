@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Trash2, Undo2, ShieldCheck, ChevronDown, Pencil, Check, X, CalendarRange, Banknote } from 'lucide-react';
+import { Plus, Trash2, Undo2, ShieldCheck, ChevronDown, Pencil, Check, X, CalendarRange, Banknote, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { formatEur, formatDate } from '@/lib/utils';
 import {
@@ -46,6 +47,8 @@ export interface Fianca {
   observacions: string | null;
   facturaId: string | null;
   facturaNumero: string | null;
+  /** True si la "factura" vinculada és el document propi del dipòsit (26009.2). */
+  facturaEsDiposit?: boolean;
   periodes?: PeriodeCobrament[];
 }
 
@@ -79,7 +82,7 @@ function TipusPill({ tipus }: { tipus: 'PAGAMENT' | 'FIANCA' }) {
       }
     >
       {isFianca ? <ShieldCheck className="h-3 w-3" /> : <Banknote className="h-3 w-3" />}
-      {isFianca ? 'Fiança' : 'Pagament'}
+      {isFianca ? 'Dipòsit' : 'Pagament'}
     </span>
   );
 }
@@ -102,6 +105,13 @@ export function PagamentsPanel({
   // Form state
   const [open, setOpen] = useState(false);
   const [tipus, setTipus] = useState<'PAGAMENT' | 'FIANCA'>('PAGAMENT');
+  // Dipòsit nou: crea també el seu document (factura simplificada sense IVA).
+  const [generarDocument, setGenerarDocument] = useState(true);
+  // Diàlegs de l'app (el confirm()/prompt() del navegador fallen a la tauleta).
+  const [aEliminar, setAEliminar] = useState<{ tipus: 'PAGAMENT' | 'DIPOSIT'; id: string; teDocument: boolean } | null>(null);
+  const [aRetenir, setARetenir] = useState<string | null>(null);
+  const [motiuRetencio, setMotiuRetencio] = useState('');
+  const [generantDoc, setGenerantDoc] = useState<string | null>(null);
   const [importVal, setImport] = useState('');
   const [metode, setMetode] = useState('EFECTIU');
   const [dataCobrament, setDataCobrament] = useState(() => new Date().toISOString().slice(0, 10));
@@ -177,8 +187,8 @@ export function PagamentsPanel({
   const facturats = pagaments.filter((p) => p.facturaId);
   const totalACompte = aCompte.reduce((a, p) => a + p.import, 0);
 
-  const fiancesCustodia = fiances.filter((f) => f.estat === 'EN_CUSTODIA' && !f.facturaId);
-  const fiancesFacturades = fiances.filter((f) => f.facturaId);
+  const fiancesCustodia = fiances.filter((f) => f.estat === 'EN_CUSTODIA' && (!f.facturaId || f.facturaEsDiposit));
+  const fiancesFacturades = fiances.filter((f) => f.facturaId && !f.facturaEsDiposit);
 
   function obrir(t: 'PAGAMENT' | 'FIANCA') {
     setTipus(t);
@@ -280,6 +290,7 @@ export function PagamentsPanel({
           observacions: observacions || undefined,
           data: dataCobrament || undefined,
           periodes: periodesBody,
+          generarDocument,
         });
       } else {
         await postJSON(`/api/estancies/${estanciaId}/pagaments`, {
@@ -310,7 +321,6 @@ export function PagamentsPanel({
   }
 
   async function eliminarPagament(id: string) {
-    if (!confirm('Eliminar aquest pagament a compte?')) return;
     try {
       await delJSON(`/api/cobraments/${id}`);
       router.refresh();
@@ -319,19 +329,71 @@ export function PagamentsPanel({
     }
   }
 
-  async function resoldreFianca(id: string, estat: 'TORNAT' | 'RETINGUT' | 'EN_CUSTODIA') {
-    const motiu =
-      estat === 'RETINGUT' ? (window.prompt('Motiu de la retenció (opcional):') ?? undefined) : undefined;
+  async function resoldreFianca(id: string, estat: 'TORNAT' | 'RETINGUT' | 'EN_CUSTODIA', motiu?: string) {
+    // Retenir demana el motiu en un diàleg de l'app abans de desar.
+    if (estat === 'RETINGUT' && motiu === undefined) {
+      setMotiuRetencio('');
+      setARetenir(id);
+      return;
+    }
     try {
       await patchJSON(`/api/diposits/${id}`, { estat, motiu });
       router.refresh();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "No s'ha pogut actualitzar la fiança");
+      alert(err instanceof ApiError ? err.message : "No s'ha pogut actualitzar el dipòsit");
     }
   }
 
+  async function generarDocumentDiposit(id: string) {
+    setGenerantDoc(id);
+    try {
+      const res = await postJSON<{ factura: { id: string } }>(`/api/diposits/${id}/document`, {});
+      if (res?.factura?.id) window.open(`/imprimir/factura-simple/${res.factura.id}`, '_blank', 'noopener,noreferrer');
+      router.refresh();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "No s'ha pogut crear el document del dipòsit");
+    } finally {
+      setGenerantDoc(null);
+    }
+  }
+
+  /** Número + accés al document del dipòsit, o botó per crear-lo si encara no en té. */
+  function DocumentDiposit({ f }: { f: Fianca }) {
+    if (f.facturaId && f.facturaEsDiposit) {
+      return (
+        <>
+          {f.facturaNumero && (
+            <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-brand-700" title="Número del document de dipòsit">
+              {f.facturaNumero}
+            </span>
+          )}
+          <a
+            href={`/imprimir/factura-simple/${f.facturaId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 hover:border-brand-300 hover:text-brand-700"
+            title="Obrir el document del dipòsit"
+          >
+            <FileText className="h-3.5 w-3.5" /> Veure document
+          </a>
+        </>
+      );
+    }
+    if (f.facturaId) return null;
+    return (
+      <button
+        type="button"
+        onClick={(e) => { e.preventDefault(); void generarDocumentDiposit(f.id); }}
+        disabled={generantDoc === f.id}
+        className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+        title="Crea el document del dipòsit (factura simplificada sense IVA, amb el número següent de l'estada)"
+      >
+        <FileText className="h-3.5 w-3.5" /> {generantDoc === f.id ? 'Creant…' : 'Generar document'}
+      </button>
+    );
+  }
+
   async function eliminarFianca(id: string) {
-    if (!confirm('Eliminar aquesta fiança definitivament?')) return;
     try {
       await delJSON(`/api/diposits/${id}`);
       router.refresh();
@@ -344,6 +406,49 @@ export function PagamentsPanel({
 
   return (
     <div className="space-y-4">
+      <ConfirmDialog
+        open={aEliminar !== null}
+        title={aEliminar?.tipus === 'DIPOSIT' ? 'Eliminar aquest dipòsit?' : 'Eliminar aquest pagament?'}
+        message={
+          aEliminar?.tipus === 'DIPOSIT'
+            ? aEliminar.teDocument
+              ? "S'eliminarà el dipòsit i també el seu document (el número quedarà lliure)."
+              : "S'eliminarà el dipòsit definitivament."
+            : "S'eliminarà aquest pagament a compte de l'estada."
+        }
+        onConfirm={() => {
+          const a = aEliminar;
+          setAEliminar(null);
+          if (!a) return;
+          if (a.tipus === 'DIPOSIT') void eliminarFianca(a.id);
+          else void eliminarPagament(a.id);
+        }}
+        onCancel={() => setAEliminar(null)}
+      />
+      <ConfirmDialog
+        open={aRetenir !== null}
+        title="Retenir el dipòsit?"
+        message="El dipòsit retingut passa a comptar com a ingrés."
+        confirmLabel="Retenir"
+        danger={false}
+        extra={
+          <div className="mt-3">
+            <label htmlFor="motiu-retencio" className="mb-1 block text-xs text-slate-500">Motiu (opcional)</label>
+            <Input
+              id="motiu-retencio"
+              placeholder="Desperfecte, neteja extra…"
+              value={motiuRetencio}
+              onChange={(e) => setMotiuRetencio(e.target.value)}
+            />
+          </div>
+        }
+        onConfirm={() => {
+          const id = aRetenir;
+          setARetenir(null);
+          if (id) void resoldreFianca(id, 'RETINGUT', motiuRetencio.trim());
+        }}
+        onCancel={() => setARetenir(null)}
+      />
       {!teBres && (
         <p className="text-sm text-slate-400 italic">Sense pagaments ni fiances registrats.</p>
       )}
@@ -410,7 +515,7 @@ export function PagamentsPanel({
                     <button
                       type="button"
                       className="p-2 touch-manipulation text-slate-400 hover:text-red-600"
-                      onClick={(e) => { e.preventDefault(); eliminarPagament(p.id); }}
+                      onClick={(e) => { e.preventDefault(); setAEliminar({ tipus: 'PAGAMENT', id: p.id, teDocument: false }); }}
                       title="Eliminar"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -488,7 +593,8 @@ export function PagamentsPanel({
                     {f.notes ? ` · ${f.notes}` : ''} · {METODE_COBRAMENT_LABELS[f.metode]} ·{' '}
                     {formatDate(f.data)}
                   </span>
-                  <div className="ml-auto flex items-center gap-1">
+                  <div className="ml-auto flex flex-wrap items-center justify-end gap-1">
+                    <DocumentDiposit f={f} />
                     <button
                       type="button"
                       className="p-2 touch-manipulation text-slate-400 hover:text-brand-600"
@@ -500,7 +606,7 @@ export function PagamentsPanel({
                     <button
                       type="button"
                       className="p-2 touch-manipulation text-slate-400 hover:text-red-600"
-                      onClick={(e) => { e.preventDefault(); eliminarFianca(f.id); }}
+                      onClick={(e) => { e.preventDefault(); setAEliminar({ tipus: 'DIPOSIT', id: f.id, teDocument: !!f.facturaEsDiposit }); }}
                       title="Eliminar"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -573,7 +679,7 @@ export function PagamentsPanel({
             onClick={() => setFiancaOberta((o) => !o)}
           >
             <p className="flex items-center gap-1 text-xs font-medium text-slate-500">
-              <ShieldCheck className="h-3.5 w-3.5" /> Fiances resoltes
+              <ShieldCheck className="h-3.5 w-3.5" /> Dipòsits resolts
             </p>
             <ChevronDown className={`h-3.5 w-3.5 transition-transform text-slate-400 ${fiancaOberta ? 'rotate-180' : ''}`} />
           </button>
@@ -585,7 +691,8 @@ export function PagamentsPanel({
                     <TipusPill tipus="FIANCA" />
                     {formatEur(f.import)}{f.notes ? ` · ${f.notes}` : ''} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
                   </span>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center justify-end gap-1.5">
+                    {f.facturaEsDiposit && <DocumentDiposit f={f} />}
                     <Badge tone={f.estat === 'RETINGUT' ? 'success' : 'neutral'}>
                       {FIANCA_ESTAT_LABEL[f.estat]}
                     </Badge>
@@ -600,8 +707,8 @@ export function PagamentsPanel({
                     <button
                       type="button"
                       className="p-2 touch-manipulation text-slate-400 hover:text-red-600"
-                      title="Eliminar aquesta fiança"
-                      onClick={(e) => { e.preventDefault(); eliminarFianca(f.id); }}
+                      title="Eliminar aquest dipòsit"
+                      onClick={(e) => { e.preventDefault(); setAEliminar({ tipus: 'DIPOSIT', id: f.id, teDocument: !!f.facturaEsDiposit }); }}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -666,6 +773,23 @@ export function PagamentsPanel({
               </Select>
             )}
           </div>
+
+          {tipus === 'FIANCA' && (
+            <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={generarDocument}
+                onChange={(e) => setGenerarDocument(e.target.checked)}
+              />
+              <span>
+                Genera el document de dipòsit
+                <span className="block text-xs text-slate-500">
+                  Factura simplificada amb una sola línia de dipòsit, sense IVA, amb el número següent de l&apos;estada. No compta com a ingrés.
+                </span>
+              </span>
+            </label>
+          )}
 
           <div className="flex flex-wrap items-center justify-between gap-2">
             <label className="flex items-center gap-2 text-xs text-slate-600">
@@ -735,7 +859,7 @@ export function PagamentsPanel({
               size="sm"
               disabled={busy || (desglossar ? periodes.length === 0 || sumaPeriodes <= 0 : !importVal)}
             >
-              {tipus === 'FIANCA' ? 'Desar fiança' : 'Desar pagament'}
+              {tipus === 'FIANCA' ? 'Desar dipòsit' : 'Desar pagament'}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
               Cancel·lar
@@ -753,7 +877,7 @@ export function PagamentsPanel({
             className="border-orange-400 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
             onClick={() => obrir('FIANCA')}
           >
-            <ShieldCheck className="h-4 w-4" /> Afegir fiança
+            <ShieldCheck className="h-4 w-4" /> Afegir dipòsit
           </Button>
         </div>
       )}

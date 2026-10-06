@@ -20,6 +20,8 @@ function fmtData(iso: string): string {
 interface FilaEdit {
   data: string; numeroSimple: string; numeroFiscal: string; client: string; periode: string;
   base: number; ivaPercent: number; iva: number; total: number;
+  /** Dipòsit (fiança) d'un document de dipòsit: no compta com a ingrés. */
+  diposit: number;
 }
 interface FilaGastoEdit {
   data: string; nif: string; proveidor: string; numFactura: string;
@@ -49,6 +51,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       data: String(f.data ?? ''), numeroSimple: String(f.numeroSimple ?? ''), numeroFiscal: String(f.numeroFiscal ?? ''),
       client: String(f.client ?? ''), periode: String(f.periode ?? ''),
       base: Number(f.base ?? 0), ivaPercent: Number(f.ivaPercent ?? 0), iva: Number(f.iva ?? 0), total: Number(f.total ?? 0),
+      diposit: Number(f.diposit ?? 0),
     }));
     // Si ja s'havien desat gastos, es carreguen; si no (llibre desat abans que
     // existís la part de despeses), es generen dels gastos del trimestre.
@@ -88,7 +91,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     etiqueta = llibre.etiqueta;
     rows = llibre.files.map((f: FilaIngres) => ({
       data: fmtData(f.data), numeroSimple: f.numeroSimple, numeroFiscal: f.numeroFiscal, client: f.client,
-      periode: f.periode, base: f.base, ivaPercent: f.ivaPercent, iva: f.iva, total: f.total,
+      periode: f.periode, base: f.base, ivaPercent: f.ivaPercent, iva: f.iva, total: f.total, diposit: f.diposit,
     }));
     gastos = (await getGastosSoportats(year, trimestre)).map((g: FilaGasto) => ({
       data: fmtData(g.data), nif: g.nif, proveidor: g.proveidor, numFactura: g.numFactura,
@@ -159,6 +162,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       <td class="c-n"><input class="in n f-ivap" inputmode="decimal" value="${f.ivaPercent}"></td>
       <td class="c-n"><input class="in n f-iva" inputmode="decimal" value="${num(f.iva)}"></td>
       <td class="c-n"><input class="in n f-total" inputmode="decimal" value="${num(f.total)}"></td>
+      <td class="c-n"><input class="in n f-dip" inputmode="decimal" value="${f.diposit ? num(f.diposit) : ''}" title="Dipòsit (fiança): no compta com a ingrés"></td>
       <td class="c-del"><button class="del" type="button" title="Eliminar fila">×</button></td>
     </tr>`;
 
@@ -298,13 +302,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <div class="doc-title">Facturas emitidas · Repercutidas</div>
     <table id="emeses" class="rz">
       <colgroup>
-        <col style="width:88px"><col style="width:95px"><col style="width:95px"><col style="width:205px"><col style="width:150px"><col style="width:88px"><col style="width:50px"><col style="width:85px"><col style="width:92px"><col class="c-del" style="width:28px">
+        <col style="width:88px"><col style="width:95px"><col style="width:95px"><col style="width:205px"><col style="width:150px"><col style="width:88px"><col style="width:50px"><col style="width:85px"><col style="width:92px"><col style="width:92px"><col class="c-del" style="width:28px">
       </colgroup>
       <thead>
         <tr>
           <th>Fecha<span class="resizer"></span></th><th>Nº Factura S.<span class="resizer"></span></th><th>Nº Factura F.<span class="resizer"></span></th><th>Cliente<span class="resizer"></span></th>
           <th>Período de estancia<span class="resizer"></span></th><th class="n">Base imponible<span class="resizer"></span></th><th class="n">% IVA<span class="resizer"></span></th>
-          <th class="n">IVA<span class="resizer"></span></th><th class="n">Total<span class="resizer"></span></th><th class="c-del"></th>
+          <th class="n">IVA<span class="resizer"></span></th><th class="n">Total<span class="resizer"></span></th><th class="n" title="Dipòsits (fiances): no compten com a ingrés">Depósito<span class="resizer"></span></th><th class="c-del"></th>
         </tr>
       </thead>
       <tbody>${rows.map(filaEmesa).join('')}</tbody>
@@ -315,6 +319,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
           <td></td>
           <td class="c-n" id="t1-iva">0,00</td>
           <td class="c-n" id="t1-total">0,00</td>
+          <td class="c-n" id="t1-dip">0,00</td>
           <td class="c-del"></td>
         </tr>
       </tfoot>
@@ -353,6 +358,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       <div class="resum-row"><span>Base imponible</span><span id="r-base">0,00 €</span></div>
       <div class="resum-row"><span>IVA repercutido (10%)</span><span id="r-iva">0,00 €</span></div>
       <div class="resum-row grand"><span>Total ingresos</span><span id="r-total">0,00 €</span></div>
+      <div class="resum-row" id="r-dip-row"><span>Depósitos (no computan como ingreso)</span><span id="r-dip">0,00 €</span></div>
     </div>
   </div>
 
@@ -491,6 +497,7 @@ ${edicionsBootstrap('trimestre', periode, edicions)}
       ivaPercent: num(r.querySelector('.f-ivap').value),
       iva: num(r.querySelector('.f-iva').value),
       total: num(r.querySelector('.f-total').value),
+      diposit: num(r.querySelector('.f-dip') ? r.querySelector('.f-dip').value : 0),
     }));
   }
 
@@ -522,8 +529,11 @@ ${edicionsBootstrap('trimestre', periode, edicions)}
 
   function render() {
     const rows = readRows();
-    let tb = 0, ti = 0, tt = 0;
-    for (const r of rows) { tb += r.base; ti += r.iva; tt += r.total; }
+    let tb = 0, ti = 0, tt = 0, td = 0;
+    for (const r of rows) { tb += r.base; ti += r.iva; tt += r.total; td += r.diposit; }
+    document.getElementById('t1-dip').textContent = plain(td);
+    document.getElementById('r-dip').textContent = plain(td) + ' €';
+    document.getElementById('r-dip-row').style.display = td === 0 ? 'none' : '';
     document.getElementById('t1-base').textContent = plain(tb);
     document.getElementById('t1-iva').textContent = plain(ti);
     document.getElementById('t1-total').textContent = plain(tt);
@@ -583,7 +593,7 @@ ${edicionsBootstrap('trimestre', periode, edicions)}
       row.innerHTML = '<td><input class="in f-data"></td><td><input class="in f-ns"></td><td><input class="in f-nf"></td>' +
         '<td><input class="in f-cli"></td><td><input class="in f-per"></td><td class="c-n"><input class="in n f-base"></td>' +
         '<td class="c-n"><input class="in n f-ivap"></td><td class="c-n"><input class="in n f-iva"></td>' +
-        '<td class="c-n"><input class="in n f-total"></td><td class="c-del"><button class="del" type="button">×</button></td>';
+        '<td class="c-n"><input class="in n f-total"></td><td class="c-n"><input class="in n f-dip"></td><td class="c-del"><button class="del" type="button">×</button></td>';
     }
     tbody.appendChild(row);
     // Fila aparellada al "Libro de ingresos" (mateix índex)

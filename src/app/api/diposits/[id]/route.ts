@@ -4,6 +4,7 @@ import { ROLES_WRITE } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
 import { handleApiError, notFound, ok } from '@/lib/http';
 import { DipositResolSchema, DipositEditSchema } from '@/lib/validation/factura';
+import { sincronitzaDocumentDiposit } from '@/lib/services/factura';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -39,15 +40,20 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
     // Edició de camps (import/mètode/notes/facturaId) — permesa en qualsevol estat.
     const data = DipositEditSchema.parse(body);
-    const diposit = await prisma.diposit.update({
-      where: { id },
-      data: {
-        ...(data.import !== undefined ? { import: data.import } : {}),
-        ...(data.metode ? { metode: data.metode } : {}),
-        ...(data.notes !== undefined ? { notes: data.notes ?? null } : {}),
-        ...(data.data ? { data: data.data } : {}),
-        ...('facturaId' in data ? { facturaId: data.facturaId ?? null } : {}),
-      },
+    const diposit = await prisma.$transaction(async (tx) => {
+      const d = await tx.diposit.update({
+        where: { id },
+        data: {
+          ...(data.import !== undefined ? { import: data.import } : {}),
+          ...(data.metode ? { metode: data.metode } : {}),
+          ...(data.notes !== undefined ? { notes: data.notes ?? null } : {}),
+          ...(data.data ? { data: data.data } : {}),
+          ...('facturaId' in data ? { facturaId: data.facturaId ?? null } : {}),
+        },
+      });
+      // El document de dipòsit (si en té) reflecteix sempre l'import i l'etiqueta.
+      await sincronitzaDocumentDiposit(tx, id);
+      return d;
     });
     await audit({ usuariId: auth.id, accio: 'MODIFICACIO', entitat: 'diposit', entitatId: id, detall: { camps: Object.keys(data) }, ip: clientIp(req) });
     return ok({ diposit });
@@ -56,16 +62,24 @@ export async function PATCH(req: Request, ctx: Ctx) {
   }
 }
 
-// DELETE /api/diposits/:id — elimina un dipòsit (només si està EN_CUSTODIA).
+// DELETE /api/diposits/:id — elimina un dipòsit i, si en té, el seu document de
+// dipòsit (no quedaria cap document orfe amb un número que ja no correspon a res).
 export async function DELETE(req: Request, ctx: Ctx) {
   try {
     const auth = await authorize(ROLES_WRITE);
     if (auth instanceof Response) return auth;
     const { id } = await ctx.params;
 
-    const exists = await prisma.diposit.findUnique({ where: { id }, select: { id: true } });
+    const exists = await prisma.diposit.findUnique({
+      where: { id },
+      select: { id: true, factura: { select: { id: true, esDiposit: true, verifactu: { select: { id: true } } } } },
+    });
     if (!exists) return notFound();
-    await prisma.diposit.delete({ where: { id } });
+    const doc = exists.factura?.esDiposit && !exists.factura.verifactu ? exists.factura.id : null;
+    await prisma.$transaction([
+      prisma.diposit.delete({ where: { id } }),
+      ...(doc ? [prisma.factura.delete({ where: { id: doc } })] : []),
+    ]);
     await audit({ usuariId: auth.id, accio: 'ELIMINACIO', entitat: 'diposit', entitatId: id, ip: clientIp(req) });
     return ok({ ok: true });
   } catch (err) {

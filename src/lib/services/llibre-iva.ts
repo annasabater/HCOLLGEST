@@ -23,6 +23,8 @@ export interface FilaIngres {
   iva: number;
   total: number;
   esAbono: boolean;
+  /** Import del dipòsit si la fila és un document de dipòsit (NO és ingrés). */
+  diposit: number;
 }
 
 export interface LlibreIngressos {
@@ -178,6 +180,8 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
     include: {
       facturaFiscal: { select: { numero: true } },
       simplificades: { select: { id: true }, take: 1 },
+      diposits: { select: { import: true } },
+      linies: { select: { import: true } },
       estancia: {
         select: {
           dataEntrada: true,
@@ -203,7 +207,15 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
       const nom = h ? [h.nom, h.cognom1, h.cognom2].filter(Boolean).join(' ').toUpperCase() : '—';
       const total = Number(f.total);
       const esAbono = total < 0;
-      const { base, iva, ivaPercent } = desglossaIva(total, Number(f.base), Number(f.iva));
+      // Document de dipòsit: ocupa el seu número a la sèrie, però base/IVA/total 0.
+      const diposit = f.esDiposit
+        ? round2(
+            (f.diposits.length > 0 ? f.diposits : f.linies).reduce((a, x) => a + Number(x.import), 0),
+          )
+        : 0;
+      const { base, iva, ivaPercent } = f.esDiposit
+        ? { base: 0, iva: 0, ivaPercent: 0 }
+        : desglossaIva(total, Number(f.base), Number(f.iva));
       const periode =
         f.estancia?.dataEntrada && f.estancia?.dataSortida
           ? `${fmtCurt(f.estancia.dataEntrada)} - ${fmtCurt(f.estancia.dataSortida)}`
@@ -216,13 +228,14 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
         // Si la simplificada té una fiscal vinculada, el seu número surt a la
         // columna "F." (la mateixa fila) i la fiscal no compta a part.
         numeroFiscal: esFiscal ? net(f.numero) : f.facturaFiscal ? net(f.facturaFiscal.numero) : '',
-        client: esAbono ? `${nom} (ABONO)` : nom,
+        client: f.esDiposit ? `${nom} (DEPÓSITO)` : esAbono ? `${nom} (ABONO)` : nom,
         periode,
         base,
         ivaPercent,
         iva,
         total,
         esAbono,
+        diposit,
       };
     });
 

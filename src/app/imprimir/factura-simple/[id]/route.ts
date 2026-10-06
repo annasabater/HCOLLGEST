@@ -55,7 +55,8 @@ export async function GET(
 
   // Si la fiança ja va inclosa a la base (fiancaInclosa), no la tornem a afegir
   // com a bloc de custòdia (evita duplicar-la).
-  const diposits = ambCustodia && !factura.fiancaInclosa ? factura.estancia.diposits : [];
+  const esDiposit = factura.esDiposit;
+  const diposits = ambCustodia && !factura.fiancaInclosa && !esDiposit ? factura.estancia.diposits : [];
 
   const emNom = esc(establiment?.raoSocial || establiment?.nom || 'Hostal Coll');
   const emDescriptor = esc(establiment?.poblacio ? `Casa de Hostes · ${establiment.poblacio}` : 'Casa de Hostes · Calella');
@@ -140,7 +141,7 @@ export async function GET(
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Factura simplificada · Hostal Coll</title>
+<title>${esDiposit ? 'Dipòsit' : 'Factura simplificada'} ${esc(factura.numero)} · Hostal Coll</title>
 <style>
   :root{
     --ink:#2C1810;
@@ -280,7 +281,7 @@ export async function GET(
 <body>
 
 <div class="toolbar">
-  <div class="tb-brand">Hostal Coll<span class="tb-badge">${ambCustodia ? 'Factura simple amb fiança' : 'Factura simple'}</span></div>
+  <div class="tb-brand">Hostal Coll<span class="tb-badge">${esDiposit ? 'Dipòsit' : ambCustodia ? 'Factura simple amb fiança' : 'Factura simple'}</span></div>
   <div class="tb-actions">
     <button id="addLine" class="btn ghost">+ Afegir línia</button>
     <button id="save" class="btn ghost" title="Desa tot el que hi ha escrit al document (queda guardat per sempre)">Desar canvis</button>
@@ -317,7 +318,7 @@ export async function GET(
       </div>
       <div class="meta">
         <div class="meta-title">Factura</div>
-        <div class="meta-badge">Simplificada</div>
+        <div class="meta-badge">${esDiposit ? 'Simplificada · Dipòsit' : 'Simplificada'}</div>
         <div class="meta-row"><span class="k">Número</span><span class="v"><input id="numero" class="in" aria-label="Número" value="${numeroDisplay}" data-prefix="${numeroPrefix}"></span></div>
         <div class="meta-row"><span class="k">Data</span><span class="v"><input id="data" class="in" aria-label="Data" value="${fmtDate(factura.data)}" placeholder="dd/mm/aaaa"></span></div>
         ${habitacioLlibre(factura.estancia) ? `<div class="meta-row"><span class="k">Habitació</span><span class="v"><input class="in" data-k="habitacio" aria-label="Habitació" value="${esc(habitacioLlibre(factura.estancia)!)}"></span></div>` : ''}
@@ -342,7 +343,11 @@ export async function GET(
     </div>
 
     <div class="summary">
-      <div class="sum-row grand"><span class="lab">Total</span><span class="val" id="total">${money(totalCobraments)}</span></div>
+      ${esDiposit ? `
+      <div class="sum-row"><span class="lab">Base imposable</span><span class="val">${money(0)}</span></div>
+      <div class="sum-row"><span class="lab">IVA</span><span class="val">—</span></div>` : ''}
+      <div class="sum-row grand"><span class="lab">${esDiposit ? 'Total dipòsit' : 'Total'}</span><span class="val" id="total">${money(totalCobraments)}</span></div>
+      ${esDiposit ? '<div class="iva-note">Dipòsit en custòdia, sense IVA. No és un ingrés: es retorna en sortir.</div>' : ''}
     </div>
 
     <footer class="footer">
@@ -526,7 +531,7 @@ ${edicionsBootstrap('factura-simple', factura.id, edicions)}
   });
 
 </script>
-<script>window.__pdfRef = ${JSON.stringify(factura.id)}; window.__pdfTitle = ${JSON.stringify(`Factura ${factura.numero}`)};</script>
+<script>window.__pdfRef = ${JSON.stringify(factura.id)}; window.__pdfTitle = ${JSON.stringify(`${esDiposit ? 'Dipòsit' : 'Factura'} ${factura.numero}`)};</script>
 <script>${PDF_CLIENT_SCRIPT}</script>
 </body>
 </html>`;

@@ -116,6 +116,10 @@ export const PDF_CLIENT_SCRIPT = `
       if (nf && val(nf)) doc.notes = { label: val(q('.notes-lab', nw)), text: String(nf.value || '').trim() };
     }
 
+    // Nota sota els totals (p. ex. "Dipòsit en custòdia, sense IVA…").
+    var ivn = q('.summary .iva-note');
+    if (!doc.notes && ivn && val(ivn)) doc.notes = { label: 'Nota', text: val(ivn) };
+
     var pay = q('.footer .pay');
     if (pay) doc.pay = { label: val(q('.pay-lab', pay)), value: items(pay).slice(1).join(' ') };
 

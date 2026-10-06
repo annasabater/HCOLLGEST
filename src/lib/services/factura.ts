@@ -338,9 +338,12 @@ export async function editFactura(
     const tasaTotal = round2(Number(factura.total) - oldBase - oldIva);
     const ivaPercent = input.ivaPercent ?? (oldBase > 0 ? (oldIva / oldBase) * 100 : 0);
 
-    const base = round2(input.linies.reduce((a, l) => a + Number(l.import), 0));
-    const iva = round2((base * ivaPercent) / 100);
-    const total = round2(base + iva + tasaTotal);
+    const sumaLinies = round2(input.linies.reduce((a, l) => a + Number(l.import), 0));
+    // Document de dipòsit: base/IVA/total sempre 0 (no és ingrés). L'import de la
+    // línia és el del dipòsit, que es manté sincronitzat més avall.
+    const base = factura.esDiposit ? 0 : sumaLinies;
+    const iva = factura.esDiposit ? 0 : round2((base * ivaPercent) / 100);
+    const total = factura.esDiposit ? 0 : round2(base + iva + tasaTotal);
 
     // Les línies es recreen: si un editor no envia el detall (panell, targeta de
     // línies), es conserva el de la línia anterior amb el mateix concepte i text.
@@ -372,6 +375,9 @@ export async function editFactura(
       },
     });
 
+    if (factura.esDiposit && sumaLinies > 0) {
+      await tx.diposit.updateMany({ where: { facturaId }, data: { import: sumaLinies } });
+    }
     const estat = await recomputaEstatFactura(tx, facturaId);
 
     await audit(
@@ -550,7 +556,8 @@ export async function addDiposit(
 ) {
   const input = DipositCreateSchema.parse(raw);
   const esIngres = input.destinacio === 'INGRES';
-  const diposit = await prisma.diposit.create({
+  const diposit = await prisma.$transaction(async (tx) => {
+    const d = await tx.diposit.create({
     data: {
       estanciaId,
       import: input.import,
@@ -564,16 +571,101 @@ export async function addDiposit(
         ? { create: input.periodes.map((p) => ({ dataInici: p.dataInici, dataFi: p.dataFi, import: p.import })) }
         : undefined,
     },
+    });
+    // Document de dipòsit (només si queda en custòdia: un dipòsit que ja és ingrés
+    // es factura com qualsevol altre cobrament).
+    if (input.generarDocument && !esIngres) await creaDocumentDiposit(tx, d.id, actor, ip);
+    return d;
   });
   await audit({
     usuariId: actor?.id ?? null,
     accio: 'CREACIO',
     entitat: 'diposit',
     entitatId: diposit.id,
-    detall: { estanciaId, import: input.import },
+    detall: { estanciaId, import: input.import, document: !!input.generarDocument },
     ip,
   });
   return diposit;
+}
+
+/** Text de la línia del document de dipòsit. */
+function descripcioDiposit(notes: string | null): string {
+  const n = (notes ?? '').trim();
+  return n ? `Dipòsit en custòdia · ${n}` : 'Dipòsit en custòdia';
+}
+
+/**
+ * Crea el DOCUMENT d'un dipòsit: factura simplificada amb una sola línia de
+ * dipòsit, sense IVA, que agafa el número següent de l'estada (26009 → 26009.1 →
+ * 26009.2). Base, IVA i total queden a 0 perquè NO és un ingrés: l'import del
+ * dipòsit va a la línia i al Diposit vinculat. Si ja en té, retorna l'existent.
+ */
+export async function creaDocumentDiposit(
+  tx: Prisma.TransactionClient,
+  dipositId: string,
+  actor: { id: string } | null,
+  ip: string | null,
+): Promise<{ id: string; numero: string }> {
+  const d = await tx.diposit.findUniqueOrThrow({
+    where: { id: dipositId },
+    include: { factura: { select: { id: true, numero: true, esDiposit: true, deletedAt: true } } },
+  });
+  if (d.factura && !d.factura.deletedAt) {
+    if (d.factura.esDiposit) return { id: d.factura.id, numero: d.factura.numero };
+    throw new Error(
+      `Validación fallida: aquest dipòsit ja va inclòs a la factura ${d.factura.numero}. Treu-lo d'aquella factura per fer-ne el document propi.`,
+    );
+  }
+  const numero =
+    (await proximNumeroFacturaContracte(tx, d.estanciaId)) ||
+    (await proximNumeroFactura(tx, d.data.getFullYear()));
+  const factura = await tx.factura.create({
+    data: {
+      estanciaId: d.estanciaId,
+      numero,
+      data: d.data,
+      base: 0,
+      iva: 0,
+      total: 0,
+      estat: 'COBRADA',
+      tipusDocument: 'FACTURA_SIMPLIFICADA',
+      esDiposit: true,
+      linies: { create: [{ concepte: 'EXTRA', descripcio: descripcioDiposit(d.notes), import: d.import }] },
+    },
+  });
+  await tx.diposit.update({ where: { id: dipositId }, data: { facturaId: factura.id } });
+  await audit(
+    {
+      usuariId: actor?.id ?? null,
+      accio: 'CREACIO',
+      entitat: 'factura',
+      entitatId: factura.id,
+      detall: { numero, esDiposit: true, dipositId, import: Number(d.import) },
+      ip,
+    },
+    tx,
+  );
+  return { id: factura.id, numero };
+}
+
+/**
+ * Manté el document de dipòsit al dia quan s'edita el dipòsit (import, etiqueta,
+ * data): la línia del document reflecteix sempre el dipòsit.
+ */
+export async function sincronitzaDocumentDiposit(tx: Prisma.TransactionClient, dipositId: string): Promise<void> {
+  const d = await tx.diposit.findUnique({
+    where: { id: dipositId },
+    include: { factura: { select: { id: true, esDiposit: true, deletedAt: true } } },
+  });
+  if (!d?.factura || !d.factura.esDiposit || d.factura.deletedAt) return;
+  await tx.liniaFactura.deleteMany({ where: { facturaId: d.factura.id } });
+  await tx.factura.update({
+    where: { id: d.factura.id },
+    data: {
+      data: d.data,
+      linies: { create: [{ concepte: 'EXTRA', descripcio: descripcioDiposit(d.notes), import: d.import }] },
+    },
+  });
 }
 
 /**

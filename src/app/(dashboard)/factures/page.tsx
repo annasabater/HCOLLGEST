@@ -56,6 +56,8 @@ export default async function FacturesPage({
     orderBy,
     take: 100,
     include: {
+      // Document de dipòsit: l'import és el del dipòsit vinculat (el total comptable és 0).
+      diposits: { select: { import: true, estat: true } },
       estancia: {
         include: {
           viatgers: { include: { huesped: true }, orderBy: { esTitular: 'desc' } },
@@ -152,6 +154,14 @@ export default async function FacturesPage({
                         Sense fiança
                       </span>
                     )}
+                    {f.esDiposit && (
+                      <span
+                        className="ml-1 inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200"
+                        title="Document de dipòsit: sense IVA, no és un ingrés"
+                      >
+                        Dipòsit
+                      </span>
+                    )}
                     {Number(f.total) < 0 && (
                       <span className="ml-1 inline-flex items-center rounded-full bg-rose-50 px-1.5 py-0.5 text-[10px] font-medium text-rose-700 ring-1 ring-rose-200">
                         Devolució
@@ -179,9 +189,21 @@ export default async function FacturesPage({
                   </Td>
                   <Td>{formatDate(f.data)}</Td>
                   <Td><Eur value={Number(f.base)} /></Td>
-                  <Td className="font-medium"><Eur value={Number(f.total)} /></Td>
+                  <Td className="font-medium">
+                    {f.esDiposit ? (
+                      <span className="text-amber-700" title="Import del dipòsit (no compta com a ingrés)">
+                        <Eur value={f.diposits.reduce((a, d) => a + Number(d.import), 0)} />
+                      </span>
+                    ) : (
+                      <Eur value={Number(f.total)} />
+                    )}
+                  </Td>
                   <Td>
-                    {restringit ? (
+                    {f.esDiposit ? (
+                      <span className="text-sm text-amber-700">
+                        {f.diposits[0]?.estat === 'TORNAT' ? 'Dipòsit tornat' : f.diposits[0]?.estat === 'RETINGUT' ? 'Dipòsit retingut' : 'En custòdia'}
+                      </span>
+                    ) : restringit ? (
                       <span>{estatFacturaLabel(f.estat, Number(f.total))}</span>
                     ) : (
                       <EstatFacturaToggle id={f.id} estat={f.estat} total={Number(f.total)} />

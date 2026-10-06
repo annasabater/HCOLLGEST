@@ -201,6 +201,9 @@ export const DipositCreateSchema = z
     observacions: optStr,
     destinacio: z.enum(['CUSTODIA', 'INGRES']).default('CUSTODIA'),
     periodes: z.array(PeriodeInputSchema).optional(),
+    // Crea també el document de dipòsit (factura simplificada sense IVA, número
+    // següent de l'estada). Només per a dipòsits en custòdia.
+    generarDocument: z.boolean().optional(),
   })
   .superRefine((d, ctx) => validaPeriodes(d.periodes, d.import, ctx));
 

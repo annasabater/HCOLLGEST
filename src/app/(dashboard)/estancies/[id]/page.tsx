@@ -63,7 +63,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
       habitacio: true,
       factures: { where: { deletedAt: null }, orderBy: { data: 'desc' } },
       cobraments: { include: { factura: { select: { numero: true } }, periodes: true }, orderBy: { data: 'asc' } },
-      diposits: { include: { factura: { select: { numero: true } }, periodes: true }, orderBy: { createdAt: 'desc' } },
+      diposits: { include: { factura: { select: { numero: true, esDiposit: true } }, periodes: true }, orderBy: { createdAt: 'desc' } },
       pagamentsPrevistos: { orderBy: { dataPrevista: 'asc' } },
       pressupostos: {
         where: { deletedAt: null },
@@ -111,6 +111,8 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
     where: { deletedAt: null, estancia: { OR: [{ id: rootId }, { estanciaOrigenId: rootId }] } },
     select: {
       id: true, numero: true, data: true, total: true, estat: true, tipusDocument: true, estanciaId: true,
+      esDiposit: true,
+      diposits: { select: { import: true, estat: true } },
       facturaFiscal: { select: { numero: true } },
       estancia: { select: { numContracte: true } },
     },
@@ -493,6 +495,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   observacions: d.observacions ?? null,
                   facturaId: d.facturaId ?? null,
                   facturaNumero: d.factura?.numero ?? null,
+                  facturaEsDiposit: d.factura?.esDiposit ?? false,
                   periodes: d.periodes.map((p) => ({
                     dataInici: p.dataInici.toISOString(),
                     dataFi: p.dataFi.toISOString(),
@@ -560,6 +563,9 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   contracte: teAmpliacions ? f.estancia?.numContracte : undefined,
                   esAltra: f.estanciaId !== estancia.id,
                   fiscalNum: f.facturaFiscal?.numero,
+                  esDiposit: f.esDiposit,
+                  importDiposit: f.diposits.reduce((a, d) => a + Number(d.import), 0),
+                  estatDiposit: f.diposits[0]?.estat,
                 }))}
               />
             </CollapsibleCard>

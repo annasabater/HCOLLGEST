@@ -673,6 +673,12 @@ model Factura {
   tipusDocument TipusDocumentFiscal @default(RECIBO) @map("tipus_document")
   fiancaInclosa Boolean?            @map("fianca_inclosa")
 
+  // Document de DIPÒSIT (fiança): factura simplificada amb una sola línia de
+  // dipòsit, sense IVA, que continua la numeració de l'estada (26009.2). Base,
+  // IVA i total són 0: NO és un ingrés; l'import és el del Diposit vinculat
+  // (Diposit.facturaId) i la línia.
+  esDiposit Boolean @default(false) @map("es_diposit")
+
   // Enllaç d'una factura SIMPLIFICADA a la factura FISCAL que la cobreix (quan
   // l'hoste demana factura fiscal). Al Llibre d'IVA la simplificada mostra el
   // número de la fiscal a la columna "N° Factura F." i la fiscal NO surt com a

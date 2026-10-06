@@ -11,6 +11,8 @@ export const FilaIvaSchema = z.object({
   ivaPercent: z.coerce.number().default(0),
   iva: z.coerce.number().default(0),
   total: z.coerce.number().default(0),
+  // Dipòsit (fiança) d'un document de dipòsit: NO compta com a ingrés.
+  diposit: z.coerce.number().default(0),
 });
 
 /** Fila de despesa/factura rebuda (soportada): proveïdor, NIF, nº factura + IVA. */

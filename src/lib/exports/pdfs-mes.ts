@@ -206,20 +206,29 @@ export async function buildFacturesPdfs(
           ]),
         },
       },
-      {
-        heading: 'Totals',
-        kv: [
-          ['Base imposable', eur(base)],
-          [`IVA (${ivaPercent}%)`, eur(iva)],
-          ...(tassa > 0 ? ([['Tassa turística', eur(tassa)]] as [string, string][]) : []),
-          ['Total', eur(total)],
-        ],
-      },
+      f.esDiposit
+        ? {
+            heading: 'Totals',
+            kv: [
+              ['Base imposable', eur(0)],
+              ['IVA', '-'],
+              ['Total dipòsit (no és ingrés)', eur(f.linies.reduce((a, l) => a + Number(l.import), 0))],
+            ],
+          }
+        : {
+            heading: 'Totals',
+            kv: [
+              ['Base imposable', eur(base)],
+              [`IVA (${ivaPercent}%)`, eur(iva)],
+              ...(tassa > 0 ? ([['Tassa turística', eur(tassa)]] as [string, string][]) : []),
+              ['Total', eur(total)],
+            ],
+          },
     ];
 
     let suffix = '';
     const fiances = f.estancia.diposits;
-    if (ambFianca && fiances.length > 0) {
+    if (ambFianca && fiances.length > 0 && !f.esDiposit) {
       const totalFianca = fiances.reduce((a, d) => a + Number(d.import), 0);
       sections.push({
         heading: 'Fiança en custòdia (no és ingrés)',

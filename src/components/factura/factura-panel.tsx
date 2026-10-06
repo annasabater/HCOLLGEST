@@ -37,7 +37,17 @@ interface FacturaLite {
   esAltra?: boolean;
   /** Si és una simplificada amb factura fiscal vinculada, el número de la fiscal. */
   fiscalNum?: string;
+  /** Document de dipòsit (no és ingrés): import i estat del dipòsit vinculat. */
+  esDiposit?: boolean;
+  importDiposit?: number;
+  estatDiposit?: 'EN_CUSTODIA' | 'TORNAT' | 'RETINGUT';
 }
+
+const ESTAT_DIPOSIT_LABEL: Record<'EN_CUSTODIA' | 'TORNAT' | 'RETINGUT', string> = {
+  EN_CUSTODIA: 'En custòdia',
+  TORNAT: 'Tornat',
+  RETINGUT: 'Retingut',
+};
 interface PagamentLite {
   id: string;
   import: number;
@@ -81,7 +91,7 @@ export function FacturaPanel({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   // Confirmació d'eliminar en un diàleg de l'app (el confirm() del navegador falla a la tauleta).
-  const [aEliminar, setAEliminar] = useState<{ id: string; num: string } | null>(null);
+  const [aEliminar, setAEliminar] = useState<{ id: string; num: string; esDiposit?: boolean } | null>(null);
   // Factures d'aquest tram vs. d'altres trams de l'estada (aquestes, plegades).
   const propies = factures.filter((f) => !f.esAltra);
   const altres = factures.filter((f) => f.esAltra);
@@ -429,6 +439,14 @@ export function FacturaPanel({
                   {tipusDocumentLabel(f.tipusDocument, Number(f.total))}
                 </span>
               )}
+              {f.esDiposit && (
+                <span
+                  className="shrink-0 rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800"
+                  title="Document de dipòsit: sense IVA, no és un ingrés"
+                >
+                  Dipòsit
+                </span>
+              )}
               {f.contracte && (
                 <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-normal text-slate-500">
                   {f.contracte}
@@ -441,17 +459,28 @@ export function FacturaPanel({
               )}
             </a>
             <div className="flex items-center gap-2">
-              {formatEur(Number(f.total))}
-              <button
-                type="button"
-                onClick={() => toggleEstat(f.id, f.estat)}
-                title="Canviar entre Cobrada i Pendent"
-                className="cursor-pointer"
-              >
-                <Badge tone={f.estat === 'COBRADA' ? 'success' : 'warning'}>
-                  {estatFacturaLabel(f.estat, Number(f.total))}
-                </Badge>
-              </button>
+              {f.esDiposit ? (
+                <>
+                  <span title="Import del dipòsit (no compta com a ingrés)">{formatEur(f.importDiposit ?? 0)}</span>
+                  <Badge tone={f.estatDiposit === 'RETINGUT' ? 'success' : f.estatDiposit === 'TORNAT' ? 'neutral' : 'warning'}>
+                    {ESTAT_DIPOSIT_LABEL[f.estatDiposit ?? 'EN_CUSTODIA']}
+                  </Badge>
+                </>
+              ) : (
+                <>
+                  {formatEur(Number(f.total))}
+                  <button
+                    type="button"
+                    onClick={() => toggleEstat(f.id, f.estat)}
+                    title="Canviar entre Cobrada i Pendent"
+                    className="cursor-pointer"
+                  >
+                    <Badge tone={f.estat === 'COBRADA' ? 'success' : 'warning'}>
+                      {estatFacturaLabel(f.estat, Number(f.total))}
+                    </Badge>
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 onClick={() => (editId === f.id ? setEditId(null) : obrirEdicio(f))}
@@ -462,7 +491,7 @@ export function FacturaPanel({
               </button>
               <button
                 type="button"
-                onClick={() => setAEliminar({ id: f.id, num: f.numero })}
+                onClick={() => setAEliminar({ id: f.id, num: f.numero, esDiposit: f.esDiposit })}
                 title="Eliminar"
                 className="p-2 touch-manipulation text-slate-400 hover:text-red-600"
               >
@@ -535,8 +564,12 @@ export function FacturaPanel({
     <div className="space-y-3">
       <ConfirmDialog
         open={aEliminar !== null}
-        title={`Eliminar la factura ${aEliminar?.num ?? ''}?`}
-        message="Els pagaments tornen a «a compte» de l'estada."
+        title={aEliminar?.esDiposit ? `Eliminar el document de dipòsit ${aEliminar.num}?` : `Eliminar la factura ${aEliminar?.num ?? ''}?`}
+        message={
+          aEliminar?.esDiposit
+            ? "El dipòsit es manté a Pagaments i fiances; només s'elimina el document i el seu número queda lliure."
+            : "Els pagaments tornen a «a compte» de l'estada."
+        }
         onConfirm={() => {
           const id = aEliminar?.id;
           setAEliminar(null);
