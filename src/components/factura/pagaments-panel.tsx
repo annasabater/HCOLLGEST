@@ -355,33 +355,13 @@ export function PagamentsPanel({
     }
   }
 
-  /** Número + accés al document del dipòsit, o botó per crear-lo si encara no en té. */
-  function DocumentDiposit({ f }: { f: Fianca }) {
-    if (f.facturaId && f.facturaEsDiposit) {
-      return (
-        <>
-          {f.facturaNumero && (
-            <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-brand-700" title="Número del document de dipòsit">
-              {f.facturaNumero}
-            </span>
-          )}
-          <a
-            href={`/imprimir/factura-simple/${f.facturaId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 hover:border-brand-300 hover:text-brand-700"
-            title="Obrir el document del dipòsit"
-          >
-            <FileText className="h-3.5 w-3.5" /> Veure document
-          </a>
-        </>
-      );
-    }
-    if (f.facturaId || !f.esDiposit) return null;
+  /** Etiqueta «Contracte 26009.2» de la factura del dipòsit (com als pagaments ja facturats). */
+  function EtiquetaFacturaDiposit({ f }: { f: Fianca }) {
+    if (!f.facturaId || !f.facturaEsDiposit) return null;
     return (
-      <span className="text-xs text-slate-400" title="Crea-la a Facturació → «Factura de dipòsit»">
-        Sense factura
-      </span>
+      <a href={`/imprimir/factura-simple/${f.facturaId}`} target="_blank" rel="noopener noreferrer">
+        <Badge tone="neutral">{f.facturaNumero ? `Contracte ${f.facturaNumero}` : 'Factura'}</Badge>
+      </a>
     );
   }
 
@@ -582,31 +562,47 @@ export function PagamentsPanel({
               </div>
             ) : (
               <div key={f.id} className="rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2 text-sm">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <TipusPill tipus={tipusDeFianca(f)} />
                   <span className="font-medium text-slate-800">{formatEur(f.import)}</span>
                   <span className="text-slate-400">
                     {f.notes ? ` · ${f.notes}` : ''} · {METODE_COBRAMENT_LABELS[f.metode]} ·{' '}
                     {formatDate(f.data)}
                   </span>
-                  <div className="ml-auto flex flex-wrap items-center justify-end gap-1">
-                    <DocumentDiposit f={f} />
-                    <button
-                      type="button"
-                      className="p-2 touch-manipulation text-slate-400 hover:text-brand-600"
-                      onClick={(e) => { e.preventDefault(); startEditFianca(f); }}
-                      title="Editar"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      className="p-2 touch-manipulation text-slate-400 hover:text-red-600"
-                      onClick={(e) => { e.preventDefault(); setAEliminar({ tipus: 'DIPOSIT', id: f.id, teDocument: !!f.facturaEsDiposit }); }}
-                      title="Eliminar"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                  <div className="ml-auto flex shrink-0 items-center justify-end gap-1.5">
+                    <EtiquetaFacturaDiposit f={f} />
+                    {/* Dipòsit: Tornar i Retenir a la vista (la fiança, com sempre, dins del llapis). */}
+                    {tipusDeFianca(f) === 'DIPOSIT' && (
+                      <>
+                        <Button type="button" size="sm" variant="outline" onClick={() => resoldreFianca(f.id, 'TORNAT')}>
+                          <Undo2 className="h-4 w-4" /> Tornar
+                        </Button>
+                        <Button type="button" size="sm" variant="outline" onClick={() => resoldreFianca(f.id, 'RETINGUT')}>
+                          Retenir
+                        </Button>
+                      </>
+                    )}
+                    {/* Amb factura no s'edita ni s'elimina (com un pagament ja facturat). */}
+                    {!f.facturaEsDiposit && (
+                      <>
+                        <button
+                          type="button"
+                          className="p-2 touch-manipulation text-slate-400 hover:text-brand-600"
+                          onClick={(e) => { e.preventDefault(); startEditFianca(f); }}
+                          title="Editar"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          className="p-2 touch-manipulation text-slate-400 hover:text-red-600"
+                          onClick={(e) => { e.preventDefault(); setAEliminar({ tipus: 'DIPOSIT', id: f.id, teDocument: false }); }}
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
                 {periodesResum(f.periodes) && (
@@ -688,7 +684,7 @@ export function PagamentsPanel({
                     {formatEur(f.import)}{f.notes ? ` · ${f.notes}` : ''} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
                   </span>
                   <div className="flex flex-wrap items-center justify-end gap-1.5">
-                    {f.facturaEsDiposit && <DocumentDiposit f={f} />}
+                    <EtiquetaFacturaDiposit f={f} />
                     <Badge tone={f.estat === 'RETINGUT' ? 'success' : 'neutral'}>
                       {FIANCA_ESTAT_LABEL[f.estat]}
                     </Badge>
