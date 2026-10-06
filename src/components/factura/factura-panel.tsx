@@ -64,6 +64,8 @@ interface FiancaLite {
   data: string;
   estat: string;
   facturaId: string | null;
+  /** Dipòsit (es documenta amb «Factura de dipòsit»), no una fiança qualsevol. */
+  esDiposit?: boolean;
 }
 
 export function FacturaPanel({
@@ -114,6 +116,13 @@ export function FacturaPanel({
 
   // Factura FISCAL a partir de simplificades existents (quan l'hoste la demana).
   const [fiscalOpen, setFiscalOpen] = useState(false);
+  // «Factura de dipòsit»: factura simplificada sense IVA d'un dipòsit, creada a mà.
+  const [dipOpen, setDipOpen] = useState(false);
+  const [dipSel, setDipSel] = useState<string>('');
+  const [dipNumero, setDipNumero] = useState('');
+  const [dipData, setDipData] = useState('');
+  const [dipBusy, setDipBusy] = useState(false);
+  const [dipError, setDipError] = useState<string | null>(null);
   const [selSimples, setSelSimples] = useState<Set<string>>(new Set());
   const [fiscalNumero, setFiscalNumero] = useState('');
   const [fiscalData, setFiscalData] = useState('');
@@ -221,7 +230,48 @@ export function FacturaPanel({
 
   // Pendents de facturar: pagaments sense factura i fiances en custòdia sense factura.
   const pagamentsLliures = pagaments.filter((p) => !p.facturaId);
-  const fiancesLliures = fiances.filter((f) => f.estat === 'EN_CUSTODIA' && !f.facturaId);
+  const fiancesLliures = fiances.filter((f) => f.estat === 'EN_CUSTODIA' && !f.facturaId && !f.esDiposit);
+  // Candidats a «Factura de dipòsit»: en custòdia i sense cap factura. Primer els dipòsits.
+  const dipositsLliures = fiances
+    .filter((f) => f.estat === 'EN_CUSTODIA' && !f.facturaId)
+    .sort((a, b) => Number(!!b.esDiposit) - Number(!!a.esDiposit));
+
+  async function obrirFacturaDiposit() {
+    const primer = dipositsLliures[0];
+    setDipSel(primer?.id ?? '');
+    setDipData((primer?.data ?? new Date().toISOString()).slice(0, 10));
+    setDipError(null);
+    setDipNumero('');
+    setDipOpen(true);
+    try {
+      const res = await getJSON<{ numero: string }>(
+        `/api/factures/seguent-numero?estanciaId=${estanciaId}&tipus=FACTURA_SIMPLIFICADA`,
+      );
+      setDipNumero(res.numero);
+    } catch {
+      /* el servidor posarà el següent si queda buit */
+    }
+  }
+
+  async function crearFacturaDiposit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!dipSel) { setDipError('Tria el dipòsit.'); return; }
+    setDipBusy(true);
+    setDipError(null);
+    try {
+      const res = await postJSON<{ factura: { id: string } }>(`/api/diposits/${dipSel}/document`, {
+        numero: dipNumero.trim() || undefined,
+        data: dipData || undefined,
+      });
+      setDipOpen(false);
+      if (res?.factura?.id) window.open(`/imprimir/factura-simple/${res.factura.id}`, '_blank', 'noopener,noreferrer');
+      router.refresh();
+    } catch (err) {
+      setDipError(err instanceof ApiError ? err.message.replace(/^Validación fallida:\s*/, '') : 'Error creant la factura de dipòsit');
+    } finally {
+      setDipBusy(false);
+    }
+  }
 
   const totalPag = pagamentsLliures.filter((p) => selPag.has(p.id)).reduce((a, p) => a + p.import, 0);
   const totalFi = fiancesLliures.filter((f) => selFi.has(f.id)).reduce((a, f) => a + f.import, 0);
@@ -881,6 +931,56 @@ export function FacturaPanel({
             </button>
           </div>
         </form>
+      ) : dipOpen ? (
+        <form onSubmit={crearFacturaDiposit} className="space-y-3 rounded-lg border border-teal-200 bg-teal-50/40 p-3">
+          <p className="text-sm font-semibold text-slate-800">Factura de dipòsit</p>
+          <p className="text-xs text-slate-500">
+            Factura simplificada amb una sola línia de dipòsit, sense IVA. No compta com a ingrés.
+          </p>
+          <div className="space-y-1">
+            {dipositsLliures.map((f) => (
+              <label key={f.id} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm">
+                <input
+                  type="radio"
+                  name="diposit-factura"
+                  checked={dipSel === f.id}
+                  onChange={() => { setDipSel(f.id); setDipData(f.data.slice(0, 10)); }}
+                />
+                <span
+                  className={
+                    'rounded-full border px-2 py-0.5 text-[11px] font-semibold ' +
+                    (f.esDiposit ? 'border-teal-300 bg-teal-50 text-teal-800' : 'border-amber-300 bg-amber-100 text-amber-800')
+                  }
+                >
+                  {f.esDiposit ? 'Dipòsit' : 'Fiança'}
+                </span>
+                <span className="font-medium text-slate-800">{formatEur(f.import)}</span>
+                <span className="text-xs text-slate-400">
+                  {f.notes ? `${f.notes} · ` : ''}{METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
+                </span>
+              </label>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-xs font-medium text-slate-500">Núm. factura:</span>
+              <Input className="h-9 w-36" value={dipNumero} onChange={(e) => setDipNumero(e.target.value)} placeholder="el següent" />
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-xs font-medium text-slate-500">Data:</span>
+              <Input type="date" className="h-9 w-40" value={dipData} onChange={(e) => setDipData(e.target.value)} />
+            </label>
+          </div>
+          {dipError && <p className="text-sm text-red-600">{dipError}</p>}
+          <div className="flex items-center gap-3">
+            <Button type="submit" disabled={dipBusy || !dipSel}>
+              {dipBusy ? 'Creant…' : 'Crear factura de dipòsit'}
+            </Button>
+            <button type="button" className="text-sm text-slate-500 hover:underline" onClick={() => setDipOpen(false)}>
+              Cancel·lar
+            </button>
+          </div>
+        </form>
       ) : (
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => obrir('simple')}>
@@ -889,6 +989,17 @@ export function FacturaPanel({
           <Button variant="outline" size="sm" onClick={() => obrir('fiscal')}>
             <Receipt className="h-4 w-4" /> Factura fiscal
           </Button>
+          {dipositsLliures.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-teal-400 text-teal-700 hover:bg-teal-50 hover:text-teal-800"
+              onClick={obrirFacturaDiposit}
+              title="Factura simplificada sense IVA d'un dipòsit (no compta com a ingrés)"
+            >
+              <Receipt className="h-4 w-4" /> Factura de dipòsit
+            </Button>
+          )}
           {simplesDisponibles.length > 0 && (
             <Button variant="outline" size="sm" onClick={obrirFiscalDeSimples} title="Agrupa factures simplificades en una factura fiscal">
               <Receipt className="h-4 w-4" /> Fiscal de simplificades

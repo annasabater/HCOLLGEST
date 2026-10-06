@@ -201,11 +201,17 @@ export const DipositCreateSchema = z
     observacions: optStr,
     destinacio: z.enum(['CUSTODIA', 'INGRES']).default('CUSTODIA'),
     periodes: z.array(PeriodeInputSchema).optional(),
-    // Crea també el document de dipòsit (factura simplificada sense IVA, número
-    // següent de l'estada). Només per a dipòsits en custòdia.
-    generarDocument: z.boolean().optional(),
+    // Dipòsit (true) o fiança (false). El document del dipòsit NO es crea aquí:
+    // es fa a mà des de Facturació → «Factura de dipòsit».
+    esDiposit: z.boolean().optional(),
   })
   .superRefine((d, ctx) => validaPeriodes(d.periodes, d.import, ctx));
+
+/** «Factura de dipòsit»: número i data triats a mà (buits = el següent / la del dipòsit). */
+export const DocumentDipositSchema = z.object({
+  numero: z.string().trim().min(1).optional(),
+  data: z.coerce.date().optional(),
+});
 
 export const DipositResolSchema = z.object({
   estat: z.enum(['TORNAT', 'RETINGUT', 'EN_CUSTODIA']),

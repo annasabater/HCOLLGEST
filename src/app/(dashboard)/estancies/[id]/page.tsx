@@ -496,6 +496,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   facturaId: d.facturaId ?? null,
                   facturaNumero: d.factura?.numero ?? null,
                   facturaEsDiposit: d.factura?.esDiposit ?? false,
+                  esDiposit: d.esDiposit,
                   periodes: d.periodes.map((p) => ({
                     dataInici: p.dataInici.toISOString(),
                     dataFi: p.dataFi.toISOString(),
@@ -552,6 +553,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   data: d.data.toISOString(),
                   estat: d.estat,
                   facturaId: d.facturaId ?? null,
+                  esDiposit: d.esDiposit,
                 }))}
                 factures={grupFactures.map((f) => ({
                   id: f.id,

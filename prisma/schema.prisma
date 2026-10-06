@@ -870,6 +870,9 @@ model Diposit {
   data          DateTime
   metode        MetodeCobrament
   estat         EstatDiposit    @default(EN_CUSTODIA)
+  // Dipòsit (no una fiança qualsevol): es pot documentar amb una «Factura de
+  // dipòsit» (factura simplificada sense IVA) que es crea a mà des de Facturació.
+  esDiposit     Boolean         @default(false) @map("es_diposit")
   motiu         String? // motiu de la retenció (desperfecte…)
   notes         String?
   observacions  String?

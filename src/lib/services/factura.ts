@@ -566,15 +566,13 @@ export async function addDiposit(
       notes: input.notes ?? null,
       observacions: input.observacions ?? null,
       estat: esIngres ? 'RETINGUT' : 'EN_CUSTODIA',
+      esDiposit: input.esDiposit ?? false,
       dataResolucio: esIngres ? (input.data ?? new Date()) : null,
       periodes: input.periodes
         ? { create: input.periodes.map((p) => ({ dataInici: p.dataInici, dataFi: p.dataFi, import: p.import })) }
         : undefined,
     },
     });
-    // Document de dipòsit (només si queda en custòdia: un dipòsit que ja és ingrés
-    // es factura com qualsevol altre cobrament).
-    if (input.generarDocument && !esIngres) await creaDocumentDiposit(tx, d.id, actor, ip);
     return d;
   });
   await audit({
@@ -582,7 +580,7 @@ export async function addDiposit(
     accio: 'CREACIO',
     entitat: 'diposit',
     entitatId: diposit.id,
-    detall: { estanciaId, import: input.import, document: !!input.generarDocument },
+    detall: { estanciaId, import: input.import, esDiposit: input.esDiposit ?? false },
     ip,
   });
   return diposit;
@@ -605,6 +603,7 @@ export async function creaDocumentDiposit(
   dipositId: string,
   actor: { id: string } | null,
   ip: string | null,
+  opts: { numero?: string; data?: Date } = {},
 ): Promise<{ id: string; numero: string }> {
   const d = await tx.diposit.findUniqueOrThrow({
     where: { id: dipositId },
@@ -616,14 +615,26 @@ export async function creaDocumentDiposit(
       `Validación fallida: aquest dipòsit ja va inclòs a la factura ${d.factura.numero}. Treu-lo d'aquella factura per fer-ne el document propi.`,
     );
   }
-  const numero =
-    (await proximNumeroFacturaContracte(tx, d.estanciaId)) ||
-    (await proximNumeroFactura(tx, d.data.getFullYear()));
+  if (d.estat !== 'EN_CUSTODIA') {
+    throw new Error('Validación fallida: només es pot fer la factura de dipòsit d\'un dipòsit en custòdia.');
+  }
+  // Número triat a mà (ha de ser únic) o, si no, el següent de l'estada.
+  let numero = opts.numero?.trim() ?? '';
+  if (numero) {
+    const exist = await tx.factura.findFirst({ where: { numero } });
+    if (exist) {
+      throw new Error(`Validación fallida: el número "${numero}" ja existeix en una altra factura. Tria un número diferent.`);
+    }
+  } else {
+    numero =
+      (await proximNumeroFacturaContracte(tx, d.estanciaId)) ||
+      (await proximNumeroFactura(tx, d.data.getFullYear()));
+  }
   const factura = await tx.factura.create({
     data: {
       estanciaId: d.estanciaId,
       numero,
-      data: d.data,
+      data: opts.data ?? d.data,
       base: 0,
       iva: 0,
       total: 0,
@@ -633,7 +644,7 @@ export async function creaDocumentDiposit(
       linies: { create: [{ concepte: 'EXTRA', descripcio: descripcioDiposit(d.notes), import: d.import }] },
     },
   });
-  await tx.diposit.update({ where: { id: dipositId }, data: { facturaId: factura.id } });
+  await tx.diposit.update({ where: { id: dipositId }, data: { facturaId: factura.id, esDiposit: true } });
   await audit(
     {
       usuariId: actor?.id ?? null,
@@ -662,7 +673,6 @@ export async function sincronitzaDocumentDiposit(tx: Prisma.TransactionClient, d
   await tx.factura.update({
     where: { id: d.factura.id },
     data: {
-      data: d.data,
       linies: { create: [{ concepte: 'EXTRA', descripcio: descripcioDiposit(d.notes), import: d.import }] },
     },
   });

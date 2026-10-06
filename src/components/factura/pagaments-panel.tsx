@@ -49,6 +49,8 @@ export interface Fianca {
   facturaNumero: string | null;
   /** True si la "factura" vinculada és el document propi del dipòsit (26009.2). */
   facturaEsDiposit?: boolean;
+  /** Dipòsit (no una fiança): es documenta a mà des de Facturació → «Factura de dipòsit». */
+  esDiposit?: boolean;
   periodes?: PeriodeCobrament[];
 }
 
@@ -91,8 +93,9 @@ function TipusPill({ tipus }: { tipus: 'PAGAMENT' | 'FIANCA' | 'DIPOSIT' }) {
   );
 }
 
-/** Fiança (sense document) o dipòsit (amb document numerat 26009.2). */
-const tipusDeFianca = (f: { facturaEsDiposit?: boolean }) => (f.facturaEsDiposit ? 'DIPOSIT' : 'FIANCA');
+/** Fiança o dipòsit (el dipòsit pot tenir la seva «Factura de dipòsit», p. ex. 26009.2). */
+const tipusDeFianca = (f: { esDiposit?: boolean; facturaEsDiposit?: boolean }) =>
+  f.esDiposit || f.facturaEsDiposit ? 'DIPOSIT' : 'FIANCA';
 
 export function PagamentsPanel({
   estanciaId,
@@ -112,14 +115,13 @@ export function PagamentsPanel({
   // Form state
   const [open, setOpen] = useState(false);
   const [tipus, setTipus] = useState<'PAGAMENT' | 'FIANCA'>('PAGAMENT');
-  // «Afegir dipòsit» crea també el document (factura simplificada sense IVA);
-  // «Afegir fiança» és la fiança de sempre, sense document.
-  const [generarDocument, setGenerarDocument] = useState(false);
+  // «Afegir dipòsit» el marca com a dipòsit (la seva factura es crea a mà des de
+  // Facturació); «Afegir fiança» és la fiança de sempre.
+  const [nouEsDiposit, setNouEsDiposit] = useState(false);
   // Diàlegs de l'app (el confirm()/prompt() del navegador fallen a la tauleta).
   const [aEliminar, setAEliminar] = useState<{ tipus: 'PAGAMENT' | 'DIPOSIT'; id: string; teDocument: boolean } | null>(null);
   const [aRetenir, setARetenir] = useState<string | null>(null);
   const [motiuRetencio, setMotiuRetencio] = useState('');
-  const [generantDoc, setGenerantDoc] = useState<string | null>(null);
   const [importVal, setImport] = useState('');
   const [metode, setMetode] = useState('EFECTIU');
   const [dataCobrament, setDataCobrament] = useState(() => new Date().toISOString().slice(0, 10));
@@ -199,7 +201,7 @@ export function PagamentsPanel({
   const fiancesFacturades = fiances.filter((f) => f.facturaId && !f.facturaEsDiposit);
 
   function obrir(t: 'PAGAMENT' | 'FIANCA' | 'DIPOSIT') {
-    setGenerarDocument(t === 'DIPOSIT');
+    setNouEsDiposit(t === 'DIPOSIT');
     if (t === 'DIPOSIT') t = 'FIANCA';
     setTipus(t);
     setEtapa(t === 'PAGAMENT' ? 'A compte' : 'Cobro');
@@ -300,7 +302,7 @@ export function PagamentsPanel({
           observacions: observacions || undefined,
           data: dataCobrament || undefined,
           periodes: periodesBody,
-          generarDocument,
+          esDiposit: nouEsDiposit,
         });
       } else {
         await postJSON(`/api/estancies/${estanciaId}/pagaments`, {
@@ -354,19 +356,6 @@ export function PagamentsPanel({
     }
   }
 
-  async function generarDocumentDiposit(id: string) {
-    setGenerantDoc(id);
-    try {
-      const res = await postJSON<{ factura: { id: string } }>(`/api/diposits/${id}/document`, {});
-      if (res?.factura?.id) window.open(`/imprimir/factura-simple/${res.factura.id}`, '_blank', 'noopener,noreferrer');
-      router.refresh();
-    } catch (err) {
-      alert(err instanceof ApiError ? err.message : "No s'ha pogut crear el document del dipòsit");
-    } finally {
-      setGenerantDoc(null);
-    }
-  }
-
   /** Número + accés al document del dipòsit, o botó per crear-lo si encara no en té. */
   function DocumentDiposit({ f }: { f: Fianca }) {
     if (f.facturaId && f.facturaEsDiposit) {
@@ -389,17 +378,11 @@ export function PagamentsPanel({
         </>
       );
     }
-    if (f.facturaId) return null;
+    if (f.facturaId || !f.esDiposit) return null;
     return (
-      <button
-        type="button"
-        onClick={(e) => { e.preventDefault(); void generarDocumentDiposit(f.id); }}
-        disabled={generantDoc === f.id}
-        className="inline-flex items-center gap-1 rounded-lg border border-teal-300 bg-white px-2 py-1 text-xs font-medium text-teal-800 hover:bg-teal-50 disabled:opacity-50"
-        title="Converteix aquesta fiança en dipòsit amb document (factura simplificada sense IVA, número següent de l'estada)"
-      >
-        <FileText className="h-3.5 w-3.5" /> {generantDoc === f.id ? 'Creant…' : 'Fer document de dipòsit'}
-      </button>
+      <span className="text-xs text-slate-400" title="Crea-la a Facturació → «Factura de dipòsit»">
+        Sense factura
+      </span>
     );
   }
 
@@ -788,10 +771,10 @@ export function PagamentsPanel({
             )}
           </div>
 
-          {tipus === 'FIANCA' && generarDocument && (
+          {tipus === 'FIANCA' && nouEsDiposit && (
             <p className="rounded-lg border border-teal-200 bg-teal-50/70 px-3 py-2 text-xs text-teal-900">
-              Es crearà el <strong>document de dipòsit</strong>: factura simplificada amb una sola línia, sense IVA, amb el
-              número següent de l&apos;estada. No compta com a ingrés.
+              Quedarà registrat com a <strong>dipòsit</strong>. La seva factura (simplificada, sense IVA, no compta com a
+              ingrés) la crees tu quan vulguis a <strong>Facturació → Factura de dipòsit</strong>, on tries el número.
             </p>
           )}
 
@@ -863,7 +846,7 @@ export function PagamentsPanel({
               size="sm"
               disabled={busy || (desglossar ? periodes.length === 0 || sumaPeriodes <= 0 : !importVal)}
             >
-              {tipus === 'FIANCA' ? (generarDocument ? 'Desar dipòsit' : 'Desar fiança') : 'Desar pagament'}
+              {tipus === 'FIANCA' ? (nouEsDiposit ? 'Desar dipòsit' : 'Desar fiança') : 'Desar pagament'}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
               Cancel·lar
@@ -888,7 +871,7 @@ export function PagamentsPanel({
             variant="outline"
             className="border-teal-400 text-teal-700 hover:bg-teal-50 hover:text-teal-800"
             onClick={() => obrir('DIPOSIT')}
-            title="Dipòsit amb document numerat (factura simplificada sense IVA, no és ingrés)"
+            title="Dipòsit: la seva factura (sense IVA, no és ingrés) la crees a Facturació → «Factura de dipòsit»"
           >
             <FileText className="h-4 w-4" /> Afegir dipòsit
           </Button>
