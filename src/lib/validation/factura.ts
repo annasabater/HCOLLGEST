@@ -5,6 +5,10 @@ import { concepteLiniaValues, metodeCobramentValues } from './enums';
 export const LiniaInputSchema = z.object({
   concepte: z.enum(concepteLiniaValues),
   descripcio: z.string().trim().min(1, 'Cal una descripció'),
+  // Segona línia del concepte. Absent = es conserva la que hi hagués; "" = buidada.
+  detall: z.string().trim().nullable().optional(),
+  // Quantitat mostrada (preu = import / quantitat). Absent = es conserva.
+  quantitat: z.coerce.number().positive().nullable().optional(),
   import: z.coerce.number(),
 });
 

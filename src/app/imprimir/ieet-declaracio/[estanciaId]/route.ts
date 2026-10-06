@@ -9,6 +9,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { ageAt } from '@/lib/dates';
+import { carregaEdicions, edicionsBootstrap, EDICIONS_SCRIPT } from '@/lib/edicions';
 
 function esc(s: string | null | undefined): string {
   if (!s) return '';
@@ -40,6 +41,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: st
   if (!BLANK && !estancia) return new Response('Not found', { status: 404 });
 
   const est = await prisma.establiment.findFirst();
+  // El full en blanc (plantilla) no es desa; el d'una estada sí.
+  const edicions = estancia ? await carregaEdicions('ieet', estancia.id) : null;
   const poblacio = est?.poblacio ?? 'Calella';
 
   // Declarant = titular del contracte. Menors = viatgers < 17 anys a l'entrada.
@@ -84,6 +87,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: st
     background:#f7eeec; border-radius:4px; padding:3px 8px; margin-left:10px; }
   .btn{ font:inherit; font-size:13px; padding:10px 15px; border-radius:9px; cursor:pointer; border:1px solid var(--accent);
     background:var(--accent); color:#fff; }
+  .btn.ghost{ background:#fff; color:var(--accent); }
+  .tb-actions{ display:flex; gap:10px; }
   .app{ padding:24px 16px 48px; }
   .doc{ width:100%; max-width:820px; margin:0 auto; background:var(--paper); padding:48px 56px; border:1px solid #e5e8ee;
     box-shadow:0 14px 44px rgba(20,30,45,.10); }
@@ -115,10 +120,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: st
 <body>
 <div class="toolbar">
   <div class="tb-brand">Hostal Coll<span class="tb-badge">Declaración IEET · menores</span></div>
-  <button id="print" class="btn">Imprimir / Guardar PDF</button>
+  <div class="tb-actions">
+    ${estancia ? '<button id="save" class="btn ghost" data-desa-edicions title="Desa tot el que hi ha escrit al document (queda guardat per sempre)">Desar canvis</button>' : ''}
+    <button id="print" class="btn">Imprimir / Guardar PDF</button>
+  </div>
 </div>
 <div class="app">
-  <div class="doc">
+  <div class="doc"${estancia ? ' data-k-auto' : ''}>
     <h1>Declaración responsable para el impuesto sobre las estancias en establecimientos turísticos</h1>
 
     <h2>Datos de la persona declarante</h2>
@@ -169,6 +177,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: st
     </div>
   </div>
 </div>
+${estancia ? `${edicionsBootstrap('ieet', estancia.id, edicions)}\n<script>${EDICIONS_SCRIPT}</script>` : ''}
 <script>document.getElementById('print').addEventListener('click', () => window.print());</script>
 </body>
 </html>`;

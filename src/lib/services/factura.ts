@@ -158,6 +158,8 @@ export async function createFactura(
           create: input.linies.map((l) => ({
             concepte: l.concepte,
             descripcio: l.descripcio,
+            detall: l.detall ?? null,
+            quantitat: l.quantitat ?? null,
             import: l.import,
           })),
         },
@@ -340,6 +342,15 @@ export async function editFactura(
     const iva = round2((base * ivaPercent) / 100);
     const total = round2(base + iva + tasaTotal);
 
+    // Les línies es recreen: si un editor no envia el detall (panell, targeta de
+    // línies), es conserva el de la línia anterior amb el mateix concepte i text.
+    const liniesAnteriors = await tx.liniaFactura.findMany({
+      where: { facturaId },
+      select: { concepte: true, descripcio: true, detall: true, quantitat: true },
+    });
+    const anterior = (l: { concepte: string; descripcio: string }) =>
+      liniesAnteriors.find((a) => a.concepte === l.concepte && a.descripcio === l.descripcio);
+
     await tx.liniaFactura.deleteMany({ where: { facturaId } });
     await tx.factura.update({
       where: { id: facturaId },
@@ -353,6 +364,8 @@ export async function editFactura(
           create: input.linies.map((l) => ({
             concepte: l.concepte,
             descripcio: l.descripcio,
+            detall: l.detall !== undefined ? l.detall : (anterior(l)?.detall ?? null),
+            quantitat: l.quantitat !== undefined ? l.quantitat : (anterior(l)?.quantitat ?? null),
             import: l.import,
           })),
         },

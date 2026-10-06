@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { habitacioLlibre } from '@/lib/habitacio-llibre';
 import { getSessionUser } from '@/lib/auth/session';
 import { PDF_CLIENT_SCRIPT } from '@/lib/pdf/client-script';
+import { carregaEdicions, edicionsBootstrap, EDICIONS_SCRIPT } from '@/lib/edicions';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +50,7 @@ export async function GET(
   if (!factura) return new Response('Not found', { status: 404 });
 
   const establiment = await prisma.establiment.findFirst();
+  const edicions = await carregaEdicions('factura-simple', factura.id);
   const titular = factura.estancia.viatgers[0]?.huesped ?? null;
 
   // Si la fiança ja va inclosa a la base (fiancaInclosa), no la tornem a afegir
@@ -99,16 +101,21 @@ export async function GET(
   // Línies des de la base de dades (font de veritat de l'import facturat)
   const linesHtml = factura.linies.map((l) => {
     const label = esc(l.descripcio ?? l.concepte);
-    // Per a línies d'allotjament sense dates a la descripció, afegim-les com a detall
-    const needsDates = l.concepte === 'ALLOTJAMENT' && habDates && !label.includes('Del ');
+    // El detall desat mana sempre (encara que sigui buit). Si mai s'ha desat,
+    // l'allotjament hi mostra les dates de l'estada.
+    const detall = l.detall !== null
+      ? esc(l.detall)
+      : l.concepte === 'ALLOTJAMENT' && !label.includes('Del ') ? habDates : null;
+    const qty = l.quantitat !== null && Number(l.quantitat) > 0 ? Number(l.quantitat) : 1;
+    const preu = round2(Number(l.import) / qty);
     return `
     <tr class="item" data-concepte="${esc(l.concepte)}">
-      <td class="c-qty"><input class="in qty" inputmode="decimal" aria-label="Quantitat" value="1"></td>
+      <td class="c-qty"><input class="in qty" inputmode="decimal" aria-label="Quantitat" value="${esc(String(qty).replace('.', ','))}"></td>
       <td>
         <textarea class="in concept" rows="1" aria-label="Concepte">${label}</textarea>
-        ${needsDates ? `<textarea class="in detail" rows="1" aria-label="Detall">${habDates}</textarea>` : ''}
+        ${detall !== null ? `<textarea class="in detail" rows="1" aria-label="Detall">${detall}</textarea>` : ''}
       </td>
-      <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${Number(l.import) ? plain(Number(l.import)) : ''}"></td>
+      <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${preu ? plain(preu) : ''}"></td>
       <td class="c-amt"><input class="in amount" inputmode="decimal" aria-label="Import" value="${Number(l.import) ? plain(Number(l.import)) : ''}"></td>
       <td class="it-del"><button class="del" type="button" aria-label="Eliminar línia">×</button></td>
     </tr>`;
@@ -120,11 +127,11 @@ export async function GET(
 
   // Línies de dipòsit (fiança) addicionals si s'inclou (amb custodia)
   const dipositsHtml = diposits.length > 0 ? diposits.map((d) => `
-    <tr class="item" data-fianca="1">
-      <td class="c-qty"><input class="in qty" inputmode="decimal" aria-label="Quantitat" value="1"></td>
-      <td><textarea class="in concept" rows="1" aria-label="Concepte">${esc((d.notes ?? 'Fiança') + ' ' + fmtDate(d.data))}</textarea></td>
-      <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${esc(plain(Number(d.import)))}"></td>
-      <td class="c-amt"><input class="in amount" inputmode="decimal" aria-label="Import" value="${esc(plain(Number(d.import)))}"></td>
+    <tr class="item" data-fianca="1" data-kr="fianca-${esc(d.id)}">
+      <td class="c-qty"><input class="in qty" data-k="fianca-${esc(d.id)}-q" inputmode="decimal" aria-label="Quantitat" value="1"></td>
+      <td><textarea class="in concept" data-k="fianca-${esc(d.id)}-c" rows="1" aria-label="Concepte">${esc((d.notes ?? 'Fiança') + ' ' + fmtDate(d.data))}</textarea></td>
+      <td class="c-amt"><input class="in price" data-k="fianca-${esc(d.id)}-p" inputmode="decimal" aria-label="Preu" value="${esc(plain(Number(d.import)))}"></td>
+      <td class="c-amt"><input class="in amount" data-k="fianca-${esc(d.id)}-a" inputmode="decimal" aria-label="Import" value="${esc(plain(Number(d.import)))}"></td>
       <td class="it-del"><button class="del" type="button" aria-label="Eliminar línia">×</button></td>
     </tr>`).join('') : '';
 
@@ -276,7 +283,7 @@ export async function GET(
   <div class="tb-brand">Hostal Coll<span class="tb-badge">${ambCustodia ? 'Factura simple amb fiança' : 'Factura simple'}</span></div>
   <div class="tb-actions">
     <button id="addLine" class="btn ghost">+ Afegir línia</button>
-    <button id="save" class="btn ghost" title="Desa número, data, client, emissor i línies (queda guardat per sempre)">Desar canvis</button>
+    <button id="save" class="btn ghost" title="Desa tot el que hi ha escrit al document (queda guardat per sempre)">Desar canvis</button>
     <button id="printPdf" class="btn solid">Imprimir PDF</button>
   </div>
 </div>
@@ -286,15 +293,15 @@ export async function GET(
 
     <header class="masthead">
       <div>
-        <div class="brand"><input class="in" aria-label="Nom" value="${emNom}"></div>
-        <div class="brand-sub"><input class="in" aria-label="Descriptor" value="${emDescriptor}" style="width:280px"></div>
+        <div class="brand"><input class="in" data-k="emNom" aria-label="Nom" value="${emNom}"></div>
+        <div class="brand-sub"><input class="in" data-k="emDescriptor" aria-label="Descriptor" value="${emDescriptor}" style="width:280px"></div>
       </div>
       <div class="issuer">
         <input id="emTitular" class="in" aria-label="Titular" value="${emTitular}" style="color:var(--slate);font-weight:500"><br>
         <input id="emNif" class="in" aria-label="NIF" value="${emNif}"><br>
         <input id="emAdreca" class="in" aria-label="Adreça" value="${emAdreca}"><br>
         <input id="emLocalitat" class="in" aria-label="CP i Localitat" value="${emLocalitat}"><br>
-        <input class="in" aria-label="Telèfon" value="${emTelefon}">
+        <input class="in" data-k="emTelefon" aria-label="Telèfon" value="${emTelefon}">
       </div>
     </header>
 
@@ -313,7 +320,7 @@ export async function GET(
         <div class="meta-badge">Simplificada</div>
         <div class="meta-row"><span class="k">Número</span><span class="v"><input id="numero" class="in" aria-label="Número" value="${numeroDisplay}" data-prefix="${numeroPrefix}"></span></div>
         <div class="meta-row"><span class="k">Data</span><span class="v"><input id="data" class="in" aria-label="Data" value="${fmtDate(factura.data)}" placeholder="dd/mm/aaaa"></span></div>
-        ${habitacioLlibre(factura.estancia) ? `<div class="meta-row"><span class="k">Habitació</span><span class="v"><input class="in" aria-label="Habitació" value="${esc(habitacioLlibre(factura.estancia)!)}"></span></div>` : ''}
+        ${habitacioLlibre(factura.estancia) ? `<div class="meta-row"><span class="k">Habitació</span><span class="v"><input class="in" data-k="habitacio" aria-label="Habitació" value="${esc(habitacioLlibre(factura.estancia)!)}"></span></div>` : ''}
       </div>
     </section>
 
@@ -345,6 +352,8 @@ export async function GET(
   </div>
 </div>
 
+${edicionsBootstrap('factura-simple', factura.id, edicions)}
+<script>${EDICIONS_SCRIPT}</script>
 <script>
   const num = v => {
     if (v == null) return 0;
@@ -428,6 +437,8 @@ export async function GET(
     row.querySelectorAll('.qty, .concept, .detail, .price, .amount').forEach(i => i.value = '');
     // Les línies noves es desen com a EXTRA (i mai com a fiança).
     row.removeAttribute('data-fianca');
+    row.removeAttribute('data-kr');
+    row.querySelectorAll('[data-k]').forEach(i => i.removeAttribute('data-k'));
     row.setAttribute('data-concepte', 'EXTRA');
     tbody.appendChild(row);
     autoGrow(row.querySelector('.concept'));
@@ -453,14 +464,18 @@ export async function GET(
     const rows = Array.from(document.querySelectorAll('#items tbody tr.item')).filter(r => !r.hasAttribute('data-fianca'));
     const linies = rows.map(r => {
       const c = r.querySelector('.concept');
+      const d = r.querySelector('.detail');
+      const q = r.querySelector('.qty');
       const a = r.querySelector('.amount');
       return {
         concepte: r.getAttribute('data-concepte') || 'EXTRA',
         descripcio: (c && c.value ? c.value : '').trim(),
+        detall: d ? d.value.trim() : null,
+        quantitat: q && num(q.value) > 0 ? num(q.value) : null,
         import: num(a ? a.value : 0)
       };
-    }).filter(l => l.descripcio || l.import)
-      .map(l => ({ concepte: l.concepte, descripcio: l.descripcio || 'Concepte', import: l.import }));
+    }).filter(l => l.descripcio || l.detall || l.import)
+      .map(l => ({ concepte: l.concepte, descripcio: l.descripcio || 'Concepte', detall: l.detall, quantitat: l.quantitat, import: l.import }));
     if (!linies.length) { alert('Cal almenys una línia amb concepte o import (les línies de fiança no es desen aquí).'); return; }
 
     const numeroInput = document.getElementById('numero');
@@ -491,6 +506,8 @@ export async function GET(
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error || 'Error desant els canvis');
       }
+      // La resta del que hi ha escrit (nom, telèfon, habitació, fiances…).
+      await window.desaEdicions();
       btn.textContent = 'Desat ✓';
       setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1600);
     } catch (e) {

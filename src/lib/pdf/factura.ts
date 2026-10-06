@@ -223,7 +223,9 @@ export async function buildFacturaPdf(factura: FacturaAmb, establiment: Establim
   // ── Línies
   for (const l of factura.linies) {
     let desc = sanitize(l.descripcio ?? l.concepte);
-    if (l.concepte === 'ALLOTJAMENT' && habDates && !desc.includes('Del ')) desc = `${desc} · ${habDates}`;
+    if (l.detall != null) {
+      if (l.detall) desc = `${desc} · ${sanitize(l.detall)}`;
+    } else if (l.concepte === 'ALLOTJAMENT' && habDates && !desc.includes('Del ')) desc = `${desc} · ${habDates}`;
     const lines = wrap(font, desc, 10, conceptRight - colConcept);
     const rowH = Math.max(lines.length * 13 + 8, 22);
     page.drawText('1', { x: M + 6, y: y - 12, size: 10, font, color: SLATE });

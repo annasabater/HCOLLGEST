@@ -5,6 +5,7 @@ import { habitacioLlibre } from '@/lib/habitacio-llibre';
 import { getSessionUser } from '@/lib/auth/session';
 import { PDF_CLIENT_SCRIPT } from '@/lib/pdf/client-script';
 import { VERIFACTU_LLEGENDA } from '@/lib/verifactu/software';
+import { carregaEdicions, edicionsBootstrap, EDICIONS_SCRIPT } from '@/lib/edicions';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,6 +61,7 @@ export async function GET(
   if (!factura) return new Response('Not found', { status: 404 });
 
   const establiment = await prisma.establiment.findFirst();
+  const edicions = await carregaEdicions('factura', factura.id);
   const titular = factura.estancia.viatgers[0]?.huesped ?? null;
 
   const base = Number(factura.base);
@@ -117,15 +119,19 @@ export async function GET(
 
   const linesHtml = factura.linies.map((l) => {
     const label = l.descripcio || (CONCEPTE_LABEL[l.concepte] ?? l.concepte);
-    const detail = l.concepte === 'ALLOTJAMENT' && !label.includes('Del ') ? periode : '';
+    // El detall desat mana sempre (encara que sigui buit); si mai s'ha desat,
+    // l'allotjament hi mostra el període de l'estada.
+    const detail = l.detall ?? (l.concepte === 'ALLOTJAMENT' && !label.includes('Del ') ? periode : '');
+    const qty = l.quantitat !== null && Number(l.quantitat) > 0 ? Number(l.quantitat) : 1;
+    const preu = round2(Number(l.import) / qty);
     return `
     <tr class="item" data-concepte="${esc(l.concepte)}">
-      <td class="c-qty"><input class="in qty" inputmode="decimal" aria-label="Quantitat" value="1"></td>
+      <td class="c-qty"><input class="in qty" inputmode="decimal" aria-label="Quantitat" value="${esc(String(qty).replace('.', ','))}"></td>
       <td>
         <input class="in concept" aria-label="Concepte" value="${esc(label)}">
         <input class="in detail" aria-label="Detall" value="${esc(detail)}" placeholder="">
       </td>
-      <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${Number(l.import) ? plain(Number(l.import)) : ''}"></td>
+      <td class="c-amt"><input class="in price" inputmode="decimal" aria-label="Preu" value="${preu ? plain(preu) : ''}"></td>
       <td class="c-amt"><input class="in amount" inputmode="decimal" aria-label="Import" value="${Number(l.import) ? plain(Number(l.import)) : ''}"></td>
       <td class="it-del"><button class="del" type="button" aria-label="Eliminar línia">×</button></td>
     </tr>`;
@@ -296,7 +302,7 @@ export async function GET(
   <div class="tb-brand">Hostal Coll <span class="tb-badge">${ambFianca ? 'Factura fiscal amb fiança' : 'Factura fiscal'}</span></div>
   <div class="tb-actions">
     <button id="addLine" class="btn ghost">+ Afegir línia</button>
-    ${bloquejada ? '' : '<button id="save" class="btn ghost" title="Desa número, data, client, emissor, IVA i línies (queda guardat per sempre)">Desar canvis</button>'}
+    ${bloquejada ? '' : '<button id="save" class="btn ghost" title="Desa tot el que hi ha escrit al document (queda guardat per sempre)">Desar canvis</button>'}
     <button id="printPdf" class="btn solid">Imprimir PDF</button>
   </div>
 </div>
@@ -306,15 +312,15 @@ export async function GET(
 
     <header class="masthead">
       <div>
-        <div class="brand"><input class="in" aria-label="Nom" value="${emNom}"></div>
-        <div class="brand-sub"><input class="in" aria-label="Descriptor" value="${emDescriptor}" style="width:280px"></div>
+        <div class="brand"><input class="in" data-k="emNom" aria-label="Nom" value="${emNom}"></div>
+        <div class="brand-sub"><input class="in" data-k="emDescriptor" aria-label="Descriptor" value="${emDescriptor}" style="width:280px"></div>
       </div>
       <div class="issuer">
         <div class="issuer-name"><input id="emTitular" class="in" aria-label="Titular" value="${emTitular}"></div>
         <input id="emNif" class="in" aria-label="NIF" value="${emNif}"><br>
         <input id="emAdreca" class="in" aria-label="Adreça" value="${emAdreca}"><br>
         <input id="emLocalitat" class="in" aria-label="CP i Localitat" value="${emLocalitat}"><br>
-        <input class="in" aria-label="Telèfon" value="${emTelefon}">
+        <input class="in" data-k="emTelefon" aria-label="Telèfon" value="${emTelefon}">
       </div>
     </header>
 
@@ -333,7 +339,7 @@ export async function GET(
         <div class="meta-badge">${ambFianca ? '<span style="font-size:10px;color:#7A6868">Amb fiança</span>' : ''}</div>
         <div class="meta-row"><span class="k">Número</span><span class="v"><input id="numero" class="in" aria-label="Número" value="${esc(factura.numero.replace(/^\d{4}-/, ''))}" data-prefix="${numeroPrefix}"></span></div>
         <div class="meta-row"><span class="k">Data</span><span class="v"><input id="data" class="in" aria-label="Data" value="${fmtDate(factura.data)}" placeholder="dd/mm/aaaa"></span></div>
-        ${habitacioLlibre(factura.estancia) ? `<div class="meta-row"><span class="k">Habitació</span><span class="v"><input class="in" aria-label="Habitació" value="${esc(habitacioLlibre(factura.estancia)!)}"></span></div>` : ''}
+        ${habitacioLlibre(factura.estancia) ? `<div class="meta-row"><span class="k">Habitació</span><span class="v"><input class="in" data-k="habitacio" aria-label="Habitació" value="${esc(habitacioLlibre(factura.estancia)!)}"></span></div>` : ''}
       </div>
     </section>
 
@@ -373,6 +379,8 @@ export async function GET(
   </div>
 </div>
 
+${edicionsBootstrap('factura', factura.id, edicions)}
+<script>${EDICIONS_SCRIPT}</script>
 <script>
   const num = v => {
     if (v == null) return 0;
@@ -480,14 +488,18 @@ export async function GET(
     const rows = Array.from(document.querySelectorAll('#items tbody tr.item'));
     const linies = rows.map(r => {
       const c = r.querySelector('.concept');
+      const d = r.querySelector('.detail');
+      const q = r.querySelector('.qty');
       const a = r.querySelector('.amount');
       return {
         concepte: r.getAttribute('data-concepte') || 'EXTRA',
         descripcio: (c && c.value ? c.value : '').trim(),
+        detall: d ? d.value.trim() : null,
+        quantitat: q && num(q.value) > 0 ? num(q.value) : null,
         import: num(a ? a.value : 0)
       };
-    }).filter(l => l.descripcio || l.import)
-      .map(l => ({ concepte: l.concepte, descripcio: l.descripcio || 'Concepte', import: l.import }));
+    }).filter(l => l.descripcio || l.detall || l.import)
+      .map(l => ({ concepte: l.concepte, descripcio: l.descripcio || 'Concepte', detall: l.detall, quantitat: l.quantitat, import: l.import }));
     if (!linies.length) { alert('Cal almenys una línia amb concepte o import.'); return; }
 
     const numeroInput = document.getElementById('numero');
@@ -518,6 +530,8 @@ export async function GET(
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error || 'Error desant els canvis');
       }
+      // La resta del que hi ha escrit (nom, telèfon, habitació…).
+      await window.desaEdicions();
       saveBtn.textContent = 'Desat ✓';
       setTimeout(() => { saveBtn.textContent = orig; saveBtn.disabled = false; }, 1600);
     } catch (e) {

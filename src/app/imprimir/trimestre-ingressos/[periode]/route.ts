@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
+import { carregaEdicions, edicionsBootstrap, EDICIONS_SCRIPT } from '@/lib/edicions';
 import { getLlibreIngressos, getGastosSoportats, getFiancesSoportades, getLibroGastos, COLUMNES_GASTO, COLUMNA_GASTO_LABELS, type FilaIngres, type FilaGasto, type FilaLibroGasto } from '@/lib/services/llibre-iva';
 
 export const dynamic = 'force-dynamic';
@@ -38,6 +39,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   // Si hi ha una versió DESADA (editada), es carrega aquesta; si no, es genera de
   // les factures. La data es normalitza sempre a "dd/mm/aaaa" (string editable).
   const desat = await prisma.llibreIvaTrimestre.findUnique({ where: { periode } });
+  const edicions = await carregaEdicions('trimestre', periode);
   let etiqueta: string;
   let rows: FilaEdit[];
   let gastos: FilaGastoEdit[];
@@ -457,6 +459,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   </div>
 
 </div>
+${edicionsBootstrap('trimestre', periode, edicions)}
+<script>${EDICIONS_SCRIPT}</script>
 <script>
   const PERIODE = ${JSON.stringify(periode)};
   const ETIQUETA = ${JSON.stringify(etiqueta)};
@@ -508,6 +512,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   // Liquidació editable: s'omple des dels totals només si NO s'ha tocat a mà.
   const liqTocat = new Set();
   const setLiq = (id, v) => { if (!liqTocat.has(id)) document.getElementById(id).value = plain(v); };
+  // Liquidació escrita a mà: només es desen (data-k) les caselles tocades; les
+  // altres segueixen calculant-se soles. En obrir, es recuperen les desades.
+  const liqMarca = (id) => { liqTocat.add(id); document.getElementById(id).setAttribute('data-k', id); };
+  const liqDesada = (window.__edicions && window.__edicions.dades && window.__edicions.dades.camps) || {};
+  ['s-rep-base', 's-rep-iva', 's-sop-base', 's-sop-iva'].forEach((id) => {
+    if (Object.prototype.hasOwnProperty.call(liqDesada, id)) { document.getElementById(id).value = liqDesada[id]; liqMarca(id); }
+  });
 
   function render() {
     const rows = readRows();
@@ -691,7 +702,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     if (e.target.closest('#gastos tbody')) autoGasto(e.target);
     if (e.target.closest('#emeses tbody')) syncEmesesToLibro(e.target);
     if (e.target.closest('#ingressos tbody')) syncLibroToEmeses(e.target);
-    if (e.target.classList && e.target.classList.contains('liq')) liqTocat.add(e.target.id);
+    if (e.target.classList && e.target.classList.contains('liq')) liqMarca(e.target.id);
     if (e.target.closest('#libro tbody')) recomputeLibro();
     if (e.target.closest('#emeses tbody') || e.target.closest('#gastos tbody') || e.target.closest('#ingressos tbody') || (e.target.classList && e.target.classList.contains('liq'))) render();
   });
@@ -778,6 +789,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
         body: JSON.stringify({ etiqueta: ETIQUETA, files: readRows(), gastos: readGastos(), libroGastos: readLibro() }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Error desant'); }
+      await window.desaEdicions();
       const d = await res.json();
       const s = document.getElementById('saved');
       const dt = new Date(d.updatedAt).toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' });

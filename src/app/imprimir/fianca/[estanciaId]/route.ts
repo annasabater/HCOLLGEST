@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { PDF_CLIENT_SCRIPT } from '@/lib/pdf/client-script';
 import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
+import { carregaEdicions, edicionsBootstrap, EDICIONS_SCRIPT } from '@/lib/edicions';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,6 +41,7 @@ export async function GET(
   if (!estancia) return new Response('Not found', { status: 404 });
 
   const establiment = await prisma.establiment.findFirst();
+  const edicions = await carregaEdicions('fianca', estancia.id);
   const titular = estancia.viatgers[0]?.huesped ?? null;
 
   const diposits = estancia.diposits;
@@ -212,12 +214,13 @@ export async function GET(
   <div class="tb-brand">Hostal Coll<span class="tb-badge">Rebut de fiança</span></div>
   <div class="tb-actions">
     <button id="addLine" class="btn ghost">+ Afegir línia</button>
+    <button id="save" class="btn ghost" data-desa-edicions title="Desa tot el que hi ha escrit al document (queda guardat per sempre)">Desar canvis</button>
     <button id="printPdf" class="btn solid">Imprimir PDF</button>
   </div>
 </div>
 
 <div class="app">
-  <div class="invoice">
+  <div class="invoice" data-k-auto>
 
     <header class="masthead">
       <div>
@@ -253,7 +256,7 @@ export async function GET(
     </section>
 
     <div class="items-wrap">
-      <table class="items" id="items">
+      <table class="items" id="items" data-files-k="items">
         <thead>
           <tr>
             <th class="c-qty">Cant.</th>
@@ -280,6 +283,8 @@ export async function GET(
   </div>
 </div>
 
+${edicionsBootstrap('fianca', estancia.id, edicions)}
+<script>${EDICIONS_SCRIPT}</script>
 <script>
   const num = v => {
     if (v == null) return 0;

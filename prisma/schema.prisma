@@ -712,6 +712,11 @@ model LiniaFactura {
   factura    Factura       @relation(fields: [facturaId], references: [id], onDelete: Cascade)
   concepte   ConcepteLinia
   descripcio String
+  // Segona línia del concepte (p. ex. "Del 12/08/2026 al 01/10/2026"). null = mai editada
+  // (l'allotjament hi mostra les dates de l'estada); "" = buidada a mà (no es torna a omplir).
+  detall     String?
+  // Quantitat mostrada a la factura (preu = import / quantitat). null = 1.
+  quantitat  Decimal?      @db.Decimal(10, 2)
   import     Decimal       @db.Decimal(10, 2)
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -1383,4 +1388,20 @@ model AvisDescartat {
 
   @@unique([tipus, entitatId])
   @@map("avis_descartat")
+}
+
+// Edicions manuals d'un document imprimible (factura, fiança, IEET,
+// llibre d'IVA…): tot el que s'escriu a la pàgina i no té camp propi a la BD.
+// En tornar a obrir el document, la pàgina hi aplica aquests valors.
+model EdicioDocument {
+  id        String   @id @default(cuid())
+  tipus     String // "factura", "factura-simple", "fianca", "ieet", "trimestre"
+  ref       String // id de la factura/estada, o el període
+  dades     Json // { camps: { clau: valor }, files: { taula: [{ a: {attr: val}, v: [valors] }] }, ocults: [clau] }
+  usuariId  String?  @map("usuari_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([tipus, ref])
+  @@map("edicio_document")
 }
