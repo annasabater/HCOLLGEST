@@ -73,344 +73,6 @@ interface EditForm {
   metodePagament: string; descripcio: string; numFactura: string;
 }
 
-interface GasFix {
-  id: string;
-  activitat: string;
-  frequencia: string;
-  importPrevist: string | null;
-  metodePagament: string;
-  properaData: string;
-  observacions: string | null;
-  gastos: { id: string; data: string; import: string; adjuntPath: string | null; numFactura: string | null }[];
-}
-
-// ─── Gastos fixes ─────────────────────────────────────────────────────────────
-
-const FREQUENCIES = ['MENSUAL', 'TRIMESTRAL', 'SEMESTRAL', 'ANUAL', 'BIENNAL', 'PUNTUAL'];
-const FREQ_LABELS: Record<string, string> = {
-  MENSUAL: 'Mensual', TRIMESTRAL: 'Trimestral', SEMESTRAL: 'Semestral',
-  ANUAL: 'Anual', BIENNAL: 'Biennal', PUNTUAL: 'Puntual',
-};
-const METODES_FIX = ['EFECTIU', 'TARGETA', 'TRANSFERENCIA', 'BIZUM', 'ALTRES'];
-const METODE_LABELS_FIX: Record<string, string> = {
-  EFECTIU: 'Efectiu', TARGETA: 'Targeta', TRANSFERENCIA: 'Transferencia', BIZUM: 'Bizum', ALTRES: 'Altres',
-};
-
-function statusInfo(properaData: string): { label: string; tone: 'success' | 'warning' | 'danger' } {
-  const now = new Date(); now.setHours(0, 0, 0, 0);
-  const propera = new Date(properaData); propera.setHours(0, 0, 0, 0);
-  const diff = (propera.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-  if (diff < 0) return { label: 'Vençut', tone: 'danger' };
-  if (diff <= 7) return { label: 'Vença aviat', tone: 'warning' };
-  return { label: 'Al dia', tone: 'success' };
-}
-
-interface FormStateFix {
-  activitat: string; frequencia: string; importPrevist: string;
-  metodePagament: string; properaData: string; observacions: string;
-}
-const EMPTY_FIX: FormStateFix = { activitat: '', frequencia: 'MENSUAL', importPrevist: '', metodePagament: 'TRANSFERENCIA', properaData: '', observacions: '' };
-
-function GastoFixForm({ initial, onSave, onCancel, loading }: { initial: FormStateFix; onSave: (f: FormStateFix) => void; onCancel: () => void; loading: boolean }) {
-  const [form, setForm] = useState<FormStateFix>(initial);
-  const set = (k: keyof FormStateFix) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm((p) => ({ ...p, [k]: e.target.value }));
-  return (
-    <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-      <Field label="Activitat" required htmlFor="gf-act"><Input id="gf-act" value={form.activitat} onChange={set('activitat')} placeholder="Lloguer, llum, asseguranca..." /></Field>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Frequencia" htmlFor="gf-freq">
-          <Select id="gf-freq" value={form.frequencia} onChange={set('frequencia')}>
-            {FREQUENCIES.map((f) => <option key={f} value={f}>{FREQ_LABELS[f]}</option>)}
-          </Select>
-        </Field>
-        <Field label="Import previst (EUR)" htmlFor="gf-imp">
-          <Input id="gf-imp" type="number" step="0.01" min="0" value={form.importPrevist} onChange={set('importPrevist')} placeholder="0.00" />
-        </Field>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Metode de pagament" htmlFor="gf-met">
-          <Select id="gf-met" value={form.metodePagament} onChange={set('metodePagament')}>
-            {METODES_FIX.map((m) => <option key={m} value={m}>{METODE_LABELS_FIX[m]}</option>)}
-          </Select>
-        </Field>
-        <Field label="Propera data" required htmlFor="gf-data">
-          <Input id="gf-data" type="date" value={form.properaData} onChange={set('properaData')} />
-        </Field>
-      </div>
-      <Field label="Observacions" htmlFor="gf-obs">
-        <Input id="gf-obs" value={form.observacions} onChange={set('observacions')} placeholder="Notes addicionals..." />
-      </Field>
-      <div className="flex gap-2">
-        <Button size="sm" onClick={() => onSave(form)} disabled={loading || !form.activitat || !form.properaData}>{loading ? 'Desant...' : 'Desar'}</Button>
-        <Button size="sm" variant="secondary" onClick={onCancel} disabled={loading}>Cancel&middot;lar</Button>
-      </div>
-    </div>
-  );
-}
-
-function GastosFixesTab({ desde, fins }: { desde: string; fins: string }) {
-  const [gastos, setGastos] = useState<GasFix[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showNew, setShowNew] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-
-  // Registrar la factura d'una despesa fixa (puja foto → crea la despesa).
-  const [registrarG, setRegistrarG] = useState<GasFix | null>(null);
-  const [regForm, setRegForm] = useState({ data: toISODate(new Date()), import: '', esFianca: false, metodePagament: 'TRANSFERENCIA' });
-  const [regFile, setRegFile] = useState<File | null>(null);
-  const [regBusy, setRegBusy] = useState(false);
-  const [regScan, setRegScan] = useState(false);
-  const [regError, setRegError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await getJSON<{ gastos: GasFix[] }>('/api/gastos-fixos');
-      setGastos(data.gastos);
-    } catch { setError('Error carregant els gastos fixos'); } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { void load(); }, [load]);
-
-  async function handleCreate(form: FormStateFix) {
-    try {
-      setSaving(true);
-      await postJSON('/api/gastos-fixos', { activitat: form.activitat, frequencia: form.frequencia, importPrevist: form.importPrevist ? parseFloat(form.importPrevist) : null, metodePagament: form.metodePagament, properaData: form.properaData, observacions: form.observacions || null });
-      setShowNew(false); await load();
-    } catch { setError('Error creant el gasto fix'); } finally { setSaving(false); }
-  }
-
-  async function handleEdit(id: string, form: FormStateFix) {
-    try {
-      setSaving(true);
-      // Mateix model que /serveis (ServeiRecurrent): usem el seu endpoint.
-      await patchJSON(`/api/serveis-recurrents/${id}`, { activitat: form.activitat, frequencia: form.frequencia, importPrevist: form.importPrevist ? parseFloat(form.importPrevist) : null, metodePagament: form.metodePagament, properaData: form.properaData, observacions: form.observacions || null });
-      setEditingId(null); await load();
-    } catch { setError('Error actualitzant la despesa fixa'); } finally { setSaving(false); }
-  }
-
-  function obreRegistrar(g: GasFix) {
-    setRegistrarG(g);
-    setRegForm({
-      data: toISODate(new Date(g.properaData) < new Date() ? new Date(g.properaData) : new Date()),
-      import: g.importPrevist != null ? String(Number(g.importPrevist)) : '',
-      esFianca: false,
-      metodePagament: g.metodePagament,
-    });
-    setRegFile(null); setRegError(null);
-  }
-
-  // En triar la foto de la factura, l'escaneja (OCR) per proposar import i data.
-  async function regTriaFitxer(f: File | null) {
-    setRegFile(f);
-    if (!f || !f.type.startsWith('image/')) return;
-    setRegScan(true);
-    try {
-      const fd = new FormData(); fd.append('image', await redueixImatge(f), f.name);
-      const res = await fetch('/api/ocr/gasto', { method: 'POST', body: fd });
-      if (res.ok) {
-        const { result } = (await res.json()) as { result: { import?: number; data?: string } };
-        setRegForm((p) => ({ ...p, import: result.import != null ? String(result.import) : p.import, data: result.data || p.data }));
-      }
-    } catch { /* ignore */ } finally { setRegScan(false); }
-  }
-
-  async function registrarFactura() {
-    if (!registrarG) return;
-    if (!regForm.import) { setRegError('Cal l’import de la factura.'); return; }
-    setRegBusy(true); setRegError(null);
-    try {
-      let adjuntPath: string | undefined;
-      if (regFile) {
-        const fd = new FormData(); fd.append('file', await redueixImatge(regFile), regFile.name);
-        const up = await fetch('/api/uploads', { method: 'POST', body: fd });
-        if (!up.ok) throw new ApiError(await motiuPujada(up, 'No s\'ha pogut pujar la factura'), up.status);
-        adjuntPath = (await up.json()).path;
-      }
-      await postJSON(`/api/serveis-recurrents/${registrarG.id}/registrar`, {
-        data: regForm.data,
-        import: Number(regForm.import),
-        esFianca: regForm.esFianca,
-        metodePagament: regForm.metodePagament,
-        adjuntPath,
-      });
-      setRegistrarG(null); setRegFile(null); await load();
-    } catch (err) {
-      setRegError(err instanceof ApiError ? err.message : 'Error registrant la factura');
-    } finally { setRegBusy(false); }
-  }
-
-  // Factures d'aquest contracte registrades dins del període triat a dalt.
-  const alPeriode = (g: GasFix) =>
-    g.gastos.filter((p) => p.data.slice(0, 10) >= desde && p.data.slice(0, 10) <= fins);
-  const totalPeriode = gastos.reduce(
-    (a, g) => a + alPeriode(g).reduce((b, p) => b + Number(p.import), 0),
-    0,
-  );
-  const editant = gastos.find((g) => g.id === editingId) ?? null;
-  const initialDe = (g: GasFix): FormStateFix => ({
-    activitat: g.activitat,
-    frequencia: g.frequencia,
-    importPrevist: g.importPrevist ?? '',
-    metodePagament: g.metodePagament,
-    properaData: g.properaData.slice(0, 10),
-    observacions: g.observacions ?? '',
-  });
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <p className="text-sm text-slate-500">
-          Els contractes es veuen sempre; «Al període» és el que s&apos;hi ha registrat.
-        </p>
-        <Button size="sm" className="ml-auto" onClick={() => { setShowNew(true); setEditingId(null); }}>
-          <Plus className="h-4 w-4" /> Nova despesa fixa
-        </Button>
-      </div>
-
-      {error && <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}<button className="ml-2 underline" onClick={() => setError(null)}>Tancar</button></div>}
-
-      {showNew && <GastoFixForm initial={EMPTY_FIX} onSave={handleCreate} onCancel={() => setShowNew(false)} loading={saving} />}
-      {editant && (
-        <GastoFixForm
-          initial={initialDe(editant)}
-          onSave={(form) => handleEdit(editant.id, form)}
-          onCancel={() => setEditingId(null)}
-          loading={saving}
-        />
-      )}
-
-      {loading ? (
-        <p className="text-sm text-slate-500">Carregant...</p>
-      ) : gastos.length === 0 ? (
-        <EmptyState>Cap despesa fixa. Fes clic a «Nova despesa fixa» per afegir-ne una.</EmptyState>
-      ) : (
-        <Table>
-          <Thead>
-            <tr>
-              <Th>Contracte</Th>
-              <Th>Cada</Th>
-              <Th>Previst</Th>
-              <Th className="text-right">Al període</Th>
-              <Th>Propera</Th>
-              <Th>Estat</Th>
-              <Th></Th>
-            </tr>
-          </Thead>
-          <tbody>
-            {gastos.map((g) => {
-              const status = statusInfo(g.properaData);
-              const files = alPeriode(g);
-              const suma = files.reduce((a, p) => a + Number(p.import), 0);
-              return (
-                <Tr key={g.id}>
-                  <Td>
-                    <span className="font-medium text-slate-800">{g.activitat}</span>
-                    {g.observacions && <span className="block text-xs text-slate-400">{g.observacions}</span>}
-                  </Td>
-                  <Td className="text-slate-500">{FREQ_LABELS[g.frequencia] ?? g.frequencia}</Td>
-                  <Td className="text-slate-500">{g.importPrevist != null ? formatEur(g.importPrevist) : '—'}</Td>
-                  <Td className="text-right">
-                    {files.length === 0 ? (
-                      <span className="text-slate-300">—</span>
-                    ) : (
-                      <>
-                        <span className="font-medium text-slate-800"><Eur value={suma} /></span>
-                        <span className="ml-1.5 inline-flex gap-1 align-middle">
-                          {files.filter((p) => p.adjuntPath).map((p) => (
-                            <a
-                              key={p.id}
-                              href={`/api/files?path=${encodeURIComponent(p.adjuntPath!)}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-brand-600"
-                              title={`Factura del ${formatDate(p.data)}`}
-                            >
-                              <Paperclip className="h-3.5 w-3.5" />
-                            </a>
-                          ))}
-                        </span>
-                        {files.length > 1 && (
-                          <span className="block text-xs text-slate-400">{files.length} factures</span>
-                        )}
-                      </>
-                    )}
-                  </Td>
-                  <Td className="whitespace-nowrap text-slate-500">{formatDate(g.properaData)}</Td>
-                  <Td><Badge tone={status.tone}>{status.label}</Badge></Td>
-                  <Td className="whitespace-nowrap text-right">
-                    <Button size="sm" variant="outline" onClick={() => obreRegistrar(g)}>Registrar factura</Button>
-                    <button
-                      type="button"
-                      aria-label="Editar el contracte"
-                      className="ml-1 inline-flex h-9 w-9 touch-manipulation items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-brand-700"
-                      onClick={() => { setEditingId(g.id); setShowNew(false); }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                  </Td>
-                </Tr>
-              );
-            })}
-            <Tr className="bg-brand-50">
-              <Td colSpan={3} className="font-semibold text-slate-700">Total fixes registrats al període</Td>
-              <Td className="text-right font-semibold text-brand-800"><Eur value={totalPeriode} /></Td>
-              <Td colSpan={3}></Td>
-            </Tr>
-          </tbody>
-        </Table>
-      )}
-
-      {/* Modal: registrar la factura d'una despesa fixa (crea la despesa) */}
-      {registrarG && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !regBusy && setRegistrarG(null)}>
-          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <h3 className="font-serif text-lg font-semibold text-slate-800">Registrar factura · {registrarG.activitat}</h3>
-              <button onClick={() => setRegistrarG(null)} className="shrink-0 text-slate-400 hover:text-slate-700"><X className="h-5 w-5" /></button>
-            </div>
-            <div className="space-y-3">
-              <Field label="Foto de la factura (opcional)" hint="Es llegeixen sols l'import i la data.">
-                <div className="flex items-center gap-2">
-                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
-                    <Upload className="h-4 w-4" /> Pujar factura
-                    <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => regTriaFitxer(e.target.files?.[0] ?? null)} />
-                  </label>
-                  {regScan && <span className="text-xs font-medium text-brand-700">Llegint…</span>}
-                  {regFile && <span className="max-w-40 truncate text-xs text-slate-500">{regFile.name}</span>}
-                </div>
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Data" required><Input type="date" value={regForm.data} onChange={(e) => setRegForm({ ...regForm, data: e.target.value })} /></Field>
-                <Field label="Import €" required><Input type="number" step="0.01" value={regForm.import} onChange={(e) => setRegForm({ ...regForm, import: e.target.value })} /></Field>
-              </div>
-              <Field label="Mètode de pagament">
-                <Select value={regForm.metodePagament} onChange={(e) => setRegForm({ ...regForm, metodePagament: e.target.value })}>
-                  {optionsFrom(metodeCobramentValues, METODE_COBRAMENT_LABELS).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </Select>
-              </Field>
-              <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2 text-sm">
-                <input type="checkbox" className="mt-0.5 accent-amber-600" checked={regForm.esFianca} onChange={(e) => setRegForm({ ...regForm, esFianca: e.target.checked })} />
-                <span>
-                  <span className="font-medium text-amber-800">És una fiança</span>
-                  <span className="block text-xs text-amber-700/80">Recuperable: no compta com a despesa al balanç.</span>
-                </span>
-              </label>
-              {regError && <p className="text-sm text-red-600">{regError}</p>}
-              <div className="flex items-center justify-end gap-2 pt-1">
-                <Button size="sm" variant="ghost" onClick={() => setRegistrarG(null)} disabled={regBusy}>Cancel·lar</Button>
-                <Button size="sm" onClick={registrarFactura} disabled={regBusy}>{regBusy ? 'Registrant…' : 'Registrar factura'}</Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Gastos variables ─────────────────────────────────────────────────────────
 
 // Estat inicial del formulari de nova despesa (inclou camps fiscals i el
@@ -1048,7 +710,7 @@ const pct = (part: number, tot: number) => `${tot > 0 ? (part / tot) * 100 : 0}%
 const eur0 = (n: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 
-// Gràfic de l'any: una barra apilada per mes (variables + fixes + personal).
+// Gràfic de l'any: una barra apilada per mes (variables + personal).
 // Els mesos que queden fora del període es veuen més fluixos, però es veuen: la
 // gràcia és no perdre la tendència quan mires una setmana concreta.
 function GraficAny({
@@ -1081,7 +743,6 @@ function GraficAny({
         </div>
         <div className="flex flex-wrap gap-3 text-xs text-slate-600">
           <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm bg-brand-700" /> Variables</span>
-          <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm bg-sky-700" /> Fixes</span>
           <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm bg-amber-600" /> Personal</span>
         </div>
       </div>
@@ -1113,7 +774,6 @@ function GraficAny({
                 {dins && tot > 0 ? eur0(tot) : ' '}
               </span>
               <span className={cn('rounded-t bg-brand-700', !dins && 'opacity-55')} style={{ height: alt(m.variables) }} />
-              <span className={cn('bg-sky-700', !dins && 'opacity-55')} style={{ height: alt(m.fixes) }} />
               <span className={cn('bg-amber-600', !dins && 'opacity-55')} style={{ height: alt(m.personal) }} />
             </button>
           );
@@ -1142,28 +802,13 @@ function ResumTab({
   onMes: (desde: string, fins: string) => void;
   onCategoria: (c: Resum['categories'][number]) => void;
 }) {
-  const [fixos, setFixos] = useState<GasFix[]>([]);
-  useEffect(() => {
-    getJSON<{ gastos: GasFix[] }>('/api/gastos-fixos')
-      .then((r) => setFixos(r.gastos))
-      .catch(() => setFixos([]));
-  }, []);
-
   const maxCat = resum.categories[0]?.import ?? 0;
   const totalCats = resum.categories.reduce((a, c) => a + c.import, 0);
-  const avui = toISODate(new Date());
-  const propers = [...fixos].sort((a, b) => a.properaData.localeCompare(b.properaData)).slice(0, 6);
-  const diesFins = (data: string) =>
-    Math.round(
-      (new Date(`${data.slice(0, 10)}T00:00:00.000Z`).getTime() -
-        new Date(`${avui}T00:00:00.000Z`).getTime()) / 86400000,
-    );
-
   return (
     <div className="space-y-4">
       <GraficAny mesos={resum.mesos} desde={resum.desde} fins={resum.fins} onMes={onMes} />
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4">
         <div className="rounded-xl border border-slate-200 p-4">
           <h3 className="text-sm font-semibold text-slate-800">En què se&apos;n va</h3>
           <p className="mb-3 text-xs text-slate-400">
@@ -1190,7 +835,6 @@ function ResumTab({
                 </span>
                 <span className="flex h-1.5 overflow-hidden rounded-full bg-slate-100">
                   <span className="bg-brand-700" style={{ width: pct(c.variables, maxCat) }} />
-                  <span className="bg-sky-700" style={{ width: pct(c.fixes, maxCat) }} />
                   <span className="bg-amber-600" style={{ width: pct(c.personal, maxCat) }} />
                 </span>
               </button>
@@ -1209,33 +853,6 @@ function ResumTab({
           )}
         </div>
 
-        <div className="rounded-xl border border-slate-200 p-4">
-          <h3 className="text-sm font-semibold text-slate-800">Què ve ara</h3>
-          <p className="mb-2 text-xs text-slate-400">
-            Despeses fixes amb data de pagament pròxima, hi caigui el període o no.
-          </p>
-          {propers.length === 0 ? (
-            <p className="text-sm text-slate-400">Cap despesa fixa registrada.</p>
-          ) : (
-            propers.map((g) => {
-              const status = statusInfo(g.properaData);
-              const d = diesFins(g.properaData);
-              const quan = d < 0 ? `fa ${-d} dies` : d === 0 ? 'avui' : `en ${d} dies`;
-              return (
-                <div key={g.id} className="flex items-center gap-3 border-b border-slate-100 py-2 last:border-0">
-                  <Badge tone={status.tone}>{status.label}</Badge>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-slate-700">{g.activitat}</span>
-                    <span className="text-xs text-slate-400">{formatDate(g.properaData)} · {quan}</span>
-                  </span>
-                  <span className="shrink-0 text-sm font-semibold text-slate-800">
-                    {g.importPrevist != null ? formatEur(g.importPrevist) : '—'}
-                  </span>
-                </div>
-              );
-            })
-          )}
-        </div>
       </div>
     </div>
   );
@@ -1299,29 +916,24 @@ function GastosContent() {
     ? Math.round(((resum.total - resum.anterior.total) / resum.anterior.total) * 100)
     : null;
 
-  const parts: { clau: string; nom: string; color: string; valor: number; peu: string }[] = resum
-    ? [
-        {
-          clau: 'variables', nom: 'Variables', color: 'bg-brand-700', valor: resum.variables,
-          peu: `${resum.nVariables} ${resum.nVariables === 1 ? 'despesa' : 'despeses'}`,
-        },
-        {
-          clau: 'fixes', nom: 'Fixes', color: 'bg-sky-700', valor: resum.fixes,
-          peu: `${resum.nFixes} ${resum.nFixes === 1 ? 'rebut registrat' : 'rebuts registrats'}`,
-        },
-        {
-          clau: 'personal', nom: 'Personal', color: 'bg-amber-600', valor: resum.personal,
-          peu: resum.personalPendent > 0 ? `pendent de pagar ${formatEur(resum.personalPendent)}` : 'tot pagat',
-        },
-      ]
-    : [];
+  // Les caselles hi són sempre (mentre carrega, amb «…»), perquè no es vegi un forat.
+  const parts: { clau: string; nom: string; color: string; valor: number; peu: string }[] = [
+    {
+      clau: 'variables', nom: 'Variables', color: 'bg-brand-700', valor: resum?.variables ?? 0,
+      peu: resum ? `${resum.nVariables} ${resum.nVariables === 1 ? 'despesa' : 'despeses'}` : '…',
+    },
+    {
+      clau: 'personal', nom: 'Personal', color: 'bg-amber-600', valor: resum?.personal ?? 0,
+      peu: !resum ? '…' : resum.personalPendent > 0 ? `pendent de pagar ${formatEur(resum.personalPendent)}` : 'tot pagat',
+    },
+  ];
 
   return (
     <div>
       <PageHeader title="Despeses" subtitle="Gestió de despeses del hostal" />
       <FinancesNav />
 
-      {/* Període únic: mana sobre les quatre pestanyes */}
+      {/* Període únic: mana sobre totes les pestanyes */}
       <NavegadorPeriode
         className="mb-4"
         estat={estat}
@@ -1335,8 +947,8 @@ function GastosContent() {
 
       {/* Total del període i les tres parts que el componen (que són les pestanyes),
           tot en una fila; en pantalla estreta el total va a dalt. */}
-      <div className="mb-5 grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 lg:grid-cols-[1.35fr_1fr_1fr_1fr]">
-        <div className="col-span-3 flex flex-col justify-center gap-1 bg-white px-4 py-3 lg:col-span-1">
+      <div className="mb-5 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 lg:grid-cols-[1.35fr_1fr_1fr]">
+        <div className="col-span-2 flex flex-col justify-center gap-1 bg-white px-4 py-3 lg:col-span-1">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Despesa real del període</p>
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <span className="text-3xl font-bold tracking-tight text-brand-800">
@@ -1377,11 +989,11 @@ function GastosContent() {
         ))}
       </div>
 
-      {/* Sub-pestanyes Resum / Variables / Fixes / Personal.
+      {/* Sub-pestanyes Resum / Variables / Personal.
           flex-wrap perquè, si no hi caben en una línia, passin a la següent i es
           vegin sempre TOTES (sense barra de desplaçament). */}
       <div className="mb-5 flex flex-wrap gap-1 border-b border-slate-200">
-        {(['resum', 'variables', 'fixes', 'personal'] as const).map((t) => (
+        {(['resum', 'variables', 'personal'] as const).map((t) => (
           <button
             key={t}
             onClick={() => { setCatNom(null); vesA(t); }}
@@ -1390,7 +1002,7 @@ function GastosContent() {
               tab === t ? 'border-brand-700 text-brand-800' : 'border-transparent text-slate-500 hover:text-slate-800',
             )}
           >
-            {t === 'resum' ? 'Resum' : t === 'variables' ? 'Variables' : t === 'fixes' ? 'Fixes' : 'Personal'}
+            {t === 'resum' ? 'Resum' : t === 'variables' ? 'Variables' : 'Personal'}
           </button>
         ))}
       </div>
@@ -1403,11 +1015,7 @@ function GastosContent() {
             onCategoria={(c) => {
               // Porta a la pestanya d'on ve la major part de la categoria: així
               // no s'aterra mai en una llista buida.
-              const on = c.personal >= c.variables && c.personal >= c.fixes
-                ? 'personal'
-                : c.fixes > c.variables
-                  ? 'fixes'
-                  : 'variables';
+              const on = c.personal > c.variables ? 'personal' : 'variables';
               setCatNom(on === 'variables' ? c.nom : null);
               vesA(on);
             }}
@@ -1415,8 +1023,6 @@ function GastosContent() {
         ) : (
           <p className="text-sm text-slate-400">Carregant…</p>
         )
-      ) : tab === 'fixes' ? (
-        <GastosFixesTab desde={desde} fins={fins} />
       ) : tab === 'personal' ? (
         resum ? <PersonalTab detall={resum.personalDetall} /> : <p className="text-sm text-slate-400">Carregant…</p>
       ) : (

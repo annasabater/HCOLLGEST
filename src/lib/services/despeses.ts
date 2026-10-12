@@ -151,7 +151,8 @@ export async function resumDespeses(
     linies.push({
       dia,
       import: imp,
-      grup: g.serveiRecurrentId ? 'fixes' : 'variables',
+      // Ja no hi ha apartat «Fixes»: els rebuts dels serveis recurrents són variables.
+      grup: 'variables',
       categoria: g.categoria?.nom ?? 'Sense categoria',
     });
   }
