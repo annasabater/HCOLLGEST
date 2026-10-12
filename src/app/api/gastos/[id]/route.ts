@@ -1,10 +1,11 @@
 import { prisma } from '@/lib/db';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { authorize, clientIp } from '@/lib/auth/guard';
 import { ROLES_WRITE } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
 import { handleApiError, noContent, ok } from '@/lib/http';
 import { GastoUpdateSchema } from '@/lib/validation/gasto';
+import { campsIva } from '@/lib/gasto-iva';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -26,6 +27,23 @@ export async function PATCH(req: Request, ctx: Ctx) {
     if (input.esFianca !== undefined) data.esFianca = input.esFianca;
     if (input.categoriaId !== undefined) data.categoria = { connect: { id: input.categoriaId } };
 
+    // IVA: si arriba desglossament (2+ línies) mana; si arriben base/% simples
+    // (o un desglossament buit), es torna a una sola base i s'esborra el desglossament.
+    const ivaRaw = (body ?? {}) as Record<string, unknown>;
+    if ('irpfPercent' in ivaRaw) data.irpfPercent = input.irpfPercent ?? null;
+    if (input.desglossamentIva !== undefined || 'baseImposable' in ivaRaw || 'ivaPercent' in ivaRaw) {
+      const c = input.desglossamentIva ? campsIva(input.desglossamentIva) : null;
+      if (c?.desglossamentIva) {
+        data.baseImposable = c.baseImposable;
+        data.ivaPercent = null;
+        data.desglossamentIva = c.desglossamentIva;
+      } else {
+        data.baseImposable = input.baseImposable ?? c?.baseImposable ?? null;
+        data.ivaPercent = input.ivaPercent ?? c?.ivaPercent ?? null;
+        data.desglossamentIva = Prisma.DbNull;
+      }
+    }
+
     // Proveïdor i habitació: es llegeixen del body cru per poder-los CANVIAR o
     // BUIDAR ('' → sense proveïdor/general). L'esquema optStr no distingeix buit.
     const raw = (body ?? {}) as Record<string, unknown>;
@@ -38,7 +56,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       accio: 'MODIFICACIO',
       entitat: 'gasto',
       entitatId: id,
-      detall: { esFianca: input.esFianca },
+      detall: { esFianca: input.esFianca, iva: input.desglossamentIva ?? input.ivaPercent },
       ip: clientIp(req),
     });
     return ok({ gasto });

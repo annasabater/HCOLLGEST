@@ -1048,6 +1048,10 @@ model Gasto {
   baseImposable     Decimal?         @map("base_imposable") @db.Decimal(10, 2)
   ivaPercent        Decimal?         @map("iva_percent") @db.Decimal(5, 2)
   irpfPercent       Decimal?         @map("irpf_percent") @db.Decimal(5, 2)
+  // Factura amb DIVERSOS tipus d'IVA (aigua 10% + 21% + cànon no subjecte…):
+  // [{ base, ivaPercent }]. Si hi és, mana sobre baseImposable/ivaPercent
+  // (baseImposable guarda la suma de bases). Veure src/lib/gasto-iva.ts.
+  desglossamentIva  Json?            @map("desglossament_iva")
   metodePagament    MetodeCobrament  @map("metode_pagament")
   adjuntPath        String?          @map("adjunt_path")
   // Fiança/dipòsit pagat (recuperable): no és una despesa real, així que NO compta

@@ -19,6 +19,7 @@ import { rangDeEstat, periodeComparacio, type EstatPeriode } from '@/lib/periode
 import { NavegadorPeriode } from '@/components/ui/navegador-periode';
 import { redueixImatge, motiuPujada } from '@/lib/images/redueix-client';
 import { optionsFrom, metodeCobramentValues, METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
+import { LiniesIva, liniaBuida, liniesDeGasto, payloadIva, type LiniaIvaForm } from '@/components/gastos/linies-iva';
 
 // ─── Tipus ────────────────────────────────────────────────────────────────────
 
@@ -45,6 +46,7 @@ interface GastoOcrClient {
   numFactura?: string;
   baseImposable?: number;
   ivaPercent?: number;
+  desglossamentIva?: { base: number; ivaPercent: number }[];
   irpfPercent?: number;
   import?: number;
   descripcio?: string;
@@ -60,6 +62,10 @@ interface Gasto {
   adjuntPath: string | null;
   esFianca: boolean;
   numFactura: string | null;
+  baseImposable: string | number | null;
+  ivaPercent: string | number | null;
+  irpfPercent: string | number | null;
+  desglossamentIva: { base: number; ivaPercent: number }[] | null;
   categoriaId: string;
   proveidorId: string | null;
   habitacioId: string | null;
@@ -71,6 +77,7 @@ interface Gasto {
 interface EditForm {
   data: string; import: string; categoriaId: string; proveidorId: string; habitacioId: string;
   metodePagament: string; descripcio: string; numFactura: string;
+  liniesIva: LiniaIvaForm[]; irpfPercent: string;
 }
 
 // ─── Gastos variables ─────────────────────────────────────────────────────────
@@ -87,8 +94,8 @@ function novaBuida() {
     metodePagament: 'TARGETA',
     descripcio: '',
     numFactura: '',
-    baseImposable: '',
-    ivaPercent: '',
+    // Una línia per tipus d'IVA (la majoria de factures en tenen una sola).
+    liniesIva: [liniaBuida()] as LiniaIvaForm[],
     irpfPercent: '',
     proveidorNom: '',
     proveidorNif: '',
@@ -135,7 +142,7 @@ function GastosVariablesTab({
 
   // Edició inline d'una despesa existent.
   const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<EditForm>({ data: '', import: '', categoriaId: '', proveidorId: '', habitacioId: '', metodePagament: 'TARGETA', descripcio: '', numFactura: '' });
+  const [editForm, setEditForm] = useState<EditForm>({ data: '', import: '', categoriaId: '', proveidorId: '', habitacioId: '', metodePagament: 'TARGETA', descripcio: '', numFactura: '', liniesIva: [liniaBuida()], irpfPercent: '' });
   const [editSaving, setEditSaving] = useState(false);
 
   // Es demana el període sencer sense filtrar per categoria: així les pastilles
@@ -186,8 +193,7 @@ function GastosVariablesTab({
         metodePagament: nova.metodePagament,
         descripcio: nova.descripcio,
         numFactura: nova.numFactura || undefined,
-        baseImposable: nova.baseImposable || undefined,
-        ivaPercent: nova.ivaPercent || undefined,
+        ...payloadIva(nova.liniesIva),
         irpfPercent: nova.irpfPercent || undefined,
         // Si no s'ha triat proveïdor, enviem el detectat per l'escàner (el servidor
         // el busca o el crea per tenir NIF i dades de contacte al trimestre).
@@ -219,7 +225,10 @@ function GastosVariablesTab({
       setNova((n) => ({
         ...n,
         categoriaId: n.categoriaId || defaults.categoriaId || '',
-        ivaPercent: n.ivaPercent || (defaults.ivaPercent != null ? String(defaults.ivaPercent) : ''),
+        // El % habitual només s'aplica a una sola línia encara sense %.
+        liniesIva: n.liniesIva.length === 1 && !n.liniesIva[0]!.ivaPercent && defaults.ivaPercent != null
+          ? [{ ...n.liniesIva[0]!, ivaPercent: String(defaults.ivaPercent) }]
+          : n.liniesIva,
         irpfPercent: n.irpfPercent || (defaults.irpfPercent != null ? String(defaults.irpfPercent) : ''),
         // El mètode només es reomple si encara és el per defecte (no tocat).
         metodePagament: n.metodePagament === 'TARGETA' && defaults.metodePagament ? defaults.metodePagament : n.metodePagament,
@@ -267,8 +276,15 @@ function GastosVariablesTab({
         if (result.data) next.data = result.data;
         if (result.import != null) next.import = String(result.import);
         if (result.numFactura) next.numFactura = result.numFactura;
-        if (result.baseImposable != null) next.baseImposable = String(result.baseImposable);
-        if (result.ivaPercent != null) next.ivaPercent = String(result.ivaPercent);
+        // Diversos tipus d'IVA → una línia per tipus; si no, base i % simples.
+        if (result.desglossamentIva && result.desglossamentIva.length >= 2) {
+          next.liniesIva = result.desglossamentIva.map((l) => ({ base: String(l.base), ivaPercent: String(l.ivaPercent) }));
+        } else if (result.baseImposable != null || result.ivaPercent != null) {
+          next.liniesIva = [{
+            base: result.baseImposable != null ? String(result.baseImposable) : '',
+            ivaPercent: result.ivaPercent != null ? String(result.ivaPercent) : '',
+          }];
+        }
         if (result.irpfPercent != null) next.irpfPercent = String(result.irpfPercent);
         if (result.descripcio && !n.descripcio.trim()) next.descripcio = result.descripcio;
         // Categoria: només si no n'hi ha cap de triada, per no trepitjar la de l'usuari.
@@ -337,6 +353,8 @@ function GastosVariablesTab({
       metodePagament: g.metodePagament,
       descripcio: g.descripcio,
       numFactura: g.numFactura ?? '',
+      liniesIva: liniesDeGasto(g),
+      irpfPercent: g.irpfPercent != null ? String(Number(g.irpfPercent)) : '',
     });
   }
 
@@ -353,6 +371,8 @@ function GastosVariablesTab({
         metodePagament: editForm.metodePagament,
         descripcio: editForm.descripcio,
         numFactura: editForm.numFactura,
+        ...payloadIva(editForm.liniesIva, true),
+        irpfPercent: editForm.irpfPercent === '' ? null : Number(editForm.irpfPercent),
       });
       setEditId(null);
       load();
@@ -404,12 +424,13 @@ function GastosVariablesTab({
               <Field label="Nº factura" hint="Del proveïdor (per al llibre d'IVA).">
                 <Input value={nova.numFactura} onChange={(e) => setNova({ ...nova, numFactura: e.target.value })} />
               </Field>
-              <Field label="Base imponible €" hint="Sense IVA (opcional).">
-                <Input type="number" step="0.01" value={nova.baseImposable} onChange={(e) => setNova({ ...nova, baseImposable: e.target.value })} />
-              </Field>
-              <Field label="% IVA">
-                <Input type="number" step="0.01" value={nova.ivaPercent} onChange={(e) => setNova({ ...nova, ivaPercent: e.target.value })} />
-              </Field>
+              <LiniesIva
+                className="sm:col-span-2"
+                linies={nova.liniesIva}
+                onChange={(l) => setNova({ ...nova, liniesIva: l })}
+                total={nova.import}
+                irpfPercent={nova.irpfPercent}
+              />
               <Field label="% IRPF" hint="Retenció (deixa buit si no n'hi ha).">
                 <Input type="number" step="0.01" value={nova.irpfPercent} onChange={(e) => setNova({ ...nova, irpfPercent: e.target.value })} />
               </Field>
@@ -591,6 +612,14 @@ function GastosVariablesTab({
                       </Field>
                       <Field label="Núm. factura (proveïdor)"><Input value={editForm.numFactura} onChange={(e) => setEditForm({ ...editForm, numFactura: e.target.value })} /></Field>
                       <Field label="Descripció" className="sm:col-span-2"><Input value={editForm.descripcio} onChange={(e) => setEditForm({ ...editForm, descripcio: e.target.value })} /></Field>
+                      <LiniesIva
+                        className="sm:col-span-2"
+                        linies={editForm.liniesIva}
+                        onChange={(l) => setEditForm({ ...editForm, liniesIva: l })}
+                        total={editForm.import}
+                        irpfPercent={editForm.irpfPercent}
+                      />
+                      <Field label="% IRPF"><Input type="number" step="0.01" value={editForm.irpfPercent} onChange={(e) => setEditForm({ ...editForm, irpfPercent: e.target.value })} /></Field>
                     </div>
                     <div className="mt-3 flex items-center gap-2">
                       <Button size="sm" onClick={() => desarEdit(g.id)} disabled={editSaving}><Check className="h-4 w-4" /> {editSaving ? 'Desant…' : 'Desar'}</Button>

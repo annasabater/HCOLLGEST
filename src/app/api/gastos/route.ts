@@ -5,6 +5,7 @@ import { ROLES_WRITE } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
 import { created, handleApiError, ok } from '@/lib/http';
 import { GastoCreateSchema } from '@/lib/validation/gasto';
+import { campsIva, type LiniaIva } from '@/lib/gasto-iva';
 
 // GET /api/gastos?desde=&fins=&categoriaId=
 export async function GET(req: Request) {
@@ -95,8 +96,7 @@ export async function POST(req: Request) {
         animalId: data.animalId ?? null,
         descripcio: data.descripcio,
         numFactura: data.numFactura ?? null,
-        baseImposable: data.baseImposable ?? null,
-        ivaPercent: data.ivaPercent ?? null,
+        ...ivaPerDesar(data),
         irpfPercent: data.irpfPercent ?? null,
         metodePagament: data.metodePagament,
         adjuntPath: data.adjuntPath ?? null,
@@ -116,6 +116,14 @@ export async function POST(req: Request) {
   } catch (err) {
     return handleApiError(err);
   }
+}
+
+// Camps fiscals a desar: amb 2+ línies d'IVA, desglossament (i la base total);
+// si no, la base i el % simples tal com arriben.
+function ivaPerDesar(d: { baseImposable?: number; ivaPercent?: number; desglossamentIva?: LiniaIva[] | null }) {
+  const c = d.desglossamentIva ? campsIva(d.desglossamentIva) : null;
+  if (c?.desglossamentIva) return { baseImposable: c.baseImposable, ivaPercent: null, desglossamentIva: c.desglossamentIva };
+  return { baseImposable: d.baseImposable ?? c?.baseImposable ?? null, ivaPercent: d.ivaPercent ?? c?.ivaPercent ?? null };
 }
 
 export const dynamic = 'force-dynamic';

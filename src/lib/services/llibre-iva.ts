@@ -12,6 +12,7 @@
 import 'server-only';
 import { prisma } from '../db';
 import { periodeDelText } from '../periode-factura';
+import { liniesIva } from '../gasto-iva';
 
 export interface FilaIngres {
   data: string; // ISO
@@ -72,8 +73,6 @@ export function rangTrimestre(year: number, trimestre: number): { start: Date; e
   };
 }
 
-/** IVA general de les despeses (proveïdors): 21%, sol venir IVA inclòs al total. */
-const IVA_DESPESA = 21;
 
 export interface FilaGasto {
   data: string; // ISO
@@ -103,42 +102,28 @@ export async function getGastosSoportats(year: number, trimestre: number): Promi
     orderBy: [{ data: 'asc' }],
     include: { proveidor: { select: { nom: true, cif: true } } },
   });
-  return gastos.map((g) => {
-    const total = Number(g.import);
-    // Si el gasto porta desglossament fiscal explícit (lloguer amb IVA/IRPF),
-    // s'usa tal qual; si no, es deriva la base del total al 21% inclòs (IVA soportat).
-    if (g.baseImposable != null) {
-      const base = Number(g.baseImposable);
-      const ivaPercent = g.ivaPercent != null ? Number(g.ivaPercent) : 0;
-      const irpfPercent = g.irpfPercent != null ? Number(g.irpfPercent) : 0;
+  // Una fila per tipus d'IVA: una factura amb aigua al 10% i conservació al 21%
+  // surt en dues files amb el mateix número (com al llibre de factures rebudes).
+  // L'IRPF (lloguers) es reparteix sobre la base de cada línia.
+  return gastos.flatMap((g) => {
+    const irpfPercent = g.irpfPercent != null ? Number(g.irpfPercent) : 0;
+    const linies = liniesIva(g);
+    return linies.map((l) => {
+      const irpf = round2(l.base * (irpfPercent / 100));
       return {
         data: g.data.toISOString(),
         nif: g.proveidor?.cif ?? '',
         proveidor: g.proveidor?.nom ?? g.descripcio,
         numFactura: g.numFactura ?? '',
-        base,
-        ivaPercent,
-        iva: round2(base * (ivaPercent / 100)),
+        base: l.base,
+        ivaPercent: l.ivaPercent,
+        iva: l.iva,
         irpfPercent,
-        irpf: round2(base * (irpfPercent / 100)),
-        total,
+        irpf,
+        // Una sola línia: el total real pagat; diverses: el de cada línia.
+        total: linies.length === 1 ? Number(g.import) : round2(l.base + l.iva - irpf),
       };
-    }
-    const base = round2(total / (1 + IVA_DESPESA / 100));
-    return {
-      data: g.data.toISOString(),
-      nif: g.proveidor?.cif ?? '',
-      proveidor: g.proveidor?.nom ?? g.descripcio,
-      numFactura: g.numFactura ?? '',
-      base,
-      ivaPercent: IVA_DESPESA,
-      iva: round2(total - base),
-      // Sense retenció d'IRPF per defecte (només l'aplica el lloguer i alguns
-      // serveis professionals; s'ajusta a mà a la fila corresponent).
-      irpfPercent: 0,
-      irpf: 0,
-      total,
-    };
+    });
   });
 }
 
@@ -330,27 +315,23 @@ export async function getLibroGastos(
 
   const files: FilaLibroGasto[] = gastos.map((g) => {
     const total = round2(Number(g.import));
-    let base: number;
-    let ivaPercent: number;
-    let iva: number;
-    if (g.baseImposable != null) {
-      base = round2(Number(g.baseImposable));
-      ivaPercent = g.ivaPercent != null ? Number(g.ivaPercent) : 0;
-      iva = round2(base * (ivaPercent / 100));
-    } else {
-      base = round2(total / (1 + IVA_DESPESA / 100));
-      ivaPercent = IVA_DESPESA;
-      iva = round2(total - base);
-    }
     const col = columnaPerCategoria(g.categoria?.nom ?? '');
     const bases = basesBuides();
-    // Les despeses exemptes (assegurances → otrosSinIva) van sense IVA.
+    const ivaPer = { 5: 0, 10: 0, 21: 0 };
     if (col === 'otrosSinIva') {
+      // Les despeses exemptes (assegurances → otrosSinIva) van sense IVA.
       bases.otrosSinIva = total;
-      ivaPercent = 0;
-      iva = 0;
     } else {
-      bases[col] = base;
+      // Cada línia d'IVA: la base subjecta a la columna de la categoria, la part
+      // no subjecta (0%, p. ex. el cànon de l'aigua) a «Otros gastos sin IVA», i
+      // l'IVA a la columna del seu tipus.
+      for (const l of liniesIva(g)) {
+        if (l.ivaPercent === 0) bases.otrosSinIva = round2(bases.otrosSinIva + l.base);
+        else bases[col] = round2(bases[col] + l.base);
+        if (l.ivaPercent === 5) ivaPer[5] = round2(ivaPer[5] + l.iva);
+        else if (l.ivaPercent === 10) ivaPer[10] = round2(ivaPer[10] + l.iva);
+        else if (l.ivaPercent >= 21) ivaPer[21] = round2(ivaPer[21] + l.iva);
+      }
     }
     return {
       data: g.data.toISOString(),
@@ -358,9 +339,9 @@ export async function getLibroGastos(
       proveidor: g.proveidor?.nom ?? g.descripcio,
       numFactura: g.numFactura ?? '',
       bases,
-      iva5: ivaPercent === 5 ? iva : 0,
-      iva10: ivaPercent === 10 ? iva : 0,
-      iva21: ivaPercent >= 21 ? iva : 0,
+      iva5: ivaPer[5],
+      iva10: ivaPer[10],
+      iva21: ivaPer[21],
       total,
     };
   });

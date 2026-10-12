@@ -1,6 +1,7 @@
 /** Validación de gastos y proveedores (Fase 4). */
 import { z } from 'zod';
 import { metodeCobramentValues } from './enums';
+import { LiniaIvaSchema } from '../gasto-iva';
 
 const optStr = z.preprocess(
   (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
@@ -27,6 +28,9 @@ export const GastoCreateSchema = z.object({
   baseImposable: optNum,
   ivaPercent: optNum,
   irpfPercent: optNum,
+  // Diversos tipus d'IVA a la mateixa factura (2+ línies). Si es dona, mana
+  // sobre baseImposable/ivaPercent. [] o null en editar → torna a una sola base.
+  desglossamentIva: z.array(LiniaIvaSchema).max(8).nullable().optional(),
   metodePagament: z.enum(metodeCobramentValues),
   adjuntPath: optStr,
   // Proveïdor detectat per l'escàner (OCR): si no hi ha proveidorId, es busca

@@ -24,6 +24,8 @@ export interface GastoOcr {
   numFactura?: string;
   baseImposable?: number;
   ivaPercent?: number;
+  // Factura amb diversos tipus d'IVA (10% + 21%, part no subjecta…): una línia per tipus.
+  desglossamentIva?: { base: number; ivaPercent: number }[];
   irpfPercent?: number;
   import?: number; // total pagat (IVA inclòs)
   descripcio?: string;
@@ -43,7 +45,9 @@ Respon SEMPRE en format JSON vàlid, sense cap text addicional fora del JSON.`;
 
 function buildUserPrompt(categories: string[]): string {
   const catList = categories.length > 0 ? categories.join(', ') : 'Altres';
-  return `Extreu les dades d'aquesta factura o tiquet de COMPRA (una despesa del negoci).
+  // Data d'avui: sense ella el model creu que una factura recent és «futura».
+  const avui = new Date().toISOString().slice(0, 10);
+  return `Extreu les dades d'aquesta factura o tiquet de COMPRA (una despesa del negoci). Avui és ${avui}: una data anterior o igual a avui NO és futura.
 
 MOLT IMPORTANT sobre el proveïdor:
 - El "proveïdor" és qui EMET la factura (l'emissor/venedor), normalment a la capçalera de dalt.
@@ -64,6 +68,7 @@ Retorna un objecte JSON amb exactament aquesta estructura (posa null als camps q
   "numFactura": "string o null — número de factura o de tiquet",
   "baseImposable": "número o null — base imposable (sense IVA)",
   "ivaPercent": "número o null — percentatge d'IVA aplicat (21, 10 o 4). Si la factura mostra base i total però no el %, calcula'l: round((total-base)/base*100)",
+  "desglossamentIva": "array o null — NOMÉS si la factura té MÉS D'UN tipus d'IVA (p.ex. aigua al 10% i conservació al 21%, menjar al 10% i neteja al 21%, o una part 'no subjecta'/'exempta'/'NS' com el cànon de l'aigua): [{ \"base\": número, \"ivaPercent\": número }], una entrada per tipus, amb ivaPercent 0 per a la part no subjecta o exempta. Amb un sol tipus d'IVA, null.",
   "irpfPercent": "número o null — percentatge de retenció d'IRPF si n'hi ha (sovint no n'hi ha; deixa null)",
   "import": "número o null — TOTAL a pagar amb IVA inclòs",
   "descripcio": "string o null — descripció breu del que s'ha comprat (p.ex. 'Material de pintura', 'Llits i matalassos', 'Ferreteria')",
@@ -75,6 +80,7 @@ Regles de lectura (transcripció fidel, sense inventar):
 - Llegeix cada xifra amb atenció. Distingeix bé 0/O, 1/I, 5/S, 8/B. Si dubtes, deixa el camp buit + warning.
 - El TOTAL és l'import final amb IVA inclòs ("Total", "Importe total", "Total factura"). És el més important: no el confonguis amb la base.
 - Si només veus el total (tiquet simple sense desglossament), omple només "import" i deixa base/ivaPercent a null (o, si el tiquet indica "IVA 21%", posa ivaPercent=21).
+- Si hi ha DIVERSOS tipus d'IVA, omple "desglossamentIva" amb la base de cada tipus tal com surt al quadre de bases de la factura (també la part sense IVA), i posa a "baseImposable" la suma de totes les bases. La suma de bases + IVA ha de donar el total.
 - Si hi ha diverses línies de producte, NO les detallis totes: resumeix a "descripcio" en poques paraules.
 - La "categoria" NO és transcripció: és una classificació teva. Tria SEMPRE un nom de la llista (o 'Altres'); no te'l pots inventar fora de la llista.
 - Les dades de contacte del proveïdor només si es veuen clarament; si no, null.
@@ -88,6 +94,18 @@ function toNum(v: unknown): number | undefined {
     if (Number.isFinite(n)) return n;
   }
   return undefined;
+}
+
+// Desglossament d'IVA llegit: només si hi ha 2+ línies amb base i % numèrics.
+function llegeixDesglossament(v: unknown): { base: number; ivaPercent: number }[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const linies = v.flatMap((x) => {
+    const o = (x ?? {}) as Record<string, unknown>;
+    const base = toNum(o.base);
+    const ivaPercent = toNum(o.ivaPercent);
+    return base !== undefined && ivaPercent !== undefined ? [{ base, ivaPercent }] : [];
+  });
+  return linies.length >= 2 ? linies : undefined;
 }
 
 function toStr(v: unknown): string | undefined {
@@ -187,6 +205,7 @@ export async function POST(req: Request) {
       numFactura: toStr(parsed.numFactura),
       baseImposable: toNum(parsed.baseImposable),
       ivaPercent: toNum(parsed.ivaPercent),
+      desglossamentIva: llegeixDesglossament(parsed.desglossamentIva),
       irpfPercent: toNum(parsed.irpfPercent),
       import: toNum(parsed.import),
       descripcio: toStr(parsed.descripcio),
