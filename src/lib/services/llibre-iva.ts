@@ -273,6 +273,9 @@ const CATEGORIA_A_COLUMNA: Record<string, ColumnaGasto> = {
   manteniment: 'reparaciones',
   reformes: 'reparaciones',
   assegurances: 'otrosSinIva',
+  // Tributs municipals (IBI, escombraries…): sense IVA, a «Impuesto local».
+  impostos: 'impuestoLocal',
+  'impostos i taxes': 'impuestoLocal',
   personal: 'salarios',
 };
 
@@ -318,9 +321,9 @@ export async function getLibroGastos(
     const col = columnaPerCategoria(g.categoria?.nom ?? '');
     const bases = basesBuides();
     const ivaPer = { 5: 0, 10: 0, 21: 0 };
-    if (col === 'otrosSinIva') {
-      // Les despeses exemptes (assegurances → otrosSinIva) van sense IVA.
-      bases.otrosSinIva = total;
+    if (col === 'otrosSinIva' || col === 'impuestoLocal') {
+      // Sense IVA: assegurances → «Otros gastos sin IVA»; tributs → «Impuesto local».
+      bases[col] = total;
     } else {
       // Cada línia d'IVA: la base subjecta a la columna de la categoria, la part
       // no subjecta (0%, p. ex. el cànon de l'aigua) a «Otros gastos sin IVA», i
