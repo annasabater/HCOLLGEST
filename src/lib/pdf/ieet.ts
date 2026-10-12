@@ -258,7 +258,7 @@ export async function buildIeetPdf(
     const dades = [
       habs.length ? `${habs.length > 1 ? 'Habitacions' : 'Habitació'} ${habs.join(', ')}` : null,
       `del ${dataEs(f0.entrada)} al ${dataEs(f0.sortida)}`,
-      f0.nitsEstada === f0.nitsPaguen ? nits(f0.nitsEstada) : `${nits(f0.nitsEstada)} (paguen ${f0.nitsPaguen})`,
+      nits(f0.nitsPaguen),
     ].filter(Boolean).join('  ·  ');
     text(`·  ${dades}`, MX + 8 + serif.widthOfTextAtSize(net(ctr), fs + 2.2) + 7, ty + 0.4, fs, font, SLATE);
     y -= ALT_GRUP;
