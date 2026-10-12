@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Download, CloudUpload, CalendarClock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, CloudUpload, CalendarClock, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -128,6 +128,9 @@ export default function TaxaTuristicaPage() {
               <div className="flex flex-wrap gap-2">
                 <a href={`/api/ieet/export?periode=${clau}`} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-brand-600">
                   <Download className="h-4 w-4" /> Descarregar Excel
+                </a>
+                <a href={`/api/ieet/pdf?periode=${clau}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-brand-600">
+                  <FileText className="h-4 w-4" /> Descarregar PDF
                 </a>
                 <Button size="sm" onClick={actualitzaDrive} disabled={sync.busy}>
                   <CloudUpload className="h-4 w-4" /> {sync.busy ? 'Actualitzant…' : 'Actualitzar Drive ara'}
