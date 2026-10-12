@@ -4,6 +4,7 @@ import { authorize, clientIp } from '@/lib/auth/guard';
 import { ROLES_WRITE } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
 import { created, handleApiError, ok } from '@/lib/http';
+import { buscaDuplicats, respostaDuplicat } from '@/lib/services/gasto-duplicats';
 import { GastoCreateSchema } from '@/lib/validation/gasto';
 import { campsIva, type LiniaIva } from '@/lib/gasto-iva';
 
@@ -68,9 +69,19 @@ export async function POST(req: Request) {
           ],
         },
       });
-      if (existent) {
-        proveidorId = existent.id;
-      } else if (nom) {
+      if (existent) proveidorId = existent.id;
+    }
+
+    // Avís de factura repetida (abans de crear cap proveïdor nou).
+    if (!data.ignoraDuplicat) {
+      const duplicats = await buscaDuplicats({ data: data.data, import: data.import, numFactura: data.numFactura, proveidorId });
+      if (duplicats.length > 0) return respostaDuplicat(duplicats);
+    }
+
+    if (!proveidorId && (data.proveidorNom || data.proveidorNif)) {
+      const nif = data.proveidorNif?.toUpperCase().replace(/\s+/g, '');
+      const nom = data.proveidorNom?.trim();
+      if (nom) {
         const nou = await prisma.proveidor.create({
           data: {
             nom,

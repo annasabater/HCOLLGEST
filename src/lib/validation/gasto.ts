@@ -52,6 +52,8 @@ export const GastoCreateSchema = z.object({
   proveidorWeb: optStr,
   // Fiança/dipòsit pagat (recuperable): no compta al balanç fins que es desmarqui.
   esFianca: z.coerce.boolean().optional(),
+  // Desa encara que sembli una factura ja pujada (l'usuari ha vist l'avís).
+  ignoraDuplicat: z.boolean().optional(),
 });
 
 export const GastoUpdateSchema = GastoCreateSchema.partial();

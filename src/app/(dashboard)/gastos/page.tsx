@@ -11,6 +11,7 @@ import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { Card, CardBody } from '@/components/ui/card';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Eur, HideAmountsButton } from '@/components/finances/amounts-visibility';
 import { getJSON, postJSON, patchJSON, ApiError } from '@/lib/api';
 import { formatDate, formatEur, cn } from '@/lib/utils';
@@ -130,6 +131,23 @@ function novaBuida() {
   };
 }
 
+interface DuplicatInfo {
+  id: string;
+  data: string;
+  import: number;
+  numFactura: string | null;
+  proveidor: string | null;
+  descripcio: string;
+  esFianca: boolean;
+}
+
+/** Si l'error és l'avís de «factura ja pujada» del servidor, les que coincideixen. */
+function duplicatsDe(err: unknown): DuplicatInfo[] | null {
+  if (!(err instanceof ApiError) || err.status !== 409) return null;
+  const d = err.details as { code?: string; duplicats?: DuplicatInfo[] } | undefined;
+  return d?.code === 'DUPLICAT' && d.duplicats?.length ? d.duplicats : null;
+}
+
 function GastosVariablesTab({
   desde,
   fins,
@@ -168,6 +186,11 @@ function GastosVariablesTab({
   // Nova foto/fitxer per substituir l'adjunt de la despesa que s'edita.
   const [editFile, setEditFile] = useState<File | null>(null);
   const [editSaving, setEditSaving] = useState(false);
+  // Avís de factura ja pujada: les que coincideixen i com desar igualment.
+  const [duplicat, setDuplicat] = useState<{ duplicats: DuplicatInfo[]; desa: () => Promise<void> } | null>(null);
+  const [desantDuplicat, setDesantDuplicat] = useState(false);
+  // Despesa a destacar a la llista (després de «Veure-la»).
+  const [destacaId, setDestacaId] = useState<string | null>(null);
 
   // Es demana el període sencer sense filtrar per categoria: així les pastilles
   // de categoria mostren tot el que hi ha i filtrar és immediat, sense anar al servidor.
@@ -191,6 +214,13 @@ function GastosVariablesTab({
     getJSON<{ habitacions: Hab[] }>('/api/habitacions').then((r) => setHabitacions(r.habitacions));
   }, []);
   useEffect(() => { load(); }, [load]);
+  // «Veure-la»: quan la despesa ja és a la llista, hi va i la destaca uns segons.
+  useEffect(() => {
+    if (!destacaId || !gastos.some((g) => g.id === destacaId)) return;
+    document.getElementById(`gasto-${destacaId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const t = setTimeout(() => setDestacaId(null), 6000);
+    return () => clearTimeout(t);
+  }, [destacaId, gastos]);
 
   async function crear(e: React.FormEvent) {
     e.preventDefault();
@@ -208,7 +238,7 @@ function GastosVariablesTab({
         if (!up.ok) throw new ApiError(await motiuPujada(up, 'No s\'ha pogut pujar l\'adjunt'), up.status);
         adjuntPath = (await up.json()).path;
       }
-      await postJSON('/api/gastos', {
+      const payload = {
         data: nova.data,
         import: Number(nova.import),
         categoriaId: nova.categoriaId,
@@ -230,11 +260,22 @@ function GastosVariablesTab({
         proveidorWeb: nova.proveidorId ? undefined : nova.proveidorWeb || undefined,
         adjuntPath,
         esFianca: nova.esFianca,
-      });
-      setNova(novaBuida());
-      setFile(null); setScanWarnings([]); setScanNouProv(null); setShowForm(false);
-      onSavedDate(nova.data);
-      await load();
+      };
+      const desa = async (ignoraDuplicat: boolean) => {
+        await postJSON('/api/gastos', { ...payload, ...(ignoraDuplicat ? { ignoraDuplicat: true } : {}) });
+        setNova(novaBuida());
+        setFile(null); setScanWarnings([]); setScanNouProv(null); setShowForm(false);
+        onSavedDate(nova.data);
+        await load();
+      };
+      try {
+        await desa(false);
+      } catch (err) {
+        // Sembla una factura ja pujada: avisem i deixem triar (l'adjunt ja pujat es reaprofita).
+        const dups = duplicatsDe(err);
+        if (!dups) throw err;
+        setDuplicat({ duplicats: dups, desa: () => desa(true) });
+      }
     } catch (err) { setError(err instanceof ApiError ? err.message : 'Error desant la despesa'); } finally { setSaving(false); }
   }
 
@@ -406,7 +447,7 @@ function GastosVariablesTab({
         if (!up.ok) throw new ApiError(await motiuPujada(up, 'No s\'ha pogut pujar l\'adjunt'), up.status);
         adjuntPath = (await up.json()).path;
       }
-      await patchJSON(`/api/gastos/${id}`, {
+      const payload = {
         ...(adjuntPath ? { adjuntPath } : {}),
         data: editForm.data,
         import: Number(editForm.import),
@@ -418,11 +459,21 @@ function GastosVariablesTab({
         numFactura: editForm.numFactura,
         ...payloadIva(editForm.liniesIva, true),
         irpfPercent: editForm.irpfPercent === '' ? null : Number(editForm.irpfPercent),
-      });
-      setEditId(null);
-      setEditFile(null);
-      load();
-      getJSON<{ proveidors: Prov[] }>('/api/proveidors').then((r) => setProveidors(r.proveidors)).catch(() => {});
+      };
+      const desa = async (ignoraDuplicat: boolean) => {
+        await patchJSON(`/api/gastos/${id}`, { ...payload, ...(ignoraDuplicat ? { ignoraDuplicat: true } : {}) });
+        setEditId(null);
+        setEditFile(null);
+        load();
+        getJSON<{ proveidors: Prov[] }>('/api/proveidors').then((r) => setProveidors(r.proveidors)).catch(() => {});
+      };
+      try {
+        await desa(false);
+      } catch (err) {
+        const dups = duplicatsDe(err);
+        if (!dups) throw err;
+        setDuplicat({ duplicats: dups, desa: () => desa(true) });
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error desant la despesa');
     } finally {
@@ -432,6 +483,57 @@ function GastosVariablesTab({
 
   return (
     <>
+      <ConfirmDialog
+        open={duplicat !== null}
+        danger={false}
+        title="Sembla que aquesta factura ja està pujada"
+        message={duplicat && duplicat.duplicats.length > 1 ? 'Ja hi ha aquestes despeses amb les mateixes dades:' : 'Ja hi ha una despesa amb les mateixes dades:'}
+        confirmLabel={desantDuplicat ? 'Desant…' : 'Desar igualment'}
+        onCancel={() => setDuplicat(null)}
+        onConfirm={async () => {
+          if (!duplicat || desantDuplicat) return;
+          setDesantDuplicat(true);
+          try {
+            await duplicat.desa();
+            setDuplicat(null);
+          } catch (err) {
+            setDuplicat(null);
+            setError(err instanceof ApiError ? err.message : 'Error desant la despesa');
+          } finally {
+            setDesantDuplicat(false);
+          }
+        }}
+        extra={
+          <ul className="mt-4 space-y-2">
+            {duplicat?.duplicats.map((d) => (
+              <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm ring-1 ring-amber-200">
+                <span className="min-w-0">
+                  <span className="font-medium text-slate-800">
+                    {formatDate(d.data)} · {d.proveidor ?? 'Sense proveïdor'}
+                  </span>
+                  <span className="block text-xs text-slate-500">
+                    {d.numFactura ? `Nº ${d.numFactura} · ` : ''}
+                    <span className="font-semibold text-slate-700">{formatEur(d.import)}</span>
+                    {d.esFianca ? ' · Fiança' : ''}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-brand-700 hover:underline"
+                  onClick={() => {
+                    setDuplicat(null);
+                    setDestacaId(d.id);
+                    onSavedDate(d.data.slice(0, 10));
+                  }}
+                >
+                  Veure-la
+                </button>
+              </li>
+            ))}
+          </ul>
+        }
+      />
+
       <div className="mb-4 flex justify-end">
         <Button onClick={() => setShowForm((s) => !s)}><Plus className="h-4 w-4" /> Nova despesa</Button>
       </div>
@@ -594,7 +696,10 @@ function GastosVariablesTab({
           <tbody>
             {visibles.map((g) => (
               <Fragment key={g.id}>
-              <Tr className={g.esFianca ? 'bg-amber-50/40' : undefined}>
+              <Tr
+                id={`gasto-${g.id}`}
+                className={cn(g.esFianca && 'bg-amber-50/40', destacaId === g.id && 'bg-amber-100 ring-2 ring-inset ring-amber-400')}
+              >
                 <Td>{formatDate(g.data)}</Td>
                 <Td className="font-medium text-slate-800">
                   {g.descripcio}

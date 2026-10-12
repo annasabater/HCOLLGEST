@@ -6,6 +6,7 @@ import { audit } from '@/lib/audit';
 import { handleApiError, noContent, ok } from '@/lib/http';
 import { GastoUpdateSchema } from '@/lib/validation/gasto';
 import { campsIva } from '@/lib/gasto-iva';
+import { buscaDuplicats, respostaDuplicat } from '@/lib/services/gasto-duplicats';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -51,6 +52,32 @@ export async function PATCH(req: Request, ctx: Ctx) {
     const raw = (body ?? {}) as Record<string, unknown>;
     if ('proveidorId' in raw) data.proveidor = raw.proveidorId ? { connect: { id: String(raw.proveidorId) } } : { disconnect: true };
     if ('habitacioId' in raw) data.habitacio = raw.habitacioId ? { connect: { id: String(raw.habitacioId) } } : { disconnect: true };
+
+    // Avís de factura repetida si canvia la data, l'import, el número o el proveïdor
+    // i queda igual que una altra despesa.
+    if (!input.ignoraDuplicat) {
+      const actual = await prisma.gasto.findUnique({
+        where: { id },
+        select: { data: true, import: true, numFactura: true, proveidorId: true },
+      });
+      if (actual) {
+        const nou = {
+          data: input.data ?? actual.data,
+          import: input.import ?? Number(actual.import),
+          numFactura: input.numFactura !== undefined ? input.numFactura ?? null : actual.numFactura,
+          proveidorId: 'proveidorId' in raw ? (raw.proveidorId ? String(raw.proveidorId) : null) : actual.proveidorId,
+        };
+        const canvia =
+          nou.data.toISOString().slice(0, 10) !== actual.data.toISOString().slice(0, 10) ||
+          Math.abs(nou.import - Number(actual.import)) >= 0.005 ||
+          (nou.numFactura ?? '') !== (actual.numFactura ?? '') ||
+          nou.proveidorId !== actual.proveidorId;
+        if (canvia) {
+          const duplicats = await buscaDuplicats(nou, id);
+          if (duplicats.length > 0) return respostaDuplicat(duplicats);
+        }
+      }
+    }
 
     const gasto = await prisma.gasto.update({ where: { id }, data });
     await audit({
