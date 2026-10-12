@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mesEnrere, duradaDies, periodeAnterior, ultimDiaDeMes, rangPeriode, rangDeEstat } from './periode';
+import { mesEnrere, duradaDies, periodeAnterior, ultimDiaDeMes, rangPeriode, rangDeEstat, periodeComparacio } from './periode';
 
 describe('ultimDiaDeMes', () => {
   it('sap els mesos de 30, 31 i 28 dies', () => {
@@ -108,5 +108,29 @@ describe('rangPeriode', () => {
   });
   it('rang personalitzat', () => {
     expect(rangDeEstat({ tipus: 'per', desde: '2026-01-05', fins: '2026-02-01' }, avui)).toEqual({ desde: '2026-01-05', fins: '2026-02-01' });
+  });
+});
+
+describe('periodeComparacio', () => {
+  const avui = '2026-10-12';
+  it('trimestre passat → el trimestre anterior sencer', () => {
+    expect(periodeComparacio({ tipus: 'tri', off: -1 }, avui)).toEqual({ desde: '2026-04-01', fins: '2026-06-30', etiqueta: '2n trim.' });
+  });
+  it('trimestre en curs → mateixos dies del trimestre anterior', () => {
+    expect(periodeComparacio({ tipus: 'tri', off: 0 }, avui)).toEqual({ desde: '2026-07-01', fins: '2026-07-12', etiqueta: '3r trim., mateixos dies' });
+  });
+  it('mes en curs i mes passat', () => {
+    expect(periodeComparacio({ tipus: 'mes', off: 0 }, avui)).toEqual({ desde: '2026-09-01', fins: '2026-09-12', etiqueta: 'set., mateixos dies' });
+    expect(periodeComparacio({ tipus: 'mes', off: -1 }, avui)).toEqual({ desde: '2026-08-01', fins: '2026-08-31', etiqueta: 'ag.' });
+  });
+  it('mes curt: no passa del final', () => {
+    expect(periodeComparacio({ tipus: 'mes', off: 0 }, '2026-03-30')).toEqual({ desde: '2026-02-01', fins: '2026-02-28', etiqueta: 'febr., mateixos dies' });
+  });
+  it("canvi d'any i any", () => {
+    expect(periodeComparacio({ tipus: 'tri', off: -3 }, avui)).toEqual({ desde: '2025-10-01', fins: '2025-12-31', etiqueta: '4t trim. 2025' });
+    expect(periodeComparacio({ tipus: 'any', off: -1 }, avui)).toEqual({ desde: '2024-01-01', fins: '2024-12-31', etiqueta: '2024' });
+  });
+  it('personalitzat → null', () => {
+    expect(periodeComparacio({ tipus: 'per', desde: '2026-01-01', fins: '2026-02-01' }, avui)).toBeNull();
   });
 });

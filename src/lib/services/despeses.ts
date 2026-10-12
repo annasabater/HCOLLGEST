@@ -79,9 +79,14 @@ interface Linia {
   categoria: string;
 }
 
-export async function resumDespeses(desde: string, fins: string): Promise<ResumDespeses> {
+export async function resumDespeses(
+  desde: string,
+  fins: string,
+  /** Període amb què comparar; si no, el que calcula `periodeAnterior`. */
+  comparaAmb?: { desde: string; fins: string },
+): Promise<ResumDespeses> {
   const any = Number(fins.slice(0, 4));
-  const ant = periodeAnterior(desde, fins);
+  const ant = comparaAmb ?? periodeAnterior(desde, fins);
 
   // Una sola finestra que cobreix el període, el període anterior i tot l'any
   // del gràfic: així es calcula tot en memòria amb una passada de consultes.

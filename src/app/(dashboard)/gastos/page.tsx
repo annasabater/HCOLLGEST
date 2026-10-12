@@ -15,7 +15,7 @@ import { Eur, HideAmountsButton } from '@/components/finances/amounts-visibility
 import { getJSON, postJSON, patchJSON, ApiError } from '@/lib/api';
 import { formatDate, formatEur, cn } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
-import { rangDeEstat, type EstatPeriode } from '@/lib/periode';
+import { rangDeEstat, periodeComparacio, type EstatPeriode } from '@/lib/periode';
 import { NavegadorPeriode } from '@/components/ui/navegador-periode';
 import { redueixImatge, motiuPujada } from '@/lib/images/redueix-client';
 import { optionsFrom, metodeCobramentValues, METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
@@ -1254,13 +1254,18 @@ function GastosContent() {
   const avui = toISODate(new Date());
   const [estat, setEstat] = useState<EstatPeriode>({ tipus: 'mes', off: 0 });
   const { desde, fins } = rangDeEstat(estat, avui);
+  // Es compara amb el període anterior del mateix tipus (trimestre ↔ trimestre…).
+  const comp = periodeComparacio(estat, avui);
+  const antDesde = comp?.desde ?? '';
+  const antFins = comp?.fins ?? '';
   const [catNom, setCatNom] = useState<string | null>(null);
   const [resum, setResum] = useState<Resum | null>(null);
   const [errResum, setErrResum] = useState<string | null>(null);
 
   useEffect(() => {
     let cancel = false;
-    getJSON<Resum>(`/api/gastos/resum?desde=${desde}&fins=${fins}`)
+    const ant = antDesde && antFins ? `&antDesde=${antDesde}&antFins=${antFins}` : '';
+    getJSON<Resum>(`/api/gastos/resum?desde=${desde}&fins=${fins}${ant}`)
       .then((r) => { if (!cancel) { setResum(r); setErrResum(null); } })
       .catch((e) => {
         if (!cancel) {
@@ -1269,7 +1274,7 @@ function GastosContent() {
         }
       });
     return () => { cancel = true; };
-  }, [desde, fins]);
+  }, [desde, fins, antDesde, antFins]);
 
   const vesA = (t: string) => router.replace(t === 'resum' ? '/gastos' : `/gastos?tab=${t}`);
   // Clic a un mes del gràfic: si és un mes sencer, el navegador queda en «Mes».
@@ -1328,49 +1333,48 @@ function GastosContent() {
 
       {errResum && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{errResum}</div>}
 
-      {/* Total del període i les tres parts que el componen (que són les pestanyes) */}
-      <div className="mb-5 overflow-hidden rounded-xl border border-slate-200">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 px-4 py-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Despesa real del període</p>
-            <p className="text-3xl font-bold tracking-tight text-brand-800">
+      {/* Total del període i les tres parts que el componen (que són les pestanyes),
+          tot en una fila; en pantalla estreta el total va a dalt. */}
+      <div className="mb-5 grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 lg:grid-cols-[1.35fr_1fr_1fr_1fr]">
+        <div className="col-span-3 flex flex-col justify-center gap-1 bg-white px-4 py-3 lg:col-span-1">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Despesa real del període</p>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="text-3xl font-bold tracking-tight text-brand-800">
               <Eur value={resum?.total ?? 0} />
-            </p>
-          </div>
-          {delta !== null && resum && (
-            <span className={cn(
-              'rounded-full px-2.5 py-0.5 text-sm font-semibold',
-              delta > 0 ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700',
-            )}>
-              {delta > 0 ? '▲ +' : '▼ '}{delta}%{' '}
-              <span className="font-normal opacity-80">
-                vs {fmtCurt(resum.anterior.desde)}–{fmtCurt(resum.anterior.fins)}
-              </span>
             </span>
-          )}
+            {delta !== null && resum && (
+              <span className={cn(
+                'whitespace-nowrap rounded-full px-2.5 py-0.5 text-sm font-semibold',
+                delta > 0 ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700',
+              )}>
+                {delta > 0 ? '▲ +' : '▼ '}{delta}%{' '}
+                <span className="font-normal opacity-80">
+                  vs {comp ? comp.etiqueta : `${fmtCurt(resum.anterior.desde)}–${fmtCurt(resum.anterior.fins)}`}
+                </span>
+              </span>
+            )}
+          </div>
           {resum && resum.fiances > 0 && (
-            <span className="ml-auto rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700">
+            <p className="text-xs font-semibold text-amber-700">
               Fiances <Eur value={resum.fiances} />{' '}
               <span className="font-normal opacity-85">· fora del total, són recuperables</span>
-            </span>
+            </p>
           )}
         </div>
-        <div className="grid gap-px bg-slate-200 sm:grid-cols-3">
-          {parts.map((p) => (
-            <button
-              key={p.clau}
-              type="button"
-              onClick={() => { setCatNom(null); vesA(p.clau); }}
-              className="flex flex-col gap-0.5 bg-white px-4 py-3 text-left transition-colors hover:bg-brand-50"
-            >
-              <span className="flex items-center gap-2 text-xs font-bold text-slate-500">
-                <i className={cn('h-2.5 w-2.5 rounded-sm', p.color)} /> {p.nom}
-              </span>
-              <span className="text-xl font-bold tracking-tight text-slate-900"><Eur value={p.valor} /></span>
-              <span className="text-xs text-slate-400">{p.peu}</span>
-            </button>
-          ))}
-        </div>
+        {parts.map((p) => (
+          <button
+            key={p.clau}
+            type="button"
+            onClick={() => { setCatNom(null); vesA(p.clau); }}
+            className="flex min-w-0 flex-col gap-0.5 bg-white px-4 py-3 text-left transition-colors hover:bg-brand-50"
+          >
+            <span className="flex items-center gap-2 text-xs font-bold text-slate-500">
+              <i className={cn('h-2.5 w-2.5 rounded-sm', p.color)} /> {p.nom}
+            </span>
+            <span className="text-xl font-bold tracking-tight text-slate-900"><Eur value={p.valor} /></span>
+            <span className="text-xs text-slate-400">{p.peu}</span>
+          </button>
+        ))}
       </div>
 
       {/* Sub-pestanyes Resum / Variables / Fixes / Personal.

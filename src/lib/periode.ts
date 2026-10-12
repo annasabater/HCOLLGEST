@@ -96,6 +96,44 @@ export function rangPeriode(
   return { desde, fins, etiqueta, any: y, trimestre: Math.floor(m0 / 3) + 1 };
 }
 
+const MESOS_CURTS = ['gen.', 'febr.', 'març', 'abr.', 'maig', 'juny', 'jul.', 'ag.', 'set.', 'oct.', 'nov.', 'des.'];
+
+/**
+ * Període amb què comparar el que mostra el navegador: el període anterior del
+ * MATEIX tipus (mes → mes anterior, trimestre → trimestre anterior, any → any
+ * anterior). Si el període actual encara no s'ha acabat (s'atura avui), es compara
+ * amb els mateixos dies de l'anterior (1–12 d'oct. ↔ 1–12 de set.), perquè un tros
+ * de període contra un de sencer no diria res. `null` per a «Personalitzat».
+ */
+export function periodeComparacio(
+  e: EstatPeriode,
+  avui: string,
+): { desde: string; fins: string; etiqueta: string } | null {
+  if (e.tipus === 'per') return null;
+  const act = rangPeriode(e.tipus, e.off, avui);
+  const ant = rangPeriode(e.tipus, e.off - 1, avui);
+  // Últim dia natural del període (sense tallar-lo a avui).
+  const fiNatural = (() => {
+    const [y, m] = act.desde.split('-').map(Number) as [number, number];
+    const mesos = e.tipus === 'mes' ? 1 : e.tipus === 'tri' ? 3 : 12;
+    return new Date(Date.UTC(y, m - 1 + mesos, 0)).toISOString().slice(0, 10);
+  })();
+  const parcial = act.fins < fiNatural;
+  const curta =
+    e.tipus === 'any'
+      ? String(ant.any)
+      : e.tipus === 'tri'
+        ? `${['1r', '2n', '3r', '4t'][ant.trimestre - 1]} trim.${ant.any !== act.any ? ` ${ant.any}` : ''}`
+        : `${MESOS_CURTS[Number(ant.desde.slice(5, 7)) - 1]}${ant.any !== act.any ? ` ${ant.any}` : ''}`;
+  if (!parcial) return { desde: ant.desde, fins: ant.fins, etiqueta: curta };
+  // Mateixos dies dins del període anterior.
+  const dies = duradaDies(act.desde, act.fins);
+  const ini = new Date(`${ant.desde}T00:00:00.000Z`);
+  let fins = new Date(ini.getTime() + (dies - 1) * 86400000).toISOString().slice(0, 10);
+  if (fins > ant.fins) fins = ant.fins;
+  return { desde: ant.desde, fins, etiqueta: `${curta}, mateixos dies` };
+}
+
 /** Rang de dies d'un estat del navegador. */
 export function rangDeEstat(e: EstatPeriode, avui: string): { desde: string; fins: string } {
   if (e.tipus === 'per') return { desde: e.desde, fins: e.fins };

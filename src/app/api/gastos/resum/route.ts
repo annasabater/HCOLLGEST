@@ -4,7 +4,7 @@ import { resumDespeses } from '@/lib/services/despeses';
 
 const RE_DATA = /^\d{4}-\d{2}-\d{2}$/;
 
-// GET /api/gastos/resum?desde=YYYY-MM-DD&fins=YYYY-MM-DD
+// GET /api/gastos/resum?desde=YYYY-MM-DD&fins=YYYY-MM-DD[&antDesde=&antFins=]
 // Despesa real del període partida en variables / fixes / personal, amb les
 // fiances a part, el desglossament per categoria, el detall del personal i la
 // sèrie mensual de l'any (la del gràfic de /gastos).
@@ -21,7 +21,15 @@ export async function GET(req: Request) {
     }
     if (desde > fins) return badRequest('La data inicial ha de ser anterior a la final');
 
-    return ok(await resumDespeses(desde, fins));
+    // Període de comparació (p. ex. el trimestre anterior sencer); opcional.
+    const antDesde = sp.get('antDesde') ?? '';
+    const antFins = sp.get('antFins') ?? '';
+    const comparaAmb =
+      RE_DATA.test(antDesde) && RE_DATA.test(antFins) && antDesde <= antFins
+        ? { desde: antDesde, fins: antFins }
+        : undefined;
+
+    return ok(await resumDespeses(desde, fins, comparaAmb));
   } catch (err) {
     return handleApiError(err);
   }
