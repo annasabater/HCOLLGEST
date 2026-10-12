@@ -53,6 +53,24 @@ describe('indicadorsHostal', () => {
     expect(r.duradaMitjana).toBe(20);
   });
 
+  it('les nits possibles compten des del primer dia amb estades', () => {
+    const r = indicadorsHostal({
+      ...base,
+      desde: '2026-01-01',
+      fins: '2026-12-31',
+      primerDia: '2026-06-01',
+      estades: [{ habitacioId: 'h1', entrada: '2026-06-01', sortida: '2026-07-01' }],
+    });
+    expect(r.nitsDisponibles).toBe(6 * 214); // de l'1 de juny al 31 de desembre
+    expect(r.nitsOcupades).toBe(30);
+  });
+
+  it('si el període és tot anterior al primer dia, no hi ha nits possibles', () => {
+    const r = indicadorsHostal({ ...base, primerDia: '2026-11-01', estades: [] });
+    expect(r.nitsDisponibles).toBe(0);
+    expect(r.ocupacio).toBe(0);
+  });
+
   it('sense nits ocupades no divideix per zero', () => {
     const r = indicadorsHostal({ ...base, ingressosAllotjament: 50, estades: [] });
     expect(r).toMatchObject({ ocupacio: 0, preuMitjaNit: 0, costPerNit: 0, beneficiPerNit: 0, duradaMitjana: 0 });

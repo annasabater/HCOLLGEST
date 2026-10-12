@@ -1,7 +1,8 @@
 /**
  * Indicadors de l'hostal d'un període (pur i testejat).
  *
- * - Ocupació: nits ocupades ÷ nits disponibles. Cada habitació compta COM A
+ * - Ocupació: nits ocupades ÷ nits disponibles (des del primer dia amb estades,
+ *   si el període comença abans: l'hostal no estava obert). Cada habitació compta COM A
  *   MOLT un cop per nit (dos contractes a la mateixa habitació no la dupliquen)
  *   i es compta per dies: el dia de sortida no és una nit.
  * - Preu mitjà per nit: ingressos d'allotjament del període ÷ nits ocupades.
@@ -40,10 +41,12 @@ export function indicadorsHostal(p: {
   /** Primer i últim dia del període (inclosos), `YYYY-MM-DD`. */
   desde: string;
   fins: string;
+  /** Primer dia amb estades de l'hostal: les nits d'abans no són «possibles». */
+  primerDia?: string | null;
   ingressosAllotjament: number;
   despeses: number;
 }): IndicadorsHostal {
-  const ini = ms(p.desde);
+  const ini = Math.max(ms(p.desde), p.primerDia ? ms(p.primerDia) : -Infinity);
   const fiExcl = ms(p.fins) + DIA;
   const dies = Math.max(0, Math.round((fiExcl - ini) / DIA));
   const nitsDisponibles = p.habitacions * dies;

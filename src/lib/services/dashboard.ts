@@ -578,7 +578,7 @@ export type Balanc = Awaited<ReturnType<typeof getBalanc>>;
 export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts) {
   const num = (v: unknown) => Number(v ?? 0);
   const endExcl = new Date(end.getTime() + 1);
-  const [base, cobramentsRows, retingutsRows, gastoCat, categories, habCount, estades, fiancaCat, custodiaMetode] =
+  const [base, cobramentsRows, retingutsRows, gastoCat, categories, habCount, estades, fiancaCat, custodiaMetode, primeraEstada] =
     await Promise.all([
       getBalanc(start, end, opts),
       cobramentsEfectius(start, end, opts),
@@ -612,6 +612,12 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
         _sum: { import: true },
         where: { estat: 'EN_CUSTODIA', data: { gte: start, lte: end }, estancia: { deletedAt: null } },
       }),
+      // Primer dia amb estades: abans l'hostal no funcionava (no són nits possibles).
+      prisma.estancia.findFirst({
+        where: { deletedAt: null, estat: { not: 'CANCELLADA' }, habitacioId: { not: null }, dataEntrada: { not: null } },
+        orderBy: { dataEntrada: 'asc' },
+        select: { dataEntrada: true },
+      }),
     ]);
 
   const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -629,6 +635,7 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
     ),
     habitacions: habCount,
     desde: diaLocal(start),
+    primerDia: primeraEstada?.dataEntrada ? dia(primeraEstada.dataEntrada) : null,
     fins: diaLocal(end),
     ingressosAllotjament: cobramentsRows
       .filter((c) => c.concepte !== 'TASA' && c.concepte !== 'EXTRA')
