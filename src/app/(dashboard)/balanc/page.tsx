@@ -4,10 +4,6 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
-  Wallet,
-  TrendingDown,
-  PiggyBank,
   Download,
   FileText,
   CheckCircle2,
@@ -21,15 +17,16 @@ import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, Thead, Th, Td, Tr } from '@/components/ui/table';
 import { getJSON } from '@/lib/api';
 import { useRestringit } from '@/components/layout/restringit-context';
-import { addMonths } from '@/lib/dates';
+import { addMonths, toISODate } from '@/lib/dates';
 import { cn } from '@/lib/utils';
-import { BalancChart } from '@/components/balanc/balanc-chart';
-import { BalancLineChart } from '@/components/balanc/balanc-line-chart';
-import { Donut } from '@/components/balanc/donut';
 import { FinancesNav } from '@/components/balanc/finances-nav';
+import { CascadaCaixa, COLORS_BALANC, MostraRatllada } from '@/components/balanc/cascada-caixa';
+import { MesosFiancesChart } from '@/components/balanc/mesos-fiances-chart';
+import { NavegadorPeriode } from '@/components/ui/navegador-periode';
 import { Eur, HideAmountsButton, HideAmountsOnMount } from '@/components/finances/amounts-visibility';
 import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
-import type { MovDetall, MovGrup } from '@/lib/services/dashboard';
+import { periodeComparacio, rangDeEstat, rangPeriode, type EstatPeriode } from '@/lib/periode';
+import type { FiancesObertes, MovDetall, MovGrup } from '@/lib/services/dashboard';
 
 /** Data curta "dd/mm/aa" a partir d'un ISO string. */
 function dataCurta(iso: string): string {
@@ -42,26 +39,7 @@ interface Breakdowns {
   ocupacio: number;
   adr: number;
   revpar: number;
-  movimentsPerPersona?: {
-    estanciaId: string | null;
-    titular: string;
-    ingressos: number;
-    devolucions: number;
-    fianca?: number;
-    habitacio?: string | null;
-    dataEntrada?: string | null;
-    dataSortida?: string | null;
-    datesPagament?: string[];
-  }[];
   moviments?: MovDetall[];
-}
-interface CustodiaItem {
-  id: string;
-  import: number;
-  data: string;
-  estanciaId: string | null;
-  titular: string;
-  motiu: string | null;
 }
 interface Balanc extends Breakdowns {
   mes: string;
@@ -72,23 +50,6 @@ interface Balanc extends Breakdowns {
   despesesFianca: number;
   personal: number;
   benefici: number;
-  custodiaDetall: CustodiaItem[];
-}
-interface MesRow {
-  mes: number;
-  ingressos: number;
-  retencions: number;
-  ingressosAmbRetencions: number;
-  despeses: number;
-  despesesFianca: number;
-  personal: number;
-  benefici: number;
-}
-interface BalancAny extends Breakdowns {
-  any: number;
-  mesos: MesRow[];
-  totals: Omit<MesRow, 'mes'>;
-  anterior: { ingressos: number; despeses: number; personal: number; benefici: number };
 }
 
 interface SerieMes {
@@ -130,14 +91,15 @@ interface BalancSituacio {
   mancances: string[];
 }
 
-type Mode = 'mes' | 'rang' | 'any' | 'situacio';
 // La pestanya "Situació" es manté al codi però NO es mostra. Posa-ho a true per tornar-la.
 const MOSTRA_SITUACIO = false;
 const MESOS = ['Gen', 'Feb', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Des'];
+const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 const marge = (benefici: number, ingressos: number) =>
   ingressos > 0 ? Math.round((benefici / ingressos) * 100) : 0;
-const variacio = (cur: number, prev: number) =>
-  prev > 0 ? `${cur - prev >= 0 ? '+' : ''}${Math.round(((cur - prev) / prev) * 100)}%` : null;
+/** Variació en % respecte del període anterior (null si no es pot calcular). */
+const variacio = (cur: number, prev: number): number | null =>
+  prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null;
 
 function downloadCSV(filename: string, rows: (string | number)[][]) {
   const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\r\n');
@@ -153,99 +115,307 @@ function downloadCSV(filename: string, rows: (string | number)[][]) {
 function metodeItems(perMetode: Record<string, number>) {
   return Object.entries(perMetode)
     .filter(([, v]) => v > 0)
-    .map(([k, v]) => ({ label: METODE_COBRAMENT_LABELS[k as keyof typeof METODE_COBRAMENT_LABELS] ?? k, value: v }));
+    .map(([k, v]) => ({ label: METODE_COBRAMENT_LABELS[k as keyof typeof METODE_COBRAMENT_LABELS] ?? k, value: v }))
+    .sort((a, b) => b.value - a.value);
 }
 
-/** Afegeix el cost de personal com una categoria més de despeses (per al gràfic). */
-function ambPersonal<T extends Breakdowns>(d: T, personal: number): Breakdowns {
-  if (personal <= 0) return d;
-  return {
-    ...d,
-    despesesPerCategoria: [...d.despesesPerCategoria, { categoria: 'Personal', import: personal }].sort(
-      (a, b) => b.import - a.import,
-    ),
+/** Categories de despesa amb el personal com una més. */
+function categoriesAmbPersonal(d: Balanc) {
+  const cats = d.despesesPerCategoria.map((c) => ({ label: c.categoria, value: c.import }));
+  if (d.personal > 0) cats.push({ label: 'Personal', value: d.personal });
+  return cats.sort((a, b) => b.value - a.value);
+}
+
+// ─── Desglossament d'una casella (modal) ─────────────────────────────────────
+
+interface Desglos { title: string; rows: { label: string; value: number }[]; total: number; moviments?: MovDetall[] }
+type Metrica = 'ingressos' | 'despeses' | 'benefici' | 'rebudes' | 'pagades';
+const MOV_GRUPS: Record<Metrica, MovGrup[]> = {
+  ingressos: ['INGRES', 'FIANCA'],
+  despeses: ['DESPESA', 'PERSONAL'],
+  benefici: ['INGRES', 'FIANCA', 'DESPESA', 'PERSONAL'],
+  rebudes: ['FIANCA_CUST'],
+  pagades: ['FIANCA_PAGADA'],
+};
+function desglos(metric: Metrica, v: Balanc): Desglos {
+  const moviments = (v.moviments ?? []).filter((m) => MOV_GRUPS[metric].includes(m.grup));
+  const desp = r2(v.despeses + v.personal);
+  // Fila de compensació: els ingressos poden incloure dipòsits retinguts que no
+  // surten a `ingressosPerMetode` (que només són cobraments). Així el total quadra.
+  const quadra = (rows: { label: string; value: number }[], total: number, label: string) => {
+    const resta = r2(total - rows.reduce((a, m) => a + m.value, 0));
+    return Math.abs(resta) >= 0.005 ? [...rows, { label, value: resta }] : rows;
   };
+  switch (metric) {
+    case 'ingressos':
+      return { title: 'Ingressos · per mètode de cobrament', rows: quadra(metodeItems(v.ingressosPerMetode), v.ingressos, 'Fiances retingudes (ingrés)'), total: v.ingressos, moviments };
+    case 'despeses':
+      return { title: 'Despeses · per categoria', rows: categoriesAmbPersonal(v), total: desp, moviments };
+    case 'benefici':
+      return { title: 'Benefici = Ingressos − Despeses', rows: [{ label: 'Ingressos', value: v.ingressos }, { label: 'Despeses', value: -desp }], total: v.benefici, moviments };
+    case 'rebudes':
+      return { title: 'Fiances rebudes de clients', rows: [], total: v.retencions, moviments };
+    case 'pagades':
+      return { title: 'Fiances pagades (recuperables)', rows: [], total: v.despesesFianca, moviments };
+  }
 }
 
-function Kpi({ label, value, icon: Icon, color, big, delta, deltaInvert, onSelect }: { label: string; value: React.ReactNode; icon: React.ComponentType<{ className?: string }>; color: string; big?: boolean; delta?: string | null; deltaInvert?: boolean; onSelect?: () => void }) {
-  const down = delta?.startsWith('-');
-  const deltaGood = deltaInvert ? down : !down;
+// ─── Caselles ────────────────────────────────────────────────────────────────
+
+function Casella({
+  label,
+  marca,
+  value,
+  color,
+  sota,
+  onSelect,
+}: {
+  label: string;
+  marca: React.ReactNode;
+  value: number;
+  color?: string;
+  sota?: React.ReactNode;
+  onSelect?: () => void;
+}) {
   return (
-    <Card
-      className={cn(big ? 'ring-1 ring-brand-200' : '', onSelect && 'cursor-pointer transition-shadow hover:shadow-md')}
+    <button
+      type="button"
       onClick={onSelect}
-      title={onSelect ? 'Veure el desglossament' : undefined}
+      title="Veure el desglossament"
+      className="group min-w-0 border-t border-slate-100 px-5 pb-4 pt-3 text-left transition-colors first:border-t-0 hover:bg-slate-50/70 sm:border-l sm:border-t-0 sm:first:border-l-0"
     >
-      <CardBody className="flex items-center gap-4">
-        <div className="rounded-lg bg-slate-100 p-3">
-          <Icon className={`h-6 w-6 ${color}`} />
+      <span className="flex items-center gap-2 text-sm font-semibold text-slate-500">
+        {marca}
+        {label}
+        <ChevronRight className="ml-auto h-4 w-4 text-slate-300 opacity-0 transition-opacity group-hover:opacity-100" />
+      </span>
+      <span className={cn('mt-0.5 block whitespace-nowrap text-[1.65rem] font-extrabold tracking-tight tabular-nums', color ?? 'text-slate-900')}>
+        <Eur value={value} />
+      </span>
+      {sota && <span className="mt-0.5 block text-xs text-slate-500">{sota}</span>}
+    </button>
+  );
+}
+
+function Delta({ pct, etiqueta, invert }: { pct: number | null; etiqueta: string; invert?: boolean }) {
+  if (pct === null) return null;
+  const bo = invert ? pct <= 0 : pct >= 0;
+  return (
+    <>
+      <span className={cn('rounded-full px-2 py-0.5 text-xs font-bold', bo ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700')}>
+        {pct >= 0 ? '▲' : '▼'} {Math.abs(pct)}%
+      </span>{' '}
+      vs {etiqueta}
+    </>
+  );
+}
+
+const Punt = ({ color }: { color: string }) => <span className="inline-block h-2.5 w-2.5 rounded-[3px]" style={{ background: color }} />;
+
+// ─── Llistes de barres (categories / mètodes) ────────────────────────────────
+
+function LlistaBarres({
+  files,
+  color,
+  extra,
+  buit,
+}: {
+  files: { label: string; value: number }[];
+  color: string;
+  extra?: { label: string; value: number; color: string };
+  buit: string;
+}) {
+  const max = Math.max(1, ...files.map((f) => f.value), extra?.value ?? 0);
+  const fila = (label: string, value: number, fons: string, destacat?: string) => (
+    <div className="grid grid-cols-[minmax(0,8.5rem)_1fr_auto] items-center gap-3 text-sm">
+      <span className={cn('truncate', destacat ? 'font-semibold' : 'text-slate-700')} style={destacat ? { color: destacat } : undefined}>
+        {label}
+      </span>
+      <span className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+        <span className="block h-full rounded-full" style={{ width: `${Math.max(2, (value / max) * 100)}%`, background: fons }} />
+      </span>
+      <span className="text-right font-semibold tabular-nums" style={destacat ? { color: destacat } : undefined}>
+        <Eur value={value} />
+      </span>
+    </div>
+  );
+  return (
+    <div className="space-y-2.5">
+      {files.length === 0 ? <p className="text-sm text-slate-400">{buit}</p> : files.map((f) => <div key={f.label}>{fila(f.label, f.value, color)}</div>)}
+      {extra && extra.value > 0 && (
+        <div className="mt-1 border-t border-dashed border-slate-200 pt-3">
+          {fila(extra.label, extra.value, `repeating-linear-gradient(135deg, ${extra.color} 0 4px, ${extra.color}29 4px 8px)`, extra.color)}
         </div>
-        <div className="min-w-0">
-          <p className="text-2xl font-bold text-slate-900">{value}</p>
-          <p className="text-xs text-slate-500">{label}</p>
-          {delta && (
-            <p className={cn('text-xs font-medium', deltaGood ? 'text-green-600' : 'text-red-600')}>
-              {delta} vs any anterior
-            </p>
-          )}
+      )}
+    </div>
+  );
+}
+
+// ─── Fiances obertes ─────────────────────────────────────────────────────────
+
+function FiancesObertesCard({ dades }: { dades: FiancesObertes }) {
+  const [totes, setTotes] = useState(false);
+  const files = totes ? dades.files : dades.files.slice(0, 8);
+  return (
+    <Card>
+      <CardHeader className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <CardTitle>Fiances obertes</CardTitle>
+          <p className="mt-0.5 text-sm text-slate-500">El que has de tornar i el que t&apos;han de tornar, de qualsevol mes.</p>
         </div>
-        {onSelect && <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-slate-300" />}
+        <div className="flex flex-wrap gap-2 text-xs font-bold">
+          <span className="rounded-full bg-teal-50 px-2.5 py-1 text-teal-700">
+            Has de tornar <Eur value={dades.totalRebudes} />
+          </span>
+          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">
+            Per recuperar <Eur value={dades.totalPagades} />
+          </span>
+        </div>
+      </CardHeader>
+      <CardBody>
+        {dades.files.length === 0 ? (
+          <p className="text-sm text-slate-400">No hi ha cap fiança oberta.</p>
+        ) : (
+          <>
+            <Table>
+              <Thead>
+                <tr>
+                  <Th>Data</Th>
+                  <Th>Concepte</Th>
+                  <Th>Tipus</Th>
+                  <Th className="text-right">Import</Th>
+                </tr>
+              </Thead>
+              <tbody>
+                {files.map((f) => (
+                  <Tr key={f.id}>
+                    <Td className="whitespace-nowrap text-slate-500">{dataCurta(f.data)}</Td>
+                    <Td className="max-w-[28rem] truncate">
+                      {f.href ? (
+                        <a href={f.href} className="font-medium text-brand-700 hover:underline">{f.concepte}</a>
+                      ) : (
+                        f.concepte
+                      )}
+                    </Td>
+                    <Td>
+                      <span
+                        className={cn(
+                          'whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold',
+                          f.tipus === 'REBUDA' ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700',
+                        )}
+                      >
+                        {f.tipus === 'REBUDA' ? 'Rebuda' : 'Pagada'}
+                      </span>
+                    </Td>
+                    <Td className="text-right font-medium tabular-nums"><Eur value={f.import} /></Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+            {dades.files.length > 8 && (
+              <button type="button" onClick={() => setTotes(!totes)} className="mt-3 text-sm font-medium text-brand-700 hover:underline">
+                {totes ? 'Veure menys' : `Veure-les totes (${dades.files.length})`}
+              </button>
+            )}
+          </>
+        )}
       </CardBody>
     </Card>
   );
 }
 
-// Construeix el desglossament exacte d'un KPI a partir de les dades del període.
-interface VistaBalanc {
-  ingressos: number; despeses: number; personal: number; benefici: number;
-  ingressosAmbRetencions: number; despesesFianca: number; retencions: number;
-  ingressosPerMetode: Record<string, number>;
-  despesesPerCategoria: { categoria: string; import: number }[];
-  moviments?: MovDetall[];
-}
-interface Desglos { title: string; rows: { label: string; value: number }[]; total: number; moviments?: MovDetall[] }
-// Quins grups de moviments es mostren en clicar cada KPI.
-const MOV_GRUPS: Record<string, MovGrup[]> = {
+// ─── Moviments del període ───────────────────────────────────────────────────
+
+const MOV_FILTRE_GRUPS: Record<string, MovGrup[]> = {
   ingressos: ['INGRES', 'FIANCA'],
-  'ingressos-fianca': ['INGRES', 'FIANCA', 'FIANCA_CUST'],
   despeses: ['DESPESA', 'PERSONAL'],
-  'despeses-fianca': ['DESPESA', 'PERSONAL', 'FIANCA_PAGADA'],
-  benefici: ['INGRES', 'FIANCA', 'DESPESA', 'PERSONAL'],
-  'benefici-fianca': ['INGRES', 'FIANCA', 'FIANCA_CUST', 'DESPESA', 'PERSONAL', 'FIANCA_PAGADA'],
+  fiances: ['FIANCA_CUST', 'FIANCA_PAGADA'],
+  tot: ['INGRES', 'FIANCA', 'FIANCA_CUST', 'DESPESA', 'PERSONAL', 'FIANCA_PAGADA'],
 };
-function desglos(metric: string, v: VistaBalanc): Desglos {
-  const grupsMov = MOV_GRUPS[metric] ?? [];
-  const moviments = (v.moviments ?? []).filter((m) => grupsMov.includes(m.grup));
-  const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
-  const met = metodeItems(v.ingressosPerMetode).map((m) => ({ label: m.label, value: m.value }));
-  const cat = v.despesesPerCategoria.map((d) => ({ label: d.categoria, value: d.import }));
-  const desp = r2(v.despeses + v.personal);
-  // Fila de compensació: els ingressos poden incloure dipòsits retinguts que no
-  // surten a `ingressosPerMetode` (que només són cobraments). Així el total quadra.
-  const balanc = (rows: { label: string; value: number }[], total: number, label: string) => {
-    const resta = r2(total - rows.reduce((a, m) => a + m.value, 0));
-    return Math.abs(resta) >= 0.005 ? [...rows, { label, value: resta }] : rows;
-  };
-  const base: { title: string; rows: { label: string; value: number }[]; total: number } = (() => {
-    switch (metric) {
-      case 'ingressos':
-        return { title: 'Ingressos · per mètode de cobrament', rows: balanc(met, v.ingressos, 'Fiances retingudes (ingrés)'), total: v.ingressos };
-      case 'despeses':
-        return { title: 'Despeses · per categoria', rows: cat, total: desp };
-      case 'benefici':
-        return { title: 'Benefici = Ingressos − Despeses', rows: [{ label: 'Ingressos', value: v.ingressos }, { label: 'Despeses', value: -desp }], total: v.benefici };
-      case 'ingressos-fianca':
-        return { title: 'Ingressos + fiança', rows: balanc(met, v.ingressosAmbRetencions, 'Fiances (retingudes + custòdia)'), total: v.ingressosAmbRetencions };
-      case 'despeses-fianca':
-        return { title: 'Despeses + fiança', rows: [...cat, ...(v.despesesFianca ? [{ label: 'Fiances pagades', value: v.despesesFianca }] : [])], total: r2(desp + v.despesesFianca) };
-      case 'benefici-fianca':
-        return { title: 'Benefici + fiança', rows: [{ label: 'Benefici', value: v.benefici }, { label: 'Fiances netes', value: v.retencions }], total: r2(v.benefici + v.retencions) };
-      default:
-        return { title: 'Desglossament', rows: [], total: 0 };
-    }
-  })();
-  return { ...base, moviments };
+function MovimentsCard({ moviments, ambFiances }: { moviments: MovDetall[]; ambFiances: boolean }) {
+  const [filtre, setFiltre] = useState<'ingressos' | 'despeses' | 'fiances' | 'tot'>('tot');
+  const filtrats = moviments.filter((m) => MOV_FILTRE_GRUPS[filtre]!.includes(m.grup));
+  const total = r2(filtrats.reduce((a, m) => a + m.import, 0));
+  const opcions = [
+    { k: 'ingressos', l: 'Ingressos' },
+    { k: 'despeses', l: 'Despeses' },
+    ...(ambFiances ? [{ k: 'fiances', l: 'Fiances' }] : []),
+    { k: 'tot', l: 'Tot' },
+  ];
+  return (
+    <Card>
+      <CardHeader className="flex flex-wrap items-center justify-between gap-2">
+        <CardTitle>Moviments</CardTitle>
+        <div className="inline-flex rounded-lg border border-slate-200 p-0.5 text-xs">
+          {opcions.map((t) => (
+            <button
+              key={t.k}
+              type="button"
+              onClick={() => setFiltre(t.k as typeof filtre)}
+              className={cn(
+                'rounded-md px-2.5 py-1 font-medium transition-colors',
+                filtre === t.k ? 'bg-brand-700 text-white' : 'text-slate-600 hover:bg-slate-100',
+              )}
+            >
+              {t.l}
+            </button>
+          ))}
+        </div>
+      </CardHeader>
+      <CardBody>
+        {filtrats.length === 0 ? (
+          <p className="text-sm text-slate-400">Sense moviments en aquest període.</p>
+        ) : (
+          <Table>
+            <Thead>
+              <tr>
+                <Th>Data</Th>
+                <Th>Concepte</Th>
+                <Th>Mètode</Th>
+                <Th className="text-right">Import</Th>
+              </tr>
+            </Thead>
+            <tbody>
+              {filtrats.map((m) => {
+                const fianca = m.grup === 'FIANCA_CUST' || m.grup === 'FIANCA_PAGADA';
+                return (
+                  <Tr key={m.id}>
+                    <Td className="whitespace-nowrap text-slate-500">{dataCurta(m.data)}</Td>
+                    <Td>
+                      {m.href ? (
+                        <a href={m.href} className="font-medium text-brand-700 hover:underline">{m.concepte}</a>
+                      ) : (
+                        m.concepte
+                      )}
+                      {m.pagada === false ? <span className="ml-1 text-xs text-amber-600">(pendent de pagar)</span> : null}
+                    </Td>
+                    <Td className="text-slate-500">
+                      {m.metode ? METODE_COBRAMENT_LABELS[m.metode as keyof typeof METODE_COBRAMENT_LABELS] ?? m.metode : '—'}
+                    </Td>
+                    <Td
+                      className={cn(
+                        'text-right font-medium',
+                        fianca ? (m.grup === 'FIANCA_CUST' ? 'text-teal-700' : 'text-amber-700') : m.import < 0 ? 'text-red-700' : 'text-green-700',
+                      )}
+                    >
+                      <Eur value={m.import} />
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        )}
+        <div className="mt-2 flex items-center justify-between border-t-2 border-slate-300 pt-2 text-sm font-bold">
+          <span className="text-slate-900">Total ({filtrats.length})</span>
+          <span className={cn(total < 0 ? 'text-red-700' : 'text-slate-900')}><Eur value={total} /></span>
+        </div>
+      </CardBody>
+    </Card>
+  );
 }
+
+// ─── Situació (amagada) ──────────────────────────────────────────────────────
 
 function BsRow({ label, value, level = 0, strong, total }: { label: string; value: number; level?: number; strong?: boolean; total?: boolean }) {
   return (
@@ -328,163 +498,71 @@ function SituacioView({ data }: { data: BalancSituacio }) {
   );
 }
 
-// Llista de moviments del període amb filtre: ingressos / +fiança / despeses / tot.
-const MOV_FILTRE_GRUPS: Record<string, MovGrup[]> = {
-  ingressos: ['INGRES', 'FIANCA'],
-  'ingressos-fianca': ['INGRES', 'FIANCA', 'FIANCA_CUST'],
-  despeses: ['DESPESA', 'PERSONAL', 'FIANCA_PAGADA'],
-  tot: ['INGRES', 'FIANCA', 'FIANCA_CUST', 'DESPESA', 'PERSONAL', 'FIANCA_PAGADA'],
-};
-function MovimentsCard({ moviments }: { moviments: MovDetall[] }) {
-  const [filtre, setFiltre] = useState<'ingressos' | 'ingressos-fianca' | 'despeses' | 'tot'>('tot');
-  const filtrats = moviments.filter((m) => MOV_FILTRE_GRUPS[filtre]!.includes(m.grup));
-  const total = Math.round((filtrats.reduce((a, m) => a + m.import, 0) + Number.EPSILON) * 100) / 100;
-  return (
-    <Card>
-      <CardHeader className="flex flex-wrap items-center justify-between gap-2">
-        <CardTitle>Moviments</CardTitle>
-        <div className="inline-flex rounded-lg border border-slate-200 p-0.5 text-xs">
-          {[
-            { k: 'ingressos', l: 'Ingressos' },
-            { k: 'ingressos-fianca', l: 'Ingressos + fiança' },
-            { k: 'despeses', l: 'Despeses' },
-            { k: 'tot', l: 'Tot' },
-          ].map((t) => (
-            <button
-              key={t.k}
-              type="button"
-              onClick={() => setFiltre(t.k as typeof filtre)}
-              className={cn(
-                'rounded-md px-2.5 py-1 font-medium transition-colors',
-                filtre === t.k ? 'bg-brand-700 text-white' : 'text-slate-600 hover:bg-slate-100',
-              )}
-            >
-              {t.l}
-            </button>
-          ))}
-        </div>
-      </CardHeader>
-      <CardBody>
-        {filtrats.length === 0 ? (
-          <p className="text-sm text-slate-400">Sense moviments en aquest període.</p>
-        ) : (
-          <Table>
-            <Thead>
-              <tr>
-                <Th>Data</Th>
-                <Th>Concepte</Th>
-                <Th>Mètode</Th>
-                <Th className="text-right">Import</Th>
-              </tr>
-            </Thead>
-            <tbody>
-              {filtrats.map((m) => (
-                <Tr key={m.id}>
-                  <Td className="whitespace-nowrap text-slate-500">{dataCurta(m.data)}</Td>
-                  <Td>
-                    {m.href ? (
-                      <a href={m.href} className="font-medium text-brand-700 hover:underline">{m.concepte}</a>
-                    ) : (
-                      m.concepte
-                    )}
-                    {m.pagada === false ? <span className="ml-1 text-xs text-amber-600">(pendent de pagar)</span> : null}
-                  </Td>
-                  <Td className="text-slate-500">
-                    {m.metode ? METODE_COBRAMENT_LABELS[m.metode as keyof typeof METODE_COBRAMENT_LABELS] ?? m.metode : '—'}
-                  </Td>
-                  <Td className={cn('text-right font-medium', m.import < 0 ? 'text-red-700' : 'text-green-700')}>
-                    <Eur value={m.import} />
-                  </Td>
-                </Tr>
-              ))}
-            </tbody>
-          </Table>
-        )}
-        <div className="mt-2 flex items-center justify-between border-t-2 border-slate-300 pt-2 text-sm font-bold">
-          <span className="text-slate-900">Total ({filtrats.length})</span>
-          <span className={cn(total < 0 ? 'text-red-700' : 'text-slate-900')}><Eur value={total} /></span>
-        </div>
-      </CardBody>
-    </Card>
-  );
-}
+// ─── Pàgina ──────────────────────────────────────────────────────────────────
 
-function BreakdownsSection({ data, despesesFianca = 0 }: { data: Breakdowns; despesesFianca?: number }) {
-  const metodes = metodeItems(data.ingressosPerMetode);
-  return (
-    <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Despeses per categoria</CardTitle>
-          </CardHeader>
-          <CardBody>
-            <Donut items={data.despesesPerCategoria.map((d) => ({ label: d.categoria, value: d.import }))} />
-            {despesesFianca > 0 && (
-              <div className="mt-3 flex items-center justify-between rounded-lg bg-amber-50 px-3 py-2 text-sm ring-1 ring-amber-200">
-                <span className="flex items-center gap-1.5 text-amber-800">
-                  <span className="inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200">
-                    Fiança
-                  </span>
-                  Fiances pagades (recuperable)
-                </span>
-                <span className="font-medium text-amber-800"><Eur value={despesesFianca} /></span>
-              </div>
-            )}
-          </CardBody>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Ingressos per mètode</CardTitle>
-          </CardHeader>
-          <CardBody>
-            {metodes.length === 0 ? (
-              <p className="text-sm text-slate-400">Sense cobraments en aquest període.</p>
-            ) : (
-              <ul className="space-y-2 text-sm">
-                {metodes.map((m) => (
-                  <li key={m.label} className="flex items-center justify-between border-b border-slate-100 pb-1">
-                    <span className="text-slate-700">{m.label}</span>
-                    <span className="font-medium text-slate-900"><Eur value={m.value} /></span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardBody>
-        </Card>
-      </div>
-
-      {/* Moviments del període, amb filtre (ingressos / +fiança / despeses / tot) */}
-      <MovimentsCard moviments={data.moviments ?? []} />
-    </div>
-  );
+/** Mesos (YYYY-MM) de la sèrie del gràfic segons el període triat. */
+function rangSerie(estat: EstatPeriode, desde: string, fins: string): { desde: string; fins: string } {
+  const ym = (y: number, m: number) => `${y}-${String(m).padStart(2, '0')}`;
+  const [fy, fm] = fins.split('-').map(Number) as [number, number];
+  if (estat.tipus === 'any') return { desde: `${fy}-01`, fins: `${fy}-12` };
+  if (estat.tipus === 'per') {
+    const [dy, dm] = desde.split('-').map(Number) as [number, number];
+    const n = (fy - dy) * 12 + (fm - dm) + 1;
+    if (n <= 24) return { desde: ym(dy, dm), fins: ym(fy, fm) };
+  }
+  // Mes, trimestre o rang llarg: els 12 mesos fins al final del període.
+  const t = fy * 12 + (fm - 1) - 11;
+  return { desde: ym(Math.floor(t / 12), (t % 12) + 1), fins: ym(fy, fm) };
 }
 
 export default function BalancPage() {
   const restringit = useRestringit(); // vista de propietat: amaga custòdia/personal
-  const [mode, setMode] = useState<Mode>('mes');
+  const avui = toISODate(new Date());
+  const [estat, setEstat] = useState<EstatPeriode>({ tipus: 'mes', off: 0 });
+  const { desde, fins } = rangDeEstat(estat, avui);
+  const comp = periodeComparacio(estat, avui);
+  const etiquetaPeriode = estat.tipus === 'per' ? `${dataCurta(desde)} – ${dataCurta(fins)}` : rangPeriode(estat.tipus, estat.off, avui).etiqueta;
+
+  const [dades, setDades] = useState<Balanc | null>(null);
+  const [anterior, setAnterior] = useState<Balanc | null>(null);
+  const [serie, setSerie] = useState<SerieMes[] | null>(null);
+  const [obertes, setObertes] = useState<FiancesObertes | null>(null);
+  const [breakdown, setBreakdown] = useState<Desglos | null>(null);
+
+  useEffect(() => {
+    let cancel = false;
+    setDades(null);
+    getJSON<Balanc>(`/api/balanc/rang?desde=${desde}&fins=${fins}`).then((r) => { if (!cancel) setDades(r); });
+    if (comp) {
+      getJSON<Balanc>(`/api/balanc/rang?desde=${comp.desde}&fins=${comp.fins}`)
+        .then((r) => { if (!cancel) setAnterior(r); })
+        .catch(() => { if (!cancel) setAnterior(null); });
+    } else setAnterior(null);
+    return () => { cancel = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [desde, fins, comp?.desde, comp?.fins]);
+
+  const sr = rangSerie(estat, desde, fins);
+  useEffect(() => {
+    let cancel = false;
+    getJSON<{ mesos: SerieMes[] }>(`/api/balanc/mesos?desde=${sr.desde}&fins=${sr.fins}`)
+      .then((r) => { if (!cancel) setSerie(r.mesos); })
+      .catch(() => { if (!cancel) setSerie(null); });
+    return () => { cancel = true; };
+  }, [sr.desde, sr.fins]);
+
+  useEffect(() => {
+    if (restringit) return;
+    getJSON<FiancesObertes>('/api/balanc/fiances').then(setObertes).catch(() => setObertes(null));
+  }, [restringit]);
+
+  // ── Situació (amagada; es manté per si es torna a activar) ──
+  const [veureSituacio, setVeureSituacio] = useState(false);
   const [anchor, setAnchor] = useState(() => new Date());
   const [year, setYear] = useState(() => new Date().getFullYear());
-  const [mes, setMes] = useState<Balanc | null>(null);
-  const [any, setAny] = useState<BalancAny | null>(null);
   const [situacio, setSituacio] = useState<BalancSituacio | null>(null);
   const [incloureCustodiaSituacio, setIncloureCustodiaSituacio] = useState(true);
-  // Període del balanç de situació: el tall és a FINAL de mes / trimestre / any.
   const [situacioPeriode, setSituacioPeriode] = useState<'mes' | 'trimestre' | 'any'>('mes');
-  // Rang per DIES (de X dia de Y mes a Z dia de S mes). Per defecte, el trimestre actual.
-  const iniciTrim = (() => { const n = new Date(); const q = Math.floor(n.getMonth() / 3); return { y: n.getFullYear(), m1: q * 3 + 1, m2: q * 3 + 3 }; })();
-  const [desde, setDesde] = useState(() => `${iniciTrim.y}-${String(iniciTrim.m1).padStart(2, '0')}-01`);
-  const [fins, setFins] = useState(() => {
-    const ultim = new Date(iniciTrim.y, iniciTrim.m2, 0);
-    return `${iniciTrim.y}-${String(iniciTrim.m2).padStart(2, '0')}-${String(ultim.getDate()).padStart(2, '0')}`;
-  });
-  const [rang, setRang] = useState<Balanc | null>(null);
-
-  // Data de tall del balanç de situació = últim dia del període triat, però MAI en
-  // el futur (un balanç no pot incloure moviments que encara no han passat): si el
-  // final del període és posterior a avui, es talla a avui.
-  // Període de la Situació (NOMÉS els moviments d'aquest període, com les altres
-  // vistes): mes de l'anchor, trimestre de l'anchor o l'any sencer.
   const isoDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const situacioDesde =
     situacioPeriode === 'any'
@@ -498,11 +576,6 @@ export default function BalancPage() {
       : situacioPeriode === 'trimestre'
         ? isoDay(new Date(anchor.getFullYear(), Math.floor(anchor.getMonth() / 3) * 3 + 3, 0))
         : isoDay(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0));
-
-  const mesParam = `${anchor.getFullYear()}-${String(anchor.getMonth() + 1).padStart(2, '0')}`;
-  const loadMes = useCallback(async () => setMes(await getJSON<Balanc>(`/api/balanc?mes=${mesParam}`)), [mesParam]);
-  const loadRang = useCallback(async () => setRang(await getJSON<Balanc>(`/api/balanc/rang?desde=${desde}&fins=${fins}`)), [desde, fins]);
-  const loadAny = useCallback(async () => setAny(await getJSON<BalancAny>(`/api/balanc/any?any=${year}`)), [year]);
   const loadSituacio = useCallback(
     async () =>
       setSituacio(
@@ -513,120 +586,85 @@ export default function BalancPage() {
     [situacioDesde, situacioFins, incloureCustodiaSituacio, restringit],
   );
   useEffect(() => {
-    if (mode === 'mes') loadMes();
-    else if (mode === 'rang') loadRang();
-    else if (mode === 'any') loadAny();
-    else loadSituacio();
-  }, [mode, loadMes, loadRang, loadAny, loadSituacio]);
-
-  // Sèrie mensual per a les gràfiques: a Mes, els últims 12 mesos fins al mes
-  // triat; a Trimestre/rang, els mesos del rang seleccionat.
-  const [serie, setSerie] = useState<SerieMes[] | null>(null);
-  const [breakdown, setBreakdown] = useState<Desglos | null>(null);
-  const serieDesde =
-    mode === 'mes'
-      ? (() => { const d = addMonths(anchor, -11); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })()
-      : desde.slice(0, 7);
-  const serieFins = mode === 'mes' ? mesParam : fins.slice(0, 7);
-  useEffect(() => {
-    if (mode !== 'mes' && mode !== 'rang') return;
-    let cancel = false;
-    getJSON<{ mesos: SerieMes[] }>(`/api/balanc/mesos?desde=${serieDesde}&fins=${serieFins}`)
-      .then((r) => { if (!cancel) setSerie(r.mesos); })
-      .catch(() => { if (!cancel) setSerie(null); });
-    return () => { cancel = true; };
-  }, [mode, serieDesde, serieFins]);
-
-  // Etiquetes dels mesos de la sèrie (amb l'any abreujat si el rang creua anys).
-  const seriePunts = (s: SerieMes[]) => {
-    const creuaAnys = s.some((x) => x.any !== s[0]!.any);
-    return s.map((x) => ({ ...x, label: `${MESOS[x.mes - 1]}${creuaAnys ? ` ${String(x.any).slice(2)}` : ''}` }));
-  };
-
+    if (veureSituacio) loadSituacio();
+  }, [veureSituacio, loadSituacio]);
   const mesLabel = new Intl.DateTimeFormat('ca-ES', { month: 'long', year: 'numeric' }).format(anchor);
 
+  const despesesTotals = dades ? r2(dades.despeses + dades.personal) : 0;
+  const saldoFiances = dades ? r2(dades.retencions - dades.despesesFianca) : 0;
+  const puntsSerie = (serie ?? []).map((s) => {
+    const creuaAnys = (serie ?? []).some((x) => x.any !== serie![0]!.any);
+    return {
+      label: `${MESOS[s.mes - 1]}${creuaAnys ? ` ${String(s.any).slice(2)}` : ''}`,
+      ingressos: s.ingressos,
+      despeses: r2(s.despeses + s.personal),
+      rebudes: restringit ? 0 : s.retencions,
+      pagades: restringit ? 0 : s.despesesFianca,
+    };
+  });
+
+  // PDF: només per a mesos i anys sencers (els que el generador sap fer).
+  const pdfHref =
+    estat.tipus === 'mes'
+      ? `/api/balanc/pdf?mes=${desde.slice(0, 7)}`
+      : estat.tipus === 'any'
+        ? `/api/balanc/pdf?any=${desde.slice(0, 4)}`
+        : null;
+
   function exporta() {
-    if (mode === 'mes' && mes) {
-      const rows: (string | number)[][] = [
-        [`Balanç ${mes.mes}`, ''],
-        ['Concepte', 'Import'],
-        ['Ingressos (sense retencions)', mes.ingressos.toFixed(2)],
-        ['Retencions en custòdia', mes.retencions.toFixed(2)],
-        ['Ingressos + retencions', mes.ingressosAmbRetencions.toFixed(2)],
-        ['Despeses', (mes.despeses + mes.personal).toFixed(2)],
-        ['Benefici', mes.benefici.toFixed(2)],
-        ['Marge %', marge(mes.benefici, mes.ingressos)],
-        [''],
-        ['Ingressos per mètode', ''],
-        ...metodeItems(mes.ingressosPerMetode).map((m) => [m.label, m.value.toFixed(2)]),
-        [''],
-        ['Despeses per categoria', ''],
-        ...mes.despesesPerCategoria.map((d) => [d.categoria, d.import.toFixed(2)]),
-      ];
-      downloadCSV(`balanc-${mes.mes}.csv`, rows);
-    } else if (mode === 'rang' && rang) {
-      const rows: (string | number)[][] = [
-        [`Balanç ${rang.mes}`, ''],
-        ['Concepte', 'Import'],
-        ['Ingressos (sense fiança)', rang.ingressos.toFixed(2)],
-        ['Fiança en custòdia', rang.retencions.toFixed(2)],
-        ['Ingressos + fiança', rang.ingressosAmbRetencions.toFixed(2)],
-        ['Despeses', (rang.despeses + rang.personal).toFixed(2)],
-        ['Benefici', rang.benefici.toFixed(2)],
-        ['Marge %', marge(rang.benefici, rang.ingressos)],
-        [''],
-        ['Ingressos per mètode', ''],
-        ...metodeItems(rang.ingressosPerMetode).map((m) => [m.label, m.value.toFixed(2)]),
-        [''],
-        ['Despeses per categoria', ''],
-        ...rang.despesesPerCategoria.map((d) => [d.categoria, d.import.toFixed(2)]),
-      ];
-      downloadCSV(`balanc-rang-${rang.mes.replace(/[^\d-]+/g, '_')}.csv`, rows);
-    } else if (mode === 'any' && any) {
-      const rows: (string | number)[][] = [
-        [`Balanç ${any.any}`, ''],
-        ['Mes', 'Ingressos', 'Fiança', 'Ingressos+fiança', 'Despeses', 'Benefici'],
-        ...any.mesos.map((m) => [
-          MESOS[m.mes - 1]!,
-          m.ingressos.toFixed(2),
-          m.retencions.toFixed(2),
-          m.ingressosAmbRetencions.toFixed(2),
-          (m.despeses + m.personal).toFixed(2),
-          m.benefici.toFixed(2),
-        ]),
-        ['TOTAL', any.totals.ingressos.toFixed(2), any.totals.retencions.toFixed(2), any.totals.ingressosAmbRetencions.toFixed(2), (any.totals.despeses + any.totals.personal).toFixed(2), any.totals.benefici.toFixed(2)],
-        [''],
-        ['Ingressos per mètode (any)', ''],
-        ...metodeItems(any.ingressosPerMetode).map((m) => [m.label, m.value.toFixed(2)]),
-        [''],
-        ['Despeses per categoria (any)', ''],
-        ...any.despesesPerCategoria.map((d) => [d.categoria, d.import.toFixed(2)]),
-      ];
-      downloadCSV(`balanc-${any.any}.csv`, rows);
-    } else if (mode === 'situacio' && situacio) {
+    if (veureSituacio && situacio) {
       const s = situacio;
-      const rows: (string | number)[][] = [
+      downloadCSV(`balanc-situacio-${s.data}.csv`, [
         [`Balanç de situació ${s.data}${s.inclouCustodia ? '' : ' sense custòdia'}`, ''],
         ['ACTIU', ''],
-        ['Actiu no corrent', ''],
         ['  Immobilitzat material (valor brut)', s.actiu.noCorrent.immobilitzatBrut.toFixed(2)],
-        ['Actiu corrent', ''],
         ['  Deutors comercials', s.actiu.corrent.deutors.toFixed(2)],
         ['  Tresoreria general (caixa/banc)', s.actiu.corrent.tresoreriaOperativa.toFixed(2)],
         ['  Tresoreria - efectiu de fiances en dipòsit', s.actiu.corrent.tresoreriaFiances.toFixed(2)],
         ['TOTAL ACTIU', s.actiu.total.toFixed(2)],
-        [''],
-        ['PATRIMONI NET I PASSIU', ''],
         ['Patrimoni net (figura de quadre)', s.patrimoniIPassiu.patrimoniNet.toFixed(2)],
-        ['Passiu no corrent', s.patrimoniIPassiu.passiuNoCorrent.toFixed(2)],
         ['Passiu corrent - Fiances a retornar', s.patrimoniIPassiu.passiuCorrent.fiances.toFixed(2)],
         ['TOTAL PATRIMONI NET I PASSIU', s.patrimoniIPassiu.total.toFixed(2)],
-        [''],
-        ['Dades no incloses (balanç aproximat)', ''],
-        ...s.mancances.map((m) => [m, '']),
-      ];
-      downloadCSV(`balanc-situacio-${s.data}.csv`, rows);
+      ]);
+      return;
     }
+    if (!dades) return;
+    const rows: (string | number)[][] = [
+      [`Balanç ${etiquetaPeriode} (${dataCurta(desde)} – ${dataCurta(fins)})`, ''],
+      ['Concepte', 'Import'],
+      ['Ingressos', dades.ingressos.toFixed(2)],
+      ['Despeses (personal inclòs)', despesesTotals.toFixed(2)],
+      ['Benefici', dades.benefici.toFixed(2)],
+      ['Marge %', marge(dades.benefici, dades.ingressos)],
+      ...(restringit
+        ? []
+        : [
+            [''],
+            ['Fiances (no són ingrés ni despesa)', ''],
+            ['Fiances rebudes de clients', dades.retencions.toFixed(2)],
+            ['Fiances pagades (recuperables)', dades.despesesFianca.toFixed(2)],
+            ['Saldo de fiances', saldoFiances.toFixed(2)],
+            ['Moviment de caixa (benefici + rebudes − pagades)', r2(dades.benefici + saldoFiances).toFixed(2)],
+          ]),
+      [''],
+      ['Ingressos per mètode', ''],
+      ...metodeItems(dades.ingressosPerMetode).map((m) => [m.label, m.value.toFixed(2)]),
+      [''],
+      ['Despeses per categoria', ''],
+      ...categoriesAmbPersonal(dades).map((d) => [d.label, d.value.toFixed(2)]),
+    ];
+    if (serie && serie.length > 0) {
+      rows.push([''], ['Mes', 'Ingressos', 'Despeses', 'Benefici', ...(restringit ? [] : ['Fiances rebudes', 'Fiances pagades'])]);
+      for (const s of serie)
+        rows.push([
+          `${MESOS[s.mes - 1]} ${s.any}`,
+          s.ingressos.toFixed(2),
+          (s.despeses + s.personal).toFixed(2),
+          s.benefici.toFixed(2),
+          ...(restringit ? [] : [s.retencions.toFixed(2), s.despesesFianca.toFixed(2)]),
+        ]);
+    }
+    downloadCSV(`balanc-${desde}_${fins}.csv`, rows);
   }
 
   return (
@@ -634,28 +672,14 @@ export default function BalancPage() {
       <HideAmountsOnMount />
       <PageHeader
         title="Balanç"
-        subtitle="Comptabilitat del hostal: ingressos, despeses, benefici i caixa"
+        subtitle="Comptabilitat del hostal: ingressos, despeses, benefici i fiances"
         actions={
           <div className="flex items-center gap-2">
-            <HideAmountsButton />
-            {mode !== 'situacio' && (
-              <div className="flex overflow-hidden rounded-lg border border-slate-300">
-                <button onClick={() => setMode('mes')} className={cn('px-3 py-1.5 text-sm', mode === 'mes' ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>
-                  Mes
-                </button>
-                <button onClick={() => setMode('rang')} className={cn('border-l border-slate-300 px-3 py-1.5 text-sm', mode === 'rang' ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>
-                  Trimestre / rang
-                </button>
-                <button onClick={() => setMode('any')} className={cn('border-l border-slate-300 px-3 py-1.5 text-sm', mode === 'any' ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>
-                  Any
-                </button>
-              </div>
-            )}
             {/* Pestanya "Situació" amagada (no eliminada): posa MOSTRA_SITUACIO=true per tornar-la. */}
             {MOSTRA_SITUACIO && (
               <button
-                onClick={() => setMode(mode === 'situacio' ? 'mes' : 'situacio')}
-                className={cn('rounded-lg border px-3 py-1.5 text-sm', mode === 'situacio' ? 'border-brand-700 bg-brand-700 text-white' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50')}
+                onClick={() => setVeureSituacio(!veureSituacio)}
+                className={cn('rounded-lg border px-3 py-1.5 text-sm', veureSituacio ? 'border-brand-700 bg-brand-700 text-white' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50')}
               >
                 <Scale className="mr-1 inline h-3.5 w-3.5" />
                 Situació
@@ -664,15 +688,9 @@ export default function BalancPage() {
             <Button variant="outline" size="sm" onClick={exporta}>
               <Download className="h-4 w-4" /> CSV
             </Button>
-            {mode !== 'rang' && (
+            {pdfHref && !veureSituacio && (
               <a
-                href={
-                  mode === 'mes'
-                    ? `/api/balanc/pdf?mes=${mesParam}`
-                    : mode === 'any'
-                      ? `/api/balanc/pdf?any=${year}`
-                      : `/api/balanc/pdf?situacio=${situacioFins}&desde=${situacioDesde}&custodia=${incloureCustodiaSituacio ? 'true' : 'false'}`
-                }
+                href={pdfHref}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
@@ -686,220 +704,10 @@ export default function BalancPage() {
 
       <FinancesNav />
 
-      {mode === 'mes' ? (
-        <div className="space-y-6">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setAnchor(addMonths(anchor, -1))}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setAnchor(new Date())}>
-              Aquest mes
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setAnchor(addMonths(anchor, 1))}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <span className="ml-2 text-sm font-medium capitalize text-slate-600">{mesLabel}</span>
-          </div>
-          {mes && (
-            <>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <Kpi label="Ingressos" value={<Eur value={mes.ingressos} />} icon={TrendingUp} color="text-green-600" big onSelect={() => setBreakdown(desglos('ingressos', mes))} />
-                <Kpi label="Despeses" value={<Eur value={mes.despeses + mes.personal} />} icon={TrendingDown} color="text-red-600" onSelect={() => setBreakdown(desglos('despeses', mes))} />
-                <Kpi label="Benefici" value={<Eur value={mes.benefici} />} icon={Wallet} color={mes.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big onSelect={() => setBreakdown(desglos('benefici', mes))} />
-                {!restringit && (
-                  <>
-                    <Kpi label="Ingressos + fiança" value={<Eur value={mes.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" onSelect={() => setBreakdown(desglos('ingressos-fianca', mes))} />
-                    <Kpi label="Despeses + fiança" value={<Eur value={mes.despeses + mes.personal + mes.despesesFianca} />} icon={TrendingDown} color="text-red-600" onSelect={() => setBreakdown(desglos('despeses-fianca', mes))} />
-                    <Kpi
-                      label="Benefici + fiança"
-                      value={<Eur value={mes.benefici + mes.retencions} />}
-                      icon={Wallet}
-                      color={mes.benefici + mes.retencions >= 0 ? 'text-green-600' : 'text-red-600'}
-                      big
-                      onSelect={() => setBreakdown(desglos('benefici-fianca', mes))}
-                    />
-                  </>
-                )}
-              </div>
-
-
-              {serie && serie.length > 0 && (
-                <div className={`grid gap-4 ${restringit ? '' : 'lg:grid-cols-2'}`}>
-                  <BalancLineChart
-                    titol="Ingressos, despeses i benefici (últims 12 mesos)"
-                    punts={seriePunts(serie).map((s) => ({ label: s.label, barA: s.ingressos, barB: s.despeses + s.personal, linia: s.benefici }))}
-                    nomA="Ingressos"
-                    nomB="Despeses"
-                    nomLinia="Benefici"
-                  />
-                  {!restringit && (
-                    <BalancLineChart
-                      titol="Amb fiança (últims 12 mesos)"
-                      punts={seriePunts(serie).map((s) => ({ label: s.label, barA: s.ingressosAmbRetencions, barB: s.despeses + s.personal + s.despesesFianca, linia: s.benefici + s.retencions }))}
-                      nomA="Ingressos + fiança"
-                      nomB="Despeses + fiança"
-                      nomLinia="Benefici + fiança"
-                      colorA="#f97316"
-                      colorLinia="#c2410c"
-                    />
-                  )}
-                </div>
-              )}
-
-              <BreakdownsSection data={ambPersonal(mes, mes.personal)} despesesFianca={mes.despesesFianca} />
-            </>
-          )}
-        </div>
-      ) : mode === 'rang' ? (
-        <div className="space-y-6">
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="text-sm text-slate-600">De</label>
-            <input
-              type="date"
-              value={desde}
-              onChange={(e) => e.target.value && setDesde(e.target.value)}
-              className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
-            />
-            <label className="text-sm text-slate-600">a</label>
-            <input
-              type="date"
-              value={fins}
-              onChange={(e) => e.target.value && setFins(e.target.value)}
-              className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
-            />
-            <span className="mx-1 text-slate-300">·</span>
-            <span className="text-xs text-slate-400">Trimestre:</span>
-            {[1, 2, 3, 4].map((q) => (
-              <Button
-                key={q}
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const y = Number(desde.slice(0, 4)) || new Date().getFullYear();
-                  const m1 = (q - 1) * 3 + 1;
-                  const m2 = (q - 1) * 3 + 3;
-                  const ultim = new Date(y, m2, 0).getDate();
-                  setDesde(`${y}-${String(m1).padStart(2, '0')}-01`);
-                  setFins(`${y}-${String(m2).padStart(2, '0')}-${String(ultim).padStart(2, '0')}`);
-                }}
-              >
-                T{q}
-              </Button>
-            ))}
-          </div>
-          {rang && (
-            <>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <Kpi label="Ingressos" value={<Eur value={rang.ingressos} />} icon={TrendingUp} color="text-green-600" big onSelect={() => setBreakdown(desglos('ingressos', rang))} />
-                <Kpi label="Despeses" value={<Eur value={rang.despeses + rang.personal} />} icon={TrendingDown} color="text-red-600" onSelect={() => setBreakdown(desglos('despeses', rang))} />
-                <Kpi label="Benefici" value={<Eur value={rang.benefici} />} icon={Wallet} color={rang.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big onSelect={() => setBreakdown(desglos('benefici', rang))} />
-                {!restringit && (
-                  <>
-                    <Kpi label="Ingressos + fiança" value={<Eur value={rang.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" onSelect={() => setBreakdown(desglos('ingressos-fianca', rang))} />
-                    <Kpi label="Despeses + fiança" value={<Eur value={rang.despeses + rang.personal + rang.despesesFianca} />} icon={TrendingDown} color="text-red-600" onSelect={() => setBreakdown(desglos('despeses-fianca', rang))} />
-                    <Kpi label="Benefici + fiança" value={<Eur value={rang.benefici + rang.retencions} />} icon={Wallet} color={rang.benefici + rang.retencions >= 0 ? 'text-green-600' : 'text-red-600'} big onSelect={() => setBreakdown(desglos('benefici-fianca', rang))} />
-                  </>
-                )}
-              </div>
-              {serie && serie.length > 0 && (
-                <div className={`grid gap-4 ${restringit ? '' : 'lg:grid-cols-2'}`}>
-                  <BalancLineChart
-                    titol="Ingressos, despeses i benefici (mesos del període)"
-                    punts={seriePunts(serie).map((s) => ({ label: s.label, barA: s.ingressos, barB: s.despeses + s.personal, linia: s.benefici }))}
-                    nomA="Ingressos"
-                    nomB="Despeses"
-                    nomLinia="Benefici"
-                  />
-                  {!restringit && (
-                    <BalancLineChart
-                      titol="Amb fiança (mesos del període)"
-                      punts={seriePunts(serie).map((s) => ({ label: s.label, barA: s.ingressosAmbRetencions, barB: s.despeses + s.personal + s.despesesFianca, linia: s.benefici + s.retencions }))}
-                      nomA="Ingressos + fiança"
-                      nomB="Despeses + fiança"
-                      nomLinia="Benefici + fiança"
-                      colorA="#f97316"
-                      colorLinia="#c2410c"
-                    />
-                  )}
-                </div>
-              )}
-
-              <BreakdownsSection data={ambPersonal(rang, rang.personal)} despesesFianca={rang.despesesFianca} />
-            </>
-          )}
-        </div>
-      ) : mode === 'any' ? (
-        <div className="space-y-6">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setYear(year - 1)}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm font-medium text-slate-700">{year}</span>
-            <Button variant="outline" size="sm" onClick={() => setYear(year + 1)}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-          {any && (
-            <>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <Kpi label="Ingressos" value={<Eur value={any.totals.ingressos} />} icon={TrendingUp} color="text-green-600" big delta={variacio(any.totals.ingressos, any.anterior.ingressos)} onSelect={() => setBreakdown(desglos('ingressos', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria, moviments: any.moviments }))} />
-                <Kpi label="Despeses" value={<Eur value={any.totals.despeses + any.totals.personal} />} icon={TrendingDown} color="text-red-600" delta={variacio(any.totals.despeses + any.totals.personal, any.anterior.despeses + any.anterior.personal)} deltaInvert onSelect={() => setBreakdown(desglos('despeses', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria, moviments: any.moviments }))} />
-                <Kpi label="Benefici" value={<Eur value={any.totals.benefici} />} icon={Wallet} color={any.totals.benefici >= 0 ? 'text-green-600' : 'text-red-600'} big delta={variacio(any.totals.benefici, any.anterior.benefici)} onSelect={() => setBreakdown(desglos('benefici', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria, moviments: any.moviments }))} />
-                {!restringit && (
-                  <>
-                    <Kpi label="Ingressos + fiança" value={<Eur value={any.totals.ingressosAmbRetencions} />} icon={PiggyBank} color="text-brand-700" onSelect={() => setBreakdown(desglos('ingressos-fianca', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria, moviments: any.moviments }))} />
-                    <Kpi label="Despeses + fiança" value={<Eur value={any.totals.despeses + any.totals.personal + any.totals.despesesFianca} />} icon={TrendingDown} color="text-red-600" onSelect={() => setBreakdown(desglos('despeses-fianca', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria, moviments: any.moviments }))} />
-                    <Kpi label="Benefici + fiança" value={<Eur value={any.totals.benefici + any.totals.retencions} />} icon={Wallet} color={any.totals.benefici + any.totals.retencions >= 0 ? 'text-green-600' : 'text-red-600'} big onSelect={() => setBreakdown(desglos('benefici-fianca', { ...any.totals, ingressosPerMetode: any.ingressosPerMetode, despesesPerCategoria: any.despesesPerCategoria, moviments: any.moviments }))} />
-                  </>
-                )}
-              </div>
-
-              <BalancChart mesos={any.mesos} />
-
-              <Table>
-                <Thead>
-                  <tr>
-                    <Th>Mes</Th>
-                    <Th className="text-right">Ingressos</Th>
-                    <Th className="text-right">Fiança</Th>
-                    <Th className="text-right">Ing.+fiança</Th>
-                    <Th className="text-right">Despeses</Th>
-                    <Th className="text-right">Benefici</Th>
-                  </tr>
-                </Thead>
-                <tbody>
-                  {any.mesos.map((m) => (
-                    <Tr key={m.mes}>
-                      <Td>{MESOS[m.mes - 1]}</Td>
-                      <Td className="text-right"><Eur value={m.ingressos} /></Td>
-                      <Td className="text-right text-amber-700"><Eur value={m.retencions} /></Td>
-                      <Td className="text-right font-medium"><Eur value={m.ingressosAmbRetencions} /></Td>
-                      <Td className="text-right text-red-700"><Eur value={m.despeses + m.personal} /></Td>
-                      <Td className={cn('text-right font-medium', m.benefici >= 0 ? 'text-green-700' : 'text-red-700')}>
-                        <Eur value={m.benefici} />
-                      </Td>
-                    </Tr>
-                  ))}
-                  <Tr className="bg-slate-50 font-semibold">
-                    <Td>TOTAL</Td>
-                    <Td className="text-right"><Eur value={any.totals.ingressos} /></Td>
-                    <Td className="text-right"><Eur value={any.totals.retencions} /></Td>
-                    <Td className="text-right"><Eur value={any.totals.ingressosAmbRetencions} /></Td>
-                    <Td className="text-right"><Eur value={any.totals.despeses + any.totals.personal} /></Td>
-                    <Td className="text-right"><Eur value={any.totals.benefici} /></Td>
-                  </Tr>
-                </tbody>
-              </Table>
-
-              <BreakdownsSection data={ambPersonal(any, any.totals.personal)} despesesFianca={any.totals.despesesFianca} />
-            </>
-          )}
-        </div>
-      ) : (
+      {veureSituacio ? (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center gap-2">
             <Scale className="h-4 w-4 text-slate-400" />
-            {/* Període: el tall és a final de mes / trimestre / any */}
             <div className="flex overflow-hidden rounded-lg border border-slate-300">
               <button type="button" onClick={() => setSituacioPeriode('mes')} className={cn('px-3 py-1.5 text-sm', situacioPeriode === 'mes' ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>Mes</button>
               <button type="button" onClick={() => setSituacioPeriode('trimestre')} className={cn('border-l border-slate-300 px-3 py-1.5 text-sm', situacioPeriode === 'trimestre' ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>Trimestre</button>
@@ -915,53 +723,214 @@ export default function BalancPage() {
                   ? `T${Math.floor(anchor.getMonth() / 3) + 1} ${anchor.getFullYear()}`
                   : mesLabel}
             </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => situacioPeriode === 'any' ? setYear(year + 1) : setAnchor(addMonths(anchor, situacioPeriode === 'trimestre' ? 3 : 1))}
-            >
+            <Button variant="outline" size="sm" onClick={() => situacioPeriode === 'any' ? setYear(year + 1) : setAnchor(addMonths(anchor, situacioPeriode === 'trimestre' ? 3 : 1))}>
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <span className="text-xs text-slate-400">
-              (del {situacioDesde.split('-').reverse().join('/')} al {situacioFins.split('-').reverse().join('/')})
-            </span>
             {!restringit && (
               <div className="ml-2 flex overflow-hidden rounded-lg border border-slate-300">
-                <button
-                  type="button"
-                  onClick={() => setIncloureCustodiaSituacio(true)}
-                  className={cn('px-3 py-1.5 text-sm', incloureCustodiaSituacio ? 'bg-orange-500 text-white' : 'bg-white text-orange-600')}
-                >
+                <button type="button" onClick={() => setIncloureCustodiaSituacio(true)} className={cn('px-3 py-1.5 text-sm', incloureCustodiaSituacio ? 'bg-orange-500 text-white' : 'bg-white text-orange-600')}>
                   Amb fiança
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setIncloureCustodiaSituacio(false)}
-                  className={cn('border-l border-slate-300 px-3 py-1.5 text-sm', !incloureCustodiaSituacio ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}
-                >
+                <button type="button" onClick={() => setIncloureCustodiaSituacio(false)} className={cn('border-l border-slate-300 px-3 py-1.5 text-sm', !incloureCustodiaSituacio ? 'bg-brand-700 text-white' : 'bg-white text-slate-600')}>
                   Sense fiança
                 </button>
               </div>
             )}
           </div>
-          <p className="text-xs text-slate-400">
-            Balanç <strong>del període</strong>: només s&apos;hi compten els moviments del mes,
-            trimestre o any triat (cobraments, devolucions, fiances rebudes, despeses i actius
-            comprats dins del període). No és un acumulat històric.
-          </p>
           {situacio && <SituacioView data={situacio} />}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <NavegadorPeriode estat={estat} onChange={setEstat} avui={avui} extra={<HideAmountsButton />} />
+
+          {dades ? (
+            <>
+              {/* Dos blocs que no es barregen: el resultat real i les fiances */}
+              <div className={cn('grid gap-4', !restringit && '2xl:grid-cols-[1.4fr_1fr]')}>
+                <section aria-label="Resultat de l'hostal" className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-3.5">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Resultat de l&apos;hostal</span>
+                    <span className="text-xs text-slate-400">sense fiances · és el que compta per a Hisenda</span>
+                  </div>
+                  <div className="grid sm:grid-cols-3">
+                    <Casella
+                      label="Ingressos"
+                      marca={<Punt color={COLORS_BALANC.ingressos} />}
+                      value={dades.ingressos}
+                      sota={comp && anterior ? <Delta pct={variacio(dades.ingressos, anterior.ingressos)} etiqueta={comp.etiqueta} /> : null}
+                      onSelect={() => setBreakdown(desglos('ingressos', dades))}
+                    />
+                    <Casella
+                      label="Despeses"
+                      marca={<Punt color={COLORS_BALANC.despeses} />}
+                      value={despesesTotals}
+                      sota={comp && anterior ? <Delta pct={variacio(despesesTotals, anterior.despeses + anterior.personal)} etiqueta={comp.etiqueta} invert /> : null}
+                      onSelect={() => setBreakdown(desglos('despeses', dades))}
+                    />
+                    <Casella
+                      label="Benefici"
+                      marca={<Punt color={COLORS_BALANC.benefici} />}
+                      value={dades.benefici}
+                      color={dades.benefici >= 0 ? 'text-green-700' : 'text-red-700'}
+                      sota={dades.ingressos > 0 ? `marge ${marge(dades.benefici, dades.ingressos)}% dels ingressos` : null}
+                      onSelect={() => setBreakdown(desglos('benefici', dades))}
+                    />
+                  </div>
+                </section>
+
+                {!restringit && (
+                  <section aria-label="Fiances" className="min-w-0 overflow-hidden rounded-xl border border-amber-200/70 bg-gradient-to-b from-amber-50/80 to-white">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-3.5">
+                      <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Fiances</span>
+                      <span className="text-xs text-slate-400">no són ingrés ni despesa</span>
+                    </div>
+                    <div className="grid sm:grid-cols-3">
+                      <Casella label="Rebudes" marca={<MostraRatllada color={COLORS_BALANC.rebudes} />} value={dades.retencions} color="text-teal-700" onSelect={() => setBreakdown(desglos('rebudes', dades))} />
+                      <Casella label="Pagades" marca={<MostraRatllada color={COLORS_BALANC.pagades} />} value={dades.despesesFianca} color="text-amber-700" onSelect={() => setBreakdown(desglos('pagades', dades))} />
+                      <Casella
+                        label="Saldo"
+                        marca={null}
+                        value={saldoFiances}
+                        color={saldoFiances >= 0 ? 'text-green-700' : 'text-red-700'}
+                        onSelect={() => setBreakdown({ title: 'Saldo de fiances', rows: [{ label: 'Rebudes de clients', value: dades.retencions }, { label: 'Pagades (recuperables)', value: -dades.despesesFianca }], total: saldoFiances })}
+                      />
+                    </div>
+                  </section>
+                )}
+              </div>
+
+              {!restringit && (
+                <Card>
+                  <CardBody>
+                    <h3 className="font-serif text-xl font-semibold text-slate-900">Del benefici a la caixa</h3>
+                    <p className="mb-2 text-sm text-slate-500">Com passes del benefici real als diners que t&apos;han entrat o sortit del banc i la caixa.</p>
+                    <div className="overflow-x-auto">
+                      <CascadaCaixa ingressos={dades.ingressos} despeses={despesesTotals} rebudes={dades.retencions} pagades={dades.despesesFianca} />
+                    </div>
+                  </CardBody>
+                </Card>
+              )}
+            </>
+          ) : (
+            <div className="h-40 animate-pulse rounded-xl bg-slate-100" />
+          )}
+
+          {puntsSerie.length > 0 && (
+            <MesosFiancesChart
+              titol={estat.tipus === 'any' ? `Mes a mes · ${desde.slice(0, 4)}` : 'Mes a mes'}
+              punts={puntsSerie}
+              ambFiances={!restringit}
+            />
+          )}
+
+          {estat.tipus === 'any' && serie && serie.length > 0 && (
+            <Card>
+              <CardBody className="overflow-x-auto">
+                <Table>
+                  <Thead>
+                    <tr>
+                      <Th>Mes</Th>
+                      <Th className="text-right">Ingressos</Th>
+                      <Th className="text-right">Despeses</Th>
+                      <Th className="text-right">Benefici</Th>
+                      {!restringit && <Th className="text-right">Fiances rebudes</Th>}
+                      {!restringit && <Th className="text-right">Fiances pagades</Th>}
+                    </tr>
+                  </Thead>
+                  <tbody>
+                    {serie.map((m) => (
+                      <Tr key={`${m.any}-${m.mes}`}>
+                        <Td>{MESOS[m.mes - 1]}</Td>
+                        <Td className="text-right tabular-nums"><Eur value={m.ingressos} /></Td>
+                        <Td className="text-right tabular-nums text-red-700"><Eur value={m.despeses + m.personal} /></Td>
+                        <Td className={cn('text-right font-medium tabular-nums', m.benefici >= 0 ? 'text-green-700' : 'text-red-700')}><Eur value={m.benefici} /></Td>
+                        {!restringit && <Td className="text-right tabular-nums text-teal-700"><Eur value={m.retencions} /></Td>}
+                        {!restringit && <Td className="text-right tabular-nums text-amber-700"><Eur value={m.despesesFianca} /></Td>}
+                      </Tr>
+                    ))}
+                    <Tr className="bg-slate-50 font-semibold">
+                      <Td>TOTAL</Td>
+                      <Td className="text-right tabular-nums"><Eur value={r2(serie.reduce((a, m) => a + m.ingressos, 0))} /></Td>
+                      <Td className="text-right tabular-nums"><Eur value={r2(serie.reduce((a, m) => a + m.despeses + m.personal, 0))} /></Td>
+                      <Td className="text-right tabular-nums"><Eur value={r2(serie.reduce((a, m) => a + m.benefici, 0))} /></Td>
+                      {!restringit && <Td className="text-right tabular-nums"><Eur value={r2(serie.reduce((a, m) => a + m.retencions, 0))} /></Td>}
+                      {!restringit && <Td className="text-right tabular-nums"><Eur value={r2(serie.reduce((a, m) => a + m.despesesFianca, 0))} /></Td>}
+                    </Tr>
+                  </tbody>
+                </Table>
+              </CardBody>
+            </Card>
+          )}
+
+          {dades && (
+            <>
+              <div className="grid gap-6 lg:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>En què se&apos;n va</CardTitle>
+                    <p className="mt-0.5 text-sm text-slate-500">Despeses per categoria.{restringit ? '' : ' Les fiances, a part i sense sumar.'}</p>
+                  </CardHeader>
+                  <CardBody>
+                    <LlistaBarres
+                      files={categoriesAmbPersonal(dades)}
+                      color={COLORS_BALANC.despeses}
+                      extra={restringit ? undefined : { label: 'Fiances pagades', value: dades.despesesFianca, color: COLORS_BALANC.pagades }}
+                      buit="Sense despeses en aquest període."
+                    />
+                  </CardBody>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Com t&apos;han pagat</CardTitle>
+                    <p className="mt-0.5 text-sm text-slate-500">Ingressos per mètode.{restringit ? '' : ' Les fiances rebudes, a part.'}</p>
+                  </CardHeader>
+                  <CardBody>
+                    <LlistaBarres
+                      files={metodeItems(dades.ingressosPerMetode)}
+                      color={COLORS_BALANC.ingressos}
+                      extra={restringit ? undefined : { label: 'Fiances rebudes', value: dades.retencions, color: COLORS_BALANC.rebudes }}
+                      buit="Sense cobraments en aquest període."
+                    />
+                  </CardBody>
+                </Card>
+              </div>
+
+              {!restringit && obertes && <FiancesObertesCard dades={obertes} />}
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Indicadors de l&apos;hostal</CardTitle>
+                </CardHeader>
+                <CardBody className="grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <p className="text-2xl font-extrabold tabular-nums text-slate-900">{dades.ocupacio}%</p>
+                    <p className="text-sm text-slate-500">Ocupació</p>
+                  </div>
+                  <div className="sm:border-l sm:border-slate-100 sm:pl-5">
+                    <p className="text-2xl font-extrabold tabular-nums text-slate-900"><Eur value={dades.adr} /></p>
+                    <p className="text-sm text-slate-500">Preu mitjà per nit (ADR)</p>
+                  </div>
+                  <div className="sm:border-l sm:border-slate-100 sm:pl-5">
+                    <p className="text-2xl font-extrabold tabular-nums text-slate-900"><Eur value={dades.revpar} /></p>
+                    <p className="text-sm text-slate-500">Ingrés per habitació disponible (RevPAR)</p>
+                  </div>
+                </CardBody>
+              </Card>
+
+              <MovimentsCard moviments={dades.moviments ?? []} ambFiances={!restringit} />
+            </>
+          )}
+
+          <p className="text-xs text-slate-400">
+            Ingressos = cobraments + dipòsits retinguts. Les despeses inclouen el cost de personal.
+            El <strong>Benefici</strong> és Ingressos − Despeses.
+            {restringit ? '' : ' Les fiances rebudes (de clients, s\'han de tornar) i les pagades (recuperables) van a part i no canvien el benefici.'}{' '}
+            Exporta-ho tot a CSV per a la gestoria.
+          </p>
         </div>
       )}
 
-      {mode !== 'situacio' && (
-        <p className="mt-4 text-xs text-slate-400">
-          Ingressos = cobraments + dipòsits retinguts. Les despeses inclouen el cost de personal.
-          El <strong>Benefici</strong> és Ingressos − Despeses (el real); el <strong>Benefici + fiança</strong>
-          hi suma les fiances en custòdia (diners retornables). Exporta-ho tot a CSV per a la gestoria.
-        </p>
-      )}
-
-      {/* Modal de desglossament d'un KPI */}
+      {/* Modal de desglossament d'una casella */}
       {breakdown && (
         <div
           className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-20"
@@ -974,9 +943,7 @@ export default function BalancPage() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            {breakdown.rows.length === 0 ? (
-              <p className="text-sm italic text-slate-400">Sense desglossament per a aquest període.</p>
-            ) : (
+            {breakdown.rows.length > 0 && (
               <div>
                 {breakdown.rows.map((r, i) => (
                   <div key={i} className="flex items-center justify-between border-b border-slate-100 py-1.5 text-sm last:border-0">
@@ -993,7 +960,7 @@ export default function BalancPage() {
               <span className="text-brand-800"><Eur value={breakdown.total} /></span>
             </div>
 
-            {breakdown.moviments && breakdown.moviments.length > 0 && (
+            {breakdown.moviments && breakdown.moviments.length > 0 ? (
               <div className="mt-3 border-t border-slate-100 pt-2">
                 <p className="mb-1 text-xs font-medium text-slate-500">Moviments ({breakdown.moviments.length})</p>
                 <div className="max-h-72 space-y-0.5 overflow-y-auto">
@@ -1019,7 +986,9 @@ export default function BalancPage() {
                   })}
                 </div>
               </div>
-            )}
+            ) : breakdown.rows.length === 0 ? (
+              <p className="mt-3 text-sm italic text-slate-400">Sense moviments en aquest període.</p>
+            ) : null}
           </div>
         </div>
       )}

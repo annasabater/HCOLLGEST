@@ -801,7 +801,7 @@ function PersonalTab({ detall }: { detall: PersonaPeriode[] }) {
 
 const MESOS_CURT = ['Gen', 'Feb', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Des'];
 
-interface MesDespeses { mes: string; variables: number; fixes: number; personal: number }
+interface MesDespeses { mes: string; variables: number; fixes: number; personal: number; fiances: number }
 interface PersonaPeriode {
   id: string; nom: string; carrec: string;
   nomines: number; neteja: number; bugaderia: number; total: number;
@@ -837,8 +837,12 @@ function GraficAny({
   fins: string;
   onMes: (desde: string, fins: string) => void;
 }) {
-  const totals = mesos.map((m) => m.variables + m.fixes + m.personal);
+  // Tres vistes, com al Balanç: sense fiances, amb fiances (ratllades a sobre) o només fiances.
+  const [vista, setVista] = useState<'sense' | 'amb' | 'nomes'>('sense');
+  const despesa = (m: MesDespeses) => m.variables + m.fixes + m.personal;
+  const totals = mesos.map((m) => (vista === 'nomes' ? m.fiances : vista === 'amb' ? despesa(m) + m.fiances : despesa(m)));
   const max = Math.max(...totals, 0);
+  const ratllat = 'repeating-linear-gradient(135deg, #B45309 0 3px, #B4530929 3px 6px)';
   const sostre = max > 0 ? Math.ceil(max / 500) * 500 : 500;
   const alt = (v: number) => `${(v / sostre) * 88}%`;
   const ultimDia = (mes: string) => {
@@ -854,9 +858,38 @@ function GraficAny({
           <h3 className="text-sm font-semibold text-slate-800">Com ha anat l&apos;any</h3>
           <p className="text-xs text-slate-400">Clica una barra per posar el període en aquell mes</p>
         </div>
-        <div className="flex flex-wrap gap-3 text-xs text-slate-600">
-          <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm bg-brand-700" /> Variables</span>
-          <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm bg-amber-600" /> Personal</span>
+        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
+          {vista !== 'nomes' && (
+            <>
+              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm bg-brand-700" /> Variables</span>
+              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm bg-amber-600" /> Personal</span>
+            </>
+          )}
+          {vista !== 'sense' && (
+            <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm" style={{ background: ratllat }} /> Fiances pagades</span>
+          )}
+          <div role="group" aria-label="Vista del gràfic" className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
+            {(
+              [
+                ['sense', 'Sense fiances'],
+                ['amb', 'Amb fiances'],
+                ['nomes', 'Només fiances'],
+              ] as const
+            ).map(([k, l]) => (
+              <button
+                key={k}
+                type="button"
+                aria-pressed={vista === k}
+                onClick={() => setVista(k)}
+                className={cn(
+                  'rounded-md px-2.5 py-1 font-medium transition-colors',
+                  vista === k ? 'bg-brand-700 text-white' : 'text-slate-600 hover:text-brand-700',
+                )}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -886,8 +919,15 @@ function GraficAny({
               <span className="whitespace-nowrap text-center text-[10px] font-bold tabular-nums text-slate-600">
                 {dins && tot > 0 ? eur0(tot) : ' '}
               </span>
-              <span className={cn('rounded-t bg-brand-700', !dins && 'opacity-55')} style={{ height: alt(m.variables) }} />
-              <span className={cn('bg-amber-600', !dins && 'opacity-55')} style={{ height: alt(m.personal) }} />
+              {vista !== 'sense' && m.fiances > 0 && (
+                <span className={cn('rounded-t', !dins && 'opacity-55')} style={{ height: alt(m.fiances), background: ratllat }} />
+              )}
+              {vista !== 'nomes' && (
+                <>
+                  <span className={cn('bg-brand-700', (vista === 'sense' || !m.fiances) && 'rounded-t', !dins && 'opacity-55')} style={{ height: alt(m.variables + m.fixes) }} />
+                  <span className={cn('bg-amber-600', !dins && 'opacity-55')} style={{ height: alt(m.personal) }} />
+                </>
+              )}
             </button>
           );
         })}
@@ -1058,9 +1098,9 @@ function GastosContent() {
 
       {errResum && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{errResum}</div>}
 
-      {/* Total del període i les tres parts que el componen (que són les pestanyes),
-          tot en una fila; en pantalla estreta el total va a dalt. */}
-      <div className="mb-5 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 lg:grid-cols-[1.35fr_1fr_1fr]">
+      {/* Total del període, les parts que el componen (que són les pestanyes) i,
+          a part i sense sumar, les fiances pagades; en pantalla estreta el total va a dalt. */}
+      <div className="mb-5 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 lg:grid-cols-[1.35fr_1fr_1fr_1fr]">
         <div className="col-span-2 flex flex-col justify-center gap-1 bg-white px-4 py-3 lg:col-span-1">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Despesa real del període</p>
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -1079,12 +1119,6 @@ function GastosContent() {
               </span>
             )}
           </div>
-          {resum && resum.fiances > 0 && (
-            <p className="text-xs font-semibold text-amber-700">
-              Fiances <Eur value={resum.fiances} />{' '}
-              <span className="font-normal opacity-85">· fora del total, són recuperables</span>
-            </p>
-          )}
         </div>
         {parts.map((p) => (
           <button
@@ -1100,6 +1134,17 @@ function GastosContent() {
             <span className="text-xs text-slate-400">{p.peu}</span>
           </button>
         ))}
+        <div className="flex min-w-0 flex-col gap-0.5 bg-gradient-to-b from-amber-50 to-white px-4 py-3">
+          <span className="flex items-center gap-2 text-xs font-bold text-slate-500">
+            <i
+              className="h-2.5 w-2.5 rounded-sm"
+              style={{ background: 'repeating-linear-gradient(135deg, #B45309 0 2px, #B4530929 2px 4px)' }}
+            />{' '}
+            Fiances pagades
+          </span>
+          <span className="text-xl font-bold tracking-tight text-amber-700"><Eur value={resum?.fiances ?? 0} /></span>
+          <span className="text-xs text-slate-400">fora del total · recuperables</span>
+        </div>
       </div>
 
       {/* Sub-pestanyes Resum / Variables / Personal.

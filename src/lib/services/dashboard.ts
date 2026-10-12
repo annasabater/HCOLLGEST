@@ -740,6 +740,55 @@ export interface MovDetall {
 
 export type BalancDetall = Awaited<ReturnType<typeof getBalancDetall>>;
 
+/**
+ * Fiances obertes, de qualsevol data: les REBUDES de clients que encara són en
+ * custòdia (s'han de tornar) i les PAGADES a proveïdors (`Gasto.esFianca`,
+ * recuperables). No depèn del període: és el que hi ha pendent avui.
+ */
+export async function getFiancesObertes() {
+  const [rebudes, pagades] = await Promise.all([
+    prisma.diposit.findMany({
+      where: { estat: 'EN_CUSTODIA', estancia: { deletedAt: null } },
+      orderBy: { data: 'desc' },
+      select: { id: true, data: true, import: true, estancia: titularSelDash },
+    }),
+    prisma.gasto.findMany({
+      where: { deletedAt: null, esFianca: true },
+      orderBy: { data: 'desc' },
+      select: { id: true, data: true, import: true, numFactura: true, descripcio: true, proveidor: { select: { nom: true } } },
+    }),
+  ]);
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const files = [
+    ...rebudes.map((d) => {
+      const h = d.estancia?.viatgers?.[0]?.huesped;
+      return {
+        id: `d${d.id}`,
+        tipus: 'REBUDA' as const,
+        data: d.data.toISOString(),
+        concepte: h ? `${h.nom} ${h.cognom1}` : 'Sense titular',
+        import: Number(d.import),
+        href: d.estancia?.id ? `/estancies/${d.estancia.id}` : null,
+      };
+    }),
+    ...pagades.map((g) => ({
+      id: `g${g.id}`,
+      tipus: 'PAGADA' as const,
+      data: g.data.toISOString(),
+      concepte: [g.proveidor?.nom, g.numFactura, g.descripcio].filter(Boolean).join(' · '),
+      import: Number(g.import),
+      href: '/gastos',
+    })),
+  ].sort((a, b) => (a.data < b.data ? 1 : -1));
+  return {
+    totalRebudes: r2(rebudes.reduce((a, d) => a + Number(d.import), 0)),
+    totalPagades: r2(pagades.reduce((a, g) => a + Number(g.import), 0)),
+    files,
+  };
+}
+
+export type FiancesObertes = Awaited<ReturnType<typeof getFiancesObertes>>;
+
 /** Balanç dels 12 mesos d'un any + totals. */
 export async function getBalancAny(year: number, opts?: FinanceOpts) {
   const mesos: ({ mes: number } & Balanc)[] = [];

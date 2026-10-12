@@ -23,6 +23,8 @@ export interface MesDespeses {
   variables: number;
   fixes: number;
   personal: number;
+  /** Fiances pagades del mes (a part: no sumen al total). */
+  fiances: number;
 }
 
 export interface PersonaPeriode {
@@ -271,13 +273,20 @@ export async function resumDespeses(
     variables: 0,
     fixes: 0,
     personal: 0,
+    fiances: 0,
   }));
   for (const l of linies) {
     if (!l.dia.startsWith(`${any}-`)) continue;
     const m = mesos[Number(l.dia.slice(5, 7)) - 1];
     if (m) m[l.grup] += l.import;
   }
+  for (const f of fiances) {
+    if (!f.dia.startsWith(`${any}-`)) continue;
+    const m = mesos[Number(f.dia.slice(5, 7)) - 1];
+    if (m) m.fiances += f.import;
+  }
   for (const m of mesos) {
+    m.fiances = round2(m.fiances);
     m.variables = round2(m.variables);
     m.fixes = round2(m.fixes);
     m.personal = round2(m.personal);
