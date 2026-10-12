@@ -228,7 +228,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   .rule::before{ content:""; position:absolute; top:3px; left:0; width:56px; border-top:3px solid var(--accent); }
   .period{ text-align:center; font-weight:600; letter-spacing:1px; margin:14px 0 4px; color:var(--ink); }
   .doc-title{ text-align:center; font-size:13px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--accent); margin:2px 0 16px; }
-  /* Libro de gastos: mateix ample que les altres fulles; la taula (moltes
+  /* Libro de gastos (i Facturas emitidas/recibidas i Libro de ingresos, amb la
+     mateixa mida perquè tot hi càpiga): mateix ample que les altres fulles; la taula (moltes
      columnes) fa scroll horizontal a dins amb lletra petita. */
   .wide-scroll{ overflow-x:auto; }
   table.lg{ font-size:8.5px; }
@@ -308,7 +309,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <div class="rule"></div>
     <div class="period">${esc(etiqueta)}</div>
     <div class="doc-title">Facturas emitidas · Repercutidas</div>
-    <table id="emeses" class="rz">
+    <table id="emeses" class="rz lg">
       <colgroup>
         <col style="width:88px"><col style="width:92px"><col style="width:92px"><col style="width:240px"><col style="width:140px"><col style="width:100px"><col style="width:50px"><col style="width:82px"><col style="width:90px"><col style="width:82px"><col class="c-del" style="width:28px">
       </colgroup>
@@ -342,7 +343,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <div class="rule"></div>
     <div class="period">${esc(etiqueta)}</div>
     <div class="doc-title">Libro de ingresos</div>
-    <table id="ingressos" class="rz">
+    <table id="ingressos" class="rz lg">
       <colgroup>
         <col style="width:110px"><col style="width:130px"><col style="width:130px"><col style="width:300px"><col style="width:140px"><col style="width:140px"><col style="width:140px">
       </colgroup>
@@ -377,7 +378,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <div class="rule"></div>
     <div class="period">${esc(etiqueta)}</div>
     <div class="doc-title">Facturas recibidas · Soportadas</div>
-    <table id="gastos" class="rz">
+    <table id="gastos" class="rz lg">
       <colgroup>
         <col style="width:88px"><col style="width:92px"><col style="width:180px"><col style="width:130px"><col style="width:88px"><col style="width:50px"><col style="width:82px"><col style="width:50px"><col style="width:82px"><col style="width:90px"><col class="c-del" style="width:28px">
       </colgroup>
