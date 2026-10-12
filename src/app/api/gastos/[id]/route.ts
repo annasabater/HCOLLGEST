@@ -26,6 +26,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
     if (input.metodePagament !== undefined) data.metodePagament = input.metodePagament;
     if (input.esFianca !== undefined) data.esFianca = input.esFianca;
     if (input.categoriaId !== undefined) data.categoria = { connect: { id: input.categoriaId } };
+    // Adjunt substituït des del formulari d'editar.
+    if (input.adjuntPath !== undefined) data.adjuntPath = input.adjuntPath;
 
     // IVA: si arriba desglossament (2+ línies) mana; si arriben base/% simples
     // (o un desglossament buit), es torna a una sola base i s'esborra el desglossament.

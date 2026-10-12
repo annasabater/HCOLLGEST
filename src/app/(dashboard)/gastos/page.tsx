@@ -24,7 +24,26 @@ import { LiniesIva, liniaBuida, liniesDeGasto, payloadIva, type LiniaIvaForm } f
 // ─── Tipus ────────────────────────────────────────────────────────────────────
 
 interface Cat { id: string; nom: string }
-interface Prov { id: string; nom: string }
+interface Prov {
+  id: string; nom: string;
+  cif?: string | null; activitat?: string | null; telefon?: string | null;
+  email?: string | null; web?: string | null; adreca?: string | null;
+}
+
+/** Dades de la fitxa del proveïdor que es poden tocar des d'una despesa. */
+const CAMPS_PROV = [
+  { clau: 'cif', etiqueta: 'NIF/CIF' },
+  { clau: 'activitat', etiqueta: 'Activitat' },
+  { clau: 'telefon', etiqueta: 'Telèfon' },
+  { clau: 'email', etiqueta: 'E-mail' },
+  { clau: 'web', etiqueta: 'Web' },
+  { clau: 'adreca', etiqueta: 'Adreça' },
+] as const;
+type DadesProv = Record<(typeof CAMPS_PROV)[number]['clau'], string>;
+const dadesDe = (p: Prov | undefined): DadesProv => ({
+  cif: p?.cif ?? '', activitat: p?.activitat ?? '', telefon: p?.telefon ?? '',
+  email: p?.email ?? '', web: p?.web ?? '', adreca: p?.adreca ?? '',
+});
 interface Hab { id: string; nom: string }
 // Valors habituals d'un proveïdor (de la seva última despesa).
 interface ProvDefaults {
@@ -78,6 +97,9 @@ interface EditForm {
   data: string; import: string; categoriaId: string; proveidorId: string; habitacioId: string;
   metodePagament: string; descripcio: string; numFactura: string;
   liniesIva: LiniaIvaForm[]; irpfPercent: string;
+  /** Fitxa del proveïdor triat (es desa al proveïdor, no a la despesa). */
+  prov: DadesProv;
+  adjuntPath: string | null;
 }
 
 // ─── Gastos variables ─────────────────────────────────────────────────────────
@@ -142,7 +164,9 @@ function GastosVariablesTab({
 
   // Edició inline d'una despesa existent.
   const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<EditForm>({ data: '', import: '', categoriaId: '', proveidorId: '', habitacioId: '', metodePagament: 'TARGETA', descripcio: '', numFactura: '', liniesIva: [liniaBuida()], irpfPercent: '' });
+  const [editForm, setEditForm] = useState<EditForm>({ data: '', import: '', categoriaId: '', proveidorId: '', habitacioId: '', metodePagament: 'TARGETA', descripcio: '', numFactura: '', liniesIva: [liniaBuida()], irpfPercent: '', prov: dadesDe(undefined), adjuntPath: null });
+  // Nova foto/fitxer per substituir l'adjunt de la despesa que s'edita.
+  const [editFile, setEditFile] = useState<File | null>(null);
   const [editSaving, setEditSaving] = useState(false);
 
   // Es demana el període sencer sense filtrar per categoria: així les pastilles
@@ -355,14 +379,35 @@ function GastosVariablesTab({
       numFactura: g.numFactura ?? '',
       liniesIva: liniesDeGasto(g),
       irpfPercent: g.irpfPercent != null ? String(Number(g.irpfPercent)) : '',
+      prov: dadesDe(proveidors.find((p) => p.id === g.proveidorId)),
+      adjuntPath: g.adjuntPath,
     });
+    setEditFile(null);
   }
 
   async function desarEdit(id: string) {
     if (!editForm.categoriaId || !editForm.import) { setError('Cal categoria i import.'); return; }
     setEditSaving(true); setError(null);
     try {
+      // 1) Fitxa del proveïdor: només si s'hi ha canviat alguna cosa.
+      if (editForm.proveidorId) {
+        const abans = dadesDe(proveidors.find((p) => p.id === editForm.proveidorId));
+        const canvis = Object.fromEntries(
+          CAMPS_PROV.filter(({ clau }) => editForm.prov[clau].trim() !== abans[clau].trim())
+            .map(({ clau }) => [clau, editForm.prov[clau].trim()]),
+        );
+        if (Object.keys(canvis).length > 0) await patchJSON(`/api/proveidors/${editForm.proveidorId}`, canvis);
+      }
+      // 2) Adjunt nou (substitueix l'anterior).
+      let adjuntPath: string | undefined;
+      if (editFile) {
+        const fd = new FormData(); fd.append('file', await redueixImatge(editFile), editFile.name);
+        const up = await fetch('/api/uploads', { method: 'POST', body: fd });
+        if (!up.ok) throw new ApiError(await motiuPujada(up, 'No s\'ha pogut pujar l\'adjunt'), up.status);
+        adjuntPath = (await up.json()).path;
+      }
       await patchJSON(`/api/gastos/${id}`, {
+        ...(adjuntPath ? { adjuntPath } : {}),
         data: editForm.data,
         import: Number(editForm.import),
         categoriaId: editForm.categoriaId,
@@ -375,7 +420,9 @@ function GastosVariablesTab({
         irpfPercent: editForm.irpfPercent === '' ? null : Number(editForm.irpfPercent),
       });
       setEditId(null);
+      setEditFile(null);
       load();
+      getJSON<{ proveidors: Prov[] }>('/api/proveidors').then((r) => setProveidors(r.proveidors)).catch(() => {});
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error desant la despesa');
     } finally {
@@ -594,7 +641,7 @@ function GastosVariablesTab({
                         </Select>
                       </Field>
                       <Field label="Proveïdor">
-                        <Select value={editForm.proveidorId} onChange={(e) => setEditForm({ ...editForm, proveidorId: e.target.value })}>
+                        <Select value={editForm.proveidorId} onChange={(e) => setEditForm({ ...editForm, proveidorId: e.target.value, prov: dadesDe(proveidors.find((p) => p.id === e.target.value)) })}>
                           <option value="">—</option>
                           {proveidors.map((p) => <option key={p.id} value={p.id}>{p.nom}</option>)}
                         </Select>
@@ -620,10 +667,47 @@ function GastosVariablesTab({
                         irpfPercent={editForm.irpfPercent}
                       />
                       <Field label="% IRPF"><Input type="number" step="0.01" value={editForm.irpfPercent} onChange={(e) => setEditForm({ ...editForm, irpfPercent: e.target.value })} /></Field>
+
+                      {editForm.proveidorId && (
+                        <div className="rounded-lg border border-slate-200 bg-white p-3 sm:col-span-3">
+                          <p className="mb-2 text-xs font-semibold text-slate-600">
+                            Dades del proveïdor <span className="font-normal text-slate-400">· es desen a la seva fitxa (valen per a totes les seves despeses)</span>
+                          </p>
+                          <div className="grid gap-3 sm:grid-cols-3">
+                            {CAMPS_PROV.map(({ clau, etiqueta }) => (
+                              <Field key={clau} label={etiqueta} className={clau === 'adreca' ? 'sm:col-span-2' : undefined}>
+                                <Input
+                                  value={editForm.prov[clau]}
+                                  onChange={(e) => setEditForm({ ...editForm, prov: { ...editForm.prov, [clau]: e.target.value } })}
+                                />
+                              </Field>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <Field label="Adjunt (factura/ticket)" className="sm:col-span-3">
+                        <div className="flex flex-wrap items-center gap-3 text-sm">
+                          {editForm.adjuntPath && !editFile && (
+                            <a href={`/api/files?path=${encodeURIComponent(editForm.adjuntPath)}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-medium text-brand-700 hover:underline">
+                              <Paperclip className="h-4 w-4" /> Veure la factura
+                            </a>
+                          )}
+                          {!editForm.adjuntPath && !editFile && <span className="text-slate-400">Sense adjunt</span>}
+                          {editFile && <span className="text-slate-700">Nou: {editFile.name}</span>}
+                          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-600 hover:border-brand-600 hover:text-brand-700">
+                            <Upload className="h-4 w-4" /> {editForm.adjuntPath || editFile ? 'Substituir' : 'Afegir'}
+                            <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => setEditFile(e.target.files?.[0] ?? null)} />
+                          </label>
+                          {editFile && (
+                            <button type="button" className="text-slate-500 hover:underline" onClick={() => setEditFile(null)}>Desfer</button>
+                          )}
+                        </div>
+                      </Field>
                     </div>
                     <div className="mt-3 flex items-center gap-2">
                       <Button size="sm" onClick={() => desarEdit(g.id)} disabled={editSaving}><Check className="h-4 w-4" /> {editSaving ? 'Desant…' : 'Desar'}</Button>
-                      <Button size="sm" variant="ghost" onClick={() => setEditId(null)} disabled={editSaving}>Cancel·lar</Button>
+                      <Button size="sm" variant="ghost" onClick={() => { setEditId(null); setEditFile(null); }} disabled={editSaving}>Cancel·lar</Button>
                     </div>
                   </td>
                 </tr>

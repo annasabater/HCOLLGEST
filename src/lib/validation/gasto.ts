@@ -8,6 +8,12 @@ const optStr = z.preprocess(
   z.string().trim().optional(),
 );
 
+// Import amb signe opcional ('' → undefined): la base d'un abonament és negativa.
+const optNumSigne = z.preprocess(
+  (v) => (v === '' || v === null ? undefined : v),
+  z.coerce.number().optional(),
+);
+
 // Número opcional: '' → undefined (per als camps fiscals que poden quedar buits).
 const optNum = z.preprocess(
   (v) => (v === '' || v === null ? undefined : v),
@@ -16,7 +22,8 @@ const optNum = z.preprocess(
 
 export const GastoCreateSchema = z.object({
   data: z.coerce.date(),
-  import: z.coerce.number().positive('L’import ha de ser positiu'),
+  // Negatiu = abonament / factura rectificativa del proveïdor (resta de la despesa).
+  import: z.coerce.number().refine((n) => n !== 0, 'L’import no pot ser 0'),
   categoriaId: z.string().min(1, 'Cal una categoria'),
   proveidorId: optStr,
   habitacioId: optStr,
@@ -25,7 +32,7 @@ export const GastoCreateSchema = z.object({
   numFactura: optStr, // nº de factura del proveïdor (per al llibre d'IVA)
   // Desglossament fiscal (llibre d'IVA soportat): si es donen, s'usen tal qual;
   // si no, la base es dedueix del total al 21% (veure getGastosSoportats).
-  baseImposable: optNum,
+  baseImposable: optNumSigne,
   ivaPercent: optNum,
   irpfPercent: optNum,
   // Diversos tipus d'IVA a la mateixa factura (2+ línies). Si es dona, mana
