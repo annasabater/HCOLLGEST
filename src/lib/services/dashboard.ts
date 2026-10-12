@@ -8,6 +8,7 @@ import { prisma } from '../db';
 import { computeActiuInfo } from '../actiu-alerts';
 import { habitacioLlibre } from '../habitacio-llibre';
 import { generarDespesesVencudes } from './serveis-recurrents';
+import { indicadorsHostal } from '../indicadors-hostal';
 
 export interface FinanceOpts {
   /**
@@ -25,6 +26,8 @@ function metodeFiltre(opts?: FinanceOpts): { metode?: { not: 'ALTRES' } } {
 interface EfectiuRow {
   import: number;
   metode: string;
+  /** Concepte del cobrament (ALLOTJAMENT, EXTRA, TASA…); els dipòsits no en tenen. */
+  concepte?: string;
   data: Date; // data del cobrament/dipòsit (quan van pagar)
   estancia: {
     id: string;
@@ -80,10 +83,11 @@ async function cobramentsEfectius(start: Date, end: Date, opts?: FinanceOpts): P
         },
       ],
     },
-    select: { import: true, metode: true, data: true, periodes: { select: { dataInici: true, dataFi: true, import: true } }, estancia: titularSelDash },
+    select: { import: true, metode: true, concepte: true, data: true, periodes: { select: { dataInici: true, dataFi: true, import: true } }, estancia: titularSelDash },
   });
   return rows
     .map((c) => ({
+      concepte: c.concepte,
       import:
         c.periodes.length > 0
           ? c.periodes.filter((p) => p.dataInici <= end && p.dataFi >= start).reduce((a, p) => a + Number(p.import), 0)
@@ -574,7 +578,7 @@ export type Balanc = Awaited<ReturnType<typeof getBalanc>>;
 export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts) {
   const num = (v: unknown) => Number(v ?? 0);
   const endExcl = new Date(end.getTime() + 1);
-  const [base, cobramentsRows, retingutsRows, gastoCat, categories, habCount, estades, roomRevAgg, fiancaCat, custodiaMetode] =
+  const [base, cobramentsRows, retingutsRows, gastoCat, categories, habCount, estades, fiancaCat, custodiaMetode] =
     await Promise.all([
       getBalanc(start, end, opts),
       cobramentsEfectius(start, end, opts),
@@ -587,12 +591,14 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
       prisma.categoriaGasto.findMany({ select: { id: true, nom: true } }),
       prisma.habitacio.count({ where: { deletedAt: null } }),
       prisma.estancia.findMany({
-        where: { deletedAt: null, habitacioId: { not: null }, dataEntrada: { lt: endExcl }, dataSortida: { gt: start } },
-        select: { dataEntrada: true, dataSortida: true },
-      }),
-      prisma.liniaFactura.aggregate({
-        _sum: { import: true },
-        where: { concepte: 'ALLOTJAMENT', factura: { deletedAt: null, data: { gte: start, lte: end } } },
+        where: {
+          deletedAt: null,
+          estat: { not: 'CANCELLADA' },
+          habitacioId: { not: null },
+          dataEntrada: { lt: endExcl },
+          dataSortida: { gt: start },
+        },
+        select: { habitacioId: true, dataEntrada: true, dataSortida: true },
       }),
       // Fiances PAGADES per categoria (la mateixa definició que despesesFianca).
       prisma.gasto.groupBy({
@@ -608,22 +614,27 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
       }),
     ]);
 
-  // KPIs hotelers: ocupació mitjana, ADR (preu mitjà per nit ocupada), RevPAR.
-  const dies = Math.max(1, Math.round((endExcl.getTime() - start.getTime()) / 86_400_000));
-  const nitsDisponibles = habCount * dies;
-  let nitsOcupades = 0;
-  for (const e of estades) {
-    if (!e.dataEntrada || !e.dataSortida) continue;
-    const s = e.dataEntrada > start ? e.dataEntrada : start;
-    const f = e.dataSortida < endExcl ? e.dataSortida : endExcl;
-    const n = Math.round((f.getTime() - s.getTime()) / 86_400_000);
-    if (n > 0) nitsOcupades += n;
-  }
-  const roomRev = num(roomRevAgg._sum.import);
   const r2 = (n: number) => Math.round(n * 100) / 100;
-  const ocupacio = nitsDisponibles > 0 ? Math.round((nitsOcupades / nitsDisponibles) * 100) : 0;
-  const adr = nitsOcupades > 0 ? r2(roomRev / nitsOcupades) : 0;
-  const revpar = nitsDisponibles > 0 ? r2(roomRev / nitsDisponibles) : 0;
+  // Indicadors de l'hostal: ocupació (per habitació i nit), preu, cost i benefici
+  // per nit ocupada i durada mitjana. L'ingrés d'allotjament és el cobrat del
+  // període (sense la taxa turística ni els extres), el mateix que fa servir el balanç.
+  const dia = (d: Date) => d.toISOString().slice(0, 10);
+  const diaLocal = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const indicadors = indicadorsHostal({
+    estades: estades.flatMap((e) =>
+      e.habitacioId && e.dataEntrada && e.dataSortida
+        ? [{ habitacioId: e.habitacioId, entrada: dia(e.dataEntrada), sortida: dia(e.dataSortida) }]
+        : [],
+    ),
+    habitacions: habCount,
+    desde: diaLocal(start),
+    fins: diaLocal(end),
+    ingressosAllotjament: cobramentsRows
+      .filter((c) => c.concepte !== 'TASA' && c.concepte !== 'EXTRA')
+      .reduce((a, c) => a + c.import, 0),
+    despeses: base.despeses + base.personal,
+  });
 
   const metodesBase = ['EFECTIU', 'TARGETA', 'TRANSFERENCIA', 'BIZUM', 'ALTRES'] as const;
   // Vista restringida: el mètode ALTRES no apareix ni al desglossament.
@@ -741,7 +752,7 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
     moviments.push({ id: `gf${g.id}`, grup: 'FIANCA_PAGADA', data: g.data.toISOString(), concepte: [g.categoria?.nom, g.proveidor?.nom, 'fiança pagada'].filter(Boolean).join(' · '), import: -num(g.import), metode: null, pagada: null, href: '/gastos' });
   moviments.sort((a, b) => (a.data < b.data ? 1 : -1));
 
-  return { ...base, ingressosPerMetode, despesesPerCategoria, fiancesPerCategoria, retencionsPerMetode, ocupacio, adr, revpar, movimentsPerPersona, moviments };
+  return { ...base, ingressosPerMetode, despesesPerCategoria, fiancesPerCategoria, retencionsPerMetode, indicadors, movimentsPerPersona, moviments };
 }
 
 export type MovGrup = 'INGRES' | 'FIANCA' | 'FIANCA_CUST' | 'DESPESA' | 'PERSONAL' | 'FIANCA_PAGADA';
@@ -837,9 +848,7 @@ export async function getBalancAny(year: number, opts?: FinanceOpts) {
     fiancesPerCategoria: detall.fiancesPerCategoria,
     retencionsPerMetode: detall.retencionsPerMetode,
     moviments: detall.moviments,
-    ocupacio: detall.ocupacio,
-    adr: detall.adr,
-    revpar: detall.revpar,
+    indicadors: detall.indicadors,
     anterior: {
       ingressos: prev.ingressos,
       despeses: prev.despeses,

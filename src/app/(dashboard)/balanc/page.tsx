@@ -39,9 +39,15 @@ interface Breakdowns {
   // Part de fiança de cada categoria (pagades) i de cada mètode (rebudes).
   fiancesPerCategoria?: { categoria: string; import: number }[];
   retencionsPerMetode?: Record<string, number>;
-  ocupacio: number;
-  adr: number;
-  revpar: number;
+  indicadors: {
+    ocupacio: number;
+    nitsOcupades: number;
+    nitsDisponibles: number;
+    preuMitjaNit: number;
+    costPerNit: number;
+    beneficiPerNit: number;
+    duradaMitjana: number;
+  };
   moviments?: MovDetall[];
 }
 interface Balanc extends Breakdowns {
@@ -376,6 +382,55 @@ function LlistaBarresFiances({
         </div>
       </div>
     </div>
+  );
+}
+
+// ─── Indicadors de l'hostal ──────────────────────────────────────────────────
+
+function IndicadorsCard({ ind }: { ind: Balanc['indicadors'] }) {
+  const items: { valor: React.ReactNode; nom: string; explica: string; color?: string }[] = [
+    {
+      valor: `${ind.ocupacio}%`,
+      nom: 'Ocupació',
+      explica: `${ind.nitsOcupades} de ${ind.nitsDisponibles} nits possibles amb l'habitació llogada.`,
+    },
+    {
+      valor: <Eur value={ind.preuMitjaNit} />,
+      nom: 'Preu mitjà per nit',
+      explica: 'El que cobres de mitjana per cada nit que una habitació està ocupada.',
+    },
+    {
+      valor: <Eur value={ind.costPerNit} />,
+      nom: 'Cost per nit ocupada',
+      explica: 'Les despeses del període (personal inclòs) repartides entre les nits ocupades.',
+    },
+    {
+      valor: <Eur value={ind.beneficiPerNit} />,
+      nom: 'Benefici per nit ocupada',
+      explica: 'Preu mitjà menys cost: el que et queda per cada nit.',
+      color: ind.beneficiPerNit >= 0 ? 'text-green-700' : 'text-red-700',
+    },
+    {
+      valor: `${ind.duradaMitjana} ${ind.duradaMitjana === 1 ? 'nit' : 'nits'}`,
+      nom: "Durada mitjana de l'estada",
+      explica: 'Quantes nits es queden els clients de mitjana.',
+    },
+  ];
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Indicadors de l&apos;hostal</CardTitle>
+      </CardHeader>
+      <CardBody className="grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-5">
+        {items.map((it) => (
+          <div key={it.nom} className="min-w-0">
+            <p className={cn('whitespace-nowrap text-2xl font-extrabold tabular-nums', it.color ?? 'text-slate-900')}>{it.valor}</p>
+            <p className="text-sm font-semibold text-slate-700">{it.nom}</p>
+            <p className="mt-0.5 text-xs text-slate-500">{it.explica}</p>
+          </div>
+        ))}
+      </CardBody>
+    </Card>
   );
 }
 
@@ -956,25 +1011,7 @@ export default function BalancPage() {
               </div>
 
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Indicadors de l&apos;hostal</CardTitle>
-                </CardHeader>
-                <CardBody className="grid gap-4 sm:grid-cols-3">
-                  <div>
-                    <p className="text-2xl font-extrabold tabular-nums text-slate-900">{dades.ocupacio}%</p>
-                    <p className="text-sm text-slate-500">Ocupació</p>
-                  </div>
-                  <div className="sm:border-l sm:border-slate-100 sm:pl-5">
-                    <p className="text-2xl font-extrabold tabular-nums text-slate-900"><Eur value={dades.adr} /></p>
-                    <p className="text-sm text-slate-500">Preu mitjà per nit (ADR)</p>
-                  </div>
-                  <div className="sm:border-l sm:border-slate-100 sm:pl-5">
-                    <p className="text-2xl font-extrabold tabular-nums text-slate-900"><Eur value={dades.revpar} /></p>
-                    <p className="text-sm text-slate-500">Ingrés per habitació disponible (RevPAR)</p>
-                  </div>
-                </CardBody>
-              </Card>
+              <IndicadorsCard ind={dades.indicadors} />
 
               <MovimentsCard moviments={dades.moviments ?? []} ambFiances={!restringit} />
             </>
