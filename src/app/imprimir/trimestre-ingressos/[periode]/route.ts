@@ -112,15 +112,17 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
 
   // Descriptor de columnes (ordre, etiqueta, tipus, si es pot treure, amplada).
   const COLS_LIBRO: { key: string; label: string; num: boolean; del: boolean; left?: boolean; w: number }[] = [
-    { key: 'data', label: 'Fecha', num: false, del: false, w: 48 },
-    { key: 'nif', label: 'NIF', num: false, del: false, w: 54 },
-    { key: 'proveidor', label: 'Nombre proveedor', num: false, del: false, left: true, w: 88 },
-    { key: 'numFactura', label: 'Nº factura', num: false, del: false, w: 46 },
-    ...COLUMNES_GASTO.map((c) => ({ key: c, label: COLUMNA_GASTO_LABELS[c], num: true, del: true, w: 54 })),
-    { key: 'iva5', label: 'IVA 5%', num: true, del: true, w: 42 },
-    { key: 'iva10', label: 'IVA 10%', num: true, del: true, w: 42 },
-    { key: 'iva21', label: 'IVA 21%', num: true, del: true, w: 42 },
-    { key: 'total', label: 'Total', num: true, del: false, w: 58 },
+    // Amplades com a «Facturas recibidas»: les de text prou amples perquè no es
+    // tallin (data, NIF, proveïdor, nº factura); les de números, iguals entre si.
+    { key: 'data', label: 'Fecha', num: false, del: false, w: 62 },
+    { key: 'nif', label: 'NIF', num: false, del: false, w: 68 },
+    { key: 'proveidor', label: 'Nombre proveedor', num: false, del: false, left: true, w: 146 },
+    { key: 'numFactura', label: 'Nº factura', num: false, del: false, w: 100 },
+    ...COLUMNES_GASTO.map((c) => ({ key: c, label: COLUMNA_GASTO_LABELS[c], num: true, del: true, w: 44 })),
+    { key: 'iva5', label: 'IVA 5%', num: true, del: true, w: 38 },
+    { key: 'iva10', label: 'IVA 10%', num: true, del: true, w: 38 },
+    { key: 'iva21', label: 'IVA 21%', num: true, del: true, w: 38 },
+    { key: 'total', label: 'Total', num: true, del: false, w: 56 },
   ];
   const cellVal = (r: FilaLibroGasto, key: string): number | string => {
     switch (key) {
@@ -227,7 +229,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   .wide-scroll{ overflow-x:auto; }
   table.lg{ font-size:8.5px; }
   table.lg th{ font-size:6.5px; padding:0 2px 5px 2px; letter-spacing:0; line-height:1.15;
-    white-space:normal; overflow-wrap:break-word; vertical-align:bottom; }
+    white-space:normal; overflow-wrap:break-word; vertical-align:bottom;  text-transform:none; letter-spacing:0; word-break:normal; overflow-wrap:normal;}
   table.lg td{ padding:1px 2px; }
   table.lg .in{ padding:2px 3px; }
   td.lft, th.lft{ text-align:left; }
@@ -302,7 +304,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <div class="doc-title">Facturas emitidas · Repercutidas</div>
     <table id="emeses" class="rz">
       <colgroup>
-        <col style="width:85px"><col style="width:85px"><col style="width:89px"><col style="width:322px"><col style="width:122px"><col style="width:85px"><col style="width:57px"><col style="width:61px"><col style="width:75px"><col style="width:58px"><col class="c-del" style="width:28px">
+        <col style="width:88px"><col style="width:92px"><col style="width:92px"><col style="width:240px"><col style="width:140px"><col style="width:100px"><col style="width:50px"><col style="width:82px"><col style="width:90px"><col style="width:82px"><col class="c-del" style="width:28px">
       </colgroup>
       <thead>
         <tr>
@@ -407,7 +409,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <div class="wide-scroll">
     <table id="libro" class="rz lg">
       <colgroup>
-        ${COLS_LIBRO.map((c) => `<col data-col="${c.key}" style="width:${libroWidths[c.key] ?? c.w}px${libroRemoved.includes(c.key) ? ';display:none' : ''}">`).join('')}<col class="c-del" style="width:24px">
+        ${COLS_LIBRO.map((c) => `<col data-col="${c.key}" style="width:${c.num ? (libroWidths[c.key] ?? c.w) : Math.max(libroWidths[c.key] ?? 0, c.w)}px${libroRemoved.includes(c.key) ? ';display:none' : ''}">`).join('')}<col class="c-del" style="width:24px">
       </colgroup>
       <thead>
         <tr>
