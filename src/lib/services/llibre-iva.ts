@@ -11,6 +11,7 @@
  */
 import 'server-only';
 import { prisma } from '../db';
+import { periodeDelText } from '../periode-factura';
 
 export interface FilaIngres {
   data: string; // ISO
@@ -181,7 +182,7 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
       facturaFiscal: { select: { numero: true } },
       simplificades: { select: { id: true }, take: 1 },
       diposits: { select: { import: true } },
-      linies: { select: { import: true } },
+      linies: { select: { import: true, descripcio: true, detall: true } },
       estancia: {
         select: {
           dataEntrada: true,
@@ -203,8 +204,11 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
     .filter((f) => !(f.tipusDocument === 'FACTURA' && f.simplificades.length > 0))
     .map((f) => {
       const esFiscal = f.tipusDocument === 'FACTURA';
+      // La factura (tal com s'ha editat) mana: el client escrit a la factura i el
+      // període del text de les seves línies; l'hoste i l'estada només de reserva.
       const h = f.estancia?.viatgers[0]?.huesped ?? null;
-      const nom = h ? [h.nom, h.cognom1, h.cognom2].filter(Boolean).join(' ').toUpperCase() : '—';
+      const nomHoste = h ? [h.nom, h.cognom1, h.cognom2].filter(Boolean).join(' ') : '';
+      const nom = (f.clientNom?.trim() || nomHoste || '—').toUpperCase();
       const total = Number(f.total);
       const esAbono = total < 0;
       // Document de dipòsit: ocupa el seu número a la sèrie, però base/IVA/total 0.
@@ -217,9 +221,10 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
         ? { base: 0, iva: 0, ivaPercent: 0 }
         : desglossaIva(total, Number(f.base), Number(f.iva));
       const periode =
-        f.estancia?.dataEntrada && f.estancia?.dataSortida
+        periodeDelText(f.linies.map((l) => `${l.descripcio ?? ''} ${l.detall ?? ''}`).join(' ')) ??
+        (f.estancia?.dataEntrada && f.estancia?.dataSortida
           ? `${fmtCurt(f.estancia.dataEntrada)} - ${fmtCurt(f.estancia.dataSortida)}`
-          : '';
+          : '');
       // Número sense el prefix d'any intern (2026-0001 → 0001); les simplificades
       // per contracte (26001, 26001.1) es queden tal qual.
       return {
