@@ -18,6 +18,7 @@ import {
   type PdfFitxer,
 } from '@/lib/exports/pdfs-mes';
 import { pujaIeetDrive } from '@/lib/services/ieet';
+import { clauPeriode, periodeAnterior } from '@/lib/ieet';
 
 const ESTABLIMENT_ID = 'hostal-coll';
 
@@ -26,7 +27,7 @@ const ESTABLIMENT_ID = 'hostal-coll';
  * Cada dia arxiva, DINS LA CARPETA DE L'ANY (no del mes), el "Libro de Registro",
  * les fitxes de registre i els comprovants de Mossos de les estades/comunicacions
  * recents (finestra de 2 dies, idempotent: actualitza els fitxers existents), i
- * reescriu l'Excel de la taxa turística de l'any.
+ * reescriu l'Excel de la taxa turística del període actual i de l'anterior.
  * L'invoca el cron de Vercel (Bearer CRON_SECRET) o un ADMIN (?dies=N per ampliar).
  */
 export async function GET(req: Request) {
@@ -91,15 +92,20 @@ export async function GET(req: Request) {
 
     // Taxa turística: l'Excel de l'any es reescriu sencer (hi entren les estades
     // que s'han acabat des d'ahir i les fitxes que s'han completat).
+    // Taxa turística: es reescriu l'Excel del període en curs i el de l'anterior
+    // (una estada que va entrar al setembre i acaba a l'octubre encara hi compta).
+    const actual = clauPeriode(now);
     let ieetError: string | null = null;
-    try {
-      const nom = await pujaIeetDrive(Number(any));
-      if (nom) fitxers.push(nom);
-    } catch (e) {
-      ieetError = e instanceof Error ? e.message : 'error';
-      errors.push(`Taxa turística: ${ieetError}`);
+    for (const clau of [periodeAnterior(actual), actual]) {
+      try {
+        const nom = await pujaIeetDrive(clau);
+        if (nom) fitxers.push(`${clau.slice(0, 4)}/${nom}`);
+      } catch (e) {
+        ieetError = e instanceof Error ? e.message : 'error';
+        errors.push(`Taxa turística ${clau}: ${ieetError}`);
+      }
     }
-    await audit({ usuariId: actorId, accio: 'DESCARREGA', entitat: 'drive_export', detall: { tipus: 'ieet', any: Number(any), ok: !ieetError, error: ieetError }, ip: clientIp(req) });
+    await audit({ usuariId: actorId, accio: 'DESCARREGA', entitat: 'drive_export', detall: { tipus: 'ieet', periode: actual, ok: !ieetError, error: ieetError }, ip: clientIp(req) });
 
     await audit({
       usuariId: actorId,

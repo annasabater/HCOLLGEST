@@ -1,14 +1,14 @@
 /**
  * Taxa turística (IEET) per estades: llegeix les estades i els viatgers (amb les
  * dades congelades si n'hi ha, com el llibre de registre) i aplica les regles de
- * src/lib/ieet.ts. També la puja a Google Drive com a Excel de l'any.
+ * src/lib/ieet.ts. També la puja a Google Drive com a Excel per període de declaració.
  */
 import 'server-only';
 import { prisma } from '../db';
 import { viatgerEfectiu } from '../registre-snapshot';
 import { decryptString } from '../crypto';
 import { getAccessToken, ensureFolder, ensureFolderPath, uploadOrUpdateFile, XLSX_MIME } from '../drive';
-import { calculaIeet, resumIeet, type ConfigIeet, type EstadaIeet, type FilaIeet, type ResumIeet } from '../ieet';
+import { calculaIeet, infoPeriode, resumIeet, type ConfigIeet, type EstadaIeet, type FilaIeet, type PeriodeIeet, type ResumIeet } from '../ieet';
 import { buildIeetXlsx } from '../exports/ieet-xlsx';
 
 const ESTABLIMENT_ID = 'hostal-coll';
@@ -56,20 +56,25 @@ async function carregaEstades(): Promise<EstadaIeet[]> {
   }));
 }
 
-export interface IeetAny { any: number; config: ConfigIeet; files: FilaIeet[]; resum: ResumIeet[] }
+export interface IeetPeriode { periode: PeriodeIeet; config: ConfigIeet; files: FilaIeet[]; resum: ResumIeet }
 
-/** Persones que paguen (o surten a 0 €) amb entrada dins l'any indicat. */
-export async function getIeetAny(any: number, avui = new Date()): Promise<IeetAny> {
+/** Persones (paguin o surtin a 0 €) amb l'entrada dins el període de declaració. */
+export async function getIeetPeriode(clau: string, avui = new Date()): Promise<IeetPeriode> {
   const [config, estades] = await Promise.all([getConfigIeet(), carregaEstades()]);
-  const files = calculaIeet(estades, config, avui).filter((f) => f.trimestre.startsWith(`${any}-`));
-  return { any, config, files, resum: resumIeet(files) };
+  const files = calculaIeet(estades, config, avui).filter((f) => f.periode === clau);
+  const resum = resumIeet(files)[0] ?? { periode: clau, persones: 0, personesPaguen: 0, nitsPaguen: 0, import: 0 };
+  return { periode: infoPeriode(clau), config, files, resum };
 }
 
+/** Nom del fitxer a Drive (i de la descàrrega) d'un període. */
+export const nomFitxerIeet = (p: PeriodeIeet) => `Taxa turística ${p.etiqueta.replace(' – ', '-')}.xlsx`;
+
 /**
- * Reescriu l'Excel de l'any a Drive: «Hostal Coll — Gestió / <any> /
- * Taxa turística <any>.xlsx». Retorna el nom pujat, o null si Drive no està connectat.
+ * Reescriu l'Excel del període a Drive: «Hostal Coll — Gestió / <any d'inici> /
+ * Taxa turística Abril-setembre 2026.xlsx». Retorna el nom pujat, o null si
+ * Drive no està connectat.
  */
-export async function pujaIeetDrive(any: number): Promise<string | null> {
+export async function pujaIeetDrive(clau: string): Promise<string | null> {
   const est = await prisma.establiment.findFirst({ select: { driveRefreshTokenEnc: true, driveFolderId: true } });
   if (!est?.driveRefreshTokenEnc) return null;
   const token = await getAccessToken(decryptString(est.driveRefreshTokenEnc));
@@ -78,8 +83,9 @@ export async function pujaIeetDrive(any: number): Promise<string | null> {
     rootId = await ensureFolder(token, 'Hostal Coll — Gestió');
     await prisma.establiment.update({ where: { id: ESTABLIMENT_ID }, data: { driveFolderId: rootId } });
   }
-  const carpeta = await ensureFolderPath(token, [String(any)], rootId);
-  const name = `Taxa turística ${any}.xlsx`;
-  await uploadOrUpdateFile(token, { name, parentId: carpeta, mimeType: XLSX_MIME, data: await buildIeetXlsx(await getIeetAny(any)) });
+  const dades = await getIeetPeriode(clau);
+  const carpeta = await ensureFolderPath(token, [clau.slice(0, 4)], rootId);
+  const name = nomFitxerIeet(dades.periode);
+  await uploadOrUpdateFile(token, { name, parentId: carpeta, mimeType: XLSX_MIME, data: await buildIeetXlsx(dades) });
   return name;
 }

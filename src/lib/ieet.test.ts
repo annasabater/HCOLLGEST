@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculaIeet, contracteVisible, resumIeet, type EstadaIeet, type ViatgerIeet } from './ieet';
+import { calculaIeet, clauPeriode, contracteVisible, infoPeriode, periodePerDefecte, resumIeet, type EstadaIeet, type ViatgerIeet } from './ieet';
 
 const CFG = { tarifa: 0.9, maxNits: 7, edatMinima: 17 };
 const AVUI = new Date('2026-10-12T10:00:00Z');
@@ -25,7 +25,7 @@ describe('calculaIeet', () => {
     const f = calculaIeet([estada('e1', '26005', '2026-07-01', '2026-08-01', [laia, pau])], CFG, AVUI);
     expect(f.map((x) => [x.nitsEstada, x.nitsPaguen, x.import, x.menor])).toEqual([[31, 7, 6.3, false], [31, 7, 0, true]]);
     expect(f[1]!.falten).toEqual([]); // menor de 14: ni document ni contacte
-    expect(f[0]!.trimestre).toBe('2026-T3');
+    expect(f[0]!.periode).toBe('2026-1');
   });
 
   it('les continuacions (mateix dia, l’endemà o ampliació) no surten', () => {
@@ -60,9 +60,9 @@ describe('calculaIeet', () => {
     expect(f[0]!.falten).toEqual(['domicili', 'correu']);
   });
 
-  it('resum per trimestre', () => {
+  it('resum per període', () => {
     const f = calculaIeet([estada('e1', '26005', '2026-07-01', '2026-08-01', [laia, pau])], CFG, AVUI);
-    expect(resumIeet(f)).toEqual([{ trimestre: '2026-T3', persones: 2, personesPaguen: 1, nitsPaguen: 7, import: 6.3 }]);
+    expect(resumIeet(f)).toEqual([{ periode: '2026-1', persones: 2, personesPaguen: 1, nitsPaguen: 7, import: 6.3 }]);
   });
 });
 
@@ -71,5 +71,26 @@ describe('contracteVisible', () => {
     expect(contracteVisible('26002_1')).toBe('26002.1');
     expect(contracteVisible('_1')).toBeNull();
     expect(contracteVisible('')).toBeNull();
+  });
+});
+
+describe('periodes de declaracio', () => {
+  it('abril-setembre i octubre-marc (que passa d any)', () => {
+    expect(clauPeriode(d('2026-04-01'))).toBe('2026-1');
+    expect(clauPeriode(d('2026-09-30'))).toBe('2026-1');
+    expect(clauPeriode(d('2026-10-01'))).toBe('2026-2');
+    expect(clauPeriode(d('2027-03-31'))).toBe('2026-2');
+    expect(clauPeriode(d('2026-02-15'))).toBe('2025-2');
+  });
+  it('dates i termini de pagament', () => {
+    expect(infoPeriode('2026-1')).toMatchObject({ inici: '2026-04-01', fi: '2026-09-30', pagamentDes: '2026-10-01', pagamentFins: '2026-10-20' });
+    expect(infoPeriode('2026-2')).toMatchObject({ inici: '2026-10-01', fi: '2027-03-31', pagamentFins: '2027-04-20' });
+  });
+  it('per defecte, l anterior mentre s es a temps de pagar-lo', () => {
+    expect(periodePerDefecte(d('2026-10-12'))).toBe('2026-1');
+    expect(periodePerDefecte(d('2026-10-20'))).toBe('2026-1');
+    expect(periodePerDefecte(d('2026-10-21'))).toBe('2026-2');
+    expect(periodePerDefecte(d('2027-04-05'))).toBe('2026-2');
+    expect(periodePerDefecte(d('2027-05-01'))).toBe('2027-1');
   });
 });
