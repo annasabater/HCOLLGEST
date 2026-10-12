@@ -29,3 +29,13 @@ export async function redueixImatge(f: File, maxCostat = 2000, qualitat = 0.85):
     URL.revokeObjectURL(url);
   }
 }
+
+/**
+ * Missatge d'error d'una pujada fallida: el motiu del servidor si n'hi ha, o
+ * "massa gran" quan Vercel la talla (413, sense cos JSON).
+ */
+export async function motiuPujada(res: Response, base: string): Promise<string> {
+  if (res.status === 413) return `${base}: el fitxer és massa gran (màx. 4 MB).`;
+  const d = (await res.json().catch(() => null)) as { error?: string } | null;
+  return d?.error ? `${base}: ${d.error}` : base;
+}

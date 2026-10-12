@@ -13,7 +13,7 @@ import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { formatDate, formatEur } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
-import { redueixImatge } from '@/lib/images/redueix-client';
+import { redueixImatge, motiuPujada } from '@/lib/images/redueix-client';
 import { optionsFrom, metodeCobramentValues, METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 import {
   frequenciaServeiValues,
@@ -136,9 +136,9 @@ export default function ServeisPage() {
     try {
       let adjuntPath: string | undefined;
       if (regFile) {
-        const fd = new FormData(); fd.append('file', regFile);
+        const fd = new FormData(); fd.append('file', await redueixImatge(regFile), regFile.name);
         const up = await fetch('/api/uploads', { method: 'POST', body: fd });
-        if (!up.ok) throw new ApiError('No s’ha pogut pujar la factura', up.status);
+        if (!up.ok) throw new ApiError(await motiuPujada(up, 'No s’ha pogut pujar la factura'), up.status);
         adjuntPath = (await up.json()).path;
       }
       await postJSON(`/api/serveis-recurrents/${registrarS.id}/registrar`, {

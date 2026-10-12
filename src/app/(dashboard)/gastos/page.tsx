@@ -15,7 +15,7 @@ import { Eur, HideAmountsButton } from '@/components/finances/amounts-visibility
 import { getJSON, postJSON, patchJSON, ApiError } from '@/lib/api';
 import { formatDate, formatEur, cn } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
-import { redueixImatge } from '@/lib/images/redueix-client';
+import { redueixImatge, motiuPujada } from '@/lib/images/redueix-client';
 import { optionsFrom, metodeCobramentValues, METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 
 // ─── Tipus ────────────────────────────────────────────────────────────────────
@@ -222,9 +222,9 @@ function GastosFixesTab({ desde, fins }: { desde: string; fins: string }) {
     try {
       let adjuntPath: string | undefined;
       if (regFile) {
-        const fd = new FormData(); fd.append('file', regFile);
+        const fd = new FormData(); fd.append('file', await redueixImatge(regFile), regFile.name);
         const up = await fetch('/api/uploads', { method: 'POST', body: fd });
-        if (!up.ok) throw new ApiError('No s\'ha pogut pujar la factura', up.status);
+        if (!up.ok) throw new ApiError(await motiuPujada(up, 'No s\'ha pogut pujar la factura'), up.status);
         adjuntPath = (await up.json()).path;
       }
       await postJSON(`/api/serveis-recurrents/${registrarG.id}/registrar`, {
@@ -508,9 +508,9 @@ function GastosVariablesTab({
     try {
       let adjuntPath: string | undefined;
       if (file) {
-        const fd = new FormData(); fd.append('file', file);
+        const fd = new FormData(); fd.append('file', await redueixImatge(file), file.name);
         const up = await fetch('/api/uploads', { method: 'POST', body: fd });
-        if (!up.ok) throw new ApiError('No s\'ha pogut pujar l\'adjunt', up.status);
+        if (!up.ok) throw new ApiError(await motiuPujada(up, 'No s\'ha pogut pujar l\'adjunt'), up.status);
         adjuntPath = (await up.json()).path;
       }
       await postJSON('/api/gastos', {
