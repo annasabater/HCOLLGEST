@@ -17,6 +17,7 @@ import {
   buildComprovantsPdfs,
   type PdfFitxer,
 } from '@/lib/exports/pdfs-mes';
+import { pujaIeetDrive } from '@/lib/services/ieet';
 
 const ESTABLIMENT_ID = 'hostal-coll';
 
@@ -24,7 +25,8 @@ const ESTABLIMENT_ID = 'hostal-coll';
  * GET /api/cron/drive-diari — export DIARI a Google Drive.
  * Cada dia arxiva, DINS LA CARPETA DE L'ANY (no del mes), el "Libro de Registro",
  * les fitxes de registre i els comprovants de Mossos de les estades/comunicacions
- * recents (finestra de 2 dies, idempotent: actualitza els fitxers existents).
+ * recents (finestra de 2 dies, idempotent: actualitza els fitxers existents), i
+ * reescriu l'Excel de la taxa turística de l'any.
  * L'invoca el cron de Vercel (Bearer CRON_SECRET) o un ADMIN (?dies=N per ampliar).
  */
 export async function GET(req: Request) {
@@ -86,6 +88,18 @@ export async function GET(req: Request) {
     await pujarLot('Llibre de registre', () => buildRegistresPdfs(desde, fins));
     await pujarLot('Fitxes de registre', () => buildFitxesPdfs(desde, fins));
     await pujarLot('Comprovants de Mossos', () => buildComprovantsPdfs(desde, fins));
+
+    // Taxa turística: l'Excel de l'any es reescriu sencer (hi entren les estades
+    // que s'han acabat des d'ahir i les fitxes que s'han completat).
+    let ieetError: string | null = null;
+    try {
+      const nom = await pujaIeetDrive(Number(any));
+      if (nom) fitxers.push(nom);
+    } catch (e) {
+      ieetError = e instanceof Error ? e.message : 'error';
+      errors.push(`Taxa turística: ${ieetError}`);
+    }
+    await audit({ usuariId: actorId, accio: 'DESCARREGA', entitat: 'drive_export', detall: { tipus: 'ieet', any: Number(any), ok: !ieetError, error: ieetError }, ip: clientIp(req) });
 
     await audit({
       usuariId: actorId,

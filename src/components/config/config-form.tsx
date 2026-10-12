@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useState } from 'react';
-import { Building2, FileStack, Receipt, Scale, Bell, TrendingUp } from 'lucide-react';
+import { Building2, FileStack, Receipt, Scale, Bell, TrendingUp, Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -15,6 +15,9 @@ interface Establiment {
   fileIdentifier: string | null;
   encoding: string;
   ieetImportPersonaNit: string | null;
+  ieetTarifa: string;
+  ieetMaxNits: number;
+  ieetEdatMinima: number;
   retencioPolicialAnys: number;
   retencioCrmAnys: number | null;
   mossosUser: string | null;
@@ -57,6 +60,9 @@ export function ConfigForm() {
         fileIdentifier: e.fileIdentifier ?? '',
         encoding: e.encoding,
         ieetImportPersonaNit: e.ieetImportPersonaNit ? Number(e.ieetImportPersonaNit) : undefined,
+        ieetTarifa: e.ieetTarifa === '' ? undefined : Number(e.ieetTarifa),
+        ieetMaxNits: e.ieetMaxNits,
+        ieetEdatMinima: e.ieetEdatMinima,
         retencioPolicialAnys: e.retencioPolicialAnys,
         retencioCrmAnys: e.retencioCrmAnys ?? undefined,
         mossosUser: e.mossosUser ?? undefined,
@@ -209,6 +215,24 @@ export function ConfigForm() {
               onChange={(ev) => setE({ ...e, facturaNif: ev.target.value })}
               placeholder="p. ex. 38835174L"
             />
+          </Field>
+        </div>
+        <SaveRow />
+      </CollapsibleCard>
+
+      <CollapsibleCard title="Taxa turística (declaració)" icon={<Landmark className="h-4 w-4 text-brand-600" />}>
+        <p className="mb-3 text-xs text-slate-500">
+          Per a la pàgina «Taxa turística»: es calcula per estades (només la primera), no per factures.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Import per persona i nit (€)">
+            <Input type="number" step="0.01" value={e.ieetTarifa} onChange={(ev) => setE({ ...e, ieetTarifa: ev.target.value })} />
+          </Field>
+          <Field label="Màxim de nits que paguen">
+            <Input type="number" value={e.ieetMaxNits} onChange={(ev) => setE({ ...e, ieetMaxNits: Number(ev.target.value) })} />
+          </Field>
+          <Field label="Paguen a partir de (anys)" hint="Els més petits surten a 0 €.">
+            <Input type="number" value={e.ieetEdatMinima} onChange={(ev) => setE({ ...e, ieetEdatMinima: Number(ev.target.value) })} />
           </Field>
         </div>
         <SaveRow />

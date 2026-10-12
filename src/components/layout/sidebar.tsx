@@ -18,6 +18,7 @@ import {
   FileText,
   Tag,
   Wallet,
+ Landmark,
 } from 'lucide-react';
 import type { Role } from '@prisma/client';
 import { cn } from '@/lib/utils';
@@ -59,6 +60,7 @@ const GROUPS: NavGroup[] = [
       { href: '/pressupostos', label: 'Pressupostos', icon: FileText, roles: ['ADMIN'] },
       { href: '/tarifes', label: 'Tarifes', icon: Tag, roles: ['ADMIN'] },
       { href: '/gastos', label: 'Despeses', icon: Wallet },
+      { href: '/taxa-turistica', label: 'Taxa turística', icon: Landmark, hideRestringit: true },
       { href: '/serveis', label: 'Proveïdors i serveis', icon: Truck },
       { href: '/justificants', label: 'Justificants', icon: FileCheck },
     ],

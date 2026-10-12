@@ -43,6 +43,10 @@ const PatchSchema = z.object({
   benvingudaAutomatica: z.boolean().optional(),
   benvingudaTothom: z.boolean().optional(),
   ieetImportPersonaNit: z.coerce.number().min(0).optional(),
+  // Taxa turística per estades (/taxa-turistica).
+  ieetTarifa: z.coerce.number().min(0).max(20).optional(),
+  ieetMaxNits: z.coerce.number().int().min(1).max(60).optional(),
+  ieetEdatMinima: z.coerce.number().int().min(0).max(30).optional(),
   retencioPolicialAnys: z.coerce.number().int().min(1).optional(),
   retencioCrmAnys: z.coerce.number().int().min(1).optional(),
   mossosUser: z.string().optional(),

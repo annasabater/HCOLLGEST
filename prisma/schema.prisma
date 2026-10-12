@@ -236,6 +236,12 @@ model Establiment {
 
   // Facturación — IEET (§9.7, configurable)
   ieetImportPersonaNit Decimal? @map("ieet_import_persona_nit") @db.Decimal(10, 2)
+  // Declaració de la taxa turística per ESTADES (/taxa-turistica), independent de
+  // l'IEET de factura de dalt: tarifa per persona i nit, màxim de nits que paguen
+  // (només la primera estada) i edat a partir de la qual es paga.
+  ieetTarifa     Decimal @default(0.90) @map("ieet_tarifa") @db.Decimal(10, 2)
+  ieetMaxNits    Int     @default(7) @map("ieet_max_nits")
+  ieetEdatMinima Int     @default(17) @map("ieet_edat_minima")
 
   // Veri*Factu (AEAT) — sèrie i mode de proves del QR de cotejo.
   verifactuSerie    String  @default("FAC") @map("verifactu_serie")
