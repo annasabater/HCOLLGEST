@@ -138,7 +138,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     }
   };
   const cell = (n: number) => (n ? num(n) : '');
-  const hid = (key: string) => (libroRemoved.includes(key) ? ' col-hidden' : '');
+  // Columnes d'import sense cap valor al trimestre: s'amaguen soles (ocupaven
+  // molt d'espai i no deixaven llegir la resta). «Mostrar columnes buides» les torna.
+  const libroBuides = COLS_LIBRO.filter((c) => c.num && c.del && !libroRows.some((r) => Number(cellVal(r, c.key) || 0) !== 0)).map((c) => c.key);
+  const hid = (key: string) =>
+    (libroRemoved.includes(key) ? ' col-hidden' : '') + (libroBuides.includes(key) ? ' col-buida' : '');
   const filaLibro = (r: FilaLibroGasto) => `
     <tr class="litem-g">
       ${COLS_LIBRO.map((c) => {
@@ -234,6 +238,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   table.lg .in{ padding:2px 3px; }
   td.lft, th.lft{ text-align:left; }
   .col-hidden{ display:none; }
+  body:not(.mostra-buides) .col-buida{ display:none; }
   .delcol{ position:absolute; top:-2px; right:9px; z-index:4; border:0; background:transparent;
     cursor:pointer; color:#C2BFB6; font-size:12px; line-height:1; padding:0 2px; }
   .delcol:hover{ color:var(--accent); }
@@ -280,6 +285,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     .wide-scroll{ overflow:visible !important; }
     table.rz{ transform-origin:top left; }
     .col-hidden{ display:none !important; }
+    .col-buida{ display:none !important; }
   }
 </style>
 </head>
@@ -409,7 +415,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <div class="wide-scroll">
     <table id="libro" class="rz lg">
       <colgroup>
-        ${COLS_LIBRO.map((c) => `<col data-col="${c.key}" style="width:${c.num ? (libroWidths[c.key] ?? c.w) : Math.max(libroWidths[c.key] ?? 0, c.w)}px${libroRemoved.includes(c.key) ? ';display:none' : ''}">`).join('')}<col class="c-del" style="width:24px">
+        ${COLS_LIBRO.map((c) => `<col data-col="${c.key}"${libroBuides.includes(c.key) ? ' class="col-buida"' : ''} style="width:${c.num ? (libroWidths[c.key] ?? c.w) : Math.max(libroWidths[c.key] ?? 0, c.w)}px${libroRemoved.includes(c.key) ? ';display:none' : ''}">`).join('')}<col class="c-del" style="width:24px">
       </colgroup>
       <thead>
         <tr>
@@ -429,6 +435,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <div class="add">
       <button id="addLibro" type="button">+ Afegir fila</button>
       <button id="restoreCols" type="button">Restaurar columnes</button>
+      <button id="showBuides" type="button">Mostrar columnes buides</button>
     </div>
   </div>
 
@@ -638,6 +645,17 @@ ${edicionsBootstrap('trimestre', periode, edicions)}
       if (t) t.textContent = s ? plain(s) : '';
     });
   }
+  // Amaga les columnes d'import sense cap valor. Mentre s'escriu només en
+  // mostra (mai n'amaga una que s'està editant); en treure el focus es recalcula.
+  function marcaBuides(nomesMostrar) {
+    LIBRO_NUMKEYS.forEach((k) => {
+      const th = document.querySelector('#libro thead th[data-col="' + k + '"]');
+      if (!th || !th.querySelector('.delcol')) return;
+      const buida = !Array.from(document.querySelectorAll('#libro tbody .lg-' + k)).some((i) => num(i.value) !== 0);
+      if (buida && nomesMostrar) return;
+      document.querySelectorAll('#libro [data-col="' + k + '"]').forEach((el) => el.classList.toggle('col-buida', buida));
+    });
+  }
   function novaLibro() {
     const tbody = document.querySelector('#libro tbody');
     const first = document.querySelector('#libro tbody tr.litem-g');
@@ -715,7 +733,7 @@ ${edicionsBootstrap('trimestre', periode, edicions)}
     if (e.target.closest('#emeses tbody')) syncEmesesToLibro(e.target);
     if (e.target.closest('#ingressos tbody')) syncLibroToEmeses(e.target);
     if (e.target.classList && e.target.classList.contains('liq')) liqMarca(e.target.id);
-    if (e.target.closest('#libro tbody')) recomputeLibro();
+    if (e.target.closest('#libro tbody')) { recomputeLibro(); marcaBuides(true); }
     if (e.target.closest('#emeses tbody') || e.target.closest('#gastos tbody') || e.target.closest('#ingressos tbody') || (e.target.classList && e.target.classList.contains('liq'))) render();
   });
   document.addEventListener('click', e => {
@@ -726,7 +744,7 @@ ${edicionsBootstrap('trimestre', periode, edicions)}
     }
     // Eliminar una fila del Libro de gastos.
     if (e.target.classList.contains('delg')) {
-      const tr = e.target.closest('tr'); if (tr) { tr.remove(); recomputeLibro(); }
+      const tr = e.target.closest('tr'); if (tr) { tr.remove(); recomputeLibro(); marcaBuides(false); }
       return;
     }
     if (e.target.classList.contains('del')) {
@@ -745,6 +763,11 @@ ${edicionsBootstrap('trimestre', periode, edicions)}
   document.getElementById('addRow2').addEventListener('click', novaFila);
   document.getElementById('addGasto').addEventListener('click', novaGasto);
   document.getElementById('addLibro').addEventListener('click', novaLibro);
+  document.addEventListener('focusout', (e) => { if (e.target.closest && e.target.closest('#libro tbody')) marcaBuides(false); });
+  document.getElementById('showBuides').addEventListener('click', (e) => {
+    const on = document.body.classList.toggle('mostra-buides');
+    e.target.textContent = on ? 'Amagar columnes buides' : 'Mostrar columnes buides';
+  });
   document.getElementById('restoreCols').addEventListener('click', () => {
     Array.from(libroRemoved).forEach((k) => amagaCol(k, false));
   });
