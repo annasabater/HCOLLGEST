@@ -11,6 +11,8 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Eur } from '@/components/finances/amounts-visibility';
 import { postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { toISODate } from '@/lib/dates';
+import { rangDeEstat, type EstatPeriode } from '@/lib/periode';
+import { NavegadorPeriode } from '@/components/ui/navegador-periode';
 import { cn } from '@/lib/utils';
 
 export type TipusMoviment = 'NETEJA' | 'BUGADERIA';
@@ -28,16 +30,6 @@ export interface Moviment {
   preuHora: number;
 }
 
-type Preset = 'mes' | 'passat' | '3m' | 'any' | 'tot';
-
-const PRESETS: { clau: Preset; etiqueta: string }[] = [
-  { clau: 'mes', etiqueta: 'Aquest mes' },
-  { clau: 'passat', etiqueta: 'Mes passat' },
-  { clau: '3m', etiqueta: 'Últims 3 mesos' },
-  { clau: 'any', etiqueta: 'Aquest any' },
-  { clau: 'tot', etiqueta: 'Tot' },
-];
-
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 const suma = (ms: Moviment[]) => round2(ms.reduce((s, m) => s + m.import, 0));
 
@@ -52,34 +44,6 @@ const fmtDiaMes = (dia: string) => {
 };
 const fmtMes = (ym: string) =>
   new Date(`${ym}-01T12:00:00`).toLocaleDateString('ca-ES', { month: 'long', year: 'numeric' });
-
-/** Rang de dies d'un període predefinit, comptat des d'avui. */
-function rangDe(preset: Preset, primerDia: string): { desde: string; fins: string } {
-  const avui = new Date();
-  const fins = toISODate(avui);
-  const ym = (y: number, m: number) => `${y}-${String(m).padStart(2, '0')}`;
-  const y = avui.getFullYear();
-  const m = avui.getMonth() + 1;
-
-  if (preset === 'mes') return { desde: `${ym(y, m)}-01`, fins };
-  if (preset === 'passat') {
-    const py = m === 1 ? y - 1 : y;
-    const pm = m === 1 ? 12 : m - 1;
-    const ultim = new Date(Date.UTC(py, pm, 0)).getUTCDate();
-    return { desde: `${ym(py, pm)}-01`, fins: `${ym(py, pm)}-${String(ultim).padStart(2, '0')}` };
-  }
-  if (preset === '3m') {
-    let ty = y;
-    let tm = m - 2;
-    while (tm < 1) {
-      tm += 12;
-      ty -= 1;
-    }
-    return { desde: `${ym(ty, tm)}-01`, fins };
-  }
-  if (preset === 'any') return { desde: `${y}-01-01`, fins };
-  return { desde: primerDia, fins };
-}
 
 /**
  * Compte del treballador: neteja i bugaderia en una sola llista, filtrades pel
@@ -102,20 +66,12 @@ export function CompteTreballador({
   const primerDia = moviments.length
     ? moviments[moviments.length - 1]!.dia
     : toISODate(new Date());
-  const inicial = rangDe('3m', primerDia);
-  const [desde, setDesde] = useState(inicial.desde);
-  const [fins, setFins] = useState(inicial.fins);
-  const [preset, setPreset] = useState<Preset | null>('3m');
+  const avui = toISODate(new Date());
+  const [estat, setEstat] = useState<EstatPeriode>({ tipus: 'mes', off: 0 });
+  const { desde, fins } = rangDeEstat(estat, avui);
 
   const [error, setError] = useState<string | null>(null);
   const [treballant, setTreballant] = useState(false);
-
-  function aplicarPreset(p: Preset) {
-    const r = rangDe(p, primerDia);
-    setDesde(r.desde);
-    setFins(r.fins);
-    setPreset(p);
-  }
 
   const visibles = useMemo(
     () => moviments.filter((m) => m.dia >= desde && m.dia <= fins),
@@ -237,48 +193,7 @@ export function CompteTreballador({
   return (
     <div className="space-y-5">
       {/* Període: mana sobre tot el que hi ha a sota */}
-      <div className="flex flex-wrap items-end gap-3 rounded-xl bg-brand-50 px-4 py-3">
-        <Field label="Des de">
-          <Input
-            type="date"
-            value={desde}
-            max={fins}
-            onChange={(e) => {
-              setDesde(e.target.value);
-              setPreset(null);
-            }}
-          />
-        </Field>
-        <Field label="Fins a">
-          <Input
-            type="date"
-            value={fins}
-            min={desde}
-            onChange={(e) => {
-              setFins(e.target.value);
-              setPreset(null);
-            }}
-          />
-        </Field>
-        <div className="flex flex-wrap gap-1.5 sm:ml-auto">
-          {PRESETS.map((p) => (
-            <button
-              key={p.clau}
-              type="button"
-              aria-pressed={preset === p.clau}
-              onClick={() => aplicarPreset(p.clau)}
-              className={cn(
-                'rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
-                preset === p.clau
-                  ? 'border-brand-700 bg-brand-700 text-white'
-                  : 'border-slate-300 bg-white text-slate-600 hover:border-brand-600 hover:text-brand-700',
-              )}
-            >
-              {p.etiqueta}
-            </button>
-          ))}
-        </div>
-      </div>
+      <NavegadorPeriode estat={estat} onChange={setEstat} avui={avui} primerDia={primerDia} />
 
       {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mesEnrere, duradaDies, periodeAnterior, ultimDiaDeMes } from './periode';
+import { mesEnrere, duradaDies, periodeAnterior, ultimDiaDeMes, rangPeriode, rangDeEstat } from './periode';
 
 describe('ultimDiaDeMes', () => {
   it('sap els mesos de 30, 31 i 28 dies', () => {
@@ -79,5 +79,34 @@ describe('periodeAnterior', () => {
     for (const [desde, fins] of casos) {
       expect(periodeAnterior(desde, fins).fins < desde).toBe(true);
     }
+  });
+});
+
+
+describe('rangPeriode', () => {
+  const avui = '2026-10-12';
+  it('mes en curs: fins avui; mes passat sencer', () => {
+    expect(rangPeriode('mes', 0, avui)).toMatchObject({ desde: '2026-10-01', fins: '2026-10-12', etiqueta: 'Octubre 2026' });
+    expect(rangPeriode('mes', -1, avui)).toMatchObject({ desde: '2026-09-01', fins: '2026-09-30', etiqueta: 'Setembre 2026' });
+  });
+  it('mes: travessa anys', () => {
+    expect(rangPeriode('mes', -10, avui)).toMatchObject({ desde: '2025-12-01', fins: '2025-12-31', etiqueta: 'Desembre 2025' });
+    expect(rangPeriode('mes', -8, '2026-02-15')).toMatchObject({ desde: '2025-06-01', fins: '2025-06-30' });
+  });
+  it('trimestres', () => {
+    expect(rangPeriode('tri', 0, avui)).toMatchObject({ desde: '2026-10-01', fins: '2026-10-12', etiqueta: '4t trimestre 2026', trimestre: 4 });
+    expect(rangPeriode('tri', -1, avui)).toMatchObject({ desde: '2026-07-01', fins: '2026-09-30', etiqueta: '3r trimestre 2026', trimestre: 3 });
+    expect(rangPeriode('tri', -4, avui)).toMatchObject({ desde: '2025-10-01', fins: '2025-12-31', any: 2025, trimestre: 4 });
+    expect(rangPeriode('tri', -1, '2026-02-10')).toMatchObject({ desde: '2025-10-01', fins: '2025-12-31', etiqueta: '4t trimestre 2025' });
+  });
+  it('anys', () => {
+    expect(rangPeriode('any', 0, avui)).toMatchObject({ desde: '2026-01-01', fins: '2026-10-12', etiqueta: '2026' });
+    expect(rangPeriode('any', -1, avui)).toMatchObject({ desde: '2025-01-01', fins: '2025-12-31', etiqueta: '2025' });
+  });
+  it('febrer de traspàs', () => {
+    expect(rangPeriode('mes', -1, '2028-03-05')).toMatchObject({ desde: '2028-02-01', fins: '2028-02-29' });
+  });
+  it('rang personalitzat', () => {
+    expect(rangDeEstat({ tipus: 'per', desde: '2026-01-05', fins: '2026-02-01' }, avui)).toEqual({ desde: '2026-01-05', fins: '2026-02-01' });
   });
 });

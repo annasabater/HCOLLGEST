@@ -51,3 +51,54 @@ export function periodeAnterior(desde: string, fins: string): { desde: string; f
   const ini = new Date(fi.getTime() - (dies - 1) * 86400000);
   return { desde: aDia(ini), fins: aDia(fi) };
 }
+
+// ─── Navegador de períodes (mes · trimestre · any, amb fletxes) ──────────────
+
+export type TipusPeriode = 'mes' | 'tri' | 'any';
+
+/** Estat del navegador: un període relatiu a avui (`off` 0 = l'actual) o un rang a mà. */
+export type EstatPeriode =
+  | { tipus: TipusPeriode; off: number }
+  | { tipus: 'per'; desde: string; fins: string };
+
+const MESOS = ['Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny', 'Juliol', 'Agost', 'Setembre', 'Octubre', 'Novembre', 'Desembre'];
+const TRIMESTRES = ['1r', '2n', '3r', '4t'];
+const dia = (y: number, m: number, d: number) =>
+  `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+/**
+ * Rang i etiqueta d'un període (`off` períodes respecte del d'avui: -1 = l'anterior).
+ * El període en curs s'acaba avui (com feien «Aquest mes» / «Aquest any»); els
+ * passats van sencers. `avui` en `YYYY-MM-DD`.
+ */
+export function rangPeriode(
+  tipus: TipusPeriode,
+  off: number,
+  avui: string,
+): { desde: string; fins: string; etiqueta: string; any: number; trimestre: number } {
+  const [ay, am] = avui.split('-').map(Number) as [number, number];
+  let y: number, m0: number, mesos: number, etiqueta: string;
+  if (tipus === 'mes') {
+    const t = ay * 12 + (am - 1) + off;
+    y = Math.floor(t / 12); m0 = t % 12; mesos = 1;
+    etiqueta = `${MESOS[m0]} ${y}`;
+  } else if (tipus === 'tri') {
+    const t = ay * 4 + Math.floor((am - 1) / 3) + off;
+    y = Math.floor(t / 4); m0 = (t % 4) * 3; mesos = 3;
+    etiqueta = `${TRIMESTRES[m0 / 3]} trimestre ${y}`;
+  } else {
+    y = ay + off; m0 = 0; mesos = 12;
+    etiqueta = String(y);
+  }
+  const desde = dia(y, m0 + 1, 1);
+  const finsT = new Date(Date.UTC(y, m0 + mesos, 0)).toISOString().slice(0, 10);
+  const fins = finsT > avui ? avui : finsT;
+  return { desde, fins, etiqueta, any: y, trimestre: Math.floor(m0 / 3) + 1 };
+}
+
+/** Rang de dies d'un estat del navegador. */
+export function rangDeEstat(e: EstatPeriode, avui: string): { desde: string; fins: string } {
+  if (e.tipus === 'per') return { desde: e.desde, fins: e.fins };
+  const r = rangPeriode(e.tipus, e.off, avui);
+  return { desde: r.desde, fins: r.fins };
+}

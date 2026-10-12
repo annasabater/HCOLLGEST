@@ -15,6 +15,8 @@ import { Eur, HideAmountsButton } from '@/components/finances/amounts-visibility
 import { getJSON, postJSON, patchJSON, ApiError } from '@/lib/api';
 import { formatDate, formatEur, cn } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
+import { rangDeEstat, type EstatPeriode } from '@/lib/periode';
+import { NavegadorPeriode } from '@/components/ui/navegador-periode';
 import { redueixImatge, motiuPujada } from '@/lib/images/redueix-client';
 import { optionsFrom, metodeCobramentValues, METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 
@@ -1241,29 +1243,6 @@ function ResumTab({
 
 // ─── Pàgina principal ─────────────────────────────────────────────────────────
 
-type Preset = 'mes' | 'passat' | 'trim' | 'any' | 'tot';
-const PRESETS: { clau: Preset; etiqueta: string }[] = [
-  { clau: 'mes', etiqueta: 'Aquest mes' },
-  { clau: 'passat', etiqueta: 'Mes passat' },
-  { clau: 'trim', etiqueta: 'Aquest trimestre' },
-  { clau: 'any', etiqueta: 'Aquest any' },
-  { clau: 'tot', etiqueta: 'Tot' },
-];
-
-const ymd = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10);
-
-function rangDe(preset: Preset): { desde: string; fins: string } {
-  const avui = new Date();
-  const fins = toISODate(avui);
-  const y = avui.getFullYear();
-  const m = avui.getMonth(); // 0-11
-  if (preset === 'mes') return { desde: ymd(y, m, 1), fins };
-  if (preset === 'passat') return { desde: ymd(y, m - 1, 1), fins: ymd(y, m, 0) };
-  if (preset === 'trim') return { desde: ymd(y, Math.floor(m / 3) * 3, 1), fins };
-  if (preset === 'any') return { desde: ymd(y, 0, 1), fins };
-  return { desde: '2000-01-01', fins };
-}
-
 const fmtCurt = (dia: string) => { const p = dia.split('-'); return `${p[2]}/${p[1]}`; };
 
 function GastosContent() {
@@ -1272,10 +1251,9 @@ function GastosContent() {
   const tab = searchParams.get('tab') ?? 'resum';
 
   // El període mana sobre les quatre pestanyes.
-  const inicial = rangDe('mes');
-  const [desde, setDesde] = useState(inicial.desde);
-  const [fins, setFins] = useState(inicial.fins);
-  const [preset, setPreset] = useState<Preset | null>('mes');
+  const avui = toISODate(new Date());
+  const [estat, setEstat] = useState<EstatPeriode>({ tipus: 'mes', off: 0 });
+  const { desde, fins } = rangDeEstat(estat, avui);
   const [catNom, setCatNom] = useState<string | null>(null);
   const [resum, setResum] = useState<Resum | null>(null);
   const [errResum, setErrResum] = useState<string | null>(null);
@@ -1294,18 +1272,22 @@ function GastosContent() {
   }, [desde, fins]);
 
   const vesA = (t: string) => router.replace(t === 'resum' ? '/gastos' : `/gastos?tab=${t}`);
+  // Clic a un mes del gràfic: si és un mes sencer, el navegador queda en «Mes».
   function posaRang(d: string, f: string) {
-    setDesde(d); setFins(f); setPreset(null);
-  }
-  function aplicaPreset(p: Preset) {
-    const r = rangDe(p);
-    setDesde(r.desde); setFins(r.fins); setPreset(p);
+    const [dy, dm, dd] = d.split('-').map(Number) as [number, number, number];
+    const [ay, am] = avui.split('-').map(Number) as [number, number];
+    const ultim = new Date(Date.UTC(dy, dm, 0)).toISOString().slice(0, 10);
+    if (dd === 1 && (f === ultim || (f === avui && f.slice(0, 7) === d.slice(0, 7)))) {
+      setEstat({ tipus: 'mes', off: (dy * 12 + dm) - (ay * 12 + am) });
+    } else {
+      setEstat({ tipus: 'per', desde: d, fins: f });
+    }
   }
 
+  // Una despesa desada fora del període: s'eixampla el rang perquè es vegi.
   function mostraDespesa(data: string) {
-    if (data < desde) setDesde(data);
-    if (data > fins) setFins(data);
-    if (data < desde || data > fins) setPreset(null);
+    if (data >= desde && data <= fins) return;
+    setEstat({ tipus: 'per', desde: data < desde ? data : desde, fins: data > fins ? data : fins });
   }
 
   const delta = resum && resum.anterior.total > 0
@@ -1335,33 +1317,14 @@ function GastosContent() {
       <FinancesNav />
 
       {/* Període únic: mana sobre les quatre pestanyes */}
-      <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl bg-brand-50 px-4 py-3">
-        <Field label="Des de">
-          <Input type="date" value={desde} max={fins} onChange={(e) => { setDesde(e.target.value); setPreset(null); }} />
-        </Field>
-        <Field label="Fins a">
-          <Input type="date" value={fins} min={desde} onChange={(e) => { setFins(e.target.value); setPreset(null); }} />
-        </Field>
-        <div className="flex flex-wrap gap-1.5 sm:ml-auto">
-          {PRESETS.map((p) => (
-            <button
-              key={p.clau}
-              type="button"
-              aria-pressed={preset === p.clau}
-              onClick={() => aplicaPreset(p.clau)}
-              className={cn(
-                'rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
-                preset === p.clau
-                  ? 'border-brand-700 bg-brand-700 text-white'
-                  : 'border-slate-300 bg-white text-slate-600 hover:border-brand-600 hover:text-brand-700',
-              )}
-            >
-              {p.etiqueta}
-            </button>
-          ))}
-          <HideAmountsButton className="rounded-full" />
-        </div>
-      </div>
+      <NavegadorPeriode
+        className="mb-4"
+        estat={estat}
+        onChange={setEstat}
+        avui={avui}
+        primerDia="2000-01-01"
+        extra={<HideAmountsButton className="rounded-full" />}
+      />
 
       {errResum && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{errResum}</div>}
 
