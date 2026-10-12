@@ -218,14 +218,5 @@ export async function buildIeetPdf(d: IeetPeriode, establiment: { nom: string; n
     y -= tH + 8;
   }
 
-  // Peu a totes les pàgines
-  const pagines = doc.getPages();
-  const nota = 'Només paga la primera estada (les continuacions i ampliacions no surten). Menors de l’edat mínima a 0 €. Nits: les que paguen (màxim de la primera estada).';
-  pagines.forEach((pg, i) => {
-    pg.drawText(net(nota), { x: M, y: 12, size: 6.5, font, color: GRIS });
-    const n = net(`Pàgina ${i + 1} de ${pagines.length} · generat el ${dataEs(new Date().toISOString().slice(0, 10))}`);
-    pg.drawText(n, { x: PAG.w - M - font.widthOfTextAtSize(n, 6.5), y: 12, size: 6.5, font, color: GRIS });
-  });
-
   return doc.save();
 }
