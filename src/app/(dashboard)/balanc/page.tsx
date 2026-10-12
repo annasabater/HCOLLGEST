@@ -26,7 +26,7 @@ import { NavegadorPeriode } from '@/components/ui/navegador-periode';
 import { Eur, HideAmountsButton, HideAmountsOnMount } from '@/components/finances/amounts-visibility';
 import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 import { periodeComparacio, rangDeEstat, rangPeriode, type EstatPeriode } from '@/lib/periode';
-import type { FiancesObertes, MovDetall, MovGrup } from '@/lib/services/dashboard';
+import type { MovDetall, MovGrup } from '@/lib/services/dashboard';
 
 /** Data curta "dd/mm/aa" a partir d'un ISO string. */
 function dataCurta(iso: string): string {
@@ -379,79 +379,6 @@ function LlistaBarresFiances({
   );
 }
 
-// ─── Fiances obertes ─────────────────────────────────────────────────────────
-
-function FiancesObertesCard({ dades }: { dades: FiancesObertes }) {
-  const [totes, setTotes] = useState(false);
-  const files = totes ? dades.files : dades.files.slice(0, 8);
-  return (
-    <Card>
-      <CardHeader className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <CardTitle>Fiances obertes</CardTitle>
-          <p className="mt-0.5 text-sm text-slate-500">El que has de tornar i el que t&apos;han de tornar, de qualsevol mes.</p>
-        </div>
-        <div className="flex flex-wrap gap-2 text-xs font-bold">
-          <span className="rounded-full bg-teal-50 px-2.5 py-1 text-teal-700">
-            Has de tornar <Eur value={dades.totalRebudes} />
-          </span>
-          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">
-            Per recuperar <Eur value={dades.totalPagades} />
-          </span>
-        </div>
-      </CardHeader>
-      <CardBody>
-        {dades.files.length === 0 ? (
-          <p className="text-sm text-slate-400">No hi ha cap fiança oberta.</p>
-        ) : (
-          <>
-            <Table>
-              <Thead>
-                <tr>
-                  <Th>Data</Th>
-                  <Th>Concepte</Th>
-                  <Th>Tipus</Th>
-                  <Th className="text-right">Import</Th>
-                </tr>
-              </Thead>
-              <tbody>
-                {files.map((f) => (
-                  <Tr key={f.id}>
-                    <Td className="whitespace-nowrap text-slate-500">{dataCurta(f.data)}</Td>
-                    <Td className="max-w-[28rem] truncate">
-                      {f.href ? (
-                        <a href={f.href} className="font-medium text-brand-700 hover:underline">{f.concepte}</a>
-                      ) : (
-                        f.concepte
-                      )}
-                    </Td>
-                    <Td>
-                      <span
-                        className={cn(
-                          'whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold',
-                          f.tipus === 'REBUDA' ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700',
-                        )}
-                      >
-                        {f.tipus === 'REBUDA' ? 'Rebuda' : 'Pagada'}
-                      </span>
-                    </Td>
-                    <Td className="text-right font-medium tabular-nums"><Eur value={f.import} /></Td>
-                  </Tr>
-                ))}
-              </tbody>
-            </Table>
-            {dades.files.length > 8 && (
-              <button type="button" onClick={() => setTotes(!totes)} className="mt-3 text-sm font-medium text-brand-700 hover:underline">
-                {totes ? 'Veure menys' : `Veure-les totes (${dades.files.length})`}
-              </button>
-            )}
-          </>
-        )}
-      </CardBody>
-    </Card>
-  );
-}
-
 // ─── Moviments del període ───────────────────────────────────────────────────
 
 const MOV_FILTRE_GRUPS: Record<string, MovGrup[]> = {
@@ -654,7 +581,6 @@ export default function BalancPage() {
   const [dades, setDades] = useState<Balanc | null>(null);
   const [anterior, setAnterior] = useState<Balanc | null>(null);
   const [serie, setSerie] = useState<SerieMes[] | null>(null);
-  const [obertes, setObertes] = useState<FiancesObertes | null>(null);
   const [breakdown, setBreakdown] = useState<Desglos | null>(null);
 
   useEffect(() => {
@@ -679,10 +605,6 @@ export default function BalancPage() {
     return () => { cancel = true; };
   }, [sr.desde, sr.fins]);
 
-  useEffect(() => {
-    if (restringit) return;
-    getJSON<FiancesObertes>('/api/balanc/fiances').then(setObertes).catch(() => setObertes(null));
-  }, [restringit]);
 
   // ── Situació (amagada; es manté per si es torna a activar) ──
   const [veureSituacio, setVeureSituacio] = useState(false);
@@ -1033,7 +955,6 @@ export default function BalancPage() {
                 </Card>
               </div>
 
-              {!restringit && obertes && <FiancesObertesCard dades={obertes} />}
 
               <Card>
                 <CardHeader>
