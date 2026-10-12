@@ -17,9 +17,9 @@ export async function GET(req: Request) {
 
     const [dades, est] = await Promise.all([
       getIeetPeriode(clau),
-      prisma.establiment.findFirst({ select: { nom: true, raoSocial: true, facturaNif: true } }),
+      prisma.establiment.findFirst({ select: { nom: true, raoSocial: true, facturaNif: true, poblacio: true } }),
     ]);
-    const pdf = await buildIeetPdf(dades, { nom: est?.nom || est?.raoSocial || 'Hostal Coll', nif: est?.facturaNif ?? null });
+    const pdf = await buildIeetPdf(dades, { nom: est?.nom || est?.raoSocial || 'Hostal Coll', nif: est?.facturaNif ?? null, poblacio: est?.poblacio ?? null });
     await audit({ usuariId: auth.id, accio: 'DESCARREGA', entitat: 'ieet', detall: { periode: clau, format: 'pdf' }, ip: clientIp(req) });
     return new NextResponse(new Uint8Array(pdf), {
       headers: {
