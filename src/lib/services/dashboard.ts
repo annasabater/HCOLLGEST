@@ -574,7 +574,7 @@ export type Balanc = Awaited<ReturnType<typeof getBalanc>>;
 export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts) {
   const num = (v: unknown) => Number(v ?? 0);
   const endExcl = new Date(end.getTime() + 1);
-  const [base, cobramentsRows, retingutsRows, gastoCat, categories, habCount, estades, roomRevAgg] =
+  const [base, cobramentsRows, retingutsRows, gastoCat, categories, habCount, estades, roomRevAgg, fiancaCat, custodiaMetode] =
     await Promise.all([
       getBalanc(start, end, opts),
       cobramentsEfectius(start, end, opts),
@@ -593,6 +593,18 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
       prisma.liniaFactura.aggregate({
         _sum: { import: true },
         where: { concepte: 'ALLOTJAMENT', factura: { deletedAt: null, data: { gte: start, lte: end } } },
+      }),
+      // Fiances PAGADES per categoria (la mateixa definició que despesesFianca).
+      prisma.gasto.groupBy({
+        by: ['categoriaId'],
+        _sum: { import: true },
+        where: { deletedAt: null, esFianca: true, data: { gte: start, lte: end } },
+      }),
+      // Fiances REBUDES (en custòdia) per mètode (la mateixa definició que retencions).
+      prisma.diposit.groupBy({
+        by: ['metode'],
+        _sum: { import: true },
+        where: { estat: 'EN_CUSTODIA', data: { gte: start, lte: end }, estancia: { deletedAt: null } },
       }),
     ]);
 
@@ -625,6 +637,12 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
     .map((g) => ({ categoria: catMap.get(g.categoriaId) ?? '—', import: num(g._sum.import) }))
     .filter((x) => x.import !== 0)
     .sort((a, b) => b.import - a.import);
+  // Part de fiança de cada categoria i de cada mètode (es mostra al costat, no suma al benefici).
+  const fiancesPerCategoria = fiancaCat
+    .map((g) => ({ categoria: catMap.get(g.categoriaId) ?? '—', import: num(g._sum.import) }))
+    .filter((x) => x.import !== 0);
+  const retencionsPerMetode: Record<string, number> = {};
+  for (const d of custodiaMetode) retencionsPerMetode[d.metode] = r2(num(d._sum.import));
 
   // Agrupa els moviments per estada/titular: ingressos (+) i devolucions (−),
   // amb l'habitació, el període d'estada i les dates en què van pagar.
@@ -723,7 +741,7 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
     moviments.push({ id: `gf${g.id}`, grup: 'FIANCA_PAGADA', data: g.data.toISOString(), concepte: [g.categoria?.nom, g.proveidor?.nom, 'fiança pagada'].filter(Boolean).join(' · '), import: -num(g.import), metode: null, pagada: null, href: '/gastos' });
   moviments.sort((a, b) => (a.data < b.data ? 1 : -1));
 
-  return { ...base, ingressosPerMetode, despesesPerCategoria, ocupacio, adr, revpar, movimentsPerPersona, moviments };
+  return { ...base, ingressosPerMetode, despesesPerCategoria, fiancesPerCategoria, retencionsPerMetode, ocupacio, adr, revpar, movimentsPerPersona, moviments };
 }
 
 export type MovGrup = 'INGRES' | 'FIANCA' | 'FIANCA_CUST' | 'DESPESA' | 'PERSONAL' | 'FIANCA_PAGADA';
@@ -816,6 +834,8 @@ export async function getBalancAny(year: number, opts?: FinanceOpts) {
     },
     ingressosPerMetode: detall.ingressosPerMetode,
     despesesPerCategoria: detall.despesesPerCategoria,
+    fiancesPerCategoria: detall.fiancesPerCategoria,
+    retencionsPerMetode: detall.retencionsPerMetode,
     moviments: detall.moviments,
     ocupacio: detall.ocupacio,
     adr: detall.adr,

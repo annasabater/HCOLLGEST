@@ -36,6 +36,9 @@ function dataCurta(iso: string): string {
 interface Breakdowns {
   ingressosPerMetode: Record<string, number>;
   despesesPerCategoria: { categoria: string; import: number }[];
+  // Part de fiança de cada categoria (pagades) i de cada mètode (rebudes).
+  fiancesPerCategoria?: { categoria: string; import: number }[];
+  retencionsPerMetode?: Record<string, number>;
   ocupacio: number;
   adr: number;
   revpar: number;
@@ -117,6 +120,26 @@ function metodeItems(perMetode: Record<string, number>) {
     .filter(([, v]) => v > 0)
     .map(([k, v]) => ({ label: METODE_COBRAMENT_LABELS[k as keyof typeof METODE_COBRAMENT_LABELS] ?? k, value: v }))
     .sort((a, b) => b.value - a.value);
+}
+
+/** Categories amb la part real i la de fiança (pagades) de cadascuna; el personal, com una més. */
+function categoriesAmbFiances(d: Balanc) {
+  const m = new Map<string, { label: string; real: number; fianca: number }>();
+  const get = (label: string) => m.get(label) ?? m.set(label, { label, real: 0, fianca: 0 }).get(label)!;
+  for (const c of d.despesesPerCategoria) get(c.categoria).real += c.import;
+  for (const c of d.fiancesPerCategoria ?? []) get(c.categoria).fianca += c.import;
+  if (d.personal > 0) get('Personal').real += d.personal;
+  return [...m.values()];
+}
+
+/** Mètodes de cobrament amb la part real i la de fiances rebudes de cadascun. */
+function metodesAmbFiances(d: Balanc) {
+  const claus = new Set([...Object.keys(d.ingressosPerMetode), ...Object.keys(d.retencionsPerMetode ?? {})]);
+  return [...claus].map((k) => ({
+    label: METODE_COBRAMENT_LABELS[k as keyof typeof METODE_COBRAMENT_LABELS] ?? k,
+    real: d.ingressosPerMetode[k] ?? 0,
+    fianca: d.retencionsPerMetode?.[k] ?? 0,
+  }));
 }
 
 /** Categories de despesa amb el personal com una més. */
@@ -247,6 +270,111 @@ function LlistaBarres({
           {fila(extra.label, extra.value, `repeating-linear-gradient(135deg, ${extra.color} 0 4px, ${extra.color}29 4px 8px)`, extra.color)}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Barres amb la part real (color ple) i la part de fiança (ratllada) de cada
+ * fila, un selector Tot / Sense fiances / Només fiances i, a sota, els totals
+ * sense fiances, de fiances i amb fiances. Les fiances no canvien el benefici:
+ * només es mostren al costat per saber on són.
+ */
+type ModeFiances = 'tot' | 'real' | 'fianca';
+function LlistaBarresFiances({
+  files,
+  color,
+  colorFianca,
+  etiquetes,
+  buit,
+}: {
+  files: { label: string; real: number; fianca: number }[];
+  color: string;
+  colorFianca: string;
+  etiquetes: { real: string; fianca: string };
+  buit: string;
+}) {
+  const [mode, setMode] = useState<ModeFiances>('tot');
+  const ratllat = `repeating-linear-gradient(135deg, ${colorFianca} 0 4px, ${colorFianca}29 4px 8px)`;
+  const val = (f: { real: number; fianca: number }) => (mode === 'real' ? f.real : mode === 'fianca' ? f.fianca : f.real + f.fianca);
+  const visibles = files.filter((f) => val(f) > 0).sort((a, b) => val(b) - val(a));
+  const max = Math.max(1, ...visibles.map(val));
+  const totalReal = r2(files.reduce((a, f) => a + f.real, 0));
+  const totalFianca = r2(files.reduce((a, f) => a + f.fianca, 0));
+  const MODES: { m: ModeFiances; label: string }[] = [
+    { m: 'tot', label: 'Tot' },
+    { m: 'real', label: 'Sense fiances' },
+    { m: 'fianca', label: 'Només fiances' },
+  ];
+
+  return (
+    <div className="space-y-3">
+      <div role="group" aria-label="Què es mostra" className="inline-flex flex-wrap gap-0.5 rounded-full bg-slate-100 p-0.5">
+        {MODES.map(({ m, label }) => (
+          <button
+            key={m}
+            type="button"
+            aria-pressed={mode === m}
+            onClick={() => setMode(m)}
+            className={cn(
+              'rounded-full px-3 py-1 text-xs font-semibold transition-colors',
+              mode === m ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-2.5">
+        {visibles.length === 0 ? (
+          <p className="text-sm text-slate-400">{buit}</p>
+        ) : (
+          visibles.map((f) => {
+            const r = mode === 'fianca' ? 0 : f.real;
+            const fi = mode === 'real' ? 0 : f.fianca;
+            return (
+              <div key={f.label} className="grid grid-cols-[minmax(0,8.5rem)_1fr_auto] items-center gap-3 text-sm">
+                <span className="truncate text-slate-700">{f.label}</span>
+                <span className="flex h-2.5 overflow-hidden rounded-full bg-slate-100">
+                  {r > 0 && <span className="block h-full" style={{ width: `${Math.max(1.5, (r / max) * 100)}%`, background: color }} />}
+                  {fi > 0 && <span className="block h-full" style={{ width: `${Math.max(1.5, (fi / max) * 100)}%`, background: ratllat }} />}
+                </span>
+                <span className="text-right tabular-nums">
+                  <span className="block font-semibold"><Eur value={r2(r + fi)} /></span>
+                  {mode === 'tot' && f.fianca > 0 && (
+                    <span className="block text-[11px] text-slate-500">
+                      {f.real > 0 ? <>real <Eur value={f.real} /> · </> : null}
+                      <span style={{ color: colorFianca }}>{f.real > 0 ? <>fiança <Eur value={f.fianca} /></> : 'tot fiança'}</span>
+                    </span>
+                  )}
+                </span>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div className="space-y-1.5 border-t border-dashed border-slate-200 pt-3 text-sm tabular-nums">
+        <div className={cn('flex items-baseline justify-between gap-3', mode === 'fianca' && 'opacity-45')}>
+          <span className="flex items-center gap-2 text-slate-500">
+            <span className="inline-block h-2 w-4 rounded-full" style={{ background: color }} />
+            {etiquetes.real}
+          </span>
+          <span className="font-semibold"><Eur value={totalReal} /></span>
+        </div>
+        <div className={cn('flex items-baseline justify-between gap-3', mode === 'real' && 'opacity-45')}>
+          <span className="flex items-center gap-2 text-slate-500">
+            <span className="inline-block h-2 w-4 rounded-full" style={{ background: ratllat, outline: `1px solid ${colorFianca}` }} />
+            {etiquetes.fianca}
+          </span>
+          <span className="font-semibold" style={{ color: colorFianca }}><Eur value={totalFianca} /></span>
+        </div>
+        <div className="mt-1 flex items-baseline justify-between gap-3 border-t border-slate-200 pt-2">
+          <span className="font-serif text-lg font-semibold text-slate-800">Total amb fiances</span>
+          <span className="text-lg font-bold"><Eur value={r2(totalReal + totalFianca)} /></span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -868,29 +996,39 @@ export default function BalancPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle>En què se&apos;n va</CardTitle>
-                    <p className="mt-0.5 text-sm text-slate-500">Despeses per categoria.{restringit ? '' : ' Les fiances, a part i sense sumar.'}</p>
+                    <p className="mt-0.5 text-sm text-slate-500">Despeses per categoria.{restringit ? '' : ' Ratllat: la part que és fiança (no compta al benefici).'}</p>
                   </CardHeader>
                   <CardBody>
-                    <LlistaBarres
-                      files={categoriesAmbPersonal(dades)}
-                      color={COLORS_BALANC.despeses}
-                      extra={restringit ? undefined : { label: 'Fiances pagades', value: dades.despesesFianca, color: COLORS_BALANC.pagades }}
-                      buit="Sense despeses en aquest període."
-                    />
+                    {restringit ? (
+                      <LlistaBarres files={categoriesAmbPersonal(dades)} color={COLORS_BALANC.despeses} buit="Sense despeses en aquest període." />
+                    ) : (
+                      <LlistaBarresFiances
+                        files={categoriesAmbFiances(dades)}
+                        color={COLORS_BALANC.despeses}
+                        colorFianca={COLORS_BALANC.pagades}
+                        etiquetes={{ real: 'Despeses sense fiances', fianca: 'Fiances pagades' }}
+                        buit="Sense despeses en aquest període."
+                      />
+                    )}
                   </CardBody>
                 </Card>
                 <Card>
                   <CardHeader>
                     <CardTitle>Com t&apos;han pagat</CardTitle>
-                    <p className="mt-0.5 text-sm text-slate-500">Ingressos per mètode.{restringit ? '' : ' Les fiances rebudes, a part.'}</p>
+                    <p className="mt-0.5 text-sm text-slate-500">Ingressos per mètode.{restringit ? '' : ' Ratllat: la part que és fiança rebuda (s’ha de tornar).'}</p>
                   </CardHeader>
                   <CardBody>
-                    <LlistaBarres
-                      files={metodeItems(dades.ingressosPerMetode)}
-                      color={COLORS_BALANC.ingressos}
-                      extra={restringit ? undefined : { label: 'Fiances rebudes', value: dades.retencions, color: COLORS_BALANC.rebudes }}
-                      buit="Sense cobraments en aquest període."
-                    />
+                    {restringit ? (
+                      <LlistaBarres files={metodeItems(dades.ingressosPerMetode)} color={COLORS_BALANC.ingressos} buit="Sense cobraments en aquest període." />
+                    ) : (
+                      <LlistaBarresFiances
+                        files={metodesAmbFiances(dades)}
+                        color={COLORS_BALANC.ingressos}
+                        colorFianca={COLORS_BALANC.rebudes}
+                        etiquetes={{ real: 'Ingressos sense fiances', fianca: 'Fiances rebudes' }}
+                        buit="Sense cobraments en aquest període."
+                      />
+                    )}
                   </CardBody>
                 </Card>
               </div>
