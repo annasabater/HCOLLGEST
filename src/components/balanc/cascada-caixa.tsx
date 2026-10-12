@@ -9,6 +9,7 @@ export const COLORS_BALANC = {
   ingressos: '#1F8A55',
   despeses: '#D0485A',
   benefici: '#7A1F2B',
+  beneficiTotal: '#115E59',
   rebudes: '#0F766E',
   pagades: '#B45309',
 };
@@ -46,7 +47,7 @@ export function MostraRatllada({ color }: { color: string }) {
 
 /**
  * Cascada «del benefici a la caixa»: Ingressos − Despeses = Benefici real;
- * + fiances rebudes − fiances pagades = moviment de caixa del període.
+ * + fiances rebudes = Benefici total; − fiances pagades = moviment de caixa del període.
  */
 export function CascadaCaixa({
   ingressos,
@@ -71,6 +72,8 @@ export function CascadaCaixa({
   passos.push({ l: 'Despeses', a: ingressos, b: benefici, v: -despeses, color: COLORS_BALANC.despeses, signe: true });
   passos.push({ l: 'Benefici real', a: 0, b: benefici, v: benefici, color: COLORS_BALANC.benefici });
   passos.push({ l: '+ Fiances rebudes', a: benefici, b: benefici + rebudes, v: rebudes, color: COLORS_BALANC.rebudes, ratllat: true, signe: true });
+  // Benefici total = benefici real + fiances rebudes (el que tens abans de pagar fiances).
+  passos.push({ l: 'Benefici total', a: 0, b: benefici + rebudes, v: benefici + rebudes, color: COLORS_BALANC.beneficiTotal });
   passos.push({ l: '− Fiances pagades', a: benefici + rebudes, b: caixa, v: -pagades, color: COLORS_BALANC.pagades, ratllat: true, signe: true });
   passos.push({ l: 'Moviment de caixa', a: 0, b: caixa, v: caixa, color: caixa >= 0 ? COLORS_BALANC.ingressos : COLORS_BALANC.despeses });
 
