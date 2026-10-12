@@ -200,7 +200,6 @@ export async function buildIeetPdf(
       espaiat(badge, xr - ampleEspaiat(badge, 7, 1.8), y - 36, 7, 1.8, font, ACCENT);
       const meta: [string, string][] = [
         ['Estades amb entrada', `${dataEs(p.inici)} – ${dataEs(p.fi)}`],
-        ['Termini de pagament', `${dataEs(p.pagamentDes)} – ${dataEs(p.pagamentFins)}`],
         ...(establiment.nif ? ([['NIF', establiment.nif]] as [string, string][]) : []),
       ];
       let my = y - 52;
@@ -253,10 +252,13 @@ export async function buildIeetPdf(
     const ty = y - ALT_GRUP + 4 + PAD + 1;
     const ctr = `Contracte ${f0.contracte}`;
     text(ctr, MX + 8, ty, fs + 2.2, serif, ACCENT);
+    // Totes les habitacions del contracte (un viatger pot dormir en una altra).
+    const habs = [...new Set(g.files.map((f) => f.habitacio).filter(Boolean))];
+    const nits = (n: number) => `${n} ${n === 1 ? 'nit' : 'nits'}`;
     const dades = [
-      f0.habitacio ? `Habitació ${f0.habitacio}` : null,
+      habs.length ? `${habs.length > 1 ? 'Habitacions' : 'Habitació'} ${habs.join(', ')}` : null,
       `del ${dataEs(f0.entrada)} al ${dataEs(f0.sortida)}`,
-      `${f0.nitsPaguen} ${f0.nitsPaguen === 1 ? 'nit' : 'nits'}`,
+      f0.nitsEstada === f0.nitsPaguen ? nits(f0.nitsEstada) : `${nits(f0.nitsEstada)} (paguen ${f0.nitsPaguen})`,
     ].filter(Boolean).join('  ·  ');
     text(`·  ${dades}`, MX + 8 + serif.widthOfTextAtSize(net(ctr), fs + 2.2) + 7, ty + 0.4, fs, font, SLATE);
     y -= ALT_GRUP;
