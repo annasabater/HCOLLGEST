@@ -232,8 +232,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
      mateixa mida perquè tot hi càpiga): mateix ample que les altres fulles; la taula (moltes
      columnes) fa scroll horizontal a dins amb lletra petita. */
   .wide-scroll{ overflow-x:auto; }
-  table.lg{ font-size:8.5px; }
-  table.lg th{ font-size:6.5px; padding:0 2px 5px 2px; letter-spacing:0; line-height:1.15;
+  table.lg{ font-size:9.5px; }
+  table.lg th{ font-size:7.5px; padding:0 2px 5px 2px; letter-spacing:0; line-height:1.15;
     white-space:normal; overflow-wrap:break-word; vertical-align:bottom;  text-transform:none; letter-spacing:0; word-break:normal; overflow-wrap:normal;}
   table.lg td{ padding:1px 2px; }
   table.lg .in{ padding:2px 3px; }
@@ -272,7 +272,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   .note{ font-size:10px; color:var(--muted); margin-top:14px; font-style:italic; line-height:1.5; }
   .add{ margin-top:10px; }
   .add button{ font:inherit; font-size:12px; color:var(--accent); background:#fff; border:1px dashed var(--accent); border-radius:8px; padding:6px 12px; cursor:pointer; }
-  @page{ size:A4 landscape; margin:12mm; }
   /* Tot el document surt en A4 HORITZONTAL: així el Libro de gastos (moltes
      columnes) hi cap, i la resta de fulles hi caben de sobres. Cada taula que
      sigui més ampla que el full s'escala amb JS (beforeprint). */
