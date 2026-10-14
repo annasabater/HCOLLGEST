@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { carregaEdicions, edicionsBootstrap, EDICIONS_SCRIPT } from '@/lib/edicions';
+import { TAULES_CLIENT_SCRIPT } from '@/lib/pdf/taules-script';
 import { getLlibreIngressos, getGastosSoportats, getFiancesSoportades, getLibroGastos, COLUMNES_GASTO, COLUMNA_GASTO_LABELS, type FilaIngres, type FilaGasto, type FilaLibroGasto } from '@/lib/services/llibre-iva';
 
 export const dynamic = 'force-dynamic';
@@ -296,7 +297,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <span id="saved" class="badge-saved" style="${desatAt ? '' : 'display:none'}">Desat ${esc(desatAt)}</span>
     <button id="addRow" class="btn ghost">+ Afegir fila</button>
     <button id="save" class="btn ghost">Desar</button>
-    <button id="print" class="btn solid">Imprimir / Guardar PDF</button>
+    <button id="printPdf" class="btn solid">Imprimir PDF</button>
   </div>
 </div>
 <div class="app">
@@ -786,7 +787,6 @@ ${edicionsBootstrap('trimestre', periode, edicions)}
   }
   window.addEventListener('beforeprint', scalaImpressio);
   window.addEventListener('afterprint', reseteaImpressio);
-  document.getElementById('print').addEventListener('click', () => window.print());
 
   // Columnes redimensionables: arrossega la nansa de la vora dreta de cada
   // capçalera per fer la columna més ampla o més estreta (les que no es veuen bé,
@@ -833,6 +833,8 @@ ${edicionsBootstrap('trimestre', periode, edicions)}
     } catch (e) { alert(e && e.message ? e.message : 'No s\\'ha pogut desar'); btn.textContent = orig; btn.disabled = false; }
   });
 </script>
+<script>window.__pdfTitle = ${JSON.stringify(`Llibre d'IVA ${etiqueta}`)};</script>
+<script>${TAULES_CLIENT_SCRIPT}</script>
 </body>
 </html>`;
 
