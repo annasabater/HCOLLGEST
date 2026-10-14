@@ -11,6 +11,7 @@
 import 'server-only';
 import { prisma } from '../db';
 import { nights, toISODate } from '../dates';
+import { whereTocaHabitacio, tramsSolapats, SELECT_CANVIS } from '../habitacio-trams';
 import { GRUP_TARIFA, type GrupTarifa } from '../validation/tarifa-tipus';
 
 const n = (d: unknown) => (d == null ? null : Number(d));
@@ -199,16 +200,17 @@ export async function calcularPreu(opts: {
   const ocupacions = await prisma.estancia.findMany({
     where: {
       deletedAt: null, estat: { not: 'CANCELLADA' },
-      habitacioId: { in: habs.map((h) => h.id) },
+      ...whereTocaHabitacio(habs.map((h) => h.id)),
       dataEntrada: { lt: opts.sortida }, dataSortida: { gt: opts.entrada },
     },
-    select: { habitacioId: true, viatgers: { where: { esTitular: true }, take: 1, select: { huesped: { select: { nom: true, cognom1: true } } } } },
+    select: { habitacioId: true, dataEntrada: true, dataSortida: true, ...SELECT_CANVIS, viatgers: { where: { esTitular: true }, take: 1, select: { huesped: { select: { nom: true, cognom1: true } } } } },
   });
   const ocupadaPer = new Map<string, string>();
   for (const o of ocupacions) {
-    if (!o.habitacioId) continue;
     const h = o.viatgers[0]?.huesped;
-    ocupadaPer.set(o.habitacioId, h ? `${h.nom} ${h.cognom1}` : 'Ocupada');
+    for (const t of tramsSolapats(o, opts.entrada, opts.sortida)) {
+      if (t.habitacioId) ocupadaPer.set(t.habitacioId, h ? `${h.nom} ${h.cognom1}` : 'Ocupada');
+    }
   }
   const habitacions = habs.map((h) => ({ nom: h.nom, lliure: !ocupadaPer.has(h.id), ocupadaPer: ocupadaPer.get(h.id) ?? null }));
 

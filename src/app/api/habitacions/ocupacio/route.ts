@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db';
 import { authorize } from '@/lib/auth/guard';
 import { badRequest, ok } from '@/lib/http';
+import { whereTocaHabitacio, tramsSolapats } from '@/lib/habitacio-trams';
 
 /**
  * GET /api/habitacions/ocupacio?habitacioId=&desde=&fins=
@@ -23,26 +24,33 @@ export async function GET(req: Request) {
   const estades = await prisma.estancia.findMany({
     where: {
       deletedAt: null,
-      habitacioId,
+      ...whereTocaHabitacio(habitacioId),
       estat: { not: 'CANCELLADA' },
       dataEntrada: { lte: new Date(fins) },
       dataSortida: { gte: new Date(desde) },
     },
-    include: { viatgers: { include: { huesped: true }, orderBy: { esTitular: 'desc' } } },
+    include: {
+      viatgers: { include: { huesped: true }, orderBy: { esTitular: 'desc' } },
+      canvisHabitacio: { select: { data: true, habitacioAnteriorId: true }, orderBy: { data: 'asc' } },
+    },
     orderBy: { dataEntrada: 'asc' },
   });
 
+  // Una fila per tram en aquesta habitació (si l'hoste n'ha canviat a mitja estada,
+  // només pinta els dies que hi era).
+  const desdeD = new Date(desde);
+  const finsD = new Date(fins);
   return ok({
-    estades: estades.map((e) => ({
+    estades: estades.flatMap((e) => tramsSolapats(e, desdeD, finsD, { habitacioId, inclusiu: true }).map((t) => ({
       id: e.id,
       titular: (() => { const h = e.viatgers.find(v => v.esTitular)?.huesped ?? e.viatgers[0]?.huesped; return h ? `${h.nom} ${h.cognom1}` : 'Sense titular'; })(),
       viatgers: e.viatgers
         .filter(v => v.huesped)
         .map(v => `${v.huesped!.nom} ${v.huesped!.cognom1}`),
-      dataEntrada: e.dataEntrada,
-      dataSortida: e.dataSortida,
+      dataEntrada: t.desde,
+      dataSortida: t.fins,
       estat: e.estat,
-    })),
+    }))),
   });
 }
 

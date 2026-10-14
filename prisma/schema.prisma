@@ -239,9 +239,9 @@ model Establiment {
   // Declaració de la taxa turística per ESTADES (/taxa-turistica), independent de
   // l'IEET de factura de dalt: tarifa per persona i nit, màxim de nits que paguen
   // (només la primera estada) i edat a partir de la qual es paga.
-  ieetTarifa     Decimal @default(0.90) @map("ieet_tarifa") @db.Decimal(10, 2)
-  ieetMaxNits    Int     @default(7) @map("ieet_max_nits")
-  ieetEdatMinima Int     @default(17) @map("ieet_edat_minima")
+  ieetTarifa           Decimal  @default(0.90) @map("ieet_tarifa") @db.Decimal(10, 2)
+  ieetMaxNits          Int      @default(7) @map("ieet_max_nits")
+  ieetEdatMinima       Int      @default(17) @map("ieet_edat_minima")
 
   // Veri*Factu (AEAT) — sèrie i mode de proves del QR de cotejo.
   verifactuSerie    String  @default("FAC") @map("verifactu_serie")
@@ -433,25 +433,28 @@ model Estancia {
   // Benvinguda (WhatsApp) ja enviada/gestionada → treu l'avís del tauler.
   benvingudaEnviada   Boolean       @default(false) @map("benvinguda_enviada")
 
-  habitacioId String?    @map("habitacio_id")
-  habitacio   Habitacio? @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
+  // Habitació ACTUAL (la de l'últim tram). Si l'hoste ha canviat d'habitació a
+  // mitja estada, els trams anteriors són a `canvisHabitacio`.
+  habitacioId     String?          @map("habitacio_id")
+  habitacio       Habitacio?       @relation(fields: [habitacioId], references: [id], onDelete: SetNull)
+  canvisHabitacio CanviHabitacio[]
 
   // Ampliació d'estada: les ampliacions (1.1, 1.2…) enllacen amb l'estada original.
   estanciaOrigenId String?    @map("estancia_origen_id")
   origen           Estancia?  @relation("Ampliacions", fields: [estanciaOrigenId], references: [id], onDelete: SetNull)
   ampliacions      Estancia[] @relation("Ampliacions")
 
-  viatgers         EstanciaViatger[]
-  enviaments       EnviamentMossos[]
-  factures         Factura[]
-  cobraments       Cobrament[]
-  tasesTuristiques TasaTuristica[]
-  anotacions       AnotacioHuesped[]
-  tasquesNeteja    TascaNeteja[]
-  diposits         Diposit[]
-  emailsProgramats EmailProgramat[]
+  viatgers           EstanciaViatger[]
+  enviaments         EnviamentMossos[]
+  factures           Factura[]
+  cobraments         Cobrament[]
+  tasesTuristiques   TasaTuristica[]
+  anotacions         AnotacioHuesped[]
+  tasquesNeteja      TascaNeteja[]
+  diposits           Diposit[]
+  emailsProgramats   EmailProgramat[]
   pagamentsPrevistos PagamentPrevist[]
-  pressupostos     Pressupost[]
+  pressupostos       Pressupost[]
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -495,19 +498,19 @@ model EstanciaViatger {
 }
 
 model Signatura {
-  id                String          @id @default(cuid())
-  estanciaViatgerId String          @unique @map("estancia_viatger_id")
-  estanciaViatger   EstanciaViatger @relation(fields: [estanciaViatgerId], references: [id], onDelete: Cascade)
-  imatge            String // base64 o ruta a fichero
-  llocSignatura     String?         @map("lloc_signatura")
-  data              DateTime
-  hora              String
+  id                       String          @id @default(cuid())
+  estanciaViatgerId        String          @unique @map("estancia_viatger_id")
+  estanciaViatger          EstanciaViatger @relation(fields: [estanciaViatgerId], references: [id], onDelete: Cascade)
+  imatge                   String // base64 o ruta a fichero
+  llocSignatura            String?         @map("lloc_signatura")
+  data                     DateTime
+  hora                     String
   // Consentiment de comunicacions comercials (LOPD), marcat en signar el
   // reglament i reflectit a les caselles del PDF.
-  refusaComercial          Boolean @default(false) @map("refusa_comercial")
-  autoritzaComercialAltres Boolean @default(false) @map("autoritza_comercial_altres")
-  usuariId          String?         @map("usuari_id")
-  usuari            Usuari?         @relation(fields: [usuariId], references: [id], onDelete: SetNull)
+  refusaComercial          Boolean         @default(false) @map("refusa_comercial")
+  autoritzaComercialAltres Boolean         @default(false) @map("autoritza_comercial_altres")
+  usuariId                 String?         @map("usuari_id")
+  usuari                   Usuari?         @relation(fields: [usuariId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -567,15 +570,15 @@ model AnotacioHuesped {
 // ----------------------------------------------------------------------------
 
 model Habitacio {
-  id         String  @id @default(cuid())
-  nom        String // num/nom (p.ej. "1", "6")
-  tipus      String? // tipus d'habitació (Individual, Doble…) per a tarifes per tipus
-  descripcio String?
-  capacitat  Int?
-  estat      String?
+  id               String  @id @default(cuid())
+  nom              String // num/nom (p.ej. "1", "6")
+  tipus            String? // tipus d'habitació (Individual, Doble…) per a tarifes per tipus
+  descripcio       String?
+  capacitat        Int?
+  estat            String?
   // Bugaderia: articles per defecte a netejar per tipus de tasca. Format:
   // { manteniment: [{ article, qty }], sortida: [{ article, qty }] } (article = nom del catàleg).
-  bugaderiaDefault Json? @map("bugaderia_default")
+  bugaderiaDefault Json?   @map("bugaderia_default")
 
   estancies        Estancia[]
   actius           Actiu[]
@@ -584,12 +587,36 @@ model Habitacio {
   tarifes          Tarifa[]
   incidencies      Incidencia[]
   viatgersSeparats EstanciaViatger[]
+  canvisAnterior   CanviHabitacio[]  @relation("CanviAnterior")
+  canvisNova       CanviHabitacio[]  @relation("CanviNova")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
   @@map("habitacio")
+}
+
+// Canvi d'habitació a mitja estada (mateix contracte). A partir de `data`
+// l'hoste dorm a `habitacioNova`; fins llavors, a `habitacioAnterior`. Així
+// l'ocupació de cada habitació només compta el seu tram (vegeu
+// src/lib/habitacio-trams.ts). L'habitació de l'últim tram és Estancia.habitacioId.
+model CanviHabitacio {
+  id                  String     @id @default(cuid())
+  estanciaId          String     @map("estancia_id")
+  estancia            Estancia   @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+  data                DateTime
+  habitacioAnteriorId String?    @map("habitacio_anterior_id")
+  habitacioAnterior   Habitacio? @relation("CanviAnterior", fields: [habitacioAnteriorId], references: [id], onDelete: SetNull)
+  habitacioNovaId     String?    @map("habitacio_nova_id")
+  habitacioNova       Habitacio? @relation("CanviNova", fields: [habitacioNovaId], references: [id], onDelete: SetNull)
+  usuariId            String?    @map("usuari_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([estanciaId])
+  @@index([habitacioAnteriorId])
+  @@map("canvi_habitacio")
 }
 
 // Catàleg d'articles de bugaderia (llençols, tovalloles, protectors…) amb preu.
@@ -743,24 +770,24 @@ model LiniaFactura {
 // la factura simplificada però en un altre color. Pot portar un número de compte
 // perquè el client hi pagui.
 model Pressupost {
-  id           String   @id @default(cuid())
-  numero       String   @unique // "00001" (editable; proposat = següent)
-  data         DateTime @default(now())
-  validesa     DateTime? // vàlid fins a (opcional)
-  idioma       String   @default("ca") // idioma del document imprès: ca/es/fr/en
+  id              String    @id @default(cuid())
+  numero          String    @unique // "00001" (editable; proposat = següent)
+  data            DateTime  @default(now())
+  validesa        DateTime? // vàlid fins a (opcional)
+  idioma          String    @default("ca") // idioma del document imprès: ca/es/fr/en
   // Enllaç OPCIONAL a una estada (si el pressupost és per a un hoste concret).
-  estanciaId   String?    @map("estancia_id")
-  estancia     Estancia?  @relation(fields: [estanciaId], references: [id], onDelete: SetNull)
-  clientNom      String?  @map("client_nom")
-  clientNif      String?  @map("client_nif")
-  clientAdreca   String?  @map("client_adreca")
-  clientLocalitat String? @map("client_localitat")
-  compte       String? // IBAN / número de compte on pagar (opcional)
-  notes        String?
-  base         Decimal  @default(0) @db.Decimal(10, 2)
-  ivaPercent   Decimal  @default(21) @map("iva_percent") @db.Decimal(5, 2)
-  iva          Decimal  @default(0) @db.Decimal(10, 2)
-  total        Decimal  @default(0) @db.Decimal(10, 2)
+  estanciaId      String?   @map("estancia_id")
+  estancia        Estancia? @relation(fields: [estanciaId], references: [id], onDelete: SetNull)
+  clientNom       String?   @map("client_nom")
+  clientNif       String?   @map("client_nif")
+  clientAdreca    String?   @map("client_adreca")
+  clientLocalitat String?   @map("client_localitat")
+  compte          String? // IBAN / número de compte on pagar (opcional)
+  notes           String?
+  base            Decimal   @default(0) @db.Decimal(10, 2)
+  ivaPercent      Decimal   @default(21) @map("iva_percent") @db.Decimal(5, 2)
+  iva             Decimal   @default(0) @db.Decimal(10, 2)
+  total           Decimal   @default(0) @db.Decimal(10, 2)
 
   linies LiniaPressupost[]
 
@@ -1296,18 +1323,18 @@ model TarifaTipus {
 // Es genera de les factures, l'usuari el pot editar a la impressió i desar-lo;
 // queda un registre de tots els trimestres desats (un per període, s'actualitza).
 model LlibreIvaTrimestre {
-  id         String  @id @default(cuid())
-  periode    String  @unique // "2026-3"
-  any        Int
-  trimestre  Int
-  etiqueta   String
-  files      Json // files d'ingressos editades (array de FilaIngres)
-  gastos     Json? // files de despeses/facturas soportadas editades (array de FilaGasto)
-  libroGastos Json? @map("libro_gastos") // Libro de gastos editat: { rows, removedCols, widths }
-  totalBase  Decimal @db.Decimal(12, 2)
-  totalIva   Decimal @db.Decimal(12, 2)
-  totalTotal Decimal @db.Decimal(12, 2)
-  usuariId   String? @map("usuari_id")
+  id          String  @id @default(cuid())
+  periode     String  @unique // "2026-3"
+  any         Int
+  trimestre   Int
+  etiqueta    String
+  files       Json // files d'ingressos editades (array de FilaIngres)
+  gastos      Json? // files de despeses/facturas soportadas editades (array de FilaGasto)
+  libroGastos Json?   @map("libro_gastos") // Libro de gastos editat: { rows, removedCols, widths }
+  totalBase   Decimal @db.Decimal(12, 2)
+  totalIva    Decimal @db.Decimal(12, 2)
+  totalTotal  Decimal @db.Decimal(12, 2)
+  usuariId    String? @map("usuari_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

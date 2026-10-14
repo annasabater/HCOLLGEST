@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db';
 import { authorize } from '@/lib/auth/guard';
 import { ok, badRequest, handleApiError } from '@/lib/http';
 import { toISODate } from '@/lib/dates';
+import { whereTocaHabitacio, tramsSolapats, SELECT_CANVIS } from '@/lib/habitacio-trams';
 
 // GET /api/habitacions/conflicte?habitacioId=&desde=YYYY-MM-DD&fins=YYYY-MM-DD&exclou=
 // Retorna les estades que se solapen amb (habitació + rang de dates). Mateix dia de
@@ -28,7 +29,7 @@ export async function GET(req: Request) {
     const estancies = await prisma.estancia.findMany({
       where: {
         deletedAt: null,
-        habitacioId,
+        ...whereTocaHabitacio(habitacioId),
         estat: { not: 'CANCELLADA' },
         ...(exclou ? { id: { not: exclou } } : {}),
         // Solapament d'intervals [dataEntrada, dataSortida): entrada < fins i sortida > desde.
@@ -43,6 +44,8 @@ export async function GET(req: Request) {
         estat: true,
         dataEntrada: true,
         dataSortida: true,
+        habitacioId: true,
+        ...SELECT_CANVIS,
         viatgers: {
           where: { esTitular: true },
           take: 1,
@@ -51,7 +54,8 @@ export async function GET(req: Request) {
       },
     });
 
-    const conflictes = estancies.map((e) => {
+    // Només el tram que l'hoste era en aquesta habitació (canvis d'habitació).
+    const conflictes = estancies.filter((e) => tramsSolapats(e, desde, fins, { habitacioId }).length > 0).map((e) => {
       const h = e.viatgers[0]?.huesped;
       return {
         id: e.id,

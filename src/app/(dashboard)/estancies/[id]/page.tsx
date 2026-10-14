@@ -19,6 +19,8 @@ import { Badge } from '@/components/ui/badge';
 import { EstanciaActions } from '@/components/estancia/estancia-actions';
 import { ViatgerFirma } from '@/components/estancia/viatger-firma';
 import { AmpliarEstada } from '@/components/estancia/ampliar-estada';
+import { CanviHabitacio, HistorialHabitacio } from '@/components/estancia/canvi-habitacio';
+import { tramsHabitacio } from '@/lib/habitacio-trams';
 import { FinalitzarAnticipada } from '@/components/estancia/finalitzar-anticipada';
 import { EliminarEstada } from '@/components/estancia/eliminar-estada';
 import { TreureEsborrany } from '@/components/estancia/treure-esborrany';
@@ -61,6 +63,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
       },
       enviaments: { orderBy: { createdAt: 'desc' } },
       habitacio: true,
+      canvisHabitacio: { orderBy: { data: 'asc' }, select: { id: true, data: true, habitacioAnteriorId: true } },
       factures: { where: { deletedAt: null }, orderBy: { data: 'desc' } },
       cobraments: { include: { factura: { select: { numero: true } }, periodes: true }, orderBy: { data: 'asc' } },
       diposits: { include: { factura: { select: { numero: true, esDiposit: true } }, periodes: true }, orderBy: { createdAt: 'desc' } },
@@ -259,6 +262,19 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             {canWrite && estancia.estat === 'RESERVA' && (
               <ConvertirAEnCurs estanciaId={estancia.id} numContracteActual={estancia.numContracte} />
             )}
+            {canWrite &&
+              estancia.estat !== 'CANCELLADA' &&
+              estancia.estat !== 'FINALITZADA' &&
+              estancia.dataEntrada &&
+              estancia.dataSortida && (
+                <CanviHabitacio
+                  estanciaId={estancia.id}
+                  dataEntrada={toISODate(estancia.dataEntrada)}
+                  dataSortida={toISODate(estancia.dataSortida)}
+                  habitacions={habitacions}
+                  actualHabitacioId={estancia.habitacioId}
+                />
+              )}
             <AmpliarEstada
               estanciaId={estancia.id}
               defaultEntrada={estancia.dataSortida ? toISODate(estancia.dataSortida) : ''}
@@ -379,7 +395,18 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 <Dl
                   label="Habitació"
                   value={
-                    habitacioLlibreEst && habitacioLlibreEst !== estancia.habitacio?.nom
+                    estancia.canvisHabitacio.length > 0 ? (
+                      <HistorialHabitacio
+                        estanciaId={estancia.id}
+                        canWrite={canWrite}
+                        ultimCanviId={estancia.canvisHabitacio[estancia.canvisHabitacio.length - 1]!.id}
+                        trams={tramsHabitacio(estancia).map((t) => ({
+                          habitacio: habitacions.find((h) => h.id === t.habitacioId)?.nom ?? '—',
+                          desde: t.desde ? toISODate(t.desde) : null,
+                          fins: t.fins ? toISODate(t.fins) : null,
+                        }))}
+                      />
+                    ) : habitacioLlibreEst && habitacioLlibreEst !== estancia.habitacio?.nom
                       ? `${estancia.habitacio?.nom ?? '—'} · al llibre: ${habitacioLlibreEst}`
                       : estancia.habitacio?.nom
                   }

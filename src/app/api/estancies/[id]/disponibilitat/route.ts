@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db';
 import { authorize } from '@/lib/auth/guard';
 import { ok, badRequest, handleApiError, notFound } from '@/lib/http';
 import { toISODate } from '@/lib/dates';
+import { WHERE_AMB_HABITACIO, tramsHabitacio, SELECT_CANVIS } from '@/lib/habitacio-trams';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -42,21 +43,26 @@ export async function GET(req: Request, ctx: Ctx) {
       prisma.estancia.findMany({
         where: {
           deletedAt: null,
-          habitacioId: { not: null },
+          ...WHERE_AMB_HABITACIO,
           id: { notIn: chainIds },
           dataSortida: { gt: desde },
         },
         orderBy: { dataEntrada: 'asc' },
-        select: { habitacioId: true, dataEntrada: true },
+        select: { habitacioId: true, dataEntrada: true, dataSortida: true, ...SELECT_CANVIS },
       }),
     ]);
 
     const occupatRoom = new Set<string>();
     const firstFutureByRoom = new Map<string, Date>();
-    for (const o of ocupacions) {
-      if (!o.habitacioId) continue;
-      if (o.dataEntrada && o.dataEntrada <= desde) occupatRoom.add(o.habitacioId);
-      else if (o.dataEntrada && !firstFutureByRoom.has(o.habitacioId)) firstFutureByRoom.set(o.habitacioId, o.dataEntrada);
+    // Per trams d'habitació (un canvi a mitja estada allibera l'antiga i ocupa la nova).
+    const trams = ocupacions
+      .flatMap((o) => tramsHabitacio(o))
+      .filter((t) => t.habitacioId && t.fins && t.fins > desde)
+      .sort((a, b) => (a.desde?.getTime() ?? 0) - (b.desde?.getTime() ?? 0));
+    for (const t of trams) {
+      if (!t.habitacioId) continue;
+      if (t.desde && t.desde <= desde) occupatRoom.add(t.habitacioId);
+      else if (t.desde && !firstFutureByRoom.has(t.habitacioId)) firstFutureByRoom.set(t.habitacioId, t.desde);
     }
 
     const rooms = habitacions.map((h) => {
