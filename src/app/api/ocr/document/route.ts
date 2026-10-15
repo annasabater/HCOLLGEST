@@ -224,7 +224,10 @@ export async function POST(req: Request) {
           "és que aquest l'envia més petita/reduïda (la MRZ queda massa petita). Puja la foto original " +
           'sencera (des del mòbil, o desactiva a l\'iPad «Optimitza l\'emmagatzematge» a Configuració → Fotos).',
       );
-      return Response.json({ result, warnings, mrzLines }, { status: 422 });
+      // Sense cap línia MRZ reconeguda: retornem la resposta crua del model (només
+      // a l'usuari que ha fet la foto, no es registra enlloc) per poder diagnosticar.
+      const raw = mrzLines.length === 0 ? text.slice(0, 600) : undefined;
+      return Response.json({ result, warnings, mrzLines, raw }, { status: 422 });
     }
 
     return Response.json({ result, warnings, mrzLines });

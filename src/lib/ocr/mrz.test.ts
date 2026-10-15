@@ -38,6 +38,22 @@ describe('parseMrz — TD3 (passaport)', () => {
     expect(v.cognom1).toBe('Eriksson');
     expect(v.valid).toBe(true);
   });
+
+  it('accepta la línia 1 escurçada (l\'OCR es menja els «<» de farciment)', () => {
+    const curta = TD3[0]!.replace(/<+$/, '');
+    const r = parseMrz(findMrzLines(`${curta}\n${TD3[1]}`))!;
+    expect(r.format).toBe('TD3');
+    expect(r.cognom1).toBe('Eriksson');
+    expect(r.nom).toBe('Anna Maria');
+    expect(r.valid).toBe(true);
+  });
+
+  it('normalitza variants del «<» i restes de JSON', () => {
+    const raw = TD3.map((l) => `  "${l.replace(/</g, '‹')}",`).join('\n');
+    const r = parseMrz(findMrzLines(raw))!;
+    expect(r.numDocument).toBe('L898902C3');
+    expect(r.valid).toBe(true);
+  });
 });
 
 describe('parseMrz — TD1 (DNI/NIE)', () => {

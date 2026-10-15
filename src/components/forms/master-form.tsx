@@ -204,6 +204,9 @@ export function MasterForm({
   const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [confirmReset, setConfirmReset] = useState(false);
+  // S'incrementa en buidar el formulari: remunta l'escàner de documents perquè no
+  // conservi el missatge ni l'estat de la lectura anterior.
+  const [resetCount, setResetCount] = useState(0);
   // Confirmacions en un diàleg de l'app (el confirm() del navegador falla a la tauleta i
   // aleshores «Desar» semblava no fer res).
   const [dlgConfirma, setDlgConfirma] = useState<{
@@ -238,6 +241,7 @@ export function MasterForm({
     setServerError(null);
     setWarnings([]);
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignorar */ }
+    setResetCount((n) => n + 1);
     setConfirmReset(false);
   }
 
@@ -1178,6 +1182,7 @@ export function MasterForm({
                   creix (miniatures/OCR) no descol·loqui els camps a Safari (iPad). */}
               {!esReserva && (
                 <DocumentScanner
+                  key={resetCount}
                   onExtract={(ocr) => applyOcr(i, ocr)}
                   onImage={(file) => addDoc(i, file)}
                   docs={v._docs ?? []}

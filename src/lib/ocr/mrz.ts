@@ -132,20 +132,46 @@ function sexFrom(c: string): 'HOME' | 'DONA' | undefined {
   return undefined;
 }
 
+/**
+ * Línia 1 d'un passaport (TD3) que l'OCR ha escurçat: el model sovint es menja
+ * part dels «<» de farciment del final. El nom no porta dígit de control, així
+ * que n'hi ha prou que hi hagi tipus + país + «cognoms<<nom».
+ */
+const TD3_L1_CURTA = /^P[A-Z<][A-Z<]{3}[A-Z<]*<<[A-Z<]*$/;
+/** Línia 2 d'un passaport (TD3): núm. document + dígit + nacionalitat + naixement… */
+const TD3_L2 = /^[A-Z0-9<]{9}[0-9][A-Z<]{3}[0-9]{6}[0-9][MF<][0-9]{6}[0-9]/;
+
+const esCandidataMrz = (l: string) =>
+  /^[A-Z0-9<]+$/.test(l) && ((l.length >= 28 && l.includes('<')) || TD3_L1_CURTA.test(l));
+
 /** Localitza les línies MRZ dins del text complet de l'OCR. */
 export function findMrzLines(text: string): string[] {
   return text
     .split(/\r?\n/)
-    .map((l) => l.replace(/\s+/g, '').toUpperCase())
-    .filter((l) => /^[A-Z0-9<]+$/.test(l) && l.length >= 28 && l.includes('<'));
+    .map((l) =>
+      l
+        .replace(/\s+/g, '')
+        .toUpperCase()
+        // Variants tipogràfiques del «<» que de vegades retorna l'OCR.
+        .replace(/[‹«＜〈⟨❮˂]/g, '<')
+        // Restes de JSON quan la línia ve del text cru ("…<<", [ ]).
+        .replace(/^[["',]+|[\]"',]+$/g, ''),
+    )
+    .filter(esCandidataMrz);
 }
 
 /** Intenta parsejar una MRZ (TD1 o TD3) a partir de les línies candidates. */
 export function parseMrz(lines: string[]): MrzResult | null {
-  const cand = lines.filter((l) => /^[A-Z0-9<]+$/.test(l) && l.includes('<') && l.length >= 28);
+  const cand = lines.filter(esCandidataMrz);
 
-  // TD3 (passaport): 2 línies ~44.
-  const td3 = cand.filter((l) => l.length >= 40);
+  // TD3 (passaport): 2 línies ~44. Si la línia 1 ha arribat escurçada, s'agafa la
+  // línia «P…<<…» anterior a la línia 2 (que sí és sencera i porta els dígits de control).
+  let td3 = cand.filter((l) => l.length >= 40);
+  const iL2 = cand.findIndex((l) => l.length >= 40 && TD3_L2.test(l));
+  if (iL2 > 0 && !(td3.length >= 2 && TD3_L2.test(td3[1]!))) {
+    const l1 = cand.slice(0, iL2).reverse().find((l) => l.startsWith('P'));
+    if (l1) td3 = [l1, cand[iL2]!];
+  }
   if (td3.length >= 2) {
     const l1 = pad(td3[0]!, 44);
     const l2 = pad(td3[1]!, 44);

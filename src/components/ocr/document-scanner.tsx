@@ -76,7 +76,8 @@ export function DocumentScanner({
     void grid.offsetHeight;
   }, [docs, msg, busy, previews]);
 
-  async function processFile(file: File) {
+  /** Llegeix una imatge i autoreplena. Retorna true si n'ha tret dades. */
+  async function processFile(file: File): Promise<boolean> {
     setBusy(true);
     setProgress(10);
     setMsg(null);
@@ -93,7 +94,7 @@ export function DocumentScanner({
         // segurament la cara del davant (sense MRZ): NO espantem ni sobreescrivim.
         if (readOk) {
           setMsg({ tone: 'ok', text: 'Aquesta cara no té MRZ (p.ex. el davant): s\'ha desat com a foto. Les dades ja s\'han llegit de l\'altra cara.' });
-          return;
+          return false;
         }
         // 422: s'ha desat la foto però no s'ha pogut llegir la MRZ. El cos porta
         // `warnings` amb el motiu concret (sense MRZ / dígits no quadren).
@@ -101,10 +102,12 @@ export function DocumentScanner({
         let mrz: string[] | undefined;
         let detail = '';
         try {
-          const j = (await res.json()) as { error?: string; warnings?: string[]; mrzLines?: string[] };
+          const j = (await res.json()) as { error?: string; warnings?: string[]; mrzLines?: string[]; raw?: string };
           if (j.warnings && j.warnings.length > 0) items = j.warnings;
           else if (j.error) detail = ` (${j.error})`;
           if (j.mrzLines && j.mrzLines.length > 0) mrz = j.mrzLines;
+          // Cap línia MRZ reconeguda: ensenya què ha respost el lector (diagnòstic).
+          else if (j.raw) mrz = ['Resposta del lector:', j.raw];
         } catch { /* ignore */ }
         setMsg({
           tone: 'warn',
@@ -114,7 +117,7 @@ export function DocumentScanner({
           items,
           mrz,
         });
-        return;
+        return false;
       }
 
       const { result, warnings, mrzLines } = (await res.json()) as {
@@ -129,14 +132,14 @@ export function DocumentScanner({
         // Si ja teníem una lectura bona, no la trepitgem amb un avís.
         if (readOk) {
           setMsg({ tone: 'ok', text: 'Aquesta cara no té MRZ: s\'ha desat com a foto. Les dades ja s\'han llegit de l\'altra cara.' });
-          return;
+          return false;
         }
         setMsg({
           tone: 'warn',
           text: "Document desat, però no s'han pogut llegir les dades. Fes una foto nítida i ben enquadrada. Pots omplir-ho a mà.",
           mrz: mrzLines,
         });
-        return;
+        return false;
       }
 
       onExtract({ ...result, warnings });
@@ -156,20 +159,25 @@ export function DocumentScanner({
           mrz: mrzLines,
         });
       }
+      return true;
     } catch {
       setMsg({ tone: 'warn', text: "Document desat, però no s'ha pogut llegir el text per autoreplenar." });
+      return false;
     } finally {
       setBusy(false);
     }
   }
 
-  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     e.target.value = ''; // permet tornar a triar el mateix fitxer
     for (const file of files) onImage?.(file); // desa cada foto/fitxer com a document
-    // OCR (autoreplenat) només amb la primera imatge, i només si està activat.
-    const first = files[0];
-    if (autoreplenar && first && first.type.startsWith('image/')) processFile(first);
+    if (!autoreplenar) return;
+    // OCR (autoreplenat): prova les imatges en ordre fins que una en doni dades
+    // (p. ex. DNI anvers + revers triats junts: l'anvers no té MRZ, el revers sí).
+    for (const file of files.filter((f) => f.type.startsWith('image/'))) {
+      if (await processFile(file)) break;
+    }
   }
 
   const opts = optionsFrom(tipusDocumentPujatValues, TIPUS_DOCUMENT_PUJAT_LABELS);
