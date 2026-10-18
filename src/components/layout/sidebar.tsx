@@ -19,6 +19,7 @@ import {
   Tag,
   Wallet,
  Landmark,
+  Calculator,
 } from 'lucide-react';
 import type { Role } from '@prisma/client';
 import { cn } from '@/lib/utils';
@@ -56,6 +57,7 @@ const GROUPS: NavGroup[] = [
       { href: '/plantilles', label: 'Plantilles', icon: MessageCircle },
       { href: '/personal', label: 'Treballadors', icon: UserCog, roles: ['ADMIN'], hideRestringit: true },
       { href: '/balanc', label: 'Balanç', icon: PiggyBank, roles: ['ADMIN'] },
+      { href: '/impostos', label: 'Impostos', icon: Calculator, roles: ['ADMIN'] },
       { href: '/factures', label: 'Facturació', icon: Receipt },
       { href: '/pressupostos', label: 'Pressupostos', icon: FileText, roles: ['ADMIN'] },
       { href: '/tarifes', label: 'Tarifes', icon: Tag, roles: ['ADMIN'] },

@@ -1,0 +1,557 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, Copy, Check, ExternalLink, FileText, Undo2, CalendarClock, AlertTriangle } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
+import { formatEur, cn } from '@/lib/utils';
+import type { Caselles, ModelFiscal, PerTipus } from '@/lib/impostos';
+import type { ImpostosAny, ModelInfo, TrimestreInfo } from '@/lib/services/impostos';
+
+type Unitat = 'eur' | 'pct' | 'n';
+interface Fila { c: string; text: string; u?: Unitat; clau?: boolean }
+
+/** Caselles que es mostren de cada model, en l'ordre del formulari de l'AEAT. */
+const FILES: Record<ModelFiscal, Fila[]> = {
+  '303': [
+    { c: '01', text: 'Base imposable al 4 %' }, { c: '02', text: 'Tipus', u: 'pct' }, { c: '03', text: 'Quota al 4 %' },
+    { c: '04', text: 'Base imposable al 10 % (allotjament)' }, { c: '05', text: 'Tipus', u: 'pct' }, { c: '06', text: 'Quota al 10 %' },
+    { c: '07', text: 'Base imposable al 21 %' }, { c: '08', text: 'Tipus', u: 'pct' }, { c: '09', text: 'Quota al 21 %' },
+    { c: '27', text: 'Total quota meritada' },
+    { c: '28', text: 'Base IVA suportat (operacions interiors corrents)' },
+    { c: '29', text: 'Quota suportada deduïble' },
+    { c: '45', text: 'Total a deduir' },
+    { c: '46', text: 'Resultat règim general (27 − 45)' },
+    { c: '64', text: 'Suma de resultats' },
+    { c: '65', text: 'Atribuïble a l’Administració de l’Estat', u: 'pct' },
+    { c: '66', text: 'Atribuïble a l’Administració de l’Estat' },
+    { c: '110', text: 'Quotes a compensar de períodes anteriors' },
+    { c: '78', text: 'Quotes a compensar aplicades en aquest període' },
+    { c: '87', text: 'Quotes a compensar pendents per a períodes posteriors' },
+    { c: '69', text: 'Resultat de l’autoliquidació (66 − 78)' },
+    { c: '71', text: 'Resultat', clau: true },
+    { c: '72', text: 'A compensar en els trimestres següents', clau: true },
+    { c: '73', text: 'A retornar (només al 4T)', clau: true },
+  ],
+  '130': [
+    { c: '01', text: 'Ingressos acumulats (de l’1 de gener a final del trimestre)' },
+    { c: '02', text: 'Despeses deduïbles acumulades' },
+    { c: '03', text: 'Rendiment net (01 − 02)' },
+    { c: '04', text: '20 % del rendiment net' },
+    { c: '05', text: 'Pagaments dels trimestres anteriors (07 presentats)' },
+    { c: '06', text: 'Retencions que t’han practicat' },
+    { c: '07', text: 'Pagament fraccionat del trimestre (04 − 05 − 06)' },
+    { c: '12', text: 'Suma de pagaments fraccionats (07 + 11)' },
+    { c: '13', text: 'Minoració art. 110.3.c del Reglament' },
+    { c: '14', text: 'Diferència (12 − 13)' },
+    { c: '15', text: 'Resultats negatius de trimestres anteriors' },
+    { c: '16', text: 'Adquisició o rehabilitació de l’habitatge habitual' },
+    { c: '17', text: 'Total (14 − 15 − 16)' },
+    { c: '18', text: 'Resultat de l’anterior autoliquidació (només complementària)' },
+    { c: '19', text: 'Resultat de l’autoliquidació (17 − 18)', clau: true },
+  ],
+  '115': [
+    { c: '01', text: 'Nombre de perceptors (propietaris)', u: 'n' },
+    { c: '02', text: 'Base de les retencions (lloguer sense IVA)' },
+    { c: '03', text: 'Retencions i ingressos a compte' },
+    { c: '04', text: 'A deduir (només complementària)' },
+    { c: '05', text: 'Resultat a ingressar', clau: true },
+  ],
+  '390': [
+    { c: '01', text: 'Base al 4 % (règim ordinari)' }, { c: '02', text: 'Quota al 4 %' },
+    { c: '03', text: 'Base al 10 % (règim ordinari)' }, { c: '04', text: 'Quota al 10 %' },
+    { c: '05', text: 'Base al 21 % (règim ordinari)' }, { c: '06', text: 'Quota al 21 %' },
+    { c: '33', text: 'Total bases IVA meritat' }, { c: '34', text: 'Total quotes IVA meritat' },
+    { c: '47', text: 'Total quotes d’IVA i recàrrec d’equivalència' },
+    { c: '190', text: 'Deduïble interiors corrents · base al 4 %' }, { c: '191', text: 'Quota al 4 %' },
+    { c: '603', text: 'Deduïble interiors corrents · base al 10 %' }, { c: '604', text: 'Quota al 10 %' },
+    { c: '605', text: 'Deduïble interiors corrents · base al 21 %' }, { c: '606', text: 'Quota al 21 %' },
+    { c: '48', text: 'Total base deduïble operacions interiors corrents' },
+    { c: '49', text: 'Total quota deduïble operacions interiors corrents' },
+    { c: '64', text: 'Suma de deduccions' },
+    { c: '65', text: 'Resultat règim general (47 − 64)' },
+    { c: '84', text: 'Suma de resultats' },
+    { c: '85', text: 'Compensació de quotes de l’exercici anterior' },
+    { c: '86', text: 'Resultat de la liquidació (84 − 85)', clau: true },
+    { c: '95', text: 'Total a ingressar als 303 de l’any' },
+    { c: '97', text: 'Últim 303: a compensar' },
+    { c: '98', text: 'Últim 303: a retornar' },
+    { c: '99', text: 'Operacions en règim general' },
+    { c: '108', text: 'Volum d’operacions', clau: true },
+  ],
+  '180': [
+    { c: '01', text: 'Nombre de perceptors', u: 'n' },
+    { c: '02', text: 'Base de les retencions de l’any' },
+    { c: '03', text: 'Retencions de l’any', clau: true },
+  ],
+};
+
+const TITOL: Record<ModelFiscal, { nom: string; sub: string }> = {
+  '303': { nom: 'Model 303 · IVA', sub: 'Només el trimestre' },
+  '130': { nom: 'Model 130 · IRPF a compte', sub: 'Acumulat de l’any, menys el ja pagat' },
+  '115': { nom: 'Model 115 · Retencions del lloguer', sub: 'El 19 % retingut a la propietària del local' },
+  '390': { nom: 'Model 390 · Resum anual d’IVA', sub: 'Informatiu: suma dels quatre 303' },
+  '180': { nom: 'Model 180 · Resum anual del lloguer', sub: 'Informatiu: suma dels quatre 115' },
+};
+
+/** Fitxa del tràmit a la Seu electrònica de l'AEAT. */
+const SEU: Partial<Record<ModelFiscal, string>> = {
+  '303': 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml',
+  '130': 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml',
+  '115': 'https://sede.agenciatributaria.gob.es/Sede/procedimientos/GH02.shtml',
+  '390': 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G412.shtml',
+};
+
+const dataCurta = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+const avuiIso = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const diesFins = (iso: string) => Math.round((Date.parse(`${iso}T00:00:00Z`) - Date.parse(`${avuiIso()}T00:00:00Z`)) / 86_400_000);
+/** Format per enganxar a la Seu: "12880,94" (coma decimal, sense milers). */
+const perCopiar = (n: number) => n.toFixed(2).replace('.', ',');
+
+function valor(n: number, u: Unitat = 'eur') {
+  if (u === 'pct') return `${n.toLocaleString('es-ES', { minimumFractionDigits: 2 })} %`;
+  if (u === 'n') return String(n);
+  return formatEur(n);
+}
+
+/** Què vol dir el resultat del model (a ingressar, a compensar…). */
+function resultat(m: ModelInfo, c: Caselles): { import: number; text: string; tone: 'danger' | 'success' | 'neutral' | 'info' } {
+  switch (m.model) {
+    case '303':
+      if ((c['71'] ?? 0) > 0) return { import: c['71']!, text: 'A ingressar', tone: 'danger' };
+      if (c['72']) return { import: c['72'], text: 'A compensar (no pagues res)', tone: 'success' };
+      if (c['73']) return { import: c['73'], text: 'A retornar (o a compensar)', tone: 'success' };
+      return { import: 0, text: 'Resultat zero', tone: 'neutral' };
+    case '130':
+      return (c['19'] ?? 0) > 0
+        ? { import: c['19']!, text: 'A ingressar', tone: 'danger' }
+        : { import: 0, text: 'Resultat zero (no pagues res)', tone: 'neutral' };
+    case '115':
+      return { import: c['05'] ?? 0, text: (c['05'] ?? 0) > 0 ? 'A ingressar' : 'Sense retencions', tone: (c['05'] ?? 0) > 0 ? 'danger' : 'neutral' };
+    case '390':
+      return { import: c['86'] ?? 0, text: 'Informativa (no es paga res)', tone: 'info' };
+    case '180':
+      return { import: c['03'] ?? 0, text: 'Informativa (no es paga res)', tone: 'info' };
+  }
+}
+
+function EstatBadge({ m }: { m: ModelInfo }) {
+  if (m.estat === 'presentada') return <Badge tone="success">Presentada</Badge>;
+  if (m.estat === 'no_cal') return <Badge>No cal</Badge>;
+  if (m.estat === 'futur') return <Badge>Encara no</Badge>;
+  if (m.estat === 'en_curs') return <Badge tone="info">Trimestre en curs</Badge>;
+  const n = diesFins(m.termini);
+  if (n < 0) return <Badge tone="danger">Fora de termini</Badge>;
+  return <Badge tone="warning">{n === 0 ? 'Avui és l’últim dia' : `Pendent · queden ${n} dies`}</Badge>;
+}
+
+function BotoCopia({ n }: { n: number }) {
+  const [fet, setFet] = useState(false);
+  return (
+    <button
+      type="button"
+      title="Copia per enganxar a la Seu"
+      className={cn('ml-2 inline-flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-400 hover:border-brand-300 hover:text-brand-700', fet && 'border-green-300 text-green-700')}
+      onClick={() => {
+        void navigator.clipboard?.writeText(perCopiar(n)).catch(() => {});
+        setFet(true);
+        setTimeout(() => setFet(false), 1200);
+      }}
+    >
+      {fet ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+    </button>
+  );
+}
+
+function ModelCard({ m, any, onCanvi, extra }: { m: ModelInfo; any: number; onCanvi: () => Promise<void>; extra?: React.ReactNode }) {
+  const [edit, setEdit] = useState<Record<string, string> | null>(null);
+  const [justificant, setJustificant] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const c = m.presentada?.caselles ?? m.calculades;
+  // Totes les caselles calculades; les de compensació del 303 només si s'usen.
+  const files = FILES[m.model].filter(
+    (f) => c[f.c] !== undefined && !(m.model === '303' && ['110', '78', '87'].includes(f.c) && c[f.c] === 0),
+  );
+  const r = resultat(m, c);
+  const titol = TITOL[m.model];
+  const avisDifereix = m.difereix ? resultat(m, m.calculades) : null;
+
+  async function desa() {
+    if (!edit) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const caselles = Object.fromEntries(
+        Object.entries(edit).map(([k, v]) => [k, Number(String(v).replace(/\./g, '').replace(',', '.')) || 0]),
+      );
+      await postJSON('/api/impostos/declaracions', { model: m.model, any, periode: m.periode, caselles, justificant });
+      setEdit(null);
+      await onCanvi();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : 'No s’ha pogut desar');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function desfes() {
+    if (!confirm('Vols desmarcar aquesta autoliquidació com a presentada?')) return;
+    setBusy(true);
+    try {
+      await delJSON(`/api/impostos/declaracions?model=${m.model}&any=${any}&periode=${m.periode}`);
+      await onCanvi();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card className={cn(m.estat === 'no_cal' && 'opacity-70')}>
+      <CardHeader className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <CardTitle>{titol.nom}</CardTitle>
+          <p className="text-xs text-slate-500">{titol.sub}</p>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <EstatBadge m={m} />
+          <span className="flex items-center gap-1 text-xs text-slate-500">
+            <CalendarClock className="h-3.5 w-3.5" /> Termini: {dataCurta(m.termini)}
+          </span>
+        </div>
+      </CardHeader>
+      <CardBody>
+        {m.estat === 'no_cal' ? (
+          <p className="text-sm text-slate-500">
+            {m.model === '115' || m.model === '180' ? 'No hi ha cap lloguer amb retenció en aquest període.' : 'Sense activitat en aquest període: no cal presentar-lo.'}
+          </p>
+        ) : (
+          <>
+            <div className="mb-3 flex items-baseline justify-between gap-3 rounded-lg bg-brand-50 px-4 py-3">
+              <span className="text-sm font-medium text-slate-700">{r.text}</span>
+              <span className={cn('text-2xl font-semibold tabular-nums', r.tone === 'danger' ? 'text-brand-800' : r.tone === 'success' ? 'text-green-700' : 'text-slate-800')}>
+                {formatEur(r.import)}
+              </span>
+            </div>
+
+            {m.presentada && (
+              <p className="mb-3 text-xs text-green-800">
+                Presentada el {dataCurta(m.presentada.presentadaEl)}
+                {m.presentada.justificant ? ` · justificant ${m.presentada.justificant}` : ''}. Es mostren les caselles tal com es van presentar.
+              </p>
+            )}
+            {avisDifereix && (
+              <p className="mb-3 flex gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                Amb les dades d’avui sortiria {formatEur(avisDifereix.import)} ({avisDifereix.text.toLowerCase()}). Si has canviat factures o gastos d’aquest període després de presentar-la, pot caldre una complementària.
+              </p>
+            )}
+
+            <table className="w-full text-sm">
+              <tbody>
+                {(edit ? FILES[m.model].filter((f) => edit[f.c] !== undefined) : files).map((f) => {
+                  const v = c[f.c] ?? 0;
+                  return (
+                    <tr key={f.c} className={cn('border-t border-slate-100', f.clau && 'bg-slate-50 font-semibold')}>
+                      <td className="w-12 py-1.5 pr-2 align-middle">
+                        <span className="inline-block min-w-9 rounded border border-brand-300 px-1 text-center text-[11px] font-semibold text-brand-700">{f.c}</span>
+                      </td>
+                      <td className="py-1.5 pr-2 text-slate-700">{f.text}</td>
+                      <td className="whitespace-nowrap py-1.5 text-right tabular-nums">
+                        {edit ? (
+                          <Input
+                            className="h-8 w-32 text-right"
+                            value={edit[f.c]}
+                            onChange={(e) => setEdit({ ...edit, [f.c]: e.target.value })}
+                          />
+                        ) : (
+                          <>
+                            <span className={cn(v < 0 && 'text-green-700')}>{valor(v, f.u)}</span>
+                            {f.u !== 'pct' && <BotoCopia n={v} />}
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {extra}
+
+            {edit && (
+              <div className="mt-3 space-y-2 rounded-lg border border-slate-200 p-3">
+                <p className="text-xs text-slate-600">
+                  Posa les xifres <b>exactament</b> com les has presentat a la Seu (si hi has tocat algun cèntim, corregeix-lo aquí). Els trimestres següents faran servir aquests imports.
+                </p>
+                <Input placeholder="Núm. de justificant (opcional)" value={justificant} onChange={(e) => setJustificant(e.target.value)} />
+                {err && <p className="text-xs text-red-700">{err}</p>}
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => void desa()} disabled={busy}>Desa com a presentada</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEdit(null)}>Cancel·la</Button>
+                </div>
+              </div>
+            )}
+
+            {!edit && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {SEU[m.model] && (
+                  <a href={SEU[m.model]} target="_blank" rel="noreferrer">
+                    <Button size="sm" variant="outline"><ExternalLink className="h-4 w-4" /> Seu electrònica</Button>
+                  </a>
+                )}
+                {m.presentada ? (
+                  <Button size="sm" variant="ghost" onClick={() => void desfes()} disabled={busy}><Undo2 className="h-4 w-4" /> Desmarca</Button>
+                ) : (
+                  m.estat !== 'futur' && (
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        setEdit(Object.fromEntries(FILES[m.model].filter((f) => m.calculades[f.c] !== undefined).map((f) => [f.c, perCopiar(m.calculades[f.c]!)])))
+                      }
+                    >
+                      Marca com a presentada
+                    </Button>
+                  )
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </CardBody>
+    </Card>
+  );
+}
+
+function sumaTipus(p: PerTipus) {
+  return Object.entries(p)
+    .filter(([, v]) => v.base !== 0)
+    .map(([pct, v]) => `${formatEur(v.base)} al ${pct} %`)
+    .join(' · ');
+}
+
+function OrigenDades({ t, any }: { t: TrimestreInfo; any: number }) {
+  const g = t.totals.gastos;
+  return (
+    <Card className="mb-4">
+      <CardBody className="text-sm">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="font-medium text-slate-700">
+            D’on surten les xifres del {t.trimestre}T: Llibre d’IVA del {dataCurta(t.inici)} al {dataCurta(t.fi)}
+            {t.llibreDesat && <Badge tone="info" className="ml-2">versió desada (editada)</Badge>}
+          </p>
+          <a href={`/imprimir/trimestre-ingressos/${any}-${t.trimestre}`} target="_blank" rel="noreferrer">
+            <Button size="sm" variant="outline"><FileText className="h-4 w-4" /> Obre el llibre d’IVA</Button>
+          </a>
+        </div>
+        <div className="grid gap-x-6 gap-y-1 text-slate-600 sm:grid-cols-2">
+          <p>Ingressos (base): <b className="text-slate-800">{formatEur(t.totals.ingressos.base)}</b> · IVA {formatEur(t.totals.ingressos.iva)}</p>
+          <p>Gastos amb IVA (base): <b className="text-slate-800">{formatEur(g.baseAmbIva)}</b> · IVA {formatEur(g.iva)}</p>
+          <p>Gastos sense IVA (només 130): <b className="text-slate-800">{formatEur(g.senseIva)}</b></p>
+          <p>Nòmines (només 130): <b className="text-slate-800">{formatEur(g.nomines)}</b></p>
+          {g.baseAmbIva !== 0 && <p className="sm:col-span-2 text-xs text-slate-500">IVA suportat per tipus: {sumaTipus(g.perTipus)}</p>}
+        </div>
+        <p className="mt-2 text-xs text-slate-500">
+          Les fiances no compten mai (ni els gastos marcats com a fiança ni la fiança inclosa en una factura). Els cobraments sense factura tampoc: fes-los factura perquè entrin al llibre.
+        </p>
+      </CardBody>
+    </Card>
+  );
+}
+
+export default function ImpostosPage() {
+  const [any, setAny] = useState(() => new Date().getFullYear());
+  const [d, setD] = useState<ImpostosAny | null>(null);
+  const [tab, setTab] = useState<string | null>(null);
+  const [refCad, setRefCad] = useState('');
+  const [refMsg, setRefMsg] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const r = await getJSON<ImpostosAny>(`/api/impostos?any=${any}`);
+    setD(r);
+    setRefCad(r.referenciaCadastral);
+  }, [any]);
+  useEffect(() => { setD(null); void load(); }, [load]);
+
+  // Proper termini pendent (el que toca presentar ara).
+  const proper = useMemo(() => {
+    if (!d) return null;
+    const pendents = [
+      ...d.trimestres.flatMap((t) => Object.values(t.models).map((m) => ({ m, etiqueta: `${m.model} del ${t.trimestre}T` }))),
+      ...Object.values(d.anual).map((m) => ({ m, etiqueta: m.model })),
+    ].filter((x) => x.m.estat === 'pendent');
+    if (pendents.length === 0) return null;
+    const minim = pendents.reduce((a, x) => (x.m.termini < a ? x.m.termini : a), pendents[0]!.m.termini);
+    return { termini: minim, quins: pendents.filter((x) => x.m.termini === minim).map((x) => x.etiqueta) };
+  }, [d]);
+
+  const tabPerDefecte = useMemo(() => {
+    if (!d) return '1';
+    const pend = d.trimestres.find((t) => Object.values(t.models).some((m) => m.estat === 'pendent'));
+    if (pend) return String(pend.trimestre);
+    const curs = d.trimestres.find((t) => t.models['303'].estat === 'en_curs');
+    return curs ? String(curs.trimestre) : 'anual';
+  }, [d]);
+  const actiu = tab ?? tabPerDefecte;
+  const trim = d?.trimestres.find((t) => String(t.trimestre) === actiu) ?? null;
+
+  async function desaRefCad() {
+    setRefMsg(null);
+    try {
+      await patchJSON('/api/impostos', { referenciaCadastral: refCad });
+      setRefMsg('Desada');
+      await load();
+    } catch (e) {
+      setRefMsg(e instanceof ApiError ? e.message : 'No s’ha pogut desar');
+    }
+  }
+
+  const estatTab = (ms: ModelInfo[]) =>
+    ms.some((m) => m.estat === 'pendent') ? 'bg-amber-500' : ms.every((m) => m.estat === 'presentada' || m.estat === 'no_cal') && ms.some((m) => m.estat === 'presentada') ? 'bg-green-600' : 'bg-slate-300';
+
+  return (
+    <>
+      <PageHeader
+        title="Impostos"
+        subtitle={d ? `${d.titular.nom}${d.titular.nif ? ` · NIF ${d.titular.nif}` : ''} · calculat del Llibre d’IVA de cada trimestre` : 'Carregant…'}
+        actions={
+          <div className="flex items-center gap-1">
+            <Button size="sm" variant="ghost" onClick={() => { setTab(null); setAny(any - 1); }} aria-label="Any anterior"><ChevronLeft className="h-4 w-4" /></Button>
+            <span className="min-w-14 text-center font-semibold">{any}</span>
+            <Button size="sm" variant="ghost" onClick={() => { setTab(null); setAny(any + 1); }} aria-label="Any següent"><ChevronRight className="h-4 w-4" /></Button>
+          </div>
+        }
+      />
+
+      {proper && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <CalendarClock className="h-4 w-4 shrink-0" />
+          <span>
+            <b>Proper termini: {dataCurta(proper.termini)}</b>
+            {diesFins(proper.termini) >= 0 ? ` (${diesFins(proper.termini) === 0 ? 'avui' : `en ${diesFins(proper.termini)} dies`})` : ' (ja ha passat!)'} — {proper.quins.join(', ')}.
+          </span>
+        </div>
+      )}
+
+      {d && (
+        <div className="mb-4 flex gap-1 overflow-x-auto border-b border-slate-200">
+          {d.trimestres.map((t) => (
+            <button
+              key={t.trimestre}
+              type="button"
+              onClick={() => setTab(String(t.trimestre))}
+              className={cn('flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-semibold', actiu === String(t.trimestre) ? 'border-brand-700 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-800')}
+            >
+              <span className={cn('h-2 w-2 rounded-full', estatTab(Object.values(t.models)))} />
+              {t.trimestre}T
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setTab('anual')}
+            className={cn('flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-semibold', actiu === 'anual' ? 'border-brand-700 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-800')}
+          >
+            <span className={cn('h-2 w-2 rounded-full', estatTab(Object.values(d.anual)))} />
+            Anual · 390 i 180
+          </button>
+        </div>
+      )}
+
+      {!d && <p className="text-sm text-slate-500">Calculant…</p>}
+
+      {d && trim && (
+        <>
+          <OrigenDades t={trim} any={any} />
+          <div className="grid gap-4 xl:grid-cols-3">
+            <ModelCard m={trim.models['303']} any={any} onCanvi={load} />
+            <ModelCard
+              m={trim.models['130']}
+              any={any}
+              onCanvi={load}
+              extra={
+                <p className="mt-3 text-xs text-slate-500">
+                  Les despeses van sense IVA i inclouen també els gastos que no en porten. La quota d’autònoms i la Seguretat Social no es registren al gestio: si en pagues, entra-les com a gasto perquè restin.
+                </p>
+              }
+            />
+            <ModelCard
+              m={trim.models['115']}
+              any={any}
+              onCanvi={load}
+              extra={
+                trim.totals.lloguer.length > 0 && (
+                  <p className="mt-3 text-xs text-slate-500">
+                    Retencions dels gastos amb IRPF del trimestre ({[...new Set(trim.totals.lloguer.map((l) => l.nom))].join(', ')}). L’import ja te l’has quedat en pagar el lloguer: ara el passes a Hisenda.
+                  </p>
+                )
+              }
+            />
+          </div>
+        </>
+      )}
+
+      {d && actiu === 'anual' && (
+        <div className="grid gap-4 xl:grid-cols-2">
+          <ModelCard
+            m={d.anual['390']}
+            any={any}
+            onCanvi={load}
+            extra={
+              <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                <p className="font-medium text-slate-700">Dades estadístiques (apartat 3)</p>
+                <p>Activitat principal: servei d’hostalatge en hostals i pensions · Clau <b>A03</b> (resta d’activitats empresarials) · Epígraf IAE <b>682</b> (comprova’l a la teva alta censal).</p>
+                <p className="mt-1">Els imports del 4T entren quan s’acabi l’any; fins llavors el 390 és provisional.</p>
+              </div>
+            }
+          />
+          <ModelCard
+            m={d.anual['180']}
+            any={any}
+            onCanvi={load}
+            extra={
+              <div className="mt-3 space-y-3 text-xs text-slate-600">
+                {d.anual['180'].perceptors.length > 0 && (
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left text-slate-500">
+                        <th className="py-1">Perceptor</th><th>NIF</th><th className="text-right">Base</th><th className="text-right">%</th><th className="text-right">Retenció</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {d.anual['180'].perceptors.map((p) => (
+                        <tr key={p.nif || p.nom} className="border-t border-slate-100">
+                          <td className="py-1">{p.nom}</td>
+                          <td>{p.nif || <span className="italic text-orange-700">falta</span>}</td>
+                          <td className="text-right tabular-nums">{formatEur(p.base)}</td>
+                          <td className="text-right">{p.percent} %</td>
+                          <td className="text-right tabular-nums">{formatEur(p.retencio)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                <div>
+                  <p className="mb-1 font-medium text-slate-700">Referència cadastral del local (obligatòria al 180)</p>
+                  <div className="flex gap-2">
+                    <Input className="h-8" placeholder="20 caràcters, la trobaràs al rebut de l’IBI" value={refCad} onChange={(e) => setRefCad(e.target.value.toUpperCase())} />
+                    <Button size="sm" variant="outline" onClick={() => void desaRefCad()}>Desa</Button>
+                  </div>
+                  {refMsg && <p className="mt-1">{refMsg}</p>}
+                  <p className="mt-1">Situació de l’immoble: <b>1</b> (amb referència cadastral, a territori comú). Modalitat: dinerària.</p>
+                </div>
+              </div>
+            }
+          />
+        </div>
+      )}
+    </>
+  );
+}

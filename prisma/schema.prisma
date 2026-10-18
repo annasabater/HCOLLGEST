@@ -260,6 +260,8 @@ model Establiment {
   descriptor     String? // subtítol del membret (p. ex. "Pensió · Calella")
   facturaTitular String? @map("factura_titular") // p. ex. "Elisabet Nualart Coll"
   facturaNif     String? @map("factura_nif") // NIF de facturació (pot diferir del `cif` de Mossos)
+  // Referència cadastral del local llogat (model 180: resum anual de retencions del lloguer).
+  referenciaCadastral String? @map("referencia_cadastral")
 
   // Google Drive — token de refresc (xifrat) per a l'export mensual automàtic,
   // i l'id de la carpeta arrel on es desa l'estructura d'arxiu.
@@ -1459,4 +1461,28 @@ model EdicioDocument {
 
   @@unique([tipus, ref])
   @@map("edicio_document")
+}
+
+// ----------------------------------------------------------------------------
+// IMPOSTOS: autoliquidacions presentades (303, 130, 115 trimestrals; 390, 180 anuals)
+// ----------------------------------------------------------------------------
+
+// Instantània de les caselles TAL COM ES VAN PRESENTAR a la Seu de l'AEAT. Els
+// trimestres següents en llegeixen els imports reals (casella 05 del 130, quotes a
+// compensar del 303), encara que el gestio d'avui calculi un cèntim diferent.
+model DeclaracioFiscal {
+  id           String   @id @default(cuid())
+  model        String // "303" | "130" | "115" | "390" | "180"
+  any          Int
+  periode      Int // 1–4 = trimestre; 0 = anual
+  caselles     Json // { "01": 12880.94, ... }
+  justificant  String? // núm. de justificant de l'AEAT
+  presentadaEl DateTime @map("presentada_el")
+  usuariId     String?  @map("usuari_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([model, any, periode])
+  @@map("declaracio_fiscal")
 }

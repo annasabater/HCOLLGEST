@@ -106,14 +106,20 @@ export async function getGastosSoportats(year: number, trimestre: number): Promi
   const gastos = await prisma.gasto.findMany({
     where: { deletedAt: null, esFianca: false, data: { gte: start, lte: end } },
     orderBy: [{ data: 'asc' }],
-    include: { proveidor: { select: { nom: true, cif: true } } },
+    include: { proveidor: { select: { nom: true, cif: true } }, categoria: { select: { nom: true } } },
   });
   // Una fila per tipus d'IVA: una factura amb aigua al 10% i conservació al 21%
   // surt en dues files amb el mateix número (com al llibre de factures rebudes).
   // L'IRPF (lloguers) es reparteix sobre la base de cada línia.
   return gastos.flatMap((g) => {
     const irpfPercent = g.irpfPercent != null ? Number(g.irpfPercent) : 0;
-    const linies = liniesIva(g);
+    // Assegurances i tributs no porten IVA: si no s'ha desglossat a mà, tot el
+    // total és base al 0% (com al Libro de gastos), no un 21% inclòs per defecte.
+    const senseIva =
+      esCategoriaSenseIva(g.categoria?.nom ?? '') && g.baseImposable == null && g.desglossamentIva == null;
+    const linies = senseIva
+      ? [{ base: round2(Number(g.import)), ivaPercent: 0, iva: 0 }]
+      : liniesIva(g);
     return linies.map((l) => {
       const irpf = round2(l.base * (irpfPercent / 100));
       return {
@@ -204,14 +210,20 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
       const total = Number(f.total);
       const esAbono = total < 0 || f.rectificaId != null;
       // Document de dipòsit: ocupa el seu número a la sèrie, però base/IVA/total 0.
+      // Factura amb la fiança SUMADA al total (fiscal sempre, simplificada "amb
+      // fiança"): la fiança no és ingrés, així que surt a la columna de dipòsit i
+      // la base/IVA es calculen sense ella.
+      const fiancaDins = !f.esDiposit && f.fiancaInclosa
+        ? round2(f.diposits.reduce((a, x) => a + Number(x.import), 0))
+        : 0;
       const diposit = f.esDiposit
         ? round2(
             (f.diposits.length > 0 ? f.diposits : f.linies).reduce((a, x) => a + Number(x.import), 0),
           )
-        : 0;
+        : fiancaDins;
       const { base, iva, ivaPercent } = f.esDiposit
         ? { base: 0, iva: 0, ivaPercent: 0 }
-        : desglossaIva(total, Number(f.base), Number(f.iva));
+        : desglossaIva(round2(total - fiancaDins), round2(Number(f.base) - fiancaDins), Number(f.iva));
       const periode =
         periodeDelText(f.linies.map((l) => `${l.descripcio ?? ''} ${l.detall ?? ''}`).join(' ')) ??
         (f.estancia?.dataEntrada && f.estancia?.dataSortida
@@ -314,6 +326,12 @@ const CATEGORIA_A_COLUMNA: Record<string, ColumnaGasto> = {
 
 function columnaPerCategoria(nom: string): ColumnaGasto {
   return CATEGORIA_A_COLUMNA[nom.trim().toLowerCase()] ?? 'gastosVarios';
+}
+
+/** Categories que no porten IVA (assegurances, tributs locals). */
+function esCategoriaSenseIva(nom: string): boolean {
+  const col = columnaPerCategoria(nom);
+  return col === 'otrosSinIva' || col === 'impuestoLocal';
 }
 
 export interface FilaLibroGasto {
