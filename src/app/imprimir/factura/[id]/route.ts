@@ -82,7 +82,7 @@ export async function GET(
   // Titular/NIF/adreça de l'emissor: els de l'establiment (config) si n'hi ha,
   // si no el valor històric per defecte. (Aquesta pantalla no té "Desar canvis":
   // una factura fiscal no s'edita des d'aquí un cop generada.)
-  const emTitular = esc(factura.emissorTitular || establiment?.facturaTitular || 'Elisabet Nualart Coll');
+  const emTitular = esc(factura.emissorTitular || establiment?.facturaTitular || 'Elisabeth Nualart Coll');
   const emNif = esc(factura.emissorNif || `NIF ${establiment?.facturaNif || '38835174L'}`);
   const emAdreca = esc(factura.emissorAdreca || establiment?.adreca || 'C/ Sant Isidre, 54');
   const emLocalitat = esc(

@@ -11,7 +11,8 @@ import { Input } from '@/components/ui/input';
 import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { formatEur, cn } from '@/lib/utils';
 import { CONCEPTES_100, type Caselles, type Concepte100, type ModelFiscal, type PerTipus } from '@/lib/impostos';
-import type { ImpostosAny, ModelInfo, TrimestreInfo } from '@/lib/services/impostos';
+import type { ImpostosAny, Ieet950, ModelInfo, TrimestreInfo } from '@/lib/services/impostos';
+import type { AvisBoe } from '@/lib/services/boe-formularis';
 
 type Unitat = 'eur' | 'pct' | 'n';
 interface Fila { c: string; text: string; u?: Unitat; clau?: boolean }
@@ -107,6 +108,13 @@ const SEU: Partial<Record<ModelFiscal, string>> = {
   '390': 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G412.shtml',
 };
 
+/** D'on surt el formulari oficial que s'omple (annex del BOE). */
+const FONT_FORMULARI: Partial<Record<ModelFiscal, string>> = {
+  '303': 'BOE Orden HAC/27/2026',
+  '390': 'BOE Orden HAC/27/2026',
+  '130': 'BOE Orden HAP/258/2015',
+};
+
 const dataCurta = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 const avuiIso = () => {
   const d = new Date();
@@ -143,7 +151,7 @@ function resultat(m: ModelInfo, c: Caselles): { import: number; text: string; to
   }
 }
 
-function EstatBadge({ m }: { m: ModelInfo }) {
+function EstatBadge({ m }: { m: Pick<ModelInfo, 'estat' | 'termini'> }) {
   if (m.estat === 'presentada') return <Badge tone="success">Presentada</Badge>;
   if (m.estat === 'no_cal') return <Badge>No cal</Badge>;
   if (m.estat === 'futur') return <Badge>Encara no</Badge>;
@@ -331,8 +339,13 @@ function ModelCard({ m, any, onCanvi, extra }: { m: ModelInfo; any: number; onCa
 
             {!edit && (
               <div className="mt-4 flex flex-wrap gap-2">
-                {(m.model === '303' || m.model === '130' || m.model === '390') && (
-                  <a href={`/api/impostos/formulari?model=${m.model}&any=${any}&periode=${m.periode}`} target="_blank" rel="noreferrer">
+                {FONT_FORMULARI[m.model] && (
+                  <a
+                    href={`/api/impostos/formulari?model=${m.model}&any=${any}&periode=${m.periode}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={`Formulari oficial: ${FONT_FORMULARI[m.model]}`}
+                  >
                     <Button size="sm" variant="outline"><Download className="h-4 w-4" /> Formulari oficial (PDF)</Button>
                   </a>
                 )}
@@ -432,6 +445,115 @@ function RendaCard({ r, any }: { r: ImpostosAny['renda']; any: number }) {
   );
 }
 
+function Ieet950Card({ t, onCanvi }: { t: Ieet950; onCanvi: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const [anyClau, sem] = t.clau.split('-').map(Number) as [number, number];
+  async function marca(presentar: boolean) {
+    setBusy(true);
+    try {
+      if (presentar) {
+        await postJSON('/api/impostos/declaracions', { model: '950', any: anyClau, periode: sem, caselles: { nits: t.nits, import: t.import } });
+      } else {
+        if (!confirm('Vols desmarcar el 950 com a presentat?')) return;
+        await delJSON(`/api/impostos/declaracions?model=950&any=${anyClau}&periode=${sem}`);
+      }
+      await onCanvi();
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Card className="xl:col-span-3">
+      <CardHeader className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <CardTitle>Model 950 · Taxa turística (ATC)</CardTitle>
+          <p className="text-xs text-slate-500">Impost sobre les estades en establiments turístics · {t.etiqueta}</p>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <EstatBadge m={t} />
+          <span className="flex items-center gap-1 text-xs text-slate-500">
+            <CalendarClock className="h-3.5 w-3.5" /> Termini: {dataCurta(t.termini)}
+          </span>
+        </div>
+      </CardHeader>
+      <CardBody>
+        {t.estat === 'futur' ? (
+          <p className="text-sm text-slate-500">El període encara no ha començat.</p>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div>
+              <div className="mb-3 flex items-baseline justify-between gap-3 rounded-lg bg-brand-50 px-4 py-3">
+                <span className="text-sm font-medium text-slate-700">{t.import > 0 ? 'A ingressar' : 'Sense estades que paguin'}</span>
+                <span className="text-2xl font-semibold tabular-nums text-brand-800">{formatEur(t.import)}</span>
+              </div>
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="border-t border-slate-100"><td className="py-1.5 text-slate-700">Persones allotjades</td><td className="text-right tabular-nums">{t.persones}</td></tr>
+                  <tr className="border-t border-slate-100"><td className="py-1.5 text-slate-700">Persones que paguen</td><td className="text-right tabular-nums">{t.personesPaguen}</td></tr>
+                  <tr className="border-t border-slate-100"><td className="py-1.5 text-slate-700">Nits que paguen (unitats d’estada)</td><td className="text-right tabular-nums">{t.nits}<BotoCopia n={t.nits} /></td></tr>
+                  <tr className="border-t border-slate-100"><td className="py-1.5 text-slate-700">Tarifa per persona i nit</td><td className="text-right tabular-nums">{formatEur(t.tarifa)}</td></tr>
+                  <tr className="border-t border-slate-100 bg-slate-50 font-semibold"><td className="py-1.5">Quota ({t.nits} × {formatEur(t.tarifa)})</td><td className="text-right tabular-nums">{formatEur(t.import)}<BotoCopia n={t.import} /></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="space-y-2 text-xs text-slate-600">
+              {t.incompletes > 0 && (
+                <p className="flex gap-2 rounded-lg bg-amber-50 px-3 py-2 text-amber-900">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  {t.incompletes} {t.incompletes === 1 ? 'estada té' : 'estades tenen'} dades del viatger incompletes. Omple-les a Taxa turística abans de presentar.
+                </p>
+              )}
+              {t.presentada && <p className="text-green-800">Presentat el {dataCurta(t.presentada.presentadaEl)}.</p>}
+              <p>Es presenta a l’Agència Tributària de Catalunya (e-tributs) amb el codi del Registre de Turisme de l’hostal. El detall de les estades és a la pàgina Taxa turística (Excel i PDF).</p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Link href="/taxa-turistica"><Button size="sm" variant="outline"><FileText className="h-4 w-4" /> Obre la taxa turística</Button></Link>
+                <a href="https://atc.gencat.cat/ca/tributs/impost-estades-turistiques/" target="_blank" rel="noreferrer">
+                  <Button size="sm" variant="outline"><ExternalLink className="h-4 w-4" /> ATC</Button>
+                </a>
+                {t.presentada ? (
+                  <Button size="sm" variant="ghost" onClick={() => void marca(false)} disabled={busy}><Undo2 className="h-4 w-4" /> Desmarca</Button>
+                ) : (
+                  t.estat !== 'no_cal' && <Button size="sm" onClick={() => void marca(true)} disabled={busy}>Marca com a presentat</Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </CardBody>
+    </Card>
+  );
+}
+
+function AvisosBoe({ avisos, onCanvi }: { avisos: AvisBoe[]; onCanvi: () => Promise<void> }) {
+  if (avisos.length === 0) return null;
+  return (
+    <div className="mb-4 space-y-2">
+      {avisos.map((a) => (
+        <div key={a.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          <span className="flex gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              <b>Nova ordre al BOE ({dataCurta(a.data)}) sobre els models {a.models.join(', ')}.</b> Pot canviar caselles dels formularis: cal revisar-los abans de presentar.{' '}
+              <a href={a.url} target="_blank" rel="noreferrer" className="underline">{a.id}</a>
+              <span className="mt-1 block text-xs text-red-800">{a.titol.slice(0, 220)}{a.titol.length > 220 ? '…' : ''}</span>
+            </span>
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              await postJSON('/api/avisos/descartar', { tipus: 'BOE_FORMULARI', entitatId: a.id });
+              await onCanvi();
+            }}
+          >
+            Revisat
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function sumaTipus(p: PerTipus) {
   return Object.entries(p)
     .filter(([, v]) => v.base !== 0)
@@ -488,6 +610,7 @@ export default function ImpostosPage() {
     const pendents = [
       ...d.trimestres.flatMap((t) => Object.values(t.models).map((m) => ({ m, etiqueta: `${m.model} del ${t.trimestre}T` }))),
       ...Object.values(d.anual).map((m) => ({ m, etiqueta: m.model })),
+      ...d.trimestres.flatMap((t) => (t.ieet ? [{ m: t.ieet, etiqueta: `950 (${t.ieet.etiqueta.toLowerCase()})` }] : [])),
     ].filter((x) => x.m.estat === 'pendent');
     if (pendents.length === 0) return null;
     const minim = pendents.reduce((a, x) => (x.m.termini < a ? x.m.termini : a), pendents[0]!.m.termini);
@@ -531,6 +654,8 @@ export default function ImpostosPage() {
           </div>
         }
       />
+
+      {d && <AvisosBoe avisos={d.avisosBoe} onCanvi={load} />}
 
       {proper && (
         <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -595,6 +720,7 @@ export default function ImpostosPage() {
                 )
               }
             />
+            {trim.ieet && <Ieet950Card t={trim.ieet} onCanvi={load} />}
           </div>
         </>
       )}

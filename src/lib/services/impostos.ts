@@ -17,8 +17,32 @@ import {
 } from '../impostos';
 import { liniesIva } from '../gasto-iva';
 import { esCategoriaSenseIva, getFiancesSoportades, getGastosSoportats, getLlibreIngressos, rangTrimestre } from './llibre-iva';
+import { getIeetPeriode } from './ieet';
+import { avisosBoePendents, type AvisBoe } from './boe-formularis';
+import { infoPeriode } from '../ieet';
 
 export type EstatModel = 'presentada' | 'pendent' | 'en_curs' | 'futur' | 'no_cal';
+
+/**
+ * Model 950 (ATC): taxa turística, SEMESTRAL. Surt a la pestanya del trimestre en
+ * què es paga: abril–setembre al 3T (1–20 d'octubre) i octubre–març al 1T (1–20 d'abril).
+ */
+export interface Ieet950 {
+  clau: string; // "2026-1"
+  etiqueta: string;
+  inici: string;
+  fi: string;
+  termini: string;
+  estat: EstatModel;
+  persones: number;
+  personesPaguen: number;
+  nits: number;
+  import: number;
+  tarifa: number;
+  /** Estades amb dades del viatger incompletes (cal omplir-les a Taxa turística). */
+  incompletes: number;
+  presentada: { caselles: Caselles; justificant: string | null; presentadaEl: string } | null;
+}
 
 export interface ModelInfo {
   model: ModelFiscal;
@@ -39,6 +63,8 @@ export interface TrimestreInfo {
   llibreDesat: boolean;
   totals: TotalsTrimestre;
   models: { '303': ModelInfo; '130': ModelInfo; '115': ModelInfo };
+  /** Taxa turística que es paga en aquest trimestre (només 1T i 3T). */
+  ieet: Ieet950 | null;
 }
 
 export interface ImpostosAny {
@@ -46,6 +72,8 @@ export interface ImpostosAny {
   /** Titular tal com consta a l'AEAT (nom i cognoms per separat, com al 130). */
   titular: { nom: string; cognoms: string; nif: string };
   referenciaCadastral: string;
+  /** Ordres noves del BOE sobre aquests models, encara per revisar. */
+  avisosBoe: AvisBoe[];
   trimestres: TrimestreInfo[];
   anual: { '390': ModelInfo; '180': ModelInfo & { perceptors: Perceptor[] } };
   /** Renda (model 100): només la part de l'activitat de l'hostal. */
@@ -146,10 +174,11 @@ const totalGastos130 = (t: TotalsTrimestre) => round2(t.gastos.baseAmbIva + t.ga
 export async function getImpostosAny(any: number, avui = new Date()): Promise<ImpostosAny> {
   const [establiment, declaracions] = await Promise.all([
     prisma.establiment.findFirst({ select: { facturaTitular: true, facturaNif: true, nom: true, referenciaCadastral: true } }),
-    prisma.declaracioFiscal.findMany({ where: { any } }),
+    // L'any anterior també: el 950 d'octubre–març es paga l'abril de l'any següent.
+    prisma.declaracioFiscal.findMany({ where: { any: { in: [any - 1, any] } } }),
   ]);
-  const presentada = (model: ModelFiscal, periode: number) => {
-    const d = declaracions.find((x) => x.model === model && x.periode === periode);
+  const presentada = (model: ModelFiscal | '950', periode: number, anyDecl = any) => {
+    const d = declaracions.find((x) => x.model === model && x.periode === periode && x.any === anyDecl);
     return d
       ? { caselles: d.caselles as unknown as Caselles, justificant: d.justificant, presentadaEl: d.presentadaEl.toISOString() }
       : null;
@@ -171,6 +200,28 @@ export async function getImpostosAny(any: number, avui = new Date()): Promise<Im
       difereix: !!p && Math.abs((p.caselles[clau] ?? 0) - (calculades[clau] ?? 0)) >= 0.01,
     };
   };
+
+  async function ieet950(clau: string): Promise<Ieet950> {
+    const p = infoPeriode(clau);
+    const [anyClau, sem] = clau.split('-').map(Number) as [number, number];
+    const decl = presentada('950', sem, anyClau);
+    const futur = avuiIso < p.inici;
+    const d = futur ? null : await getIeetPeriode(clau, avui);
+    const r = d?.resum;
+    let estat: EstatModel;
+    if (decl) estat = 'presentada';
+    else if (futur) estat = 'futur';
+    else if (avuiIso <= p.fi) estat = 'en_curs';
+    else if (!r || r.personesPaguen === 0) estat = 'no_cal';
+    else estat = 'pendent';
+    return {
+      clau, etiqueta: p.etiqueta, inici: p.inici, fi: p.fi, termini: p.pagamentFins, estat,
+      persones: r?.persones ?? 0, personesPaguen: r?.personesPaguen ?? 0, nits: r?.nitsPaguen ?? 0,
+      import: round2(r?.import ?? 0), tarifa: d?.config.tarifa ?? 0,
+      incompletes: d?.files.filter((f) => f.falten.length > 0).length ?? 0,
+      presentada: decl,
+    };
+  }
 
   const trimestres: TrimestreInfo[] = [];
   let pendent303 = 0;
@@ -223,7 +274,8 @@ export async function getImpostosAny(any: number, avui = new Date()): Promise<Im
     }
 
     per390.push({ totals, c303: efectiu303 });
-    trimestres.push({ trimestre: t, inici, fi, llibreDesat, totals, models: { '303': m303, '130': m130, '115': m115 } });
+    const ieet = t === 3 ? await ieet950(`${any}-1`) : t === 1 ? await ieet950(`${any - 1}-2`) : null;
+    trimestres.push({ trimestre: t, inici, fi, llibreDesat, totals, models: { '303': m303, '130': m130, '115': m115 }, ieet });
   }
 
   const fiAny = `${any}-12-31`;
@@ -239,6 +291,7 @@ export async function getImpostosAny(any: number, avui = new Date()): Promise<Im
     any,
     titular: titularFiscal(establiment?.facturaNif),
     referenciaCadastral: establiment?.referenciaCadastral ?? '',
+    avisosBoe: await avisosBoePendents(),
     trimestres,
     anual: { '390': m390, '180': { ...m180, perceptors: perceptorsAny } },
     renda: await renda(any, acumIngressos, pagaments130),

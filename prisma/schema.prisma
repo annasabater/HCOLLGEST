@@ -258,7 +258,7 @@ model Establiment {
   telefon        String?
   iban           String?
   descriptor     String? // subtítol del membret (p. ex. "Pensió · Calella")
-  facturaTitular String? @map("factura_titular") // p. ex. "Elisabet Nualart Coll"
+  facturaTitular String? @map("factura_titular") // p. ex. "Elisabeth Nualart Coll"
   facturaNif     String? @map("factura_nif") // NIF de facturació (pot diferir del `cif` de Mossos)
   // Referència cadastral del local llogat (model 180: resum anual de retencions del lloguer).
   referenciaCadastral String? @map("referencia_cadastral")

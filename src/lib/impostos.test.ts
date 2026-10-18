@@ -164,3 +164,13 @@ describe('termini', () => {
     expect(termini('180', 2026, 0)).toBe('2027-02-01'); // 31/01/2027 és diumenge
   });
 });
+
+describe('vigilància del BOE', () => {
+  it('detecta els models vigilats al títol', async () => {
+    const { modelsDelTitol } = await import('./boe-formularis');
+    expect(modelsDelTitol('Orden HAC/27/2026, por la que se modifican ... el modelo 303 Impuesto sobre el Valor Añadido ... el modelo 390 de Declaración-resumen anual')).toEqual(['303', '390']);
+    expect(modelsDelTitol('Orden por la que se aprueba el modelo 100 de declaración del IRPF, ejercicio 2026')).toEqual(['100']);
+    expect(modelsDelTitol('Real Decreto 1303/2026 de subvenciones')).toEqual([]);
+    expect(modelsDelTitol('Orden sobre modelos 1303 y 2390')).toEqual([]);
+  });
+});

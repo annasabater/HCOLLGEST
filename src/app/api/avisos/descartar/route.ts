@@ -15,6 +15,7 @@ const Schema = z.object({
     'FACTURAR',
     'SERVEI_FACTURA',
     'COBRAMENT',
+    'BOE_FORMULARI', // ordre nova del BOE sobre un model d'impostos (/impostos)
   ]),
   entitatId: z.string().min(1),
 });
