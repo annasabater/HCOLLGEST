@@ -82,15 +82,9 @@ export interface DadesFormulari {
   /** 1–4 = trimestre (303, 130); 0 = anual (390). */
   periode: number;
   caselles: Caselles;
-  titular: { nom: string; nif: string };
+  titular: { nom: string; cognoms: string; nif: string };
   /** 390: activitat, clau i epígraf IAE. */
   activitat?: { descripcio: string; clau: string; epigraf: string };
-}
-
-/** Separa "Elisabet Nualart Coll" en nom ("Elisabet") i cognoms ("Nualart Coll"). */
-function nomICognoms(nom: string): { nom: string; cognoms: string } {
-  const parts = nom.trim().split(/\s+/);
-  return { nom: parts[0] ?? '', cognoms: parts.slice(1).join(' ') };
 }
 
 export async function formulariOmplert(d: DadesFormulari): Promise<Uint8Array> {
@@ -102,19 +96,15 @@ export async function formulariOmplert(d: DadesFormulari): Promise<Uint8Array> {
   const form = FORMULARIS[d.model];
   const extra = EXTRA[d.model];
 
-  // Capçalera: NIF i nom a cada pàgina (el 130 separa nom i cognoms).
-  const cognomsNom = (() => {
-    const { nom, cognoms } = nomICognoms(d.titular.nom);
-    return `${cognoms} ${nom}`.trim().toUpperCase();
-  })();
+  // Capçalera: NIF i «cognoms nom» a cada pàgina (el 130 separa nom i cognoms).
+  const cognomsNom = `${d.titular.cognoms} ${d.titular.nom}`.trim().toUpperCase();
   form.capcalera.forEach((c, i) => {
     if (c.nif) escriu(pages, font, [i, ...c.nif], d.titular.nif.toUpperCase(), { esquerra: true });
     if (c.nom) escriu(pages, font, [i, ...c.nom], cognomsNom, { esquerra: true });
   });
   if (d.model === '130') {
-    const { nom, cognoms } = nomICognoms(d.titular.nom);
-    escriu(pages, font, extra.nom!, nom.toUpperCase(), { esquerra: true });
-    escriu(pages, font, extra.cognoms!, cognoms.toUpperCase(), { esquerra: true });
+    escriu(pages, font, extra.nom!, d.titular.nom.toUpperCase(), { esquerra: true });
+    escriu(pages, font, extra.cognoms!, d.titular.cognoms.toUpperCase(), { esquerra: true });
   }
   if (d.model === '390') {
     escriu(pages, font, extra.nom!, cognomsNom, { esquerra: true });
@@ -139,6 +129,6 @@ export async function formulariOmplert(d: DadesFormulari): Promise<Uint8Array> {
   const ingres = d.model === '303' ? d.caselles['71'] : d.model === '130' ? d.caselles['19'] : undefined;
   if (ingres !== undefined && ingres > 0 && extra.ingres) escriu(pages, bold, extra.ingres, fmt(ingres));
 
-  pdf.setTitle(`Model ${d.model} ${d.any}${d.periode ? ` ${d.periode}T` : ''} — ${d.titular.nom}`);
+  pdf.setTitle(`Model ${d.model} ${d.any}${d.periode ? ` ${d.periode}T` : ''} — ${cognomsNom}`);
   return pdf.save();
 }

@@ -488,7 +488,7 @@ export default function ImpostosPage() {
     <>
       <PageHeader
         title="Impostos"
-        subtitle={d ? `${d.titular.nom}${d.titular.nif ? ` · NIF ${d.titular.nif}` : ''} · calculat del Llibre d’IVA de cada trimestre` : 'Carregant…'}
+        subtitle={d ? `${d.titular.cognoms} ${d.titular.nom} · NIF ${d.titular.nif} · calculat del Llibre d’IVA de cada trimestre` : 'Carregant…'}
         actions={
           <div className="flex items-center gap-1">
             <Button size="sm" variant="ghost" onClick={() => { setTab(null); setAny(any - 1); }} aria-label="Any anterior"><ChevronLeft className="h-4 w-4" /></Button>

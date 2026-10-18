@@ -43,7 +43,8 @@ export interface TrimestreInfo {
 
 export interface ImpostosAny {
   any: number;
-  titular: { nom: string; nif: string };
+  /** Titular tal com consta a l'AEAT (nom i cognoms per separat, com al 130). */
+  titular: { nom: string; cognoms: string; nif: string };
   referenciaCadastral: string;
   trimestres: TrimestreInfo[];
   anual: { '390': ModelInfo; '180': ModelInfo & { perceptors: Perceptor[] } };
@@ -54,6 +55,18 @@ export interface ImpostosAny {
     /** Gastos d'immobilitzat (mobiliari, electrodomèstics) que potser s'han d'amortitzar. */
     immobilitzat: number;
   };
+}
+
+/**
+ * Titular de les autoliquidacions TAL COM CONSTA A L'AEAT (impresos del 2T:
+ * NIF 38835174L · ELISABETH · NUALART COLL). El nom no surt del titular de
+ * facturació (/config), que a les factures s'escriu «Elisabet»: a Hisenda ha de
+ * coincidir amb el cens. El NIF de /config, si s'hi ha escrit, mana.
+ */
+const TITULAR_AEAT = { nom: 'ELISABETH', cognoms: 'NUALART COLL', nif: '38835174L' };
+
+function titularFiscal(facturaNif?: string | null): ImpostosAny['titular'] {
+  return { ...TITULAR_AEAT, nif: facturaNif?.trim().toUpperCase() || TITULAR_AEAT.nif };
 }
 
 /** Clau de casella del resultat de cada model (per detectar canvis). */
@@ -224,7 +237,7 @@ export async function getImpostosAny(any: number, avui = new Date()): Promise<Im
 
   return {
     any,
-    titular: { nom: establiment?.facturaTitular ?? establiment?.nom ?? '', nif: establiment?.facturaNif ?? '' },
+    titular: titularFiscal(establiment?.facturaNif),
     referenciaCadastral: establiment?.referenciaCadastral ?? '',
     trimestres,
     anual: { '390': m390, '180': { ...m180, perceptors: perceptorsAny } },
