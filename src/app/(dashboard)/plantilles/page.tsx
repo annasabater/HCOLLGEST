@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MessageCircle, Copy, Sparkles, Users, Phone, Hand, Mail, CheckCircle, RotateCcw } from 'lucide-react';
+import { MessageCircle, Copy, Sparkles, Users, Phone, Hand, Mail, CheckCircle, RotateCcw, Download, Landmark } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input, Select, Textarea } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { getJSON, patchJSON, postJSON, ApiError } from '@/lib/api';
 import { buildGraciesEmail } from '@/lib/email-templates';
 import { useRestringit } from '@/components/layout/restringit-context';
 import { addDays, toISODate } from '@/lib/dates';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatEur } from '@/lib/utils';
 import {
   fillTemplate,
   enviaWhatsApp,
@@ -136,12 +136,92 @@ export default function PlantillesPage() {
       <PageHeader title="Plantilles" subtitle="Missatges de WhatsApp per a neteja i hostes (multiidioma)" />
       <div className="space-y-6">
         <MeuWhatsApp />
+        {!restringit && <ImpostosFormularisCard />}
         <BenvingudaCard />
         {!restringit && <NetejaCard />}
         <HostesCard />
         <GraciesCard />
       </div>
     </div>
+  );
+}
+
+// --- Impostos: formularis oficials de l'AEAT omplerts ------------------------
+type ResumModel = { model: string; periode: number; termini: string; estat: string; calculades: Record<string, number>; presentada: { caselles: Record<string, number> } | null };
+type ResumImpostos = { trimestres: { trimestre: number; models: Record<'303' | '130' | '115', ResumModel> }[]; anual: Record<'390' | '180', ResumModel> };
+
+function resultatModel(m: ResumModel): string {
+  const c = m.presentada?.caselles ?? m.calculades;
+  if (m.estat === 'no_cal') return 'No cal presentar-lo';
+  if (m.model === '303') {
+    if ((c['71'] ?? 0) > 0) return `${formatEur(c['71'])} a ingressar`;
+    if (c['72']) return `${formatEur(c['72'])} a compensar`;
+    if (c['73']) return `${formatEur(c['73'])} a retornar`;
+    return 'Resultat zero';
+  }
+  if (m.model === '130') return (c['19'] ?? 0) > 0 ? `${formatEur(c['19'])} a ingressar` : 'Resultat zero';
+  if (m.model === '115') return `${formatEur(c['05'] ?? 0)} a ingressar`;
+  if (m.model === '390') return `Informatiu · volum d’operacions ${formatEur(c['108'] ?? 0)}`;
+  return `Informatiu · retencions ${formatEur(c['03'] ?? 0)}`;
+}
+
+function ImpostosFormularisCard() {
+  // Per defecte, el trimestre que toca presentar ara (l'anterior a l'actual).
+  const [{ any, trim }, setSel] = useState(() => {
+    const avui = new Date();
+    const t = Math.floor(avui.getMonth() / 3);
+    return t === 0 ? { any: avui.getFullYear() - 1, trim: 4 } : { any: avui.getFullYear(), trim: t };
+  });
+  const [d, setD] = useState<ResumImpostos | null>(null);
+  const [error, setError] = useState(false);
+  useEffect(() => {
+    setD(null);
+    getJSON<ResumImpostos>(`/api/impostos?any=${any}`).then(setD).catch(() => setError(true));
+  }, [any]);
+  if (error) return null; // només per a l'administració
+
+  const t = d?.trimestres.find((x) => x.trimestre === trim);
+  const anyActual = new Date().getFullYear();
+  const fila = (titol: string, m: ResumModel | undefined, oficial: boolean) => (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2">
+      <div>
+        <p className="text-sm font-medium text-slate-800">{titol}</p>
+        <p className="text-xs text-slate-500">
+          {m ? `${resultatModel(m)} · termini ${formatDate(m.termini)}${m.estat === 'presentada' ? ' · presentat' : ''}` : 'Carregant…'}
+        </p>
+      </div>
+      {oficial && m && m.estat !== 'no_cal' ? (
+        <a href={`/api/impostos/formulari?model=${m.model}&any=${any}&periode=${m.periode}`} target="_blank" rel="noreferrer">
+          <Button size="sm"><Download className="h-4 w-4" /> Formulari oficial omplert (PDF)</Button>
+        </a>
+      ) : (
+        <a href="/impostos"><Button size="sm" variant="outline">{oficial ? 'Obre Impostos' : 'Només per internet · caselles a Impostos'}</Button></a>
+      )}
+    </div>
+  );
+
+  return (
+    <CollapsibleCard title="Impostos · formularis oficials de l’AEAT" icon={<Landmark className="h-4 w-4 text-brand-600" />}>
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+        <Select value={String(any)} onChange={(e) => setSel({ any: Number(e.target.value), trim })} className="w-28">
+          {[anyActual - 1, anyActual].map((y) => <option key={y} value={y}>{y}</option>)}
+        </Select>
+        <Select value={String(trim)} onChange={(e) => setSel({ any, trim: Number(e.target.value) })} className="w-36">
+          {[1, 2, 3, 4].map((x) => <option key={x} value={x}>{x}r trimestre</option>)}
+        </Select>
+        <span className="text-xs text-slate-500">El formulari del BOE amb les caselles ja omplertes: copia-les a la Seu electrònica o imprimeix-lo.</span>
+      </div>
+      <div className="space-y-2">
+        {fila(`Model 303 · IVA · ${trim}T`, t?.models['303'], true)}
+        {fila(`Model 130 · IRPF · ${trim}T`, t?.models['130'], true)}
+        {fila(`Model 115 · retencions del lloguer · ${trim}T`, t?.models['115'], false)}
+        {fila(`Model 390 · resum anual d’IVA ${any}`, d?.anual['390'], true)}
+        {fila(`Model 180 · resum anual del lloguer ${any}`, d?.anual['180'], false)}
+      </div>
+      <p className="mt-3 text-xs text-slate-500">
+        El 115, el 180 i la renda (100) no tenen formulari oficial en PDF: es fan directament a la Seu electrònica (les caselles són a la pàgina Impostos). La taxa turística (950) es fa a la pàgina Taxa turística.
+      </p>
+    </CollapsibleCard>
   );
 }
 

@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Copy, Check, ExternalLink, FileText, Undo2, CalendarClock, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, Check, Download, ExternalLink, FileText, Undo2, CalendarClock, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -304,6 +304,11 @@ function ModelCard({ m, any, onCanvi, extra }: { m: ModelInfo; any: number; onCa
 
             {!edit && (
               <div className="mt-4 flex flex-wrap gap-2">
+                {(m.model === '303' || m.model === '130' || m.model === '390') && (
+                  <a href={`/api/impostos/formulari?model=${m.model}&any=${any}&periode=${m.periode}`} target="_blank" rel="noreferrer">
+                    <Button size="sm" variant="outline"><Download className="h-4 w-4" /> Formulari oficial (PDF)</Button>
+                  </a>
+                )}
                 {SEU[m.model] && (
                   <a href={SEU[m.model]} target="_blank" rel="noreferrer">
                     <Button size="sm" variant="outline"><ExternalLink className="h-4 w-4" /> Seu electrònica</Button>

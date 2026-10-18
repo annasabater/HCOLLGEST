@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
   },
   // Documentos de identidad y justificantes NUNCA en el bundle del cliente.
   serverExternalPackages: ['@prisma/client', 'bcryptjs', 'sharp', 'playwright-core'],
+  // Formularis oficials de l'AEAT (annexos del BOE) que s'omplen a /api/impostos/formulari.
+  outputFileTracingIncludes: {
+    '/api/impostos/formulari': ['./src/lib/formularis-aeat/*.pdf'],
+  },
 
   // Capçaleres de seguretat HTTP (anti-clickjacking, HSTS, sniffing, etc.).
   async headers() {
