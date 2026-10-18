@@ -143,7 +143,7 @@ export function llegeixPresentacio(json: unknown): ResultatPresentacio {
 }
 
 /** POST HTTPS amb el certificat del titular (.p12) com a certificat de client. */
-function postAmbCertificat(url: string, cos: string, pfx: Buffer, passphrase: string): Promise<{ status: number; body: Buffer }> {
+function postAmbCertificat(url: string, cos: string, pfx: Buffer, passphrase: string): Promise<{ status: number; body: Buffer; location?: string }> {
   return new Promise((resolve, reject) => {
     const req = https.request(
       url,
@@ -157,7 +157,7 @@ function postAmbCertificat(url: string, cos: string, pfx: Buffer, passphrase: st
       (res) => {
         const parts: Buffer[] = [];
         res.on('data', (d: Buffer) => parts.push(d));
-        res.on('end', () => resolve({ status: res.statusCode ?? 0, body: Buffer.concat(parts) }));
+        res.on('end', () => resolve({ status: res.statusCode ?? 0, body: Buffer.concat(parts), location: res.headers.location }));
       },
     );
     req.on('timeout', () => req.destroy(new Error('L’AEAT no ha respost a temps')));
@@ -180,7 +180,18 @@ export async function presentaAeat(
   certificat: { pfx: Buffer; contrasenya: string },
   entorn: EntornAeat,
 ): Promise<ResultatPresentacio> {
-  const { status, body } = await postAmbCertificat(URLS.presentacio[entorn], cosPresentacio(p), certificat.pfx, certificat.contrasenya);
+  const { status, body, location } = await postAmbCertificat(URLS.presentacio[entorn], cosPresentacio(p), certificat.pfx, certificat.contrasenya);
+  // Sense un certificat reconegut, l'AEAT redirigeix a la seva pàgina d'error
+  // (erro4033 sense certificat, erro4011 amb un certificat no reconegut).
+  if (status >= 300 && status < 400) {
+    return {
+      ok: false,
+      errors: [/errores\/erro40\d+/i.test(location ?? '')
+        ? 'L’AEAT no ha acceptat el certificat (no és un certificat reconegut o no és vàlid)'
+        : `L’AEAT ha redirigit la petició (HTTP ${status}${location ? ` → ${location}` : ''})`],
+      avisos: [],
+    };
+  }
   let json: unknown = null;
   try {
     json = JSON.parse(body.toString('utf8'));

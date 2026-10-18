@@ -14,6 +14,7 @@ import { CONCEPTES_100, type Caselles, type Concepte100, type ModelFiscal, type 
 import type { ImpostosAny, Ieet950, ModelInfo, TrimestreInfo } from '@/lib/services/impostos';
 import type { AvisBoe } from '@/lib/services/boe-formularis';
 import type { ResultatValidacio } from '@/lib/aeat/servei';
+import { CertificatAeatCard, PresentarAeat } from '@/components/impostos/presentacio-aeat';
 
 type Unitat = 'eur' | 'pct' | 'n';
 interface Fila { c: string; text: string; u?: Unitat; clau?: boolean }
@@ -391,6 +392,13 @@ function ModelCard({ m, any, onCanvi, extra }: { m: ModelInfo; any: number; onCa
                     title="L’AEAT revisa el fitxer i en torna l’esborrany oficial en PDF. No presenta res.">
                     <ShieldCheck className="h-4 w-4" /> Validar a l’AEAT
                   </Button>
+                )}
+                {(m.model === '303' || m.model === '130' || m.model === '115') && m.periode >= 1 && any >= 2026 && m.estat !== 'futur' && !m.presentada && (
+                  <PresentarAeat
+                    model={m.model} any={any} periode={m.periode} resum={r.text}
+                    importResultat={r.tone === 'danger' ? r.import : -r.import}
+                    pagament={pagamentAeat()} onFet={onCanvi}
+                  />
                 )}
                 {SEU[m.model] && (
                   <a href={SEU[m.model]} target="_blank" rel="noreferrer">
@@ -897,6 +905,8 @@ export default function ImpostosPage() {
           </Card>
         </div>
       )}
+
+      {d && <CertificatAeatCard />}
     </>
   );
 }

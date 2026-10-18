@@ -7,6 +7,9 @@ import 'server-only';
 import { prisma } from '../db';
 import { getImpostosAny } from './impostos';
 import { fitxer115, fitxer130, fitxer303, type FormaPagament } from '../aeat/models';
+import { baixaJustificant, presentaAeat, validaAeat, type EntornAeat, type ResultatPresentacio } from '../aeat/servei';
+import { decryptBuffer } from '../crypto';
+import { saveUpload } from '../storage';
 import type { Caselles } from '../impostos';
 
 const GENERADORS = { '303': fitxer303, '130': fitxer130, '115': fitxer115 } as const;
@@ -48,6 +51,74 @@ export async function generaFitxerAeat(
   } catch (e) {
     throw new ErrorFitxer(e instanceof Error ? e.message : 'No s’ha pogut generar el fitxer');
   }
+}
+
+/** Casella del resultat de cada model (positiu = a ingressar). */
+const CASELLA_RESULTAT: Record<ModelFitxer, string> = { '303': '71', '130': '19', '115': '05' };
+
+export interface ResultatPresentacioApp extends ResultatPresentacio {
+  entorn: EntornAeat;
+  /** Errors de la validació prèvia (no s'ha arribat a presentar). */
+  validacio?: boolean;
+}
+
+/**
+ * PRESENTA a l'AEAT (PresBasicaDos) amb el certificat de la titular. Abans:
+ * certificat de la titular, que no consti ja presentada, NRC si es paga sense
+ * domiciliar i validació oficial (ServValiDos) sense errors. A producció,
+ * desa la declaració com a presentada amb el CSV i el PDF del justificant.
+ */
+export async function presentaDeclaracio(p: {
+  model: ModelFitxer; any: number; trimestre: number; pagament: FormaPagament;
+  contrasenya: string; nrc?: string; usuariId: string;
+}): Promise<ResultatPresentacioApp> {
+  const est = await prisma.establiment.findFirst({
+    select: { aeatCertificat: true, aeatCertNif: true, aeatCertNom: true, aeatCertCaduca: true, aeatEntorn: true },
+  });
+  if (!est?.aeatCertificat || !est.aeatCertNif || !est.aeatCertNom) {
+    throw new ErrorFitxer('Cal pujar el certificat digital de la titular (secció «Presentació directa a l’AEAT»)');
+  }
+  if (est.aeatCertCaduca && est.aeatCertCaduca.getTime() < Date.now()) throw new ErrorFitxer('El certificat ha caducat: cal renovar-lo i tornar-lo a pujar');
+  const entorn: EntornAeat = est.aeatEntorn === 'produccio' ? 'produccio' : 'proves';
+
+  const f = await generaFitxerAeat(p.model, p.any, p.trimestre, p.pagament);
+  if (est.aeatCertNif.toUpperCase() !== f.titular.nif.toUpperCase()) {
+    throw new ErrorFitxer(`El certificat (NIF ${est.aeatCertNif}) no és de la titular de les declaracions (NIF ${f.titular.nif})`);
+  }
+  if (entorn === 'produccio') {
+    const ja = await prisma.declaracioFiscal.findUnique({ where: { model_any_periode: { model: p.model, any: p.any, periode: p.trimestre } } });
+    if (ja) throw new ErrorFitxer('Aquesta declaració ja consta com a presentada. Si cal corregir-la, s’ha de fer una rectificativa a la Seu.');
+  }
+  const resultat = f.caselles[CASELLA_RESULTAT[p.model]] ?? 0;
+  const nrc = (p.nrc ?? '').replace(/\s+/g, '').toUpperCase();
+  if (resultat > 0 && p.pagament === 'I' && !/^[0-9A-Z]{22}$/.test(nrc)) {
+    throw new ErrorFitxer('Fora del termini de domiciliació cal pagar abans al banc i escriure el NRC (22 caràcters)');
+  }
+
+  // Validació oficial abans de presentar: si l'AEAT hi troba errors, no s'envia.
+  const v = await validaAeat({ model: p.model, any: p.any, periode: f.periode, fitxer: f.contingut });
+  if (v.errors.length) return { ok: false, errors: v.errors, avisos: v.avisos, entorn, validacio: true };
+
+  const certificat = { pfx: decryptBuffer(Buffer.from(est.aeatCertificat, 'base64')), contrasenya: p.contrasenya };
+  const r = await presentaAeat(
+    { model: p.model, any: p.any, periode: f.periode, fitxer: f.contingut, nifPresentador: est.aeatCertNif, nomPresentador: est.aeatCertNom, nrc: p.pagament === 'I' ? nrc : '' },
+    certificat,
+    entorn,
+  );
+  if (!r.ok || entorn !== 'produccio') return { ...r, entorn };
+
+  // Presentada de veritat: justificant PDF i registre (encadena els trimestres següents).
+  let justificantPdf: string | null = null;
+  const pdf = r.urlPdf ? await baixaJustificant(r.urlPdf, certificat) : null;
+  if (pdf) justificantPdf = await saveUpload(pdf, `${p.model}_${p.any}_${p.trimestre}T_justificant.pdf`, 'aeat');
+  await prisma.declaracioFiscal.create({
+    data: {
+      model: p.model, any: p.any, periode: p.trimestre, caselles: f.caselles,
+      justificant: r.justificant ?? null, csv: r.csv ?? null, justificantPdf,
+      presentadaEl: new Date(), usuariId: p.usuariId,
+    },
+  });
+  return { ...r, entorn };
 }
 
 /** Llegeix i valida els paràmetres comuns (?model=&any=&trimestre=&pagament=). */

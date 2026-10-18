@@ -262,6 +262,15 @@ model Establiment {
   facturaNif     String? @map("factura_nif") // NIF de facturació (pot diferir del `cif` de Mossos)
   // Referència cadastral del local llogat (model 180: resum anual de retencions del lloguer).
   referenciaCadastral String? @map("referencia_cadastral")
+  // Presentació directa a l'AEAT (PresBasicaDos): certificat de la titular en
+  // .p12, XIFRAT (AES-256-GCM) i protegit a més amb la seva contrasenya, que
+  // NO es desa mai (s'escriu a cada presentació). Dades del certificat per mostrar-les.
+  aeatCertificat     String?   @map("aeat_certificat")
+  aeatCertNif        String?   @map("aeat_cert_nif")
+  aeatCertNom        String?   @map("aeat_cert_nom")
+  aeatCertCaduca     DateTime? @map("aeat_cert_caduca")
+  // "proves" (prewww1.aeat.es, laborables 8–15 h) o "produccio".
+  aeatEntorn         String    @default("proves") @map("aeat_entorn")
 
   // Google Drive — token de refresc (xifrat) per a l'export mensual automàtic,
   // i l'id de la carpeta arrel on es desa l'estructura d'arxiu.
@@ -1479,6 +1488,9 @@ model DeclaracioFiscal {
   justificant  String? // núm. de justificant de l'AEAT
   presentadaEl DateTime @map("presentada_el")
   usuariId     String?  @map("usuari_id")
+  // Presentades des de l'app (PresBasicaDos): codi segur de verificació i PDF del justificant.
+  csv            String?
+  justificantPdf String? @map("justificant_pdf")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
