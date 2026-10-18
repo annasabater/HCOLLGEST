@@ -35,18 +35,22 @@ export const TAULES_CLIENT_SCRIPT = `
       if (fila.some(function (v) { return v; })) files.push(fila);
     });
 
-    var peu = [];
-    var tf = taula.tFoot && taula.tFoot.rows[0];
-    if (tf) {
+    function filaPeu(tf) {
+      var out = [];
       var c = 0;
       Array.prototype.forEach.call(tf.cells, function (td) {
         var span = td.colSpan || 1;
         var vis = idx.filter(function (i) { return i >= c && i < c + span; }).length;
         c += span;
         if (!vis || !visible(td)) return;
-        peu.push({ t: valor(td), span: vis, num: td.classList.contains('c-n') || td.classList.contains('roN') });
+        out.push({ t: valor(td), span: vis, num: td.classList.contains('c-n') || td.classList.contains('roN') });
       });
+      return out;
     }
+    var tfRows = taula.tFoot ? Array.prototype.slice.call(taula.tFoot.rows) : [];
+    var peu = tfRows[0] ? filaPeu(tfRows[0]) : [];
+    // Files de total addicionals (p. ex. «Total Modelo 303»), si es veuen.
+    var peuExtra = tfRows.slice(1).filter(visible).map(filaPeu);
 
     var resum = [];
     sheet.querySelectorAll('.resum .resum-row').forEach(function (r) {
@@ -57,7 +61,7 @@ export const TAULES_CLIENT_SCRIPT = `
 
     var t = sheet.querySelector('.doc-title');
     var p = sheet.querySelector('.period');
-    return { titol: net(t ? t.textContent : 'Document'), periode: net(p ? p.textContent : ''), cols: cols, files: files, peu: peu, resum: resum };
+    return { titol: net(t ? t.textContent : 'Document'), periode: net(p ? p.textContent : ''), cols: cols, files: files, peu: peu, peuExtra: peuExtra, resum: resum };
   }
 
   var btn = document.getElementById('printPdf');

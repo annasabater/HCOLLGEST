@@ -22,6 +22,11 @@ export const TaulesPdfSchema = z.object({
         cols: z.array(z.object({ label: txt, num: z.boolean(), w: z.number().positive().max(2000) })).min(1).max(24),
         files: z.array(z.array(txt).max(24)).max(3000),
         peu: z.array(z.object({ t: txt, span: z.number().int().min(1).max(24), num: z.boolean() })).max(24).default([]),
+        // Files de total addicionals sota el peu (p. ex. «Total Modelo 303»), destacades.
+        peuExtra: z
+          .array(z.array(z.object({ t: txt, span: z.number().int().min(1).max(24), num: z.boolean() })).max(24))
+          .max(4)
+          .default([]),
         resum: z.array(z.object({ k: txt, v: txt, grand: z.boolean() })).max(12).default([]),
       }),
     )
@@ -163,21 +168,31 @@ export async function buildTaulesPdf(d: TaulesPdf): Promise<Uint8Array> {
       page.drawLine({ start: { x: M, y }, end: { x: PW - M, y }, thickness: 0.4, color: LINE });
     }
 
-    if (full.peu.length > 0) {
-      if (y - ALT_FILA - 6 < limit) novaPagina(false);
-      page.drawLine({ start: { x: M, y }, end: { x: PW - M, y }, thickness: 1.1, color: INK });
-      y -= 4;
+    const filaPeu = (cells: TaulesPdf['fulls'][number]['peu'], color: typeof INK) => {
       const base = y - ALT_FILA + 4.5;
       let col = 0;
-      for (const p of full.peu) {
+      for (const p of cells) {
         const x = xs[col] ?? M;
         const w = ws.slice(col, col + p.span).reduce((a, b) => a + b, 0);
         const t = net(p.t);
         // L'etiqueta («Total…») s'alinea a la dreta del seu tram, com a pantalla.
-        text(p.num ? t : t.toUpperCase(), x, base, w, p.num || p.span > 1, bold, p.num ? COS : 7.5, INK);
+        text(p.num ? t : t.toUpperCase(), x, base, w, p.num || p.span > 1, bold, p.num ? COS : 7.5, color);
         col += p.span;
       }
       y -= ALT_FILA;
+    };
+
+    if (full.peu.length > 0) {
+      if (y - ALT_FILA - 6 < limit) novaPagina(false);
+      page.drawLine({ start: { x: M, y }, end: { x: PW - M, y }, thickness: 1.1, color: INK });
+      y -= 4;
+      filaPeu(full.peu, INK);
+    }
+    for (const extra of full.peuExtra) {
+      if (y - ALT_FILA - 4 < limit) novaPagina(false);
+      y -= 4;
+      page.drawRectangle({ x: M, y: y - ALT_FILA, width: UTIL, height: ALT_FILA, color: ACCENT_SOFT });
+      filaPeu(extra, ACCENT);
     }
 
     if (full.resum.length > 0) {
