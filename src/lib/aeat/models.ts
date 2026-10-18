@@ -93,9 +93,9 @@ export function fitxer303(c: Caselles, d: DadesDeclarant): string {
       num(112, 1, 2), // autoliquidació conjunta: NO
       num(113, 1, 2), // criteri de caixa: NO
       num(114, 1, 2), // destinatari d'operacions en criteri de caixa: NO
-      // Prorrata especial (opció / revocació): blanc fora del 4T; «2» (NO) al 4T.
-      ultim ? num(115, 1, 2) : blancs(115, 1),
-      ultim ? num(116, 1, 2) : blancs(116, 1),
+      // Prorrata especial (opció / revocació): «2» (NO), com fa Odoo (OCA l10n_es_aeat_mod303).
+      num(115, 1, 2),
+      num(116, 1, 2),
       num(117, 1, 2), // concurs de creditors: NO
       blancs(118, 8), // data de l'auto de concurs
       blancs(126, 1), // tipus d'autoliquidació en concurs
@@ -153,7 +153,7 @@ export function fitxer303(c: Caselles, d: DadesDeclarant): string {
       imp(340, c['69'], 'N'), // [69]
       imp(357, 0), imp(374, 0), imp(391, 0), // [70] [109] [112]
       imp(408, c['71'], 'N'), // [71] resultat
-      blancs(425, 1), // sense activitat
+      txt(425, 1, tipus === 'N' ? 'X' : ''), // sense activitat / resultat zero
       blancs(426, 1), blancs(427, 13), blancs(440, 1), // rectificativa
       imp(441, 0), blancs(458, 1), blancs(459, 1),
       blancs(460, 546),
@@ -162,27 +162,25 @@ export function fitxer303(c: Caselles, d: DadesDeclarant): string {
     1017,
   );
 
-  // Pàgina DID: IBAN de domiciliació (U) o de devolució (D).
+  // Pàgina DID (sempre, com Odoo): IBAN només si es domicilia (U) o es retorna (D).
   const ambCompte = tipus === 'U' || tipus === 'D';
   if (tipus === 'D' && !/^ES\d{22}$/.test(iban)) throw new Error('Per a la devolució cal un IBAN espanyol vàlid');
-  const did = ambCompte
-    ? [pagina(
-        [
-          constant(1, '<T'), constant(3, '303'), constant(6, 'DID00'), constant(11, '>'),
-          blancs(12, 11), // SWIFT-BIC (només comptes estrangers)
-          txt(23, 34, iban),
-          blancs(57, 70), blancs(127, 35), blancs(162, 30), blancs(192, 2),
-          num(194, 1, tipus === 'D' ? 1 : 0), // marca SEPA: «1» compte a Espanya (devolució)
-          blancs(195, 617),
-          constant(812, '</T303DID00>'),
-        ],
-        823,
-      )]
-    : [];
+  const did = pagina(
+    [
+      constant(1, '<T'), constant(3, '303'), constant(6, 'DID00'), constant(11, '>'),
+      blancs(12, 11), // SWIFT-BIC (només comptes estrangers)
+      txt(23, 34, ambCompte ? iban : ''),
+      blancs(57, 70), blancs(127, 35), blancs(162, 30), blancs(192, 2),
+      num(194, 1, tipus === 'D' ? 1 : 0), // marca SEPA: «1» compte a Espanya (devolució)
+      blancs(195, 617),
+      constant(812, '</T303DID00>'),
+    ],
+    823,
+  );
 
   return fitxer(
     { model: '303', any: d.any, periode, versio: VERSIO_PROGRAMA, nifDesenvolupador: d.nif },
-    [p1, p3, ...did],
+    [p1, p3, did],
   );
 }
 

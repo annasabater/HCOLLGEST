@@ -84,11 +84,21 @@ describe('fitxer303 (DR303e26v101)', () => {
     expect(tipus303(neg, 'U', false)).toBe('C');
     expect(tipus303(neg, 'U', true)).toBe('D');
     expect(tipus303({ '71': 0 }, 'U', false)).toBe('N');
-    // A compensar: no cal pàgina DID ni IBAN; [71] negatiu amb «N».
+    // A compensar: pàgina DID sense IBAN (no en cal); [71] negatiu amb «N».
     const f2 = fitxer303(neg, { ...D, iban: null });
     const p = pagines(f2, '303');
-    expect(p.length).toBe(2);
+    expect(p.length).toBe(3);
     expect(camp(p[1]!, 408, 1)).toBe('N');
+    expect(camp(p[1]!, 425, 1)).toBe(' ');
+    expect(camp(p[2]!, 23, 34).trim()).toBe('');
+  });
+
+  it('resultat zero: tipus N i «sense activitat» marcat', () => {
+    const zero = calc303(totals(0, 0, 0, 0), { pendentAnterior: 0, ultimTrimestre: false });
+    const p = pagines(fitxer303(zero, { ...D, iban: null }), '303');
+    expect(camp(p[0]!, 13, 1)).toBe('N');
+    expect(camp(p[1]!, 425, 1)).toBe('X');
+    expect(camp(p[0]!, 115, 2)).toBe('22'); // prorrata especial: NO
   });
 
   it('domiciliar sense IBAN vàlid dona error clar', () => {
