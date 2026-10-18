@@ -1011,7 +1011,7 @@ export function FacturaPanel({
           )}
           {potRectificar && (
             <Button variant="outline" size="sm" onClick={obrirRectificativa} title="S'han retornat diners: crea una factura de reducció">
-              <Undo2 className="h-4 w-4" /> Factura simple devolució
+              <Undo2 className="h-4 w-4" /> Factura rectificativa
             </Button>
           )}
         </div>
