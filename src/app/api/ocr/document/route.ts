@@ -94,6 +94,9 @@ async function transcriuMrz(base64: string, mediaType: MediaType) {
 
 type Lectura = Awaited<ReturnType<typeof transcriuMrz>>;
 
+const resum = (a: Lectura) =>
+  a.mrz?.valid ? 'MRZ vàlida' : a.mrz ? 'MRZ amb dígits que no quadren' : a.mrzCandidates.length ? `${a.mrzCandidates.length} línia/es sense format MRZ` : 'sense MRZ';
+
 /**
  * Talla la imatge en 3 franges horitzontals que se solapen (0-40 %, 30-70 %,
  * 60-100 % de l'alçada) i les amplia. La MRZ ocupa poc alt, així que sempre queda
@@ -166,40 +169,48 @@ export async function POST(req: Request) {
     let best = await transcriuMrz(baseBuf.toString('base64'), baseType);
     let bestAngle = 0;
     const ok = (a: Lectura) => Boolean(a.mrz && a.mrz.valid);
+    // Resum de cada intent (orientació → resultat), per al diagnòstic de la UI.
+    const intents: string[] = [`0°: ${resum(best)}`];
+    const prova = async (etiqueta: string, buf: Promise<Buffer>) => {
+      try {
+        const att = await transcriuMrz((await buf).toString('base64'), 'image/jpeg');
+        intents.push(`${etiqueta}: ${resum(att)}`);
+        return att;
+      } catch (e) {
+        intents.push(`${etiqueta}: error ${e instanceof Error ? e.message.slice(0, 80) : ''}`);
+        return null;
+      }
+    };
 
     // Sense MRZ: sovint la foto està girada (el DNI de costat). Provem les tres
     // rotacions EN PARAL·LEL (en sèrie podien passar del límit de 60 s).
     if (!ok(best) && !best.mrz) {
       const rots = await Promise.all(
-        [90, 270, 180].map(async (angle) => {
-          try {
-            const buf = await sharp(baseBuf).rotate(angle).jpeg({ quality: 90 }).toBuffer();
-            return { angle, att: await transcriuMrz(buf.toString('base64'), 'image/jpeg') };
-          } catch {
-            return null;
-          }
-        }),
+        [90, 270, 180].map(async (angle) => ({
+          angle,
+          att: await prova(`${angle}°`, sharp(baseBuf).rotate(angle).jpeg({ quality: 90 }).toBuffer()),
+        })),
       );
-      const hit = rots.find((r) => r && ok(r.att)) ?? rots.find((r) => r?.att.mrz);
-      if (hit) { best = hit.att; bestAngle = hit.angle; }
+      const hit = rots.find((r) => r.att && ok(r.att)) ?? rots.find((r) => r.att?.mrz);
+      if (hit?.att) { best = hit.att; bestAngle = hit.angle; }
     }
 
-    // MRZ trobada però amb dígits que no quadren: el model ha llegit malament algun
-    // caràcter perquè la MRZ és petita dins la foto. Tornem a llegir per franges
-    // horitzontals ampliades (la MRZ queda sencera dins d'alguna), en paral·lel.
-    if (!ok(best) && best.mrz && Date.now() - t0 < 30_000) {
+    // MRZ petita dins la foto: el model llegeix malament algun caràcter o ni la
+    // troba. Tornem a llegir per franges horitzontals ampliades de l'original (la
+    // MRZ queda sencera dins d'alguna), en paral·lel. Si s'ha trobat la MRZ, a la
+    // seva orientació; si no, a 90° i 270° (passaport fotografiat de costat).
+    if (!ok(best) && Date.now() - t0 < 30_000) {
+      const angles = best.mrz ? [bestAngle] : [90, 270];
       const zooms = await Promise.all(
-        franges(Buffer.from(bytes), bestAngle).map(async (p) => {
-          try {
-            const buf = await p;
-            return await transcriuMrz(buf.toString('base64'), 'image/jpeg');
-          } catch {
-            return null;
-          }
-        }),
+        angles.flatMap((angle) =>
+          franges(Buffer.from(bytes), angle).map(async (p, i) => ({
+            angle,
+            att: await prova(`${angle}° franja ${i + 1}`, p),
+          })),
+        ),
       );
-      const hit = zooms.find((z) => z && ok(z));
-      if (hit) best = { ...hit, parsed: hit.parsed ?? best.parsed };
+      const hit = zooms.find((z) => z.att && ok(z.att));
+      if (hit?.att) best = { ...hit.att, parsed: hit.att.parsed ?? best.parsed };
     }
 
     const { parsed, text, mrzCandidates, mrz } = best;
@@ -271,6 +282,7 @@ export async function POST(req: Request) {
         `Diagnòstic: imatge rebuda ${diagMida}. Si la mateixa foto va bé des d'un altre aparell, ` +
           "és que aquest l'envia més petita/reduïda (la MRZ queda massa petita). Puja la foto original " +
           'sencera (des del mòbil, o desactiva a l\'iPad «Optimitza l\'emmagatzematge» a Configuració → Fotos).',
+        `Intents: ${intents.join(' · ')}.`,
       );
       // Sense cap línia MRZ reconeguda: retornem la resposta crua del model (només
       // a l'usuari que ha fet la foto, no es registra enlloc) per poder diagnosticar.
