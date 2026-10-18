@@ -68,7 +68,8 @@ export const TAULES_CLIENT_SCRIPT = `
     var w = window.open('', '_blank');
     btn.disabled = true;
     btn.textContent = 'Generant…';
-    var fulls = Array.prototype.map.call(document.querySelectorAll('.sheet'), full).filter(Boolean);
+    // Els fulls marcats data-no-pdf (p. ex. el full intern de tarifes) no s'entreguen.
+    var fulls = Array.prototype.map.call(document.querySelectorAll('.sheet:not([data-no-pdf])'), full).filter(Boolean);
     fetch('/api/imprimir/taules', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

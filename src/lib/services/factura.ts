@@ -105,6 +105,28 @@ export async function proximNumeroFacturaFiscal(
   return `${String(max + 1).padStart(2, '0')}/${yy}`;
 }
 
+/**
+ * Número de FACTURA RECTIFICATIVA: sèrie pròpia per any, R26-001, R26-002… (el
+ * RD 1619/2012, art. 6.1.a, obliga a fer les rectificatives en una sèrie
+ * específica). Inclou esborrades (número @unique) perquè la sèrie no reutilitzi números.
+ */
+export async function proximNumeroRectificativa(
+  client: Prisma.TransactionClient,
+  year: number,
+): Promise<string> {
+  const prefix = `R${String(year % 100).padStart(2, '0')}-`;
+  const existents = await client.factura.findMany({
+    where: { numero: { startsWith: prefix } },
+    select: { numero: true },
+  });
+  let max = 0;
+  for (const f of existents) {
+    const n = parseInt(f.numero.slice(prefix.length), 10);
+    if (!isNaN(n) && n > max) max = n;
+  }
+  return `${prefix}${String(max + 1).padStart(3, '0')}`;
+}
+
 export async function createFactura(
   raw: FacturaCreateInput,
   actor: { id: string } | null,
@@ -957,8 +979,9 @@ export async function createFacturaSeleccio(
 /**
  * Crea una FACTURA RECTIFICATIVA (reducció) d'una factura simplificada anterior:
  * una nova factura simplificada amb import NEGATIU i una única línia que explica
- * el motiu ("Reducción de factura simplificada Nº… · Motivo: …"). El número
- * segueix la sèrie del contracte (26001 → 26001.1). NO crea cap cobrament: la
+ * el motiu ("Reducción de factura simplificada Nº… · Motivo: …"). El número va
+ * a la sèrie pròpia de rectificatives (R26-001…) i queda enllaçada a l'original
+ * (rectificaId). NO crea cap cobrament: la
  * devolució de diners ja s'ha registrat com a cobrament negatiu a part, així que
  * l'ingrés no es toca; aquesta factura és només el document fiscal de la reducció.
  */
@@ -973,7 +996,7 @@ export async function createFacturaRectificativa(
   return prisma.$transaction(async (tx) => {
     const original = await tx.factura.findFirst({
       where: { id: input.facturaOriginalId, estanciaId, deletedAt: null },
-      select: { numero: true },
+      select: { numero: true, tipusDocument: true },
     });
     if (!original) throw new Error('Validación fallida: factura original no trobada');
 
@@ -986,10 +1009,11 @@ export async function createFacturaRectificativa(
     // Import negatiu (reducció) i text del motiu.
     const imp = -Math.abs(round2(input.import));
     const motiu = input.motiu?.trim() || 'reducción de estancia';
-    const descripcio = `Reducción de factura simplificada Nº${original.numero}. Motivo: ${motiu}`;
+    const tipusOriginal = original.tipusDocument === 'FACTURA' ? 'factura' : 'factura simplificada';
+    const descripcio = `Reducción de ${tipusOriginal} Nº${original.numero}. Motivo: ${motiu}`;
 
-    // Número: segueix la sèrie del contracte (26001 → 26001.1); si no n'hi ha,
-    // el següent seqüencial de l'any. Es pot forçar amb input.numero.
+    // Número: el següent de la sèrie de rectificatives de l'any (R26-001…). Es
+    // pot forçar amb input.numero.
     let numero: string;
     if (input.numero?.trim()) {
       const exist = await tx.factura.findFirst({ where: { numero: input.numero.trim() } });
@@ -1000,9 +1024,7 @@ export async function createFacturaRectificativa(
       }
       numero = input.numero.trim();
     } else {
-      numero =
-        (await proximNumeroFacturaContracte(tx, estanciaId)) ||
-        (await proximNumeroFactura(tx, dataFactura.getFullYear()));
+      numero = await proximNumeroRectificativa(tx, dataFactura.getFullYear());
     }
 
     const factura = await tx.factura.create({
@@ -1015,6 +1037,7 @@ export async function createFacturaRectificativa(
         total: imp,
         estat: 'COBRADA',
         tipusDocument: 'FACTURA_SIMPLIFICADA',
+        rectificaId: input.facturaOriginalId,
         linies: { create: [{ concepte: 'ALLOTJAMENT' as const, descripcio, import: imp }] },
       },
     });

@@ -150,7 +150,10 @@ export function FacturaPanel({
   const devolucions = pagaments.filter((p) => p.import < 0 && !p.facturaId);
   const totalDevolucions = Math.abs(devolucions.reduce((a, p) => a + p.import, 0));
   const facturesSimples = factures.filter((f) => f.tipusDocument !== 'FACTURA');
-  const potRectificar = factures.length > 0 && devolucions.length > 0;
+  // Una rectificativa només pot rectificar una factura positiva (no una altra
+  // rectificativa ni un document de dipòsit).
+  const facturesRectificables = factures.filter((f) => Number(f.total) > 0 && !f.esDiposit);
+  const potRectificar = facturesRectificables.length > 0 && devolucions.length > 0;
   // Simplificades que encara NO tenen factura fiscal vinculada i són positives
   // (candidates a agrupar en una factura fiscal quan l'hoste la demana).
   const simplesDisponibles = facturesSimples.filter((f) => !f.fiscalNum && Number(f.total) > 0);
@@ -191,7 +194,7 @@ export function FacturaPanel({
   function obrirRectificativa() {
     setRectError(null);
     // Original per defecte: la darrera factura simplificada (o qualsevol).
-    const orig = facturesSimples[0] ?? factures[0];
+    const orig = facturesRectificables.find((f) => f.tipusDocument !== 'FACTURA') ?? facturesRectificables[0];
     setRectFacturaId(orig?.id ?? '');
     setSelDevolucions(new Set(devolucions.map((p) => p.id)));
     setRectImport(totalDevolucions ? totalDevolucions.toFixed(2) : '');
@@ -801,11 +804,12 @@ export function FacturaPanel({
         </form>
       ) : rectOpen ? (
         <form onSubmit={crearRectificativa} className="space-y-3 rounded-lg border border-amber-300 bg-amber-50/40 p-3">
-          <p className="text-sm font-semibold text-slate-800">Factura simple devolució</p>
+          <p className="text-sm font-semibold text-slate-800">Factura rectificativa</p>
           <p className="text-xs text-slate-500">
             S&apos;ha detectat una devolució de <strong>{formatEur(totalDevolucions)}</strong>. Es crearà una
-            factura simplificada amb import <strong>negatiu</strong> que redueix la factura original (número{' '}
-            <code>26001 → 26001.1</code>). No es torna a comptar cap ingrés (la devolució ja està registrada).
+            factura rectificativa amb import <strong>negatiu</strong> que redueix la factura original, amb
+            numeració pròpia (<code>R{String(new Date().getFullYear() % 100).padStart(2, '0')}-001</code>,{' '}
+            <code>-002</code>…). No es torna a comptar cap ingrés (la devolució ja està registrada).
           </p>
           <label className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-xs font-medium text-slate-500">Rectifica la factura:</span>
@@ -814,7 +818,7 @@ export function FacturaPanel({
               value={rectFacturaId}
               onChange={(e) => setRectFacturaId(e.target.value)}
             >
-              {factures.map((f) => (
+              {facturesRectificables.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.numero} · {f.tipusDocument ? tipusDocumentLabel(f.tipusDocument, Number(f.total)) : 'Factura'} · {formatEur(Number(f.total))}
                 </option>

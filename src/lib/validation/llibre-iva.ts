@@ -7,6 +7,8 @@ export const FilaIvaSchema = z.object({
   numeroFiscal: z.string().trim().default(''),
   client: z.string().trim().default(''),
   periode: z.string().trim().default(''),
+  // NIF/NIE del client (només a les factures completes).
+  nif: z.string().trim().default(''),
   base: z.coerce.number().default(0),
   ivaPercent: z.coerce.number().default(0),
   iva: z.coerce.number().default(0),

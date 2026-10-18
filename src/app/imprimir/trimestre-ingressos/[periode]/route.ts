@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
-import { carregaEdicions, edicionsBootstrap, EDICIONS_SCRIPT } from '@/lib/edicions';
+import { carregaEdicions, edicionsBootstrap, EDICIONS_SCRIPT, type EdicioDades } from '@/lib/edicions';
 import { TAULES_CLIENT_SCRIPT } from '@/lib/pdf/taules-script';
-import { getLlibreIngressos, getGastosSoportats, getFiancesSoportades, getLibroGastos, COLUMNES_GASTO, COLUMNA_GASTO_LABELS, type FilaIngres, type FilaGasto, type FilaLibroGasto } from '@/lib/services/llibre-iva';
+import { getLlibreIngressos, getGastosSoportats, getFiancesSoportades, getLibroGastos, rangTrimestre, COLUMNES_GASTO, COLUMNA_GASTO_LABELS, type FilaIngres, type FilaGasto, type FilaLibroGasto } from '@/lib/services/llibre-iva';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +20,8 @@ function fmtData(iso: string): string {
 
 interface FilaEdit {
   data: string; numeroSimple: string; numeroFiscal: string; client: string; periode: string;
+  /** NIF/NIE del client: només a les factures completes (columna F.). */
+  nif: string;
   base: number; ivaPercent: number; iva: number; total: number;
   /** Dipòsit (fiança) d'un document de dipòsit: no compta com a ingrés. */
   diposit: number;
@@ -48,9 +50,17 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   let gastos: FilaGastoEdit[];
   if (desat) {
     etiqueta = desat.etiqueta;
+    // Llibres desats abans que existís la columna NIF: l'omplim de les factures
+    // completes actuals (per número de factura F.).
+    const nifPerFiscal = new Map(
+      (await getLlibreIngressos(year, trimestre)).files
+        .filter((f) => f.numeroFiscal && f.nif)
+        .map((f) => [f.numeroFiscal, f.nif]),
+    );
     rows = (desat.files as unknown as FilaEdit[]).map((f) => ({
       data: String(f.data ?? ''), numeroSimple: String(f.numeroSimple ?? ''), numeroFiscal: String(f.numeroFiscal ?? ''),
       client: String(f.client ?? ''), periode: String(f.periode ?? ''),
+      nif: f.nif != null ? String(f.nif) : (nifPerFiscal.get(String(f.numeroFiscal ?? '')) ?? ''),
       base: Number(f.base ?? 0), ivaPercent: Number(f.ivaPercent ?? 0), iva: Number(f.iva ?? 0), total: Number(f.total ?? 0),
       diposit: Number(f.diposit ?? 0),
     }));
@@ -92,7 +102,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     etiqueta = llibre.etiqueta;
     rows = llibre.files.map((f: FilaIngres) => ({
       data: fmtData(f.data), numeroSimple: f.numeroSimple, numeroFiscal: f.numeroFiscal, client: f.client,
-      periode: f.periode, base: f.base, ivaPercent: f.ivaPercent, iva: f.iva, total: f.total, diposit: f.diposit,
+      periode: f.periode, nif: f.nif, base: f.base, ivaPercent: f.ivaPercent, iva: f.iva, total: f.total, diposit: f.diposit,
     }));
     gastos = (await getGastosSoportats(year, trimestre)).map((g: FilaGasto) => ({
       data: fmtData(g.data), nif: g.nif, proveidor: g.proveidor, numFactura: g.numFactura,
@@ -100,6 +110,50 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     }));
   }
   const desatAt = desat ? fmtData(desat.updatedAt.toISOString()) : '';
+
+  // Columna NIF / NIE a «Facturas emitidas»: només quan hi ha alguna factura
+  // completa (Nº F.). A les simplificades el NIF no és obligatori (RIVA art. 63).
+  const ambNif = rows.some((r) => r.numeroFiscal || r.nif);
+
+  // ── Full INTERN de tarifes (no s'entrega) ────────────────────────────────
+  // Línies de text lliure desades a les edicions del trimestre (data-files-k).
+  // Si el trimestre encara no en té, es copien les de l'últim trimestre anterior
+  // que les tingui desades (fins a 2 anys enrere).
+  const liniesDesades = (k: string, d: EdicioDades | null) =>
+    d?.files?.[k]?.map((f) => f.v[0] ?? '') ?? null;
+  let tarifesPrev: string[] | null = null;
+  for (let i = 1, y = year, t = trimestre; i <= 8 && !tarifesPrev; i++) {
+    t -= 1;
+    if (t === 0) { t = 4; y -= 1; }
+    tarifesPrev = liniesDesades('tarifes', await carregaEdicions('trimestre', `${y}-${t}`));
+  }
+  const tarifesIni =
+    tarifesPrev ?? [
+      'HABITACIÓN INDIVIDUAL, MES DE JUNIO: 56 €/día · 620 €/mes. IVA incluido',
+      'HABITACIÓN DOBLE, MES DE JUNIO: 70 €/día · 820 €/mes. IVA incluido',
+    ];
+  // Nota d'inici d'activitat: si la primera estada de l'hostal cau en aquest trimestre.
+  const primera = await prisma.estancia.findFirst({
+    where: { deletedAt: null, dataEntrada: { not: null } },
+    orderBy: { dataEntrada: 'asc' },
+    select: { dataEntrada: true },
+  });
+  const { start: iniTrim, end: fiTrim } = rangTrimestre(year, trimestre);
+  const notesIni =
+    primera?.dataEntrada && primera.dataEntrada >= iniTrim && primera.dataEntrada <= fiTrim
+      ? [`La actividad se inició el ${primera.dataEntrada.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}.`]
+      : [];
+  const filaInterna = (text: string, placeholder: string) => `
+    <tr class="item">
+      <td><textarea class="in ti" rows="1" placeholder="${esc(placeholder)}">${esc(text)}</textarea></td>
+      <td class="c-del"><button class="del" type="button" title="Treure línia">×</button></td>
+    </tr>`;
+  // Sempre almenys una fila (la plantilla que fan servir «Afegir» i les edicions desades).
+  const filesInternes = (linies: string[], placeholder: string) =>
+    (linies.length ? linies : ['']).map((t) => filaInterna(t, placeholder)).join('');
+  const PH_TARIFA = 'HABITACIÓN …, MES DE …: … €/día · … €/mes. IVA incluido';
+  const PH_ESPECIAL = 'A … le hago precio especial de … € por …';
+  const PH_NOTA = 'Nota del trimestre';
 
   // Libro de gastos (format gestoria). Si hi ha versió DESADA (editada), es fa
   // servir; si no, es deriva dels gastos reals + nòmines del trimestre.
@@ -164,6 +218,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       <td><input class="in f-ns" value="${esc(f.numeroSimple)}"></td>
       <td><input class="in f-nf" value="${esc(f.numeroFiscal)}"></td>
       <td><input class="in f-cli" value="${esc(f.client)}"></td>
+      <td class="c-nif"><input class="in f-nif" value="${esc(f.nif)}" placeholder="NIF / NIE"></td>
       <td><input class="in f-per" value="${esc(f.periode)}"></td>
       <td class="c-n"><input class="in n f-base" inputmode="decimal" value="${num(f.base)}"></td>
       <td class="c-n"><input class="in n f-ivap" inputmode="decimal" value="${f.ivaPercent}"></td>
@@ -273,6 +328,17 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   .note{ font-size:10px; color:var(--muted); margin-top:14px; font-style:italic; line-height:1.5; }
   .add{ margin-top:10px; }
   .add button{ font:inherit; font-size:12px; color:var(--accent); background:#fff; border:1px dashed var(--accent); border-radius:8px; padding:6px 12px; cursor:pointer; }
+  /* Columna NIF / NIE: només quan hi ha alguna factura completa. */
+  #emeses:not(.amb-nif) .c-nif{ display:none; }
+  /* Full INTERN de tarifes: no surt al PDF de la gestoria (data-no-pdf). */
+  .sheet.interna{ border:2px dashed #E9C76A; }
+  .tag-interna{ display:inline-block; margin-bottom:14px; font-size:10.5px; font-weight:700; letter-spacing:.8px; text-transform:uppercase;
+    color:#5B4300; background:#FFF6DC; border:1px dashed #E9C76A; border-radius:20px; padding:3px 10px; }
+  .sec{ font-size:10px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:var(--muted); margin:20px 0 4px; }
+  table.interna-linies td{ border-bottom:1px solid var(--line); }
+  table.interna-linies textarea.in{ resize:none; overflow:hidden; line-height:1.45; display:block; min-height:1.45em; }
+  table#tarifes textarea.in{ text-align:center; font-weight:600; letter-spacing:.3px; color:var(--ink); font-size:12.5px; }
+  table#tarifes td{ border-bottom:none; }
   /* Tot el document surt en A4 HORITZONTAL: així el Libro de gastos (moltes
      columnes) hi cap, i la resta de fulles hi caben de sobres. Cada taula que
      sigui més ampla que el full s'escala amb JS (beforeprint). */
@@ -287,6 +353,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     table.rz{ transform-origin:top left; }
     .col-hidden{ display:none !important; }
     .col-buida{ display:none !important; }
+    /* El full intern no s'imprimeix… llevat de «Imprimir tarifes», que només imprimeix aquest. */
+    .sheet.interna{ display:none !important; }
+    .sheet.interna + .sheet{ page-break-before:auto; }
+    body.nomes-interna .sheet{ display:none !important; }
+    body.nomes-interna .sheet.interna{ display:block !important; border:none; }
+    .tag-interna{ display:none !important; }
+    #emeses:not(.amb-nif) .c-nif{ display:none !important; }
   }
 </style>
 </head>
@@ -297,10 +370,29 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <span id="saved" class="badge-saved" style="${desatAt ? '' : 'display:none'}">Desat ${esc(desatAt)}</span>
     <button id="addRow" class="btn ghost">+ Afegir fila</button>
     <button id="save" class="btn ghost">Desar</button>
-    <button id="printPdf" class="btn solid">Imprimir PDF</button>
+    <button id="printTarifes" class="btn ghost" title="Imprimeix només el full intern de tarifes">Imprimir tarifes</button>
+    <button id="printPdf" class="btn solid" title="PDF per a la gestoria (sense el full de tarifes)">Imprimir PDF</button>
   </div>
 </div>
 <div class="app">
+
+  <!-- ── Full INTERN de tarifes (no s'entrega: fora del PDF) ──────────── -->
+  <div class="sheet interna" data-no-pdf>
+    <span class="tag-interna">Hoja interna · no se entrega</span>
+    <div class="brand">HOSTAL COLL</div>
+    <div class="brand-sub">Casa de Hostes · Calella</div>
+    <div class="rule"></div>
+    <div class="period">${esc(etiqueta)}</div>
+    <div class="doc-title">Tarifas y precios aplicados</div>
+    <table id="tarifes" class="interna-linies" data-files-k="tarifes"><tbody>${filesInternes(tarifesIni, PH_TARIFA)}</tbody></table>
+    <div class="add"><button type="button" class="add-interna" data-taula="tarifes" data-ph="${esc(PH_TARIFA)}">+ Afegir línia de tarifa</button></div>
+    <div class="sec">Precios especiales</div>
+    <table id="especials" class="interna-linies" data-files-k="especials"><tbody>${filesInternes([], PH_ESPECIAL)}</tbody></table>
+    <div class="add"><button type="button" class="add-interna" data-taula="especials" data-ph="${esc(PH_ESPECIAL)}">+ Afegir línia</button></div>
+    <div class="sec">Notas del trimestre</div>
+    <table id="notes" class="interna-linies" data-files-k="notes"><tbody>${filesInternes(notesIni, PH_NOTA)}</tbody></table>
+    <div class="add"><button type="button" class="add-interna" data-taula="notes" data-ph="${esc(PH_NOTA)}">+ Afegir nota</button></div>
+  </div>
 
   <!-- ── Facturas emitidas - repercutidas (EDITABLE) ─────────────────── -->
   <div class="sheet">
@@ -309,13 +401,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <div class="rule"></div>
     <div class="period">${esc(etiqueta)}</div>
     <div class="doc-title">Facturas emitidas · Repercutidas</div>
-    <table id="emeses" class="rz lg">
+    <table id="emeses" class="rz lg${ambNif ? ' amb-nif' : ''}">
       <colgroup>
-        <col style="width:88px"><col style="width:92px"><col style="width:92px"><col style="width:240px"><col style="width:140px"><col style="width:100px"><col style="width:50px"><col style="width:82px"><col style="width:90px"><col style="width:82px"><col class="c-del" style="width:28px">
+        <col style="width:88px"><col style="width:92px"><col style="width:92px"><col style="width:240px"><col class="c-nif" style="width:100px"><col style="width:140px"><col style="width:100px"><col style="width:50px"><col style="width:82px"><col style="width:90px"><col style="width:82px"><col class="c-del" style="width:28px">
       </colgroup>
       <thead>
         <tr>
-          <th>Fecha<span class="resizer"></span></th><th>Nº Factura S.<span class="resizer"></span></th><th>Nº Factura F.<span class="resizer"></span></th><th>Cliente<span class="resizer"></span></th>
+          <th>Fecha<span class="resizer"></span></th><th>Nº Factura S.<span class="resizer"></span></th><th>Nº Factura F.<span class="resizer"></span></th><th>Cliente<span class="resizer"></span></th><th class="c-nif" title="Només a les factures completes (columna F.)">NIF / NIE<span class="resizer"></span></th>
           <th>Período de estancia<span class="resizer"></span></th><th class="n">Base imponible<span class="resizer"></span></th><th class="n">% IVA<span class="resizer"></span></th>
           <th class="n">IVA<span class="resizer"></span></th><th class="n">Total<span class="resizer"></span></th><th class="n" title="Dipòsits (fiances): no compten com a ingrés">Depósito<span class="resizer"></span></th><th class="c-del"></th>
         </tr>
@@ -323,7 +415,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       <tbody>${rows.map(filaEmesa).join('')}</tbody>
       <tfoot>
         <tr>
-          <td colspan="5" class="lab">Total…</td>
+          <td colspan="4" class="lab">Total…</td>
+          <td class="c-nif"></td>
+          <td></td>
           <td class="c-n" id="t1-base">0,00</td>
           <td></td>
           <td class="c-n" id="t1-iva">0,00</td>
@@ -502,6 +596,7 @@ ${edicionsBootstrap('trimestre', periode, edicions)}
       numeroSimple: r.querySelector('.f-ns').value.trim(),
       numeroFiscal: r.querySelector('.f-nf').value.trim(),
       client: r.querySelector('.f-cli').value.trim(),
+      nif: r.querySelector('.f-nif') ? r.querySelector('.f-nif').value.trim() : '',
       periode: r.querySelector('.f-per').value.trim(),
       base: num(r.querySelector('.f-base').value),
       ivaPercent: num(r.querySelector('.f-ivap').value),
@@ -539,6 +634,8 @@ ${edicionsBootstrap('trimestre', periode, edicions)}
 
   function render() {
     const rows = readRows();
+    // Columna NIF / NIE: només si hi ha alguna factura completa (Nº F.) o un NIF escrit.
+    document.getElementById('emeses').classList.toggle('amb-nif', rows.some(r => r.numeroFiscal || r.nif));
     let tb = 0, ti = 0, tt = 0, td = 0;
     for (const r of rows) { tb += r.base; ti += r.iva; tt += r.total; td += r.diposit; }
     document.getElementById('t1-dip').textContent = plain(td);
@@ -601,7 +698,7 @@ ${edicionsBootstrap('trimestre', periode, edicions)}
     else {
       row = document.createElement('tr'); row.className = 'item';
       row.innerHTML = '<td><input class="in f-data"></td><td><input class="in f-ns"></td><td><input class="in f-nf"></td>' +
-        '<td><input class="in f-cli"></td><td><input class="in f-per"></td><td class="c-n"><input class="in n f-base"></td>' +
+        '<td><input class="in f-cli"></td><td class="c-nif"><input class="in f-nif" placeholder="NIF / NIE"></td><td><input class="in f-per"></td><td class="c-n"><input class="in n f-base"></td>' +
         '<td class="c-n"><input class="in n f-ivap"></td><td class="c-n"><input class="in n f-iva"></td>' +
         '<td class="c-n"><input class="in n f-total"></td><td class="c-n"><input class="in n f-dip"></td><td class="c-del"><button class="del" type="button">×</button></td>';
     }
@@ -760,6 +857,26 @@ ${edicionsBootstrap('trimestre', periode, edicions)}
       tr.remove(); render();
     }
   });
+  // ── Full intern de tarifes: línies de text lliure (es desen amb «Desar») ──
+  const creix = (t) => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; };
+  const creixTot = () => document.querySelectorAll('table.interna-linies textarea.in').forEach(creix);
+  document.addEventListener('input', e => { if (e.target.closest && e.target.closest('table.interna-linies')) creix(e.target); });
+  window.addEventListener('load', creixTot);
+  creixTot();
+  document.querySelectorAll('.add-interna').forEach(b => b.addEventListener('click', () => {
+    const tr = document.createElement('tr'); tr.className = 'item';
+    tr.innerHTML = '<td><textarea class="in ti" rows="1"></textarea></td><td class="c-del"><button class="del" type="button" title="Treure línia">×</button></td>';
+    tr.querySelector('textarea').placeholder = b.getAttribute('data-ph') || '';
+    document.querySelector('#' + b.getAttribute('data-taula') + ' tbody').appendChild(tr);
+    tr.querySelector('textarea').focus();
+  }));
+  document.getElementById('printTarifes').addEventListener('click', () => {
+    document.body.classList.add('nomes-interna');
+    creixTot();
+    window.print();
+  });
+  window.addEventListener('afterprint', () => document.body.classList.remove('nomes-interna'));
+
   document.getElementById('addRow').addEventListener('click', novaFila);
   document.getElementById('addRow2').addEventListener('click', novaFila);
   document.getElementById('addGasto').addEventListener('click', novaGasto);

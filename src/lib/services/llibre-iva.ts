@@ -2,8 +2,9 @@
  * Llibre d'IVA trimestral — part d'INGRESSOS (facturas emitidas / repercutidas +
  * libro de ingresos). Reprodueix el quadernet que es lliura a la gestoria: una
  * fila per factura del trimestre (simplificada o fiscal), amb base imposable,
- * %IVA, IVA i total, més el període d'estada i el client. Les factures d'abono
- * (rectificatives, total negatiu) surten amb import negatiu, com al llibre real.
+ * %IVA, IVA i total, més el període d'estada i el client. Les rectificatives
+ * (sèrie R…, total negatiu) surten amb import negatiu just després de la factura
+ * que rectifiquen. El NIF del client només s'omple a les factures completes.
  *
  * NOMÉS ingressos de moment: la part de despeses (facturas soportadas) i el
  * resum Repercutit/Suportat necessiten el desglossament d'IVA als gastos, que
@@ -20,6 +21,11 @@ export interface FilaIngres {
   numeroFiscal: string; // Nº Factura F. (fiscal) — buit si és simplificada
   client: string;
   periode: string; // "28/06/26 - 01/07/26"
+  /** NIF/NIE del client: només per a factures COMPLETES (columna F.); buit a les simplificades. */
+  nif: string;
+  /** Número intern de la factura i, si és rectificativa, el de la que rectifica (per ordenar). */
+  numeroIntern: string;
+  rectificaNumero: string | null;
   base: number;
   ivaPercent: number;
   iva: number;
@@ -164,7 +170,8 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
     },
     orderBy: [{ numero: 'asc' }],
     include: {
-      facturaFiscal: { select: { numero: true } },
+      facturaFiscal: { select: { numero: true, clientNif: true } },
+      rectifica: { select: { numero: true } },
       simplificades: { select: { id: true }, take: 1 },
       diposits: { select: { import: true } },
       linies: { select: { import: true, descripcio: true, detall: true } },
@@ -175,7 +182,7 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
           viatgers: {
             where: { esTitular: true },
             take: 1,
-            select: { huesped: { select: { nom: true, cognom1: true, cognom2: true } } },
+            select: { huesped: { select: { nom: true, cognom1: true, cognom2: true, numDocument: true } } },
           },
         },
       },
@@ -183,7 +190,7 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
   });
 
   const net = (n: string) => n.replace(/^\d{4}-/, '');
-  const files: FilaIngres[] = factures
+  const filesAmbRef: FilaIngres[] = factures
     // Una factura FISCAL que cobreix simplificades NO fa fila pròpia: el seu número
     // ja surt a la columna "F." de cada simplificada que cobreix (no duplica l'IVA).
     .filter((f) => !(f.tipusDocument === 'FACTURA' && f.simplificades.length > 0))
@@ -195,7 +202,7 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
       const nomHoste = h ? [h.nom, h.cognom1, h.cognom2].filter(Boolean).join(' ') : '';
       const nom = (f.clientNom?.trim() || nomHoste || '—').toUpperCase();
       const total = Number(f.total);
-      const esAbono = total < 0;
+      const esAbono = total < 0 || f.rectificaId != null;
       // Document de dipòsit: ocupa el seu número a la sèrie, però base/IVA/total 0.
       const diposit = f.esDiposit
         ? round2(
@@ -210,16 +217,26 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
         (f.estancia?.dataEntrada && f.estancia?.dataSortida
           ? `${fmtCurt(f.estancia.dataEntrada)} - ${fmtCurt(f.estancia.dataSortida)}`
           : '');
+      // NIF del client només quan hi ha factura COMPLETA (la pròpia fiscal o la que
+      // cobreix la simplificada): el de la factura si s'ha escrit, si no el
+      // document de l'hoste titular. A les simplificades no és obligatori.
+      const nifFactura = esFiscal ? f.clientNif : f.facturaFiscal ? f.facturaFiscal.clientNif : null;
+      const nif = esFiscal || f.facturaFiscal ? (nifFactura?.trim() || h?.numDocument || '') : '';
+      // Rectificativa: indica quina factura rectifica (si s'hi pot enllaçar).
+      const etiquetaAbono = f.rectifica ? `RECTIFICA ${net(f.rectifica.numero)}` : 'ABONO';
       // Número sense el prefix d'any intern (2026-0001 → 0001); les simplificades
-      // per contracte (26001, 26001.1) es queden tal qual.
+      // per contracte (26001) i les rectificatives (R26-001) es queden tal qual.
       return {
         data: f.data.toISOString(),
         numeroSimple: esFiscal ? '' : net(f.numero),
         // Si la simplificada té una fiscal vinculada, el seu número surt a la
         // columna "F." (la mateixa fila) i la fiscal no compta a part.
         numeroFiscal: esFiscal ? net(f.numero) : f.facturaFiscal ? net(f.facturaFiscal.numero) : '',
-        client: f.esDiposit ? `${nom} (DEPÓSITO)` : esAbono ? `${nom} (ABONO)` : nom,
+        client: f.esDiposit ? `${nom} (DEPÓSITO)` : esAbono ? `${nom} (${etiquetaAbono})` : nom,
         periode,
+        nif,
+        rectificaNumero: f.rectifica?.numero ?? null,
+        numeroIntern: f.numero,
         base,
         ivaPercent,
         iva,
@@ -228,6 +245,22 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
         diposit,
       };
     });
+
+  // Cada rectificativa (sèrie R…) surt just després de la factura que rectifica,
+  // si aquesta és al mateix trimestre; si no, es queda en el seu lloc.
+  const perNumero = new Map(filesAmbRef.map((f) => [f.numeroIntern, f]));
+  const files: FilaIngres[] = [];
+  const posades = new Set<string>();
+  const posa = (f: FilaIngres) => {
+    if (posades.has(f.numeroIntern)) return;
+    posades.add(f.numeroIntern);
+    files.push(f);
+    for (const r of filesAmbRef) if (r.rectificaNumero === f.numeroIntern) posa(r);
+  };
+  for (const f of filesAmbRef) {
+    if (f.rectificaNumero && perNumero.has(f.rectificaNumero)) continue;
+    posa(f);
+  }
 
   return {
     any: year,

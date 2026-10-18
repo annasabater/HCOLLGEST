@@ -720,6 +720,14 @@ model Factura {
   facturaFiscal   Factura?  @relation("SimpleAFiscal", fields: [facturaFiscalId], references: [id], onDelete: SetNull)
   simplificades   Factura[] @relation("SimpleAFiscal")
 
+  // FACTURA RECTIFICATIVA (abonament, import negatiu): la factura que rectifica.
+  // Les rectificatives van en una sèrie pròpia (R26-001, R26-002…), com exigeix
+  // l'art. 6.1.a del RD 1619/2012. Les antigues (26001.1) es van enllaçar a la
+  // migració a partir del text "Nº… " de la seva línia.
+  rectificaId    String?   @map("rectifica_id")
+  rectifica      Factura?  @relation("Rectificatives", fields: [rectificaId], references: [id], onDelete: SetNull)
+  rectificatives Factura[] @relation("Rectificatives")
+
   // Sobreescriptures manuals editades a la impressió (p. ex. facturar a una
   // empresa en lloc del viatger, o corregir puntualment l'emissor). Si són
   // buides, la impressió calcula els valors a partir de l'hoste/establiment.
@@ -742,6 +750,7 @@ model Factura {
   deletedAt DateTime? @map("deleted_at")
 
   @@index([estanciaId])
+  @@index([rectificaId])
   @@map("factura")
 }
 

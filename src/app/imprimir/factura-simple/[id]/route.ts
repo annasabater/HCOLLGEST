@@ -38,6 +38,7 @@ export async function GET(
     include: {
       linies: true,
       cobraments: true,
+      rectifica: { select: { numero: true, data: true } },
       estancia: {
         include: {
           habitacio: true,
@@ -56,6 +57,11 @@ export async function GET(
   // Si la fiança ja va inclosa a la base (fiancaInclosa), no la tornem a afegir
   // com a bloc de custòdia (evita duplicar-la).
   const esDiposit = factura.esDiposit;
+  // Factura RECTIFICATIVA (abonament): total negatiu o enllaçada a l'original.
+  const esRectificativa = !esDiposit && (factura.rectificaId != null || Number(factura.total) < 0);
+  const rectificaRef = factura.rectifica
+    ? `${factura.rectifica.numero.replace(/^\d{4}-/, '')} · ${fmtDate(factura.rectifica.data)}`
+    : '';
   const diposits = ambCustodia && !factura.fiancaInclosa && !esDiposit ? factura.estancia.diposits : [];
 
   const emNom = esc(establiment?.raoSocial || establiment?.nom || 'Hostal Coll');
@@ -141,7 +147,7 @@ export async function GET(
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esDiposit ? 'Dipòsit' : 'Factura simplificada'} ${esc(factura.numero)} · Hostal Coll</title>
+<title>${esDiposit ? 'Dipòsit' : esRectificativa ? 'Factura rectificativa' : 'Factura simplificada'} ${esc(factura.numero)} · Hostal Coll</title>
 <style>
   :root{
     --ink:#2C1810;
@@ -281,7 +287,7 @@ export async function GET(
 <body>
 
 <div class="toolbar">
-  <div class="tb-brand">Hostal Coll<span class="tb-badge">${esDiposit ? 'Dipòsit' : ambCustodia ? 'Factura simple amb fiança' : 'Factura simple'}</span></div>
+  <div class="tb-brand">Hostal Coll<span class="tb-badge">${esDiposit ? 'Dipòsit' : esRectificativa ? 'Factura rectificativa' : ambCustodia ? 'Factura simple amb fiança' : 'Factura simple'}</span></div>
   <div class="tb-actions">
     <button id="addLine" class="btn ghost">+ Afegir línia</button>
     <button id="save" class="btn ghost" title="Desa tot el que hi ha escrit al document (queda guardat per sempre)">Desar canvis</button>
@@ -318,9 +324,10 @@ export async function GET(
       </div>
       <div class="meta">
         <div class="meta-title">Factura</div>
-        <div class="meta-badge">${esDiposit ? 'Simplificada · Dipòsit' : 'Simplificada'}</div>
+        <div class="meta-badge">${esDiposit ? 'Simplificada · Dipòsit' : esRectificativa ? 'Rectificativa' : 'Simplificada'}</div>
         <div class="meta-row"><span class="k">Número</span><span class="v"><input id="numero" class="in" aria-label="Número" value="${numeroDisplay}" data-prefix="${numeroPrefix}"></span></div>
         <div class="meta-row"><span class="k">Data</span><span class="v"><input id="data" class="in" aria-label="Data" value="${fmtDate(factura.data)}" placeholder="dd/mm/aaaa"></span></div>
+        ${esRectificativa ? `<div class="meta-row"><span class="k">Rectifica</span><span class="v"><input class="in" data-k="rectifica" aria-label="Factura rectificada" value="${esc(rectificaRef)}" placeholder="Nº · data"></span></div>` : ''}
         ${habitacioLlibre(factura.estancia) ? `<div class="meta-row"><span class="k">Habitació</span><span class="v"><input class="in" data-k="habitacio" aria-label="Habitació" value="${esc(habitacioLlibre(factura.estancia)!)}"></span></div>` : ''}
       </div>
     </section>
@@ -531,7 +538,7 @@ ${edicionsBootstrap('factura-simple', factura.id, edicions)}
   });
 
 </script>
-<script>window.__pdfRef = ${JSON.stringify(factura.id)}; window.__pdfTitle = ${JSON.stringify(`${esDiposit ? 'Dipòsit' : 'Factura'} ${factura.numero}`)};</script>
+<script>window.__pdfRef = ${JSON.stringify(factura.id)}; window.__pdfTitle = ${JSON.stringify(`${esDiposit ? 'Dipòsit' : esRectificativa ? 'Factura rectificativa' : 'Factura'} ${factura.numero}`)};</script>
 <script>${PDF_CLIENT_SCRIPT}</script>
 </body>
 </html>`;
