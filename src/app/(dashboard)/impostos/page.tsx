@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Copy, Check, Download, ExternalLink, FileText, FileDown, Undo2, CalendarClock, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, Check, Download, ExternalLink, FileText, FileDown, ShieldCheck, Undo2, CalendarClock, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { formatEur, cn } from '@/lib/utils';
 import { CONCEPTES_100, type Caselles, type Concepte100, type ModelFiscal, type PerTipus } from '@/lib/impostos';
 import type { ImpostosAny, Ieet950, ModelInfo, TrimestreInfo } from '@/lib/services/impostos';
 import type { AvisBoe } from '@/lib/services/boe-formularis';
+import type { ResultatValidacio } from '@/lib/aeat/servei';
 
 type Unitat = 'eur' | 'pct' | 'n';
 interface Fila { c: string; text: string; u?: Unitat; clau?: boolean }
@@ -214,14 +215,37 @@ function ModelCard({ m, any, onCanvi, extra }: { m: ModelInfo; any: number; onCa
 
   // Fitxer d'importació de l'AEAT (303/130/115). Es domicilia el pagament si
   // encara som dins del termini de domiciliació (fins a 5 dies abans del final).
+  const pagamentAeat = () => {
+    const limitDomiciliacio = new Date(`${m.termini}T23:59:59`);
+    limitDomiciliacio.setDate(limitDomiciliacio.getDate() - 5);
+    return new Date() <= limitDomiciliacio ? 'U' : 'I';
+  };
+  const [validacio, setValidacio] = useState<ResultatValidacio | null>(null);
+
+  // Validació oficial de l'AEAT (ServValiDos): no presenta res.
+  async function validaAeat() {
+    setBusy(true);
+    setErr(null);
+    setValidacio(null);
+    try {
+      setValidacio(await postJSON<ResultatValidacio>('/api/impostos/validar', { model: m.model, any, trimestre: m.periode, pagament: pagamentAeat() }));
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : 'No s’ha pogut validar amb l’AEAT');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function obreEsborrany(b64: string) {
+    const bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0));
+    window.open(URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })), '_blank');
+  }
+
   async function baixaFitxer() {
     setBusy(true);
     setErr(null);
     try {
-      const limitDomiciliacio = new Date(`${m.termini}T23:59:59`);
-      limitDomiciliacio.setDate(limitDomiciliacio.getDate() - 5);
-      const pagament = new Date() <= limitDomiciliacio ? 'U' : 'I';
-      const res = await fetch(`/api/impostos/fitxer?model=${m.model}&any=${any}&trimestre=${m.periode}&pagament=${pagament}`);
+      const res = await fetch(`/api/impostos/fitxer?model=${m.model}&any=${any}&trimestre=${m.periode}&pagament=${pagamentAeat()}`);
       if (!res.ok) {
         const j = (await res.json().catch(() => null)) as { error?: string } | null;
         throw new Error(j?.error ?? 'No s’ha pogut generar el fitxer');
@@ -355,6 +379,12 @@ function ModelCard({ m, any, onCanvi, extra }: { m: ModelInfo; any: number; onCa
                     <FileDown className="h-4 w-4" /> Fitxer per importar a la Seu
                   </Button>
                 )}
+                {(m.model === '303' || m.model === '130' || m.model === '115') && m.periode >= 1 && any >= 2026 && m.estat !== 'futur' && (
+                  <Button size="sm" variant="outline" onClick={() => void validaAeat()} disabled={busy}
+                    title="L’AEAT revisa el fitxer i en torna l’esborrany oficial en PDF. No presenta res.">
+                    <ShieldCheck className="h-4 w-4" /> Validar a l’AEAT
+                  </Button>
+                )}
                 {SEU[m.model] && (
                   <a href={SEU[m.model]} target="_blank" rel="noreferrer">
                     <Button size="sm" variant="outline"><ExternalLink className="h-4 w-4" /> Seu electrònica</Button>
@@ -377,6 +407,24 @@ function ModelCard({ m, any, onCanvi, extra }: { m: ModelInfo; any: number; onCa
               </div>
             )}
             {!edit && err && <p className="mt-2 text-xs text-red-700">{err}</p>}
+            {!edit && validacio && (
+              <div className={cn('mt-3 rounded-lg px-3 py-2 text-xs', validacio.errors.length ? 'bg-red-50 text-red-900' : 'bg-green-50 text-green-900')}>
+                <p className="font-semibold">
+                  {validacio.errors.length ? 'L’AEAT hi ha trobat errors:' : 'L’AEAT l’ha validat sense errors. Encara no s’ha presentat.'}
+                </p>
+                {[...validacio.errors, ...validacio.avisos].length > 0 && (
+                  <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                    {validacio.errors.map((e) => <li key={`e${e}`}>{e}</li>)}
+                    {validacio.avisos.map((a) => <li key={`a${a}`} className="text-amber-800">Avís: {a}</li>)}
+                  </ul>
+                )}
+                {validacio.pdfBase64 && (
+                  <button type="button" className="mt-1 font-semibold underline" onClick={() => obreEsborrany(validacio.pdfBase64!)}>
+                    Obre l’esborrany oficial (PDF)
+                  </button>
+                )}
+              </div>
+            )}
           </>
         )}
       </CardBody>
