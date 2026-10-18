@@ -553,7 +553,8 @@ function Ieet950Card({ t, onCanvi }: { t: Ieet950; onCanvi: () => Promise<void> 
                 <tbody>
                   <tr className="border-t border-slate-100"><td className="py-1.5 text-slate-700">Persones allotjades</td><td className="text-right tabular-nums">{t.persones}</td></tr>
                   <tr className="border-t border-slate-100"><td className="py-1.5 text-slate-700">Persones que paguen</td><td className="text-right tabular-nums">{t.personesPaguen}</td></tr>
-                  <tr className="border-t border-slate-100"><td className="py-1.5 text-slate-700">Nits que paguen (unitats d’estada)</td><td className="text-right tabular-nums">{t.nits}<BotoCopia n={t.nits} /></td></tr>
+                  <tr className="border-t border-slate-100"><td className="py-1.5 text-slate-700">Estades <b>subjectes</b> (nits que paguen, màx. 7 per persona)</td><td className="text-right tabular-nums">{t.nits}<BotoCopia n={t.nits} /></td></tr>
+                  <tr className="border-t border-slate-100"><td className="py-1.5 text-slate-700">Estades <b>exemptes</b> (menors de 17 anys)</td><td className="text-right tabular-nums">{t.nitsExemptes}<BotoCopia n={t.nitsExemptes} /></td></tr>
                   <tr className="border-t border-slate-100"><td className="py-1.5 text-slate-700">Tarifa per persona i nit</td><td className="text-right tabular-nums">{formatEur(t.tarifa)}</td></tr>
                   <tr className="border-t border-slate-100 bg-slate-50 font-semibold"><td className="py-1.5">Quota ({t.nits} × {formatEur(t.tarifa)})</td><td className="text-right tabular-nums">{formatEur(t.import)}<BotoCopia n={t.import} /></td></tr>
                 </tbody>
@@ -567,7 +568,15 @@ function Ieet950Card({ t, onCanvi }: { t: Ieet950; onCanvi: () => Promise<void> 
                 </p>
               )}
               {t.presentada && <p className="text-green-800">Presentat el {dataCurta(t.presentada.presentadaEl)}.</p>}
-              <p>Es presenta a l’Agència Tributària de Catalunya (e-tributs) amb el codi del Registre de Turisme de l’hostal. El detall de les estades és a la pàgina Taxa turística (Excel i PDF).</p>
+              <div>
+                <p className="mb-1 font-medium text-slate-700">Com es presenta (Seu de l’ATC, amb el teu certificat o idCAT):</p>
+                <ol className="list-decimal space-y-0.5 pl-5">
+                  <li>Pestanya <b>Establiments</b>: l’hostal amb el seu número del <b>Registre de Turisme de Catalunya</b> (es recupera de l’autoliquidació anterior).</li>
+                  <li>Pestanya <b>Estades</b>: tria l’any i el període i escriu les estades <b>subjectes</b> i les <b>exemptes</b> (les dues xifres de l’esquerra).</li>
+                  <li>El formulari calcula la quota; comprova que doni el mateix import. Paga amb targeta, Bizum o domiciliació, o descarrega la carta de pagament.</li>
+                </ol>
+                <p className="mt-1">No es puja cap fitxer ni cap llista d’hostes. L’Excel i el PDF de Taxa turística són el teu justificant de les estades: guarda’ls (i les declaracions dels exempts).</p>
+              </div>
               <div className="flex flex-wrap gap-2 pt-1">
                 <Link href="/taxa-turistica"><Button size="sm" variant="outline"><FileText className="h-4 w-4" /> Obre la taxa turística</Button></Link>
                 <a href="https://atc.gencat.cat/ca/tributs/impost-estades-turistiques/" target="_blank" rel="noreferrer">

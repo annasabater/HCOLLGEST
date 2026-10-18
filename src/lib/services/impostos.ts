@@ -37,6 +37,8 @@ export interface Ieet950 {
   persones: number;
   personesPaguen: number;
   nits: number;
+  /** Estades exemptes (menors de l'edat mínima): l'ATC les demana a part de les subjectes. */
+  nitsExemptes: number;
   import: number;
   tarifa: number;
   /** Estades amb dades del viatger incompletes (cal omplir-les a Taxa turística). */
@@ -222,6 +224,7 @@ export async function getImpostosAny(any: number, avui = new Date()): Promise<Im
     return {
       clau, etiqueta: p.etiqueta, inici: p.inici, fi: p.fi, termini: p.pagamentFins, estat,
       persones: r?.persones ?? 0, personesPaguen: r?.personesPaguen ?? 0, nits: r?.nitsPaguen ?? 0,
+      nitsExemptes: d?.files.filter((f) => f.menor).reduce((a, f) => a + f.nitsPaguen, 0) ?? 0,
       import: round2(r?.import ?? 0), tarifa: d?.config.tarifa ?? 0,
       incompletes: d?.files.filter((f) => f.falten.length > 0).length ?? 0,
       presentada: decl,

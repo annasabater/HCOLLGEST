@@ -183,8 +183,9 @@ function ImpostosFormularisCard() {
 
   const t = d?.trimestres.find((x) => x.trimestre === trim);
   const anyActual = new Date().getFullYear();
-  // pdf: formulari oficial del BOE omplert · fitxer: fitxer d'importació per a la Seu de l'AEAT.
-  const fila = (titol: string, m: ResumModel | undefined, opts: { pdf?: boolean; fitxer?: boolean }) => {
+  // aeat: el PDF oficial el genera la mateixa AEAT (esborrany) + fitxer per presentar-lo.
+  // pdf: formulari del BOE omplert pel gestio (el 390, que l'AEAT no valida per aquest servei).
+  const fila = (titol: string, m: ResumModel | undefined, opts: { aeat?: boolean; pdf?: boolean }) => {
     const actiu = m && m.estat !== 'no_cal';
     return (
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2">
@@ -195,17 +196,22 @@ function ImpostosFormularisCard() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {actiu && opts.aeat && (
+            <>
+              <a href={`/api/impostos/esborrany?model=${m.model}&any=${any}&trimestre=${m.periode}&pagament=I`} target="_blank" rel="noreferrer" title="El formulari oficial omplert per la mateixa AEAT (esborrany, per revisar-lo)">
+                <Button size="sm"><Download className="h-4 w-4" /> PDF oficial (AEAT)</Button>
+              </a>
+              <a href={`/api/impostos/fitxer?model=${m.model}&any=${any}&trimestre=${m.periode}&pagament=I`} title="Per presentar-lo: a la Seu de l'AEAT, botó «Importar»">
+                <Button size="sm" variant="outline"><Download className="h-4 w-4" /> Fitxer per presentar</Button>
+              </a>
+            </>
+          )}
           {actiu && opts.pdf && (
             <a href={`/api/impostos/formulari?model=${m.model}&any=${any}&periode=${m.periode}`} target="_blank" rel="noreferrer">
               <Button size="sm"><Download className="h-4 w-4" /> Formulari oficial (PDF)</Button>
             </a>
           )}
-          {actiu && opts.fitxer && (
-            <a href={`/api/impostos/fitxer?model=${m.model}&any=${any}&trimestre=${m.periode}&pagament=I`} title="S'importa a la Seu de l'AEAT («Importar»), que omple totes les caselles i en genera el PDF oficial">
-              <Button size="sm" variant="outline"><Download className="h-4 w-4" /> Fitxer per a la Seu</Button>
-            </a>
-          )}
-          {(!actiu || (!opts.pdf && !opts.fitxer)) && (
+          {(!actiu || (!opts.pdf && !opts.aeat)) && (
             <a href="/impostos"><Button size="sm" variant="outline">Obre Impostos</Button></a>
           )}
         </div>
@@ -222,19 +228,20 @@ function ImpostosFormularisCard() {
         <Select value={String(trim)} onChange={(e) => setSel({ any, trim: Number(e.target.value) })} className="w-36">
           {[1, 2, 3, 4].map((x) => <option key={x} value={x}>{x}r trimestre</option>)}
         </Select>
-        <span className="text-xs text-slate-500">El formulari del BOE amb les caselles ja omplertes: copia-les a la Seu electrònica o imprimeix-lo.</span>
       </div>
       <div className="space-y-2">
-        {fila(`Model 303 · IVA · ${trim}T`, t?.models['303'], { pdf: true, fitxer: true })}
-        {fila(`Model 130 · IRPF · ${trim}T`, t?.models['130'], { pdf: true, fitxer: true })}
-        {fila(`Model 115 · retencions del lloguer · ${trim}T`, t?.models['115'], { fitxer: true })}
+        {fila(`Model 303 · IVA · ${trim}T`, t?.models['303'], { aeat: true })}
+        {fila(`Model 130 · IRPF · ${trim}T`, t?.models['130'], { aeat: true })}
+        {fila(`Model 115 · retencions del lloguer · ${trim}T`, t?.models['115'], { aeat: true })}
         {fila(`Model 390 · resum anual d’IVA ${any}`, d?.anual['390'], { pdf: true })}
         {fila(`Model 180 · resum anual del lloguer ${any}`, d?.anual['180'], {})}
         {fila(`Model 347 · clients i proveïdors de més de 3.005,06 € · ${any}`, d?.anual['347'], {})}
       </div>
-      <p className="mt-3 text-xs text-slate-500">
-        «Fitxer per a la Seu»: a la Seu de l’AEAT, obre el model, tria «Importar» i puja’l; la Seu omple totes les caselles i en genera el PDF oficial per presentar-lo. El 115 no té formulari en paper (només aquest fitxer). El 180, el 347 i la renda (100) es fan directament a la Seu amb les dades de la pàgina Impostos; la taxa turística (950), a l’ATC amb les dades de Taxa turística.
-      </p>
+      <div className="mt-3 space-y-1 text-xs text-slate-500">
+        <p><b>PDF oficial (AEAT):</b> el formulari omplert per la mateixa Agència Tributària, amb la marca «borrador». Serveix per revisar-lo; no presenta res.</p>
+        <p><b>Fitxer per presentar:</b> a la Seu de l’AEAT entra al model amb Cl@ve o certificat, clica <b>«Importar»</b>, tria aquest fitxer i totes les caselles s’omplen soles. Revisa-les i clica «Firmar y enviar».</p>
+        <p>El 180, el 347 i la renda (100) es fan directament a la Seu amb les dades de la pàgina Impostos; la taxa turística (950), a la Seu de l’ATC amb les dades de la targeta del 950.</p>
+      </div>
     </CollapsibleCard>
   );
 }
