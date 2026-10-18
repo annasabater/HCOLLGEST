@@ -148,7 +148,7 @@ export default function PlantillesPage() {
 
 // --- Impostos: formularis oficials de l'AEAT omplerts ------------------------
 type ResumModel = { model: string; periode: number; termini: string; estat: string; calculades: Record<string, number>; presentada: { caselles: Record<string, number> } | null };
-type ResumImpostos = { trimestres: { trimestre: number; models: Record<'303' | '130' | '115', ResumModel> }[]; anual: Record<'390' | '180', ResumModel> };
+type ResumImpostos = { trimestres: { trimestre: number; models: Record<'303' | '130' | '115', ResumModel> }[]; anual: Record<'390' | '180' | '347', ResumModel> };
 
 function resultatModel(m: ResumModel): string {
   const c = m.presentada?.caselles ?? m.calculades;
@@ -162,6 +162,7 @@ function resultatModel(m: ResumModel): string {
   if (m.model === '130') return (c['19'] ?? 0) > 0 ? `${formatEur(c['19'])} a ingressar` : 'Resultat zero';
   if (m.model === '115') return `${formatEur(c['05'] ?? 0)} a ingressar`;
   if (m.model === '390') return `Informatiu · volum d’operacions ${formatEur(c['108'] ?? 0)}`;
+  if (m.model === '347') return `Informatiu · ${c['01'] ?? 0} tercers · ${formatEur(c['02'] ?? 0)}`;
   return `Informatiu · retencions ${formatEur(c['03'] ?? 0)}`;
 }
 
@@ -182,23 +183,35 @@ function ImpostosFormularisCard() {
 
   const t = d?.trimestres.find((x) => x.trimestre === trim);
   const anyActual = new Date().getFullYear();
-  const fila = (titol: string, m: ResumModel | undefined, oficial: boolean) => (
-    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2">
-      <div>
-        <p className="text-sm font-medium text-slate-800">{titol}</p>
-        <p className="text-xs text-slate-500">
-          {m ? `${resultatModel(m)} · termini ${formatDate(m.termini)}${m.estat === 'presentada' ? ' · presentat' : ''}` : 'Carregant…'}
-        </p>
+  // pdf: formulari oficial del BOE omplert · fitxer: fitxer d'importació per a la Seu de l'AEAT.
+  const fila = (titol: string, m: ResumModel | undefined, opts: { pdf?: boolean; fitxer?: boolean }) => {
+    const actiu = m && m.estat !== 'no_cal';
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2">
+        <div>
+          <p className="text-sm font-medium text-slate-800">{titol}</p>
+          <p className="text-xs text-slate-500">
+            {m ? `${resultatModel(m)} · termini ${formatDate(m.termini)}${m.estat === 'presentada' ? ' · presentat' : ''}` : 'Carregant…'}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {actiu && opts.pdf && (
+            <a href={`/api/impostos/formulari?model=${m.model}&any=${any}&periode=${m.periode}`} target="_blank" rel="noreferrer">
+              <Button size="sm"><Download className="h-4 w-4" /> Formulari oficial (PDF)</Button>
+            </a>
+          )}
+          {actiu && opts.fitxer && (
+            <a href={`/api/impostos/fitxer?model=${m.model}&any=${any}&trimestre=${m.periode}&pagament=I`} title="S'importa a la Seu de l'AEAT («Importar»), que omple totes les caselles i en genera el PDF oficial">
+              <Button size="sm" variant="outline"><Download className="h-4 w-4" /> Fitxer per a la Seu</Button>
+            </a>
+          )}
+          {(!actiu || (!opts.pdf && !opts.fitxer)) && (
+            <a href="/impostos"><Button size="sm" variant="outline">Obre Impostos</Button></a>
+          )}
+        </div>
       </div>
-      {oficial && m && m.estat !== 'no_cal' ? (
-        <a href={`/api/impostos/formulari?model=${m.model}&any=${any}&periode=${m.periode}`} target="_blank" rel="noreferrer">
-          <Button size="sm"><Download className="h-4 w-4" /> Formulari oficial omplert (PDF)</Button>
-        </a>
-      ) : (
-        <a href="/impostos"><Button size="sm" variant="outline">{oficial ? 'Obre Impostos' : 'Només per internet · caselles a Impostos'}</Button></a>
-      )}
-    </div>
-  );
+    );
+  };
 
   return (
     <CollapsibleCard title="Impostos · formularis oficials de l’AEAT" icon={<Landmark className="h-4 w-4 text-brand-600" />}>
@@ -212,14 +225,15 @@ function ImpostosFormularisCard() {
         <span className="text-xs text-slate-500">El formulari del BOE amb les caselles ja omplertes: copia-les a la Seu electrònica o imprimeix-lo.</span>
       </div>
       <div className="space-y-2">
-        {fila(`Model 303 · IVA · ${trim}T`, t?.models['303'], true)}
-        {fila(`Model 130 · IRPF · ${trim}T`, t?.models['130'], true)}
-        {fila(`Model 115 · retencions del lloguer · ${trim}T`, t?.models['115'], false)}
-        {fila(`Model 390 · resum anual d’IVA ${any}`, d?.anual['390'], true)}
-        {fila(`Model 180 · resum anual del lloguer ${any}`, d?.anual['180'], false)}
+        {fila(`Model 303 · IVA · ${trim}T`, t?.models['303'], { pdf: true, fitxer: true })}
+        {fila(`Model 130 · IRPF · ${trim}T`, t?.models['130'], { pdf: true, fitxer: true })}
+        {fila(`Model 115 · retencions del lloguer · ${trim}T`, t?.models['115'], { fitxer: true })}
+        {fila(`Model 390 · resum anual d’IVA ${any}`, d?.anual['390'], { pdf: true })}
+        {fila(`Model 180 · resum anual del lloguer ${any}`, d?.anual['180'], {})}
+        {fila(`Model 347 · clients i proveïdors de més de 3.005,06 € · ${any}`, d?.anual['347'], {})}
       </div>
       <p className="mt-3 text-xs text-slate-500">
-        El 115, el 180 i la renda (100) no tenen formulari oficial en PDF: es fan directament a la Seu electrònica (les caselles són a la pàgina Impostos). La taxa turística (950) es fa a la pàgina Taxa turística.
+        «Fitxer per a la Seu»: a la Seu de l’AEAT, obre el model, tria «Importar» i puja’l; la Seu omple totes les caselles i en genera el PDF oficial per presentar-lo. El 115 no té formulari en paper (només aquest fitxer). El 180, el 347 i la renda (100) es fan directament a la Seu amb les dades de la pàgina Impostos; la taxa turística (950), a l’ATC amb les dades de Taxa turística.
       </p>
     </CollapsibleCard>
   );

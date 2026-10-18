@@ -29,6 +29,7 @@ export async function GET(req: Request) {
     const pdf = await formulariOmplert({
       model, any, periode, caselles, titular: d.titular,
       activitat: model === '390' ? { descripcio: 'SERVEI D’HOSTATGE EN HOSTALS I PENSIONS', clau: 'A03', epigraf: '682' } : undefined,
+      marca347: model === '390' && d.anual['347'].obligat,
     });
     await audit({ usuariId: auth.id, accio: 'DESCARREGA', entitat: 'formulari_aeat', detall: { model, any, periode }, ip: clientIp(req) });
     const nom = `Model ${model} ${any}${periode ? ` ${periode}T` : ''}.pdf`;

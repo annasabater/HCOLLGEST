@@ -91,6 +91,10 @@ const FILES: Record<ModelFiscal, Fila[]> = {
     { c: '02', text: 'Base de les retencions de l’any' },
     { c: '03', text: 'Retencions de l’any', clau: true },
   ],
+  '347': [
+    { c: '01', text: 'Persones i entitats a declarar', u: 'n', clau: true },
+    { c: '02', text: 'Import total de les seves operacions (IVA inclòs)' },
+  ],
 };
 
 const TITOL: Record<ModelFiscal, { nom: string; sub: string }> = {
@@ -99,6 +103,7 @@ const TITOL: Record<ModelFiscal, { nom: string; sub: string }> = {
   '115': { nom: 'Model 115 · Retencions del lloguer', sub: 'El 19 % retingut a la propietària del local' },
   '390': { nom: 'Model 390 · Resum anual d’IVA', sub: 'Informatiu: suma dels quatre 303' },
   '180': { nom: 'Model 180 · Resum anual del lloguer', sub: 'Informatiu: suma dels quatre 115' },
+  '347': { nom: 'Model 347 · Operacions amb terceres persones', sub: 'Informatiu: clients i proveïdors de més de 3.005,06 € l’any' },
 };
 
 /** Fitxa del tràmit a la Seu electrònica de l'AEAT. */
@@ -149,6 +154,8 @@ function resultat(m: ModelInfo, c: Caselles): { import: number; text: string; to
       return { import: c['86'] ?? 0, text: 'Informativa (no es paga res)', tone: 'info' };
     case '180':
       return { import: c['03'] ?? 0, text: 'Informativa (no es paga res)', tone: 'info' };
+    case '347':
+      return { import: c['02'] ?? 0, text: 'Informativa (no es paga res)', tone: 'info' };
   }
 }
 
@@ -572,6 +579,57 @@ function Ieet950Card({ t, onCanvi }: { t: Ieet950; onCanvi: () => Promise<void> 
   );
 }
 
+function Detall347({ m, any }: { m: ImpostosAny['anual']['347']; any: number }) {
+  const clau = (c: 'A' | 'B') => (c === 'A' ? 'Proveïdor (A · compres)' : 'Client (B · vendes)');
+  return (
+    <div className="mt-3 space-y-3 text-xs text-slate-600">
+      <p className={cn('rounded-lg px-3 py-2', m.obligat ? 'bg-amber-50 text-amber-900' : 'bg-green-50 text-green-900')}>
+        {m.obligat
+          ? <>Cal presentar-lo (febrer de {any + 1}). El formulari del 390 ja porta la «X» a la casella <b>D</b>.</>
+          : <>Ara mateix <b>no cal</b>: ningú no passa de 3.005,06 € l’any comptant el que s’hi ha de declarar. Es torna a calcular sol fins al 31 de desembre.</>}
+      </p>
+      {m.declarats.length > 0 && (
+        <table className="w-full">
+          <thead><tr className="text-left text-slate-500"><th className="py-1">Tercer</th><th>NIF</th><th>Clau</th><th className="text-right">1T</th><th className="text-right">2T</th><th className="text-right">3T</th><th className="text-right">4T</th><th className="text-right">Total</th></tr></thead>
+          <tbody>
+            {m.declarats.map((t) => (
+              <tr key={`${t.clau}${t.nif}${t.nom}`} className="border-t border-slate-100">
+                <td className="py-1">{t.nom}</td>
+                <td>{t.nif || <span className="italic text-orange-700">falta</span>}</td>
+                <td>{t.clau}</td>
+                {t.perTrimestre.map((v, i) => <td key={i} className="text-right tabular-nums">{formatEur(v)}</td>)}
+                <td className="text-right font-semibold tabular-nums">{formatEur(t.total)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {m.exclosos.length > 0 && (
+        <div>
+          <p className="mb-1 font-medium text-slate-700">Passen de 3.005,06 € però NO es declaren:</p>
+          <ul className="list-disc space-y-0.5 pl-5">
+            {m.exclosos.map((e) => <li key={`${e.clau}${e.nom}${e.motiu}`}>{e.nom} · {clau(e.clau)} · {formatEur(e.total)} — {e.motiu}</li>)}
+          </ul>
+        </div>
+      )}
+      {m.aprop.length > 0 && (
+        <div>
+          <p className="mb-1 font-medium text-slate-700">S’hi acosten (vigila’ls a final d’any):</p>
+          <ul className="list-disc space-y-0.5 pl-5">
+            {m.aprop.map((t) => <li key={`${t.clau}${t.nif}${t.nom}`}>{t.nom} · {clau(t.clau)} · {formatEur(t.total)}</li>)}
+          </ul>
+        </div>
+      )}
+      {m.efectiu.length > 0 && (
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-amber-900">
+          Cobraments en efectiu de més de 6.000 € d’un mateix client ({m.efectiu.map((e) => `${e.nom}: ${formatEur(e.total)}`).join(', ')}): al 347 s’han d’indicar a part.
+        </p>
+      )}
+      <p>Les imports van amb IVA. Es presenta només per internet (Seu de l’AEAT), del 1 al 28 de febrer. Confirma els casos dubtosos amb el gestor.</p>
+    </div>
+  );
+}
+
 function AvisosBoe({ avisos, onCanvi }: { avisos: AvisBoe[]; onCanvi: () => Promise<void> }) {
   if (avisos.length === 0) return null;
   return (
@@ -825,6 +883,9 @@ export default function ImpostosPage() {
               </div>
             }
           />
+          <div className="xl:col-span-2">
+            <ModelCard m={d.anual['347']} any={any} onCanvi={load} extra={<Detall347 m={d.anual['347']} any={any} />} />
+          </div>
           <RendaCard r={d.renda} any={any} />
           <Card className="xl:col-span-2">
             <CardBody className="flex flex-wrap items-center justify-between gap-3 text-sm">

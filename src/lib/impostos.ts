@@ -8,7 +8,7 @@
  */
 
 export type Caselles = Record<string, number>;
-export type ModelFiscal = '303' | '130' | '115' | '390' | '180';
+export type ModelFiscal = '303' | '130' | '115' | '390' | '180' | '347';
 
 export const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -318,6 +318,60 @@ export function calc100(e: Entrada100): Resultat100 {
   };
 }
 
+// ─── 347 (operacions amb terceres persones) ────────────────────────────────
+
+/** Es declara qui superi 3.005,06 € l'any (IVA inclòs) amb el mateix tercer i clau. */
+export const LLINDAR_347 = 3005.06;
+
+export interface Operacio347 {
+  nif: string;
+  nom: string;
+  /** A = compres (adquisicions) · B = vendes (lliuraments). */
+  clau: 'A' | 'B';
+  import: number;
+  trimestre: number;
+  /** Motiu pel qual no es declara (art. 33.2 RGAT), si n'hi ha. */
+  exclosa?: string;
+}
+
+export interface Tercer347 { nif: string; nom: string; clau: 'A' | 'B'; total: number; perTrimestre: [number, number, number, number] }
+export interface Resultat347 {
+  obligat: boolean;
+  declarats: Tercer347[];
+  /** Tercers que passen del llindar però no es declaren (amb el motiu). */
+  exclosos: { nom: string; clau: 'A' | 'B'; total: number; motiu: string }[];
+  /** Tercers que s'hi acosten (més del 70 % del llindar): vigila'ls a final d'any. */
+  aprop: Tercer347[];
+}
+
+export function calc347(ops: Operacio347[]): Resultat347 {
+  const declarables = new Map<string, Tercer347>();
+  const exclosos = new Map<string, { nom: string; clau: 'A' | 'B'; total: number; motiu: string }>();
+  for (const o of ops) {
+    if (o.exclosa) {
+      const k = `${o.clau}|${o.exclosa}|${(o.nif || o.nom).toUpperCase()}`;
+      const e = exclosos.get(k) ?? { nom: o.nom, clau: o.clau, total: 0, motiu: o.exclosa };
+      e.total = round2(e.total + o.import);
+      exclosos.set(k, e);
+      continue;
+    }
+    const k = `${o.clau}|${(o.nif || o.nom).trim().toUpperCase()}`;
+    const t = declarables.get(k) ?? { nif: o.nif, nom: o.nom, clau: o.clau, total: 0, perTrimestre: [0, 0, 0, 0] };
+    t.total = round2(t.total + o.import);
+    const q = Math.min(4, Math.max(1, o.trimestre)) - 1;
+    t.perTrimestre[q] = round2(t.perTrimestre[q]! + o.import);
+    declarables.set(k, t);
+  }
+  const tots = [...declarables.values()].sort((a, b) => b.total - a.total);
+  const declarats = tots.filter((t) => t.total > LLINDAR_347);
+  return {
+    obligat: declarats.length > 0,
+    declarats,
+    exclosos: [...exclosos.values()].filter((e) => e.total > LLINDAR_347).sort((a, b) => b.total - a.total),
+    aprop: tots.filter((t) => t.total <= LLINDAR_347 && t.total > LLINDAR_347 * 0.7),
+  };
+}
+
 // ─── Terminis ───────────────────────────────────────────────────────────────
 
 /** Si el termini cau en dissabte o diumenge, passa al dilluns (dia hàbil). */
@@ -333,6 +387,8 @@ function diaHabil(y: number, m: number, d: number): string {
 export function termini(model: ModelFiscal, any: number, periode: number): string {
   if (model === '390') return diaHabil(any + 1, 1, 30);
   if (model === '180') return diaHabil(any + 1, 1, 31);
+  // 347: tot el mes de febrer de l'any següent.
+  if (model === '347') return diaHabil(any + 1, 2, new Date(Date.UTC(any + 1, 2, 0)).getUTCDate());
   if (periode === 4) return diaHabil(any + 1, 1, model === '115' ? 20 : 30);
   return diaHabil(any, periode * 3 + 1, 20);
 }

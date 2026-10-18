@@ -47,6 +47,8 @@ const EXTRA: Record<ModelFormulari, Record<string, Caixa>> = {
     activitat: [0, 103.2, 444.6, 420.9, 454.6],
     clau: [0, 426.0, 444.7, 450.7, 454.4],
     epigraf: [0, 456.3, 444.7, 494.0, 454.2],
+    // «D»: obligació de presentar el 347 (operacions amb terceres persones).
+    marca347: [0, 482.9, 514.6, 492.8, 524.9],
     // Totals de l'IVA deduïble interior corrent (caselles amb el tipus ombrejat).
     '48': [3, 247.0, 252.3, 354.0, 262.5],
     '49': [3, 397.0, 252.3, 505.0, 262.5],
@@ -85,6 +87,8 @@ export interface DadesFormulari {
   titular: { nom: string; cognoms: string; nif: string };
   /** 390: activitat, clau i epígraf IAE. */
   activitat?: { descripcio: string; clau: string; epigraf: string };
+  /** 390: cal presentar el 347 → «X» a la casella D. */
+  marca347?: boolean;
 }
 
 export async function formulariOmplert(d: DadesFormulari): Promise<Uint8Array> {
@@ -113,6 +117,7 @@ export async function formulariOmplert(d: DadesFormulari): Promise<Uint8Array> {
       escriu(pages, font, extra.clau!, d.activitat.clau, { esquerra: true });
       escriu(pages, font, extra.epigraf!, d.activitat.epigraf, { esquerra: true });
     }
+    if (d.marca347) escriu(pages, bold, extra.marca347!, 'X', { esquerra: true, mida: 9 });
   }
   if (extra.exercici) escriu(pages, bold, extra.exercici, String(d.any), { esquerra: true });
   if (extra.periode && d.periode > 0) escriu(pages, bold, extra.periode, `${d.periode}T`, { esquerra: true });

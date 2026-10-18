@@ -174,3 +174,26 @@ describe('vigilància del BOE', () => {
     expect(modelsDelTitol('Orden sobre modelos 1303 y 2390')).toEqual([]);
   });
 });
+
+describe('calc347', () => {
+  it('declara qui passa de 3.005,06 € i separa les exclusions', async () => {
+    const { calc347 } = await import('./impostos');
+    const r = calc347([
+      { nif: 'B1', nom: 'NETEGES', clau: 'A', import: 2000, trimestre: 1 },
+      { nif: 'B1', nom: 'NETEGES', clau: 'A', import: 1100, trimestre: 3 },
+      { nif: 'R1', nom: 'ROSA', clau: 'A', import: 9800, trimestre: 2, exclosa: 'Lloguer amb retenció' },
+      { nif: '', nom: 'CLAUDIA', clau: 'B', import: 3346, trimestre: 3, exclosa: 'Factures simplificades' },
+      { nif: 'X1', nom: 'PETIT', clau: 'B', import: 2200, trimestre: 2 },
+    ]);
+    expect(r.obligat).toBe(true);
+    expect(r.declarats).toHaveLength(1);
+    expect(r.declarats[0]).toMatchObject({ nom: 'NETEGES', total: 3100, perTrimestre: [2000, 0, 1100, 0] });
+    expect(r.exclosos.map((e) => e.nom)).toEqual(['ROSA', 'CLAUDIA']);
+    expect(r.aprop.map((t) => t.nom)).toEqual(['PETIT']);
+  });
+
+  it('exactament 3.005,06 € no obliga', async () => {
+    const { calc347 } = await import('./impostos');
+    expect(calc347([{ nif: 'B1', nom: 'X', clau: 'A', import: 3005.06, trimestre: 1 }]).obligat).toBe(false);
+  });
+});
