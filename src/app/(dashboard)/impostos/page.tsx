@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Copy, Check, Download, ExternalLink, FileText, Undo2, CalendarClock, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, Check, Download, ExternalLink, FileText, FileDown, Undo2, CalendarClock, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -204,6 +204,33 @@ function ModelCard({ m, any, onCanvi, extra }: { m: ModelInfo; any: number; onCa
     }
   }
 
+  // Fitxer d'importació de l'AEAT (303/130/115). Es domicilia el pagament si
+  // encara som dins del termini de domiciliació (fins a 5 dies abans del final).
+  async function baixaFitxer() {
+    setBusy(true);
+    setErr(null);
+    try {
+      const limitDomiciliacio = new Date(`${m.termini}T23:59:59`);
+      limitDomiciliacio.setDate(limitDomiciliacio.getDate() - 5);
+      const pagament = new Date() <= limitDomiciliacio ? 'U' : 'I';
+      const res = await fetch(`/api/impostos/fitxer?model=${m.model}&any=${any}&trimestre=${m.periode}&pagament=${pagament}`);
+      if (!res.ok) {
+        const j = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(j?.error ?? 'No s’ha pogut generar el fitxer');
+      }
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${m.model}_${any}_${m.periode}T.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'No s’ha pogut generar el fitxer');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function desfes() {
     if (!confirm('Vols desmarcar aquesta autoliquidació com a presentada?')) return;
     setBusy(true);
@@ -309,6 +336,12 @@ function ModelCard({ m, any, onCanvi, extra }: { m: ModelInfo; any: number; onCa
                     <Button size="sm" variant="outline"><Download className="h-4 w-4" /> Formulari oficial (PDF)</Button>
                   </a>
                 )}
+                {(m.model === '303' || m.model === '130' || m.model === '115') && m.periode >= 1 && any >= 2026 && m.estat !== 'futur' && (
+                  <Button size="sm" variant="outline" onClick={() => void baixaFitxer()} disabled={busy}
+                    title="Fitxer en format oficial de l’AEAT: a la Seu, obre el formulari i fes «Importar»">
+                    <FileDown className="h-4 w-4" /> Fitxer per importar a la Seu
+                  </Button>
+                )}
                 {SEU[m.model] && (
                   <a href={SEU[m.model]} target="_blank" rel="noreferrer">
                     <Button size="sm" variant="outline"><ExternalLink className="h-4 w-4" /> Seu electrònica</Button>
@@ -330,6 +363,7 @@ function ModelCard({ m, any, onCanvi, extra }: { m: ModelInfo; any: number; onCa
                 )}
               </div>
             )}
+            {!edit && err && <p className="mt-2 text-xs text-red-700">{err}</p>}
           </>
         )}
       </CardBody>
