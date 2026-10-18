@@ -10,6 +10,7 @@ import { Field } from '@/components/ui/field';
 import { cn, formatDate } from '@/lib/utils';
 import { optionsFrom, tipusDocumentPujatValues, TIPUS_DOCUMENT_PUJAT_LABELS } from '@/lib/validation/enums';
 import type { ViatgerOcr } from '@/lib/ocr/mrz';
+import { redueixPerOcr } from '@/lib/ocr/redueix-imatge';
 
 // El lector de la MRZ diu si és DNI/NIE/passaport; ho traduïm al "tipus de
 // document pujat". La MRZ és al REVERS del DNI, per això DNI → DNI_REVERS.
@@ -63,7 +64,7 @@ export function DocumentsHuesped({
     setScanning(true);
     try {
       const fd = new FormData();
-      fd.append('image', f);
+      fd.append('image', await redueixPerOcr(f), 'document.jpg');
       const res = await fetch('/api/ocr/document', { method: 'POST', body: fd });
       const data = (await res.json().catch(() => null)) as
         | { result?: ViatgerOcr; warnings?: string[] }

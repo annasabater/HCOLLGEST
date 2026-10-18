@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/input';
 import { optionsFrom, tipusDocumentPujatValues, TIPUS_DOCUMENT_PUJAT_LABELS } from '@/lib/validation/enums';
 import type { ViatgerOcr } from '@/lib/ocr/mrz';
+import { redueixPerOcr } from '@/lib/ocr/redueix-imatge';
 
 export interface PendingDoc {
   id: string;
@@ -83,7 +84,7 @@ export function DocumentScanner({
     setMsg(null);
     try {
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('image', await redueixPerOcr(file), 'document.jpg');
 
       setProgress(30);
       const res = await fetch('/api/ocr/document', { method: 'POST', body: formData });
@@ -108,7 +109,10 @@ export function DocumentScanner({
           if (j.mrzLines && j.mrzLines.length > 0) mrz = j.mrzLines;
           // Cap línia MRZ reconeguda: ensenya què ha respost el lector (diagnòstic).
           else if (j.raw) mrz = ['Resposta del lector:', j.raw];
-        } catch { /* ignore */ }
+        } catch {
+          // Resposta no JSON: l'ha tallada Vercel (413 foto massa gran, 504 temps esgotat…).
+          detail = res.status === 413 ? ' (foto massa gran)' : res.status === 504 ? ' (ha trigat massa)' : ` (error ${res.status})`;
+        }
         setMsg({
           tone: 'warn',
           text: items

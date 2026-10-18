@@ -48,6 +48,27 @@ describe('parseMrz — TD3 (passaport)', () => {
     expect(r.valid).toBe(true);
   });
 
+  it('corregeix confusions lletra/dígit (O/0, I/1, B/8) si el dígit de control ho valida', () => {
+    // Passaport real (SRB): l'OCR llegeix «O» per «0», «I» per «1» i «B» per «8».
+    // Bo: 0173152324SRB8508018M33022000108985710177<06
+    const r = parseMrz([
+      'P<SRBVESKOVIC<<VOJISLAV<<<<<<<<<<<<<<<<<<<<<<',
+      'O173152324SRB85O8OIBM33O22OO0108985710177<06',
+    ])!;
+    expect(r.numDocument).toBe('017315232');
+    expect(r.dataNaixement).toBe('1985-08-01');
+    expect(r.sexe).toBe('HOME');
+    expect(r.valid).toBe(true);
+  });
+
+  it('NO valida si un dígit està mal llegit i cap correcció quadra', () => {
+    const r = parseMrz([
+      'P<SRBVESKOVIC<<VOJISLAV<<<<<<<<<<<<<<<<<<<<<<',
+      '0173152324SRB8508013M33022000108985710177<06', // dígit de control de naixement canviat
+    ])!;
+    expect(r.valid).toBe(false);
+  });
+
   it('normalitza variants del «<» i restes de JSON', () => {
     const raw = TD3.map((l) => `  "${l.replace(/</g, '‹')}",`).join('\n');
     const r = parseMrz(findMrzLines(raw))!;

@@ -92,6 +92,30 @@ async function transcriuMrz(base64: string, mediaType: MediaType) {
   return { parsed, text, mrzCandidates, mrz };
 }
 
+type Lectura = Awaited<ReturnType<typeof transcriuMrz>>;
+
+/**
+ * Talla la imatge en 3 franges horitzontals que se solapen (0-40 %, 30-70 %,
+ * 60-100 % de l'alçada) i les amplia. La MRZ ocupa poc alt, així que sempre queda
+ * sencera dins d'alguna, i el model la veu amb molta més resolució que a la foto
+ * sencera (que es redueix abans de llegir-la). Es talla de l'ORIGINAL (orientació
+ * EXIF + `angle`), no de la còpia reduïda, per no perdre resolució.
+ */
+function franges(original: Buffer, angle: number): Promise<Buffer>[] {
+  const dreta = sharp(original).rotate().toBuffer().then((b) => (angle ? sharp(b).rotate(angle).toBuffer() : b));
+  return [0, 0.3, 0.6].map(async (top) => {
+    const buf = await dreta;
+    const { width = 0, height = 0 } = await sharp(buf).metadata();
+    const y = Math.round(height * top);
+    return sharp(buf)
+      .extract({ left: 0, top: y, width, height: Math.min(Math.round(height * 0.4), height - y) })
+      .resize({ width: 1600, withoutEnlargement: false })
+      .sharpen()
+      .jpeg({ quality: 92 })
+      .toBuffer();
+  });
+}
+
 export async function POST(req: Request) {
   try {
     const auth = await authorize();
@@ -137,21 +161,45 @@ export async function POST(req: Request) {
       if (meta.width && meta.height) diagMida = `${meta.width}×${meta.height} px · ${diagMida}`;
     } catch { /* ignora */ }
 
-    // 1a passada amb la imatge tal com ve. Si la MRZ NO valida (sovint perquè la
-    // foto està girada 90°, el DNI de costat), la rotem i reintentem fins que quadri.
+    // 1a passada amb la imatge tal com ve.
+    const t0 = Date.now();
     let best = await transcriuMrz(baseBuf.toString('base64'), baseType);
-    if (!(best.mrz && best.mrz.valid)) {
-      for (const angle of [90, 270, 180]) {
-        let rotB64: string;
-        try {
-          const rot = await sharp(baseBuf).rotate(angle).jpeg({ quality: 90 }).toBuffer();
-          rotB64 = rot.toString('base64');
-        } catch {
-          continue;
-        }
-        const att = await transcriuMrz(rotB64, 'image/jpeg');
-        if (att.mrz && att.mrz.valid) { best = att; break; }
-      }
+    let bestAngle = 0;
+    const ok = (a: Lectura) => Boolean(a.mrz && a.mrz.valid);
+
+    // Sense MRZ: sovint la foto està girada (el DNI de costat). Provem les tres
+    // rotacions EN PARAL·LEL (en sèrie podien passar del límit de 60 s).
+    if (!ok(best) && !best.mrz) {
+      const rots = await Promise.all(
+        [90, 270, 180].map(async (angle) => {
+          try {
+            const buf = await sharp(baseBuf).rotate(angle).jpeg({ quality: 90 }).toBuffer();
+            return { angle, att: await transcriuMrz(buf.toString('base64'), 'image/jpeg') };
+          } catch {
+            return null;
+          }
+        }),
+      );
+      const hit = rots.find((r) => r && ok(r.att)) ?? rots.find((r) => r?.att.mrz);
+      if (hit) { best = hit.att; bestAngle = hit.angle; }
+    }
+
+    // MRZ trobada però amb dígits que no quadren: el model ha llegit malament algun
+    // caràcter perquè la MRZ és petita dins la foto. Tornem a llegir per franges
+    // horitzontals ampliades (la MRZ queda sencera dins d'alguna), en paral·lel.
+    if (!ok(best) && best.mrz && Date.now() - t0 < 30_000) {
+      const zooms = await Promise.all(
+        franges(Buffer.from(bytes), bestAngle).map(async (p) => {
+          try {
+            const buf = await p;
+            return await transcriuMrz(buf.toString('base64'), 'image/jpeg');
+          } catch {
+            return null;
+          }
+        }),
+      );
+      const hit = zooms.find((z) => z && ok(z));
+      if (hit) best = { ...hit, parsed: hit.parsed ?? best.parsed };
     }
 
     const { parsed, text, mrzCandidates, mrz } = best;

@@ -175,14 +175,16 @@ export function parseMrz(lines: string[]): MrzResult | null {
   if (td3.length >= 2) {
     const l1 = pad(td3[0]!, 44);
     const l2 = pad(td3[1]!, 44);
-    const numDocumentRaw = l2.slice(0, 9);
-    const birth = l2.slice(13, 19);
-    const expiry = l2.slice(21, 27);
+    // Mateixa autocorrecció que al TD1 (O/0, I/1, B/8…), acceptada NOMÉS si el
+    // dígit de control la valida. El número de passaport pot dur lletres, així que
+    // primer es prova tal qual i després passat a dígits. Els dígits de control
+    // també poden arribar com a lletra (O en lloc de 0).
+    const ctl = (c: string) => A_DIGIT[c] ?? c;
+    const [numDocumentRaw, docOk] = validaCampMrz(l2.slice(0, 9), ctl(l2[9]!), aDigits);
+    const [birth, birthOk] = validaCampMrz(l2.slice(13, 19), ctl(l2[19]!), aDigits);
+    const [expiry, expiryOk] = validaCampMrz(l2.slice(21, 27), ctl(l2[27]!), aDigits);
     const name = parseName(l1.slice(5));
-    const valid =
-      checkDigit(numDocumentRaw) === Number(l2[9]) &&
-      checkDigit(birth) === Number(l2[19]) &&
-      checkDigit(expiry) === Number(l2[27]);
+    const valid = docOk && birthOk && expiryOk;
     return {
       format: 'TD3',
       documentType: l1.slice(0, 1),
