@@ -119,16 +119,5 @@ export function bytesFitxer(contingut: string): Buffer {
   return Buffer.from(contingut, 'latin1');
 }
 
-/**
- * Separa «Nom Cognom1 Cognom2» en nom i cognoms (persona física): els dos
- * últims mots són els cognoms. Es pot revisar a la pantalla abans de baixar-lo.
- */
-export function separaNom(complet: string): { nom: string; cognoms: string } {
-  const mots = complet.trim().split(/\s+/).filter(Boolean);
-  if (mots.length <= 1) return { nom: '', cognoms: mots.join(' ') };
-  if (mots.length === 2) return { nom: mots[0]!, cognoms: mots[1]! };
-  return { nom: mots.slice(0, -2).join(' '), cognoms: mots.slice(-2).join(' ') };
-}
-
 /** IBAN sense espais, en majúscules (camp de 34 posicions). */
 export const netejaIban = (iban: string | null | undefined) => (iban ?? '').replace(/\s+/g, '').toUpperCase();

@@ -39,7 +39,8 @@ export async function GET(req: Request) {
     try {
       contingut = GENERADORS[model](caselles, {
         nif: dades.titular.nif,
-        nomComplet: dades.titular.nom,
+        nom: dades.titular.nom,
+        cognoms: dades.titular.cognoms,
         any,
         trimestre,
         formaPagament: pagament,

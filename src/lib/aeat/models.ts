@@ -8,7 +8,7 @@
  * cas de l'hostal. Funcions PURES i testejables.
  */
 import type { Caselles } from '../impostos';
-import { blancs, constant, fitxer, netejaIban, pagina, separaNom, type Camp } from './fitxer';
+import { blancs, constant, fitxer, netejaIban, pagina, type Camp } from './fitxer';
 
 /** Identificador del programa (camp «Versión del Programa» de la capçalera). */
 export const VERSIO_PROGRAMA = 'HC01';
@@ -22,8 +22,9 @@ export type FormaPagament = 'U' | 'I';
 
 export interface DadesDeclarant {
   nif: string;
-  /** «Nom Cognom1 Cognom2» del titular (persona física). */
-  nomComplet: string;
+  /** Nom i cognoms del titular TAL COM CONSTEN A L'AEAT (cens), per separat. */
+  nom: string;
+  cognoms: string;
   any: number;
   /** Trimestre 1–4. */
   trimestre: number;
@@ -40,7 +41,7 @@ const txt = (pos: number, lon: number, valor: string | null | undefined): Camp =
 /** Valida les dades comunes i torna l'IBAN net (obligatori si es domicilia). */
 function comprova(d: DadesDeclarant, resultat: number): string {
   if (!/^[0-9A-Z]{9}$/.test(d.nif.toUpperCase())) throw new Error('Falta el NIF del titular (Configuració → dades de facturació)');
-  if (!d.nomComplet.trim()) throw new Error('Falta el nom del titular (Configuració → dades de facturació)');
+  if (!d.nom.trim() || !d.cognoms.trim()) throw new Error('Falta el nom o els cognoms del titular');
   if (d.trimestre < 1 || d.trimestre > 4) throw new Error('Trimestre no vàlid');
   const iban = netejaIban(d.iban);
   if (resultat > 0 && d.formaPagament === 'U' && !/^ES\d{22}$/.test(iban)) {
@@ -74,7 +75,7 @@ export function fitxer303(c: Caselles, d: DadesDeclarant): string {
   const iban = comprova(d, resultat);
   const ultim = d.trimestre === 4;
   const periode = `${d.trimestre}T`;
-  const { nom, cognoms } = separaNom(d.nomComplet);
+  const { nom, cognoms } = d;
   const tipus = tipus303(c, d.formaPagament, ultim);
 
   const p1 = pagina(
@@ -191,7 +192,7 @@ export function fitxer130(c: Caselles, d: DadesDeclarant): string {
   const resultat = c['19'] ?? 0;
   const iban = comprova(d, resultat);
   const periode = `${d.trimestre}T`;
-  const { nom, cognoms } = separaNom(d.nomComplet);
+  const { nom, cognoms } = d;
   const tipus = tipusIrpf(resultat, d.formaPagament, 'B');
   const p1 = pagina(
     [
@@ -226,7 +227,7 @@ export function fitxer115(c: Caselles, d: DadesDeclarant): string {
   const resultat = c['05'] ?? 0;
   const iban = comprova(d, resultat);
   const periode = `${d.trimestre}T`;
-  const { nom, cognoms } = separaNom(d.nomComplet);
+  const { nom, cognoms } = d;
   const tipus = tipusIrpf(resultat, d.formaPagament, 'N');
   const p1 = pagina(
     [

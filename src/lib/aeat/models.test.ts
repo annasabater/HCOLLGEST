@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { calc115, calc130, calc303, type TotalsTrimestre } from '../impostos';
-import { netejaText, pagina, separaNom, constant } from './fitxer';
+import { netejaText, pagina, constant } from './fitxer';
 import { fitxer115, fitxer130, fitxer303, tipus303, type DadesDeclarant } from './models';
 
 const D: DadesDeclarant = {
   nif: '12345678Z',
-  nomComplet: 'Elisabet Nualart Coll',
+  nom: 'Elisabeth',
+  cognoms: 'Nualart Coll',
   any: 2026,
   trimestre: 3,
   formaPagament: 'U',
@@ -30,10 +31,6 @@ function pagines(f: string, model: string): string[] {
 describe('fitxer — utilitats', () => {
   it('neteja el text: majúscules, sense accents, conserva Ñ', () => {
     expect(netejaText('Núñez, Martí-Àlex')).toBe('NUÑEZ MARTI ALEX');
-  });
-  it('separa nom i dos cognoms', () => {
-    expect(separaNom('Elisabet Nualart Coll')).toEqual({ nom: 'Elisabet', cognoms: 'Nualart Coll' });
-    expect(separaNom('Maria Rosa Puig Vila')).toEqual({ nom: 'Maria Rosa', cognoms: 'Puig Vila' });
   });
   it('detecta un disseny que no quadra', () => {
     expect(() => pagina([constant(1, '<T'), constant(4, 'X')], 4)).toThrow(/no quadra/);
@@ -61,7 +58,7 @@ describe('fitxer303 (DR303e26v101)', () => {
     const [p1] = pagines(f, '303');
     expect(camp(p1!, 13, 1)).toBe('U');
     expect(camp(p1!, 14, 9)).toBe('12345678Z');
-    expect(camp(p1!, 23, 80).trim()).toBe('NUALART COLL ELISABET');
+    expect(camp(p1!, 23, 80).trim()).toBe('NUALART COLL ELISABETH');
     expect(camp(p1!, 103, 6)).toBe('20263T');
     expect(camp(p1!, 287, 17)).toBe('00000000001000000'); // [04] base 10.000,00
     expect(camp(p1!, 304, 5)).toBe('01000'); // [05] 10 %
@@ -107,7 +104,7 @@ describe('fitxer130 (DR130e15v12)', () => {
     expect(p1!.length).toBe(600);
     expect(camp(p1!, 13, 1)).toBe('I');
     expect(camp(p1!, 23, 60).trim()).toBe('NUALART COLL');
-    expect(camp(p1!, 83, 20).trim()).toBe('ELISABET');
+    expect(camp(p1!, 83, 20).trim()).toBe('ELISABETH');
     expect(camp(p1!, 109, 17)).toBe('00000000003000000'); // [01]
     expect(camp(p1!, 160, 17)).toBe('00000000000400000'); // [04] 20 % de 20.000
     expect(camp(p1!, 415, 17)).toBe('00000000000400000'); // [19]
