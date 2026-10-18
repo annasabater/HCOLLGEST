@@ -228,6 +228,96 @@ export function calc180(perceptorsAny: Perceptor[]): Caselles {
   return { '01': c115['01'] ?? 0, '02': c115['02'] ?? 0, '03': c115['03'] ?? 0 };
 }
 
+// ─── 100 (renda) · part de l'activitat ─────────────────────────────────────
+
+/** Conceptes de despesa de l'estimació directa simplificada (Manual Renda AEAT, cap. 7). */
+export const CONCEPTES_100 = {
+  consums: 'Consums d’explotació',
+  sous: 'Sous i salaris',
+  ssTitular: 'Seguretat Social del titular (quota d’autònoms)',
+  arrendaments: 'Arrendaments i cànons',
+  reparacions: 'Reparacions i conservació',
+  subministraments: 'Subministraments (llum, aigua, gas, telefonia i Internet)',
+  assegurances: 'Primes d’assegurança',
+  serveisExteriors: 'Altres serveis exteriors',
+  tributs: 'Altres tributs fiscalment deduïbles',
+  altres: 'Altres despeses fiscalment deduïbles',
+} as const;
+export type Concepte100 = keyof typeof CONCEPTES_100;
+
+const CATEGORIA_A_CONCEPTE: Record<string, Concepte100> = {
+  lloguer: 'arrendaments',
+  manteniment: 'reparacions',
+  reformes: 'reparacions',
+  electricitat: 'subministraments',
+  aigua: 'subministraments',
+  internet: 'subministraments',
+  assegurances: 'assegurances',
+  impostos: 'tributs',
+  'impostos i taxes': 'tributs',
+  'autònoms': 'ssTitular',
+  autonoms: 'ssTitular',
+  'seguretat social': 'ssTitular',
+  personal: 'sous',
+  neteja: 'serveisExteriors',
+  'màrqueting': 'serveisExteriors',
+};
+
+/** Concepte de la renda per a una categoria de gasto del gestio. */
+export function concepte100(categoria: string): Concepte100 {
+  return CATEGORIA_A_CONCEPTE[categoria.trim().toLowerCase()] ?? 'altres';
+}
+
+export interface Entrada100 {
+  ingressos: number;
+  gastos: Partial<Record<Concepte100, number>>;
+  /** Pagaments fraccionats de l'any (casella 19 dels 130). */
+  pagamentsFraccionats: number;
+  /** Reducció del 20 % (art. 32.3 LIRPF): primer any amb rendiment positiu i el següent. */
+  iniciActivitat: boolean;
+}
+
+export interface Resultat100 {
+  ingressos: number;
+  gastos: Record<Concepte100, number>;
+  totalGastos: number;
+  diferencia: number;
+  /** Provisions i despeses de difícil justificació: 5 % de la diferència, màxim 2.000 €. */
+  dificilJustificacio: number;
+  rendimentNet: number;
+  reduccioInici: number;
+  rendimentNetReduit: number;
+  pagamentsFraccionats: number;
+}
+
+export const PERCENT_DIFICIL_JUSTIFICACIO = 5;
+export const MAX_DIFICIL_JUSTIFICACIO = 2000;
+
+export function calc100(e: Entrada100): Resultat100 {
+  const gastos = Object.fromEntries(
+    (Object.keys(CONCEPTES_100) as Concepte100[]).map((k) => [k, round2(e.gastos[k] ?? 0)]),
+  ) as Record<Concepte100, number>;
+  const totalGastos = round2(Object.values(gastos).reduce((a, x) => a + x, 0));
+  const diferencia = round2(e.ingressos - totalGastos);
+  const dificil = diferencia > 0
+    ? round2(Math.min((diferencia * PERCENT_DIFICIL_JUSTIFICACIO) / 100, MAX_DIFICIL_JUSTIFICACIO))
+    : 0;
+  const rendimentNet = round2(diferencia - dificil);
+  // Límit: la reducció s'aplica sobre un màxim de 100.000 € de rendiment.
+  const reduccioInici = e.iniciActivitat && rendimentNet > 0 ? round2(Math.min(rendimentNet, 100000) * 0.2) : 0;
+  return {
+    ingressos: round2(e.ingressos),
+    gastos,
+    totalGastos,
+    diferencia,
+    dificilJustificacio: dificil,
+    rendimentNet,
+    reduccioInici,
+    rendimentNetReduit: round2(rendimentNet - reduccioInici),
+    pagamentsFraccionats: round2(e.pagamentsFraccionats),
+  };
+}
+
 // ─── Terminis ───────────────────────────────────────────────────────────────
 
 /** Si el termini cau en dissabte o diumenge, passa al dilluns (dia hàbil). */

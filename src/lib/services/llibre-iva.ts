@@ -333,7 +333,7 @@ function columnaPerCategoria(nom: string): ColumnaGasto {
 }
 
 /** Categories que no porten IVA (assegurances, tributs locals, autònoms, Seguretat Social). */
-function esCategoriaSenseIva(nom: string): boolean {
+export function esCategoriaSenseIva(nom: string): boolean {
   const col = columnaPerCategoria(nom);
   return col === 'otrosSinIva' || col === 'impuestoLocal' || col === 'autonomos' || col === 'seguridadSocial';
 }

@@ -11,10 +11,12 @@
 import 'server-only';
 import { prisma } from '../db';
 import {
-  agrupaPerceptors, calc115, calc130, calc180, calc303, calc390, pendentDespres303, round2, termini,
-  type Anterior130, type Caselles, type ModelFiscal, type Perceptor, type PerTipus, type TotalsTrimestre,
+  agrupaPerceptors, calc100, calc115, calc130, calc180, calc303, calc390, concepte100, pendentDespres303, round2, termini,
+  type Anterior130, type Caselles, type Concepte100, type ModelFiscal, type Perceptor, type PerTipus, type Resultat100,
+  type TotalsTrimestre,
 } from '../impostos';
-import { getFiancesSoportades, getGastosSoportats, getLlibreIngressos, rangTrimestre } from './llibre-iva';
+import { liniesIva } from '../gasto-iva';
+import { esCategoriaSenseIva, getFiancesSoportades, getGastosSoportats, getLlibreIngressos, rangTrimestre } from './llibre-iva';
 
 export type EstatModel = 'presentada' | 'pendent' | 'en_curs' | 'futur' | 'no_cal';
 
@@ -45,6 +47,13 @@ export interface ImpostosAny {
   referenciaCadastral: string;
   trimestres: TrimestreInfo[];
   anual: { '390': ModelInfo; '180': ModelInfo & { perceptors: Perceptor[] } };
+  /** Renda (model 100): només la part de l'activitat de l'hostal. */
+  renda: Resultat100 & {
+    termini: string;
+    iniciActivitat: boolean;
+    /** Gastos d'immobilitzat (mobiliari, electrodomèstics) que potser s'han d'amortitzar. */
+    immobilitzat: number;
+  };
 }
 
 /** Clau de casella del resultat de cada model (per detectar canvis). */
@@ -209,12 +218,54 @@ export async function getImpostosAny(any: number, avui = new Date()): Promise<Im
   const m390 = info('390', 0, calc390(per390), fiAny, per390.every((x) => x.totals.ingressos.base === 0 && x.totals.gastos.baseAmbIva === 0));
   const m180 = info('180', 0, calc180(perceptorsAny), fiAny, perceptorsAny.length === 0);
 
+  const pagaments130 = round2(
+    trimestres.reduce((a, t) => a + Math.max(0, (t.models['130'].presentada?.caselles ?? t.models['130'].calculades)['19'] ?? 0), 0),
+  );
+
   return {
     any,
     titular: { nom: establiment?.facturaTitular ?? establiment?.nom ?? '', nif: establiment?.facturaNif ?? '' },
     referenciaCadastral: establiment?.referenciaCadastral ?? '',
     trimestres,
     anual: { '390': m390, '180': { ...m180, perceptors: perceptorsAny } },
+    renda: await renda(any, acumIngressos, pagaments130),
+  };
+}
+
+/** Part de l'activitat de la renda: gastos de l'any per concepte (sense fiances). */
+async function renda(any: number, ingressos: number, pagamentsFraccionats: number): Promise<ImpostosAny['renda']> {
+  const inici = new Date(any, 0, 1);
+  const fi = new Date(any, 11, 31, 23, 59, 59, 999);
+  const [gastos, nomines, anteriors] = await Promise.all([
+    prisma.gasto.findMany({
+      where: { deletedAt: null, esFianca: false, data: { gte: inici, lte: fi } },
+      include: { categoria: { select: { nom: true } } },
+    }),
+    prisma.nomina.findMany({ where: { periode: { startsWith: `${any}-` } }, select: { total: true } }),
+    // Reducció per inici: cal no haver tingut activitat l'any anterior.
+    Promise.all([
+      prisma.factura.count({ where: { deletedAt: null, data: { gte: new Date(any - 1, 0, 1), lt: inici } } }),
+      prisma.gasto.count({ where: { deletedAt: null, data: { gte: new Date(any - 1, 0, 1), lt: inici } } }),
+    ]),
+  ]);
+  const perConcepte: Partial<Record<Concepte100, number>> = {};
+  let immobilitzat = 0;
+  for (const g of gastos) {
+    const cat = g.categoria?.nom ?? '';
+    const base = esCategoriaSenseIva(cat) && g.baseImposable == null && g.desglossamentIva == null
+      ? Number(g.import)
+      : liniesIva(g).reduce((a, l) => a + l.base, 0);
+    const k = concepte100(cat);
+    perConcepte[k] = round2((perConcepte[k] ?? 0) + base);
+    if (['mobiliari', 'electrodomèstics'].includes(cat.trim().toLowerCase())) immobilitzat = round2(immobilitzat + base);
+  }
+  perConcepte.sous = round2((perConcepte.sous ?? 0) + nomines.reduce((a, n) => a + Number(n.total), 0));
+  const iniciActivitat = anteriors[0] === 0 && anteriors[1] === 0;
+  return {
+    ...calc100({ ingressos, gastos: perConcepte, pagamentsFraccionats, iniciActivitat }),
+    termini: `${any + 1}-06-30`,
+    iniciActivitat,
+    immobilitzat,
   };
 }
 

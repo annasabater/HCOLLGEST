@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Copy, Check, ExternalLink, FileText, Undo2, CalendarClock, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { formatEur, cn } from '@/lib/utils';
-import type { Caselles, ModelFiscal, PerTipus } from '@/lib/impostos';
+import { CONCEPTES_100, type Caselles, type Concepte100, type ModelFiscal, type PerTipus } from '@/lib/impostos';
 import type { ImpostosAny, ModelInfo, TrimestreInfo } from '@/lib/services/impostos';
 
 type Unitat = 'eur' | 'pct' | 'n';
@@ -331,6 +332,67 @@ function ModelCard({ m, any, onCanvi, extra }: { m: ModelInfo; any: number; onCa
   );
 }
 
+function RendaCard({ r, any }: { r: ImpostosAny['renda']; any: number }) {
+  const fila = (text: string, v: number, opts?: { clau?: boolean; signe?: string }) => (
+    <tr className={cn('border-t border-slate-100', opts?.clau && 'bg-slate-50 font-semibold')}>
+      <td className="py-1.5 pr-2 text-slate-700">{opts?.signe ? `${opts.signe} ` : ''}{text}</td>
+      <td className="whitespace-nowrap py-1.5 text-right tabular-nums">{formatEur(v)}<BotoCopia n={v} /></td>
+    </tr>
+  );
+  return (
+    <Card className="xl:col-span-2">
+      <CardHeader className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <CardTitle>Model 100 · Renda {any} (part de l’hostal)</CardTitle>
+          <p className="text-xs text-slate-500">Rendiments d’activitats econòmiques · estimació directa simplificada</p>
+        </div>
+        <span className="flex items-center gap-1 text-xs text-slate-500">
+          <CalendarClock className="h-3.5 w-3.5" /> Campanya: abril – {dataCurta(r.termini)}
+        </span>
+      </CardHeader>
+      <CardBody>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <table className="w-full text-sm">
+            <tbody>
+              {fila('Ingressos íntegres (sense IVA)', r.ingressos, { clau: true })}
+              {(Object.keys(CONCEPTES_100) as Concepte100[])
+                .filter((k) => r.gastos[k] !== 0)
+                .map((k) => <Fragment key={k}>{fila(CONCEPTES_100[k], r.gastos[k], { signe: '−' })}</Fragment>)}
+              {fila('Total despeses', r.totalGastos)}
+              {fila('Diferència', r.diferencia)}
+              {fila('Provisions i despeses de difícil justificació (5 %, màx. 2.000 €)', r.dificilJustificacio, { signe: '−' })}
+              {fila('Rendiment net', r.rendimentNet, { clau: true })}
+              {r.iniciActivitat && fila('Reducció per inici d’activitat (20 %)', r.reduccioInici, { signe: '−' })}
+              {fila('Rendiment net reduït', r.rendimentNetReduit, { clau: true })}
+              {fila('Pagaments fraccionats (130) de l’any', r.pagamentsFraccionats)}
+            </tbody>
+          </table>
+          <div className="space-y-2 text-xs text-slate-600">
+            <p>
+              Aquestes xifres van a <b>Renta WEB → Rendiments d’activitats econòmiques en estimació directa</b>. La resta de la renda (altres ingressos, situació familiar, deduccions) no surt del gestio: la fa el gestor o es completa a Renta WEB.
+            </p>
+            <p>Els pagaments del 130 es resten al final: si n’has pagat més del que toca, Hisenda t’ho torna.</p>
+            {r.iniciActivitat ? (
+              <p className="rounded-lg bg-green-50 px-3 py-2 text-green-900">
+                <b>Reducció del 20 % per inici d’activitat</b> (art. 32.3 LIRPF): s’aplica el primer any amb rendiment positiu i el següent, si l’any anterior a l’alta no tenies cap altra activitat econòmica. Confirma-ho amb el gestor.
+              </p>
+            ) : (
+              <p>No s’aplica la reducció per inici d’activitat (hi ha moviments l’any anterior).</p>
+            )}
+            {r.immobilitzat > 0 && (
+              <p className="flex gap-2 rounded-lg bg-amber-50 px-3 py-2 text-amber-900">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                Hi ha {formatEur(r.immobilitzat)} de mobiliari i electrodomèstics. Si un element costa més de 300 €, potser s’ha d’amortitzar en diversos anys en lloc de restar-lo tot de cop.
+              </p>
+            )}
+            <p>El 5 % de difícil justificació és la regla de la renda 2025; comprova que no canviï per al {any}.</p>
+          </div>
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
 function sumaTipus(p: PerTipus) {
   return Object.entries(p)
     .filter(([, v]) => v.base !== 0)
@@ -550,6 +612,15 @@ export default function ImpostosPage() {
               </div>
             }
           />
+          <RendaCard r={d.renda} any={any} />
+          <Card className="xl:col-span-2">
+            <CardBody className="flex flex-wrap items-center justify-between gap-3 text-sm">
+              <p className="text-slate-700">
+                <b>Taxa turística (model 950, ATC):</b> semestral, de l’1 al 20 d’octubre (abril–setembre) i de l’1 al 20 d’abril (octubre–març).
+              </p>
+              <Link href="/taxa-turistica"><Button size="sm" variant="outline">Obre la taxa turística</Button></Link>
+            </CardBody>
+          </Card>
         </div>
       )}
     </>

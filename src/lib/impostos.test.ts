@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  agrupaPerceptors, calc115, calc130, calc180, calc303, calc390, pendentDespres303, termini,
+  agrupaPerceptors, calc100, calc115, calc130, calc180, calc303, calc390, concepte100, pendentDespres303, termini,
   type TotalsTrimestre,
 } from './impostos';
 
@@ -126,6 +126,29 @@ describe('calc390', () => {
     expect(c['95']).toBe(212.5);
     expect(c['97']).toBe(33.73);
     expect(c['108']).toBe(12880.94);
+  });
+});
+
+describe('calc100', () => {
+  it('5 % de difícil justificació i 20 % per inici d’activitat', () => {
+    const r = calc100({ ingressos: 20000, gastos: { arrendaments: 6000, subministraments: 1000, altres: 1000 }, pagamentsFraccionats: 1472.79, iniciActivitat: true });
+    expect(r.totalGastos).toBe(8000);
+    expect(r.diferencia).toBe(12000);
+    expect(r.dificilJustificacio).toBe(600);
+    expect(r.rendimentNet).toBe(11400);
+    expect(r.reduccioInici).toBe(2280);
+    expect(r.rendimentNetReduit).toBe(9120);
+  });
+
+  it('la difícil justificació no passa de 2.000 €', () => {
+    expect(calc100({ ingressos: 100000, gastos: {}, pagamentsFraccionats: 0, iniciActivitat: false }).dificilJustificacio).toBe(2000);
+  });
+
+  it('categories del gestio → conceptes de la renda', () => {
+    expect(concepte100('Lloguer')).toBe('arrendaments');
+    expect(concepte100('Autònoms')).toBe('ssTitular');
+    expect(concepte100('Electricitat')).toBe('subministraments');
+    expect(concepte100('Mobiliari')).toBe('altres');
   });
 });
 
