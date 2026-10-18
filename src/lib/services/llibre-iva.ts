@@ -322,16 +322,20 @@ const CATEGORIA_A_COLUMNA: Record<string, ColumnaGasto> = {
   impostos: 'impuestoLocal',
   'impostos i taxes': 'impuestoLocal',
   personal: 'salarios',
+  // Quota d'autònoms i Seguretat Social: sense IVA (només resten al 130).
+  'autònoms': 'autonomos',
+  autonoms: 'autonomos',
+  'seguretat social': 'seguridadSocial',
 };
 
 function columnaPerCategoria(nom: string): ColumnaGasto {
   return CATEGORIA_A_COLUMNA[nom.trim().toLowerCase()] ?? 'gastosVarios';
 }
 
-/** Categories que no porten IVA (assegurances, tributs locals). */
+/** Categories que no porten IVA (assegurances, tributs locals, autònoms, Seguretat Social). */
 function esCategoriaSenseIva(nom: string): boolean {
   const col = columnaPerCategoria(nom);
-  return col === 'otrosSinIva' || col === 'impuestoLocal';
+  return col === 'otrosSinIva' || col === 'impuestoLocal' || col === 'autonomos' || col === 'seguridadSocial';
 }
 
 export interface FilaLibroGasto {
@@ -353,8 +357,8 @@ function basesBuides(): Record<ColumnaGasto, number> {
 /**
  * Libro de gastos del trimestre en el format de la gestoria: cada despesa a la
  * columna de la seva categoria (base) + l'IVA a la columna del seu tipus, i les
- * nòmines del trimestre a la columna "Salarios". Autònoms i Seguridad Social no
- * es desglossen a l'app encara → columnes a 0 (editables a la impressió).
+ * nòmines del trimestre a la columna "Salarios". Autònoms i Seguridad Social surten
+ * dels gastos amb categoria «Autònoms» / «Seguretat Social» (editables a la impressió).
  */
 export async function getLibroGastos(
   year: number,
@@ -372,8 +376,9 @@ export async function getLibroGastos(
     const col = columnaPerCategoria(g.categoria?.nom ?? '');
     const bases = basesBuides();
     const ivaPer = { 5: 0, 10: 0, 21: 0 };
-    if (col === 'otrosSinIva' || col === 'impuestoLocal') {
-      // Sense IVA: assegurances → «Otros gastos sin IVA»; tributs → «Impuesto local».
+    if (esCategoriaSenseIva(g.categoria?.nom ?? '')) {
+      // Sense IVA: assegurances → «Otros gastos sin IVA»; tributs → «Impuesto local»;
+      // quota d'autònoms → «Autónomos»; Seguretat Social → «Seguridad Social».
       bases[col] = total;
     } else {
       // Cada línia d'IVA: la base subjecta a la columna de la categoria, la part

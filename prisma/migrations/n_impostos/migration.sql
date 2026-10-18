@@ -26,3 +26,9 @@ INSERT INTO "declaracio_fiscal" ("id", "model", "any", "periode", "caselles", "j
    '{"01":2161.85,"02":17.56,"03":2144.29,"04":428.86,"05":0,"06":0,"07":428.86,"12":428.86,"13":0,"14":428.86,"15":0,"16":0,"17":428.86,"18":0,"19":428.86}',
    '1306469854593', '2026-07-20', CURRENT_TIMESTAMP)
 ON CONFLICT DO NOTHING;
+
+-- Categories de gasto sense IVA que només resten al 130 (quota d'autònoms, SS).
+INSERT INTO "categoria_gasto" ("id", "nom", "updated_at") VALUES
+  ('cat-autonoms', 'Autònoms', CURRENT_TIMESTAMP),
+  ('cat-seguretat-social', 'Seguretat Social', CURRENT_TIMESTAMP)
+ON CONFLICT ("nom") DO NOTHING;

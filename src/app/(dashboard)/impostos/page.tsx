@@ -478,7 +478,7 @@ export default function ImpostosPage() {
               onCanvi={load}
               extra={
                 <p className="mt-3 text-xs text-slate-500">
-                  Les despeses van sense IVA i inclouen també els gastos que no en porten. La quota d’autònoms i la Seguretat Social no es registren al gestio: si en pagues, entra-les com a gasto perquè restin.
+                  Les despeses van sense IVA i inclouen també els gastos que no en porten. La quota d’autònoms i la Seguretat Social resten si les entres com a gasto amb la categoria «Autònoms» o «Seguretat Social» (sense IVA).
                 </p>
               }
             />
