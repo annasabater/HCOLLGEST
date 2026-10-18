@@ -22,7 +22,7 @@ export const TaulesPdfSchema = z.object({
         cols: z.array(z.object({ label: txt, num: z.boolean(), w: z.number().positive().max(2000) })).min(1).max(24),
         files: z.array(z.array(txt).max(24)).max(3000),
         peu: z.array(z.object({ t: txt, span: z.number().int().min(1).max(24), num: z.boolean() })).max(24).default([]),
-        // Files de total addicionals sota el peu (p. ex. «Total Modelo 303»), destacades.
+        // Files de total addicionals sota el peu (p. ex. «Total Modelo 303»).
         peuExtra: z
           .array(z.array(z.object({ t: txt, span: z.number().int().min(1).max(24), num: z.boolean() })).max(24))
           .max(4)
@@ -189,10 +189,8 @@ export async function buildTaulesPdf(d: TaulesPdf): Promise<Uint8Array> {
       filaPeu(full.peu, INK);
     }
     for (const extra of full.peuExtra) {
-      if (y - ALT_FILA - 4 < limit) novaPagina(false);
-      y -= 4;
-      page.drawRectangle({ x: M, y: y - ALT_FILA, width: UTIL, height: ALT_FILA, color: ACCENT_SOFT });
-      filaPeu(extra, ACCENT);
+      if (y - ALT_FILA < limit) novaPagina(false);
+      filaPeu(extra, INK);
     }
 
     if (full.resum.length > 0) {

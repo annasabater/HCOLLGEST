@@ -319,8 +319,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   tfoot td{ border-top:1.5px solid var(--ink); border-bottom:none; font-weight:700; color:var(--ink); padding-top:9px; }
   tfoot td.lab{ text-align:right; text-transform:uppercase; letter-spacing:.5px; font-size:10px; }
   /* «Total Modelo 303»: base només de les factures amb IVA (sense les de 0 %). */
-  tfoot tr.t303 td{ border-top:none; background:var(--accent-soft); color:var(--accent); padding-top:6px; padding-bottom:6px; }
-  tfoot tr.t303 td.lab .sub{ display:block; text-transform:none; letter-spacing:0; font-weight:600; font-size:9px; }
+  tfoot tr.t303 td{ border-top:none; padding-top:4px; }
   td.roN{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; padding:7px 6px; }
   td.roC{ font-weight:600; color:var(--slate); padding:7px 6px; }
   td.ro{ padding:7px 6px; }
@@ -499,7 +498,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
           <td class="c-del"></td>
         </tr>
         <tr class="t303" id="g303-row">
-          <td colspan="4" class="lab">Total Modelo 303 · <span class="sub">solo facturas con IVA</span></td>
+          <td colspan="4" class="lab">Total Modelo 303</td>
           <td class="c-n" id="g303-base">0,00</td>
           <td></td><td></td><td></td><td></td><td></td>
           <td class="c-del"></td>
