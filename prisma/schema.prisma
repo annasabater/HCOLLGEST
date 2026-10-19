@@ -269,6 +269,9 @@ model Establiment {
   aeatCertNif        String?   @map("aeat_cert_nif")
   aeatCertNom        String?   @map("aeat_cert_nom")
   aeatCertCaduca     DateTime? @map("aeat_cert_caduca")
+  // Contrasenya del certificat XIFRADA (AES-256-GCM), només si la titular vol
+  // que es recordi (així no l'ha d'escriure a cada presentació).
+  aeatCertContrasenya String?  @map("aeat_cert_contrasenya")
   // "proves" (prewww1.aeat.es, laborables 8–15 h) o "produccio".
   aeatEntorn         String    @default("proves") @map("aeat_entorn")
 

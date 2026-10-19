@@ -7,19 +7,19 @@ import { ErrorFitxer, parametresFitxer, presentaDeclaracio } from '@/lib/service
 export const maxDuration = 60;
 
 // POST /api/impostos/presentar
-//   { model, any, trimestre, pagament, contrasenya, nrc?, conformitat: true }
+//   { model, any, trimestre, pagament, contrasenya?, nrc?, conformitat: true }
 // PRESENTA l'autoliquidació a l'AEAT amb el certificat de la titular. És
 // irreversible: cal la conformitat explícita (l'especificació de l'AEAT obliga
-// a mostrar les dades i recollir-la) i la contrasenya del certificat, que
-// només s'usa en memòria per a aquesta petició.
+// a mostrar les dades i recollir-la). La contrasenya del certificat és
+// l'escrita o, si no se n'escriu cap, la desada (xifrada).
 export async function POST(req: Request) {
   try {
     const auth = await authorize(ROLES_ADMIN);
     if (auth instanceof Response) return auth;
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
     if (body.conformitat !== true) return badRequest('Cal confirmar que les dades són correctes abans de presentar');
+    // Buida: es fa servir la desada (si la titular ha triat que es recordi).
     const contrasenya = typeof body.contrasenya === 'string' ? body.contrasenya : '';
-    if (!contrasenya) return badRequest('Cal la contrasenya del certificat');
     const { model, any, trimestre, pagament } = parametresFitxer(body);
 
     const r = await presentaDeclaracio({

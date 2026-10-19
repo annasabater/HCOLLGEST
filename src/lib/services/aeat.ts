@@ -8,7 +8,7 @@ import { prisma } from '../db';
 import { getImpostosAny } from './impostos';
 import { fitxer115, fitxer130, fitxer303, type FormaPagament } from '../aeat/models';
 import { baixaJustificant, presentaAeat, validaAeat, type EntornAeat, type ResultatPresentacio } from '../aeat/servei';
-import { decryptBuffer } from '../crypto';
+import { decryptBuffer, decryptString } from '../crypto';
 import { saveUpload } from '../storage';
 import type { Caselles } from '../impostos';
 
@@ -70,16 +70,19 @@ export interface ResultatPresentacioApp extends ResultatPresentacio {
  */
 export async function presentaDeclaracio(p: {
   model: ModelFitxer; any: number; trimestre: number; pagament: FormaPagament;
-  contrasenya: string; nrc?: string; usuariId: string;
+  /** Si és buida, es fa servir la desada (xifrada), si n'hi ha. */
+  contrasenya?: string; nrc?: string; usuariId: string;
 }): Promise<ResultatPresentacioApp> {
   const est = await prisma.establiment.findFirst({
-    select: { aeatCertificat: true, aeatCertNif: true, aeatCertNom: true, aeatCertCaduca: true, aeatEntorn: true },
+    select: { aeatCertificat: true, aeatCertNif: true, aeatCertNom: true, aeatCertCaduca: true, aeatEntorn: true, aeatCertContrasenya: true },
   });
   if (!est?.aeatCertificat || !est.aeatCertNif || !est.aeatCertNom) {
     throw new ErrorFitxer('Cal pujar el certificat digital de la titular (secció «Presentació directa a l’AEAT»)');
   }
   if (est.aeatCertCaduca && est.aeatCertCaduca.getTime() < Date.now()) throw new ErrorFitxer('El certificat ha caducat: cal renovar-lo i tornar-lo a pujar');
   const entorn: EntornAeat = est.aeatEntorn === 'produccio' ? 'produccio' : 'proves';
+  const contrasenya = p.contrasenya || (est.aeatCertContrasenya ? decryptString(est.aeatCertContrasenya) : '');
+  if (!contrasenya) throw new ErrorFitxer('Cal la contrasenya del certificat');
 
   const f = await generaFitxerAeat(p.model, p.any, p.trimestre, p.pagament);
   if (est.aeatCertNif.toUpperCase() !== f.titular.nif.toUpperCase()) {
@@ -99,7 +102,7 @@ export async function presentaDeclaracio(p: {
   const v = await validaAeat({ model: p.model, any: p.any, periode: f.periode, fitxer: f.contingut });
   if (v.errors.length) return { ok: false, errors: v.errors, avisos: v.avisos, entorn, validacio: true };
 
-  const certificat = { pfx: decryptBuffer(Buffer.from(est.aeatCertificat, 'base64')), contrasenya: p.contrasenya };
+  const certificat = { pfx: decryptBuffer(Buffer.from(est.aeatCertificat, 'base64')), contrasenya };
   const r = await presentaAeat(
     { model: p.model, any: p.any, periode: f.periode, fitxer: f.contingut, nifPresentador: est.aeatCertNif, nomPresentador: est.aeatCertNom, nrc: p.pagament === 'I' ? nrc : '' },
     certificat,

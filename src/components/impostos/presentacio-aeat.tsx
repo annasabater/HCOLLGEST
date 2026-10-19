@@ -5,7 +5,7 @@
  *  - CertificatAeatCard: pujar/treure el certificat de la titular i triar
  *    l'entorn (proves o producció).
  *  - PresentarAeat: botó «Presentar a l'AEAT» de cada model, amb el resum, la
- *    conformitat explícita i la contrasenya del certificat (mai es desa).
+ *    conformitat explícita i, si no està desada, la contrasenya del certificat.
  */
 import { useEffect, useState } from 'react';
 import { KeyRound, Send, ShieldAlert, Trash2, Upload } from 'lucide-react';
@@ -22,6 +22,7 @@ export interface InfoCertificatAeat {
   nom: string | null;
   caduca: string | null;
   entorn: 'proves' | 'produccio';
+  contrasenyaDesada: boolean;
 }
 
 // Una sola petició per a totes les targetes de la pàgina.
@@ -50,6 +51,8 @@ export function CertificatAeatCard() {
   const info = useCertificat();
   const [fitxer, setFitxer] = useState<File | null>(null);
   const [contrasenya, setContrasenya] = useState('');
+  const [recorda, setRecorda] = useState(true);
+  const [novaContrasenya, setNovaContrasenya] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
 
@@ -61,12 +64,13 @@ export function CertificatAeatCard() {
       const fd = new FormData();
       fd.append('fitxer', fitxer);
       fd.append('contrasenya', contrasenya);
+      if (recorda) fd.append('recorda', '1');
       const res = await fetch('/api/aeat/certificat', { method: 'POST', body: fd });
       const j = (await res.json().catch(() => null)) as { error?: string } | null;
       if (!res.ok) throw new Error(j?.error ?? 'No s’ha pogut pujar el certificat');
       setFitxer(null);
       setContrasenya('');
-      setMsg({ tone: 'ok', text: 'Certificat desat (xifrat). La contrasenya no s’ha desat: te la demanarem a cada presentació.' });
+      setMsg({ tone: 'ok', text: recorda ? 'Certificat i contrasenya desats (xifrats).' : 'Certificat desat (xifrat). La contrasenya no s’ha desat: te la demanarem a cada presentació.' });
       await carregaInfo(true);
       avisa();
     } catch (e) {
@@ -79,6 +83,29 @@ export function CertificatAeatCard() {
   async function canviaEntorn(entorn: 'proves' | 'produccio') {
     if (entorn === 'produccio' && !confirm('A PRODUCCIÓ les declaracions es presenten DE VERITAT a Hisenda i no es poden anul·lar. Hi passem?')) return;
     await patchJSON('/api/aeat/certificat', { entorn });
+    await carregaInfo(true);
+    avisa();
+  }
+
+  async function desaContrasenya() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      await patchJSON('/api/aeat/certificat', { recordaContrasenya: novaContrasenya });
+      setNovaContrasenya('');
+      setMsg({ tone: 'ok', text: 'Contrasenya desada (xifrada). Ja no te la demanarem.' });
+      await carregaInfo(true);
+      avisa();
+    } catch (e) {
+      setMsg({ tone: 'err', text: e instanceof ApiError ? e.message : 'No s’ha pogut desar' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function oblidaContrasenya() {
+    if (!confirm('Vols que el panell oblidi la contrasenya? Te la demanarà a cada presentació.')) return;
+    await patchJSON('/api/aeat/certificat', { oblidaContrasenya: true });
     await carregaInfo(true);
     avisa();
   }
@@ -97,7 +124,7 @@ export function CertificatAeatCard() {
         <div className="space-y-4 text-sm text-slate-700">
           <p className="text-xs text-slate-500">
             Amb el certificat digital de la titular (fitxer .p12/.pfx de la FNMT), el 303, el 130 i el 115 es presenten des d’aquí amb un botó.
-            El certificat es desa <b>xifrat</b> i la <b>contrasenya no es desa mai</b>: l’hauràs d’escriure a cada presentació.
+            El certificat (i la contrasenya, si vols que es recordi) es desen <b>xifrats</b>.
           </p>
 
           {info?.configurat ? (
@@ -108,6 +135,20 @@ export function CertificatAeatCard() {
                   Caduca el {dataCurta(info.caduca)}{diesFins(info.caduca) < 60 ? ` (en ${diesFins(info.caduca)} dies: renova’l a la FNMT)` : ''}
                 </p>
               )}
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-slate-500">Contrasenya:</span>
+                {info.contrasenyaDesada ? (
+                  <>
+                    <span className="font-semibold text-green-700">desada ✓ (no te la demanarem)</span>
+                    <Button size="sm" variant="ghost" onClick={() => void oblidaContrasenya()}>Oblida-la</Button>
+                  </>
+                ) : (
+                  <>
+                    <Input className="h-8 w-48" type="password" autoComplete="off" placeholder="Contrasenya del certificat" value={novaContrasenya} onChange={(e) => setNovaContrasenya(e.target.value)} />
+                    <Button size="sm" variant="outline" onClick={() => void desaContrasenya()} disabled={busy || !novaContrasenya}>Recorda-la</Button>
+                  </>
+                )}
+              </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span className="text-xs text-slate-500">Entorn:</span>
                 <Button size="sm" variant={info.entorn === 'proves' ? 'primary' : 'outline'} onClick={() => void canviaEntorn('proves')}>Proves</Button>
@@ -135,6 +176,10 @@ export function CertificatAeatCard() {
             </label>
             <Button size="sm" onClick={() => void puja()} disabled={busy || !fitxer || !contrasenya}><Upload className="h-4 w-4" /> Puja</Button>
           </div>
+          <label className="flex items-center gap-2 text-xs text-slate-600">
+            <input type="checkbox" checked={recorda} onChange={(e) => setRecorda(e.target.checked)} />
+            Recorda la contrasenya (desada xifrada; no te la demanarem a cada presentació)
+          </label>
           {msg && <p className={cn('text-xs', msg.tone === 'ok' ? 'text-green-700' : 'text-red-700')}>{msg.text}</p>}
         </div>
       </CollapsibleCard>
@@ -175,7 +220,7 @@ export function PresentarAeat({
     setR(null);
     try {
       const res = await postJSON<ResultatPresentacioApp>('/api/impostos/presentar', {
-        model, any, trimestre: periode, pagament, contrasenya, nrc: calNrc ? nrc : undefined, conformitat: true,
+        model, any, trimestre: periode, pagament, contrasenya: contrasenya || undefined, nrc: calNrc ? nrc : undefined, conformitat: true,
       });
       setR(res);
       setContrasenya('');
@@ -230,10 +275,12 @@ export function PresentarAeat({
             <input type="checkbox" className="mt-0.5" checked={conforme} onChange={(e) => setConforme(e.target.checked)} />
             <span>He revisat les caselles i l’esborrany («Validar a l’AEAT») i <b>dono la meva conformitat</b> a aquestes dades per presentar la declaració.</span>
           </label>
-          <label className="block text-xs text-slate-600">
-            Contrasenya del certificat
-            <Input type="password" autoComplete="off" value={contrasenya} onChange={(e) => setContrasenya(e.target.value)} />
-          </label>
+          {!info.contrasenyaDesada && (
+            <label className="block text-xs text-slate-600">
+              Contrasenya del certificat
+              <Input type="password" autoComplete="off" value={contrasenya} onChange={(e) => setContrasenya(e.target.value)} />
+            </label>
+          )}
           {err && <p className="text-xs text-red-700">{err}</p>}
           {r && !r.ok && (
             <div className="rounded bg-red-50 px-2 py-1 text-xs text-red-900">
@@ -242,7 +289,7 @@ export function PresentarAeat({
             </div>
           )}
           <div className="flex gap-2">
-            <Button size="sm" onClick={() => void presenta()} disabled={busy || !conforme || !contrasenya || (calNrc && nrc.trim().length < 22)}>
+            <Button size="sm" onClick={() => void presenta()} disabled={busy || !conforme || (!info.contrasenyaDesada && !contrasenya) || (calNrc && nrc.trim().length < 22)}>
               <Send className="h-4 w-4" /> {busy ? 'Presentant…' : real ? 'Presenta-la ara' : 'Envia la prova'}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setObert(false)} disabled={busy}>Cancel·la</Button>
