@@ -313,7 +313,15 @@ function ModelCard({ m, any, onCanvi, extra }: { m: ModelInfo; any: number; onCa
             {m.presentada && (
               <p className="mb-3 text-xs text-green-800">
                 Presentada el {dataCurta(m.presentada.presentadaEl)}
-                {m.presentada.justificant ? ` · justificant ${m.presentada.justificant}` : ''}. Es mostren les caselles tal com es van presentar.
+                {m.presentada.justificant ? ` · justificant ${m.presentada.justificant}` : ''}{m.presentada.csv ? ` · CSV ${m.presentada.csv}` : ''}. Es mostren les caselles tal com es van presentar.
+                {m.presentada.ambPdf && (
+                  <>
+                    {' '}
+                    <a className="font-semibold underline" href={`/api/impostos/justificant?model=${m.model}&any=${any}&periode=${m.periode}`} target="_blank" rel="noreferrer">
+                      Obre el justificant (PDF)
+                    </a>
+                  </>
+                )}
               </p>
             )}
             {avisDifereix && (

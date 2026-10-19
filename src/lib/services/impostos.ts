@@ -43,7 +43,7 @@ export interface Ieet950 {
   tarifa: number;
   /** Estades amb dades del viatger incompletes (cal omplir-les a Taxa turística). */
   incompletes: number;
-  presentada: { caselles: Caselles; justificant: string | null; presentadaEl: string } | null;
+  presentada: { caselles: Caselles; justificant: string | null; presentadaEl: string; csv?: string | null; ambPdf?: boolean } | null;
 }
 
 export interface ModelInfo {
@@ -52,7 +52,7 @@ export interface ModelInfo {
   termini: string;
   estat: EstatModel;
   calculades: Caselles;
-  presentada: { caselles: Caselles; justificant: string | null; presentadaEl: string } | null;
+  presentada: { caselles: Caselles; justificant: string | null; presentadaEl: string; csv?: string | null; ambPdf?: boolean } | null;
   /** Les dades d'avui donen un resultat diferent del que es va presentar. */
   difereix: boolean;
 }
@@ -187,7 +187,7 @@ export async function getImpostosAny(any: number, avui = new Date()): Promise<Im
   const presentada = (model: ModelFiscal | '950', periode: number, anyDecl = any) => {
     const d = declaracions.find((x) => x.model === model && x.periode === periode && x.any === anyDecl);
     return d
-      ? { caselles: d.caselles as unknown as Caselles, justificant: d.justificant, presentadaEl: d.presentadaEl.toISOString() }
+      ? { caselles: d.caselles as unknown as Caselles, justificant: d.justificant, presentadaEl: d.presentadaEl.toISOString(), csv: d.csv, ambPdf: !!d.justificantPdf }
       : null;
   };
   const avuiIso = iso(avui);
