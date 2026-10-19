@@ -1600,7 +1600,7 @@ No s'activa des de cap pantalla. Ara mateix només el té el compte `hcoll@gmail
 2. Al menú **no veu** «Neteja», «Treballadors» ni «Taxa turística».
 3. Si escriu l'adreça de «Neteja», «Treballadors» o «Tarifes», l'app la torna al tauler.
 4. **No li surt** la finestra «Cobraments a punt».
-5. A «Plantilles» **no veu** el bloc «Avís a la dona de neteja».
+5. A «Plantilles» **no veu** els blocs «Avís a la dona de neteja» ni «Impostos · formularis oficials de l’AEAT».
 6. A les xifres d'**ingressos** (tauler i «Balanç»), no es compten els cobraments fets amb el mètode «Altres».
 7. Al **Llibre de registre** no veu les estades que porten el text `ZP11` al camp d'observacions.
 8. A «Facturació» no veu les factures d'estades que tenen dipòsit, i té menys botons.
@@ -1657,7 +1657,7 @@ Aquest número **no canvia** des d'on s'envia: WhatsApp s'obre al WhatsApp que t
 
 Aquí tens tot el que pot sortir al tauler, de dalt a baix, i què vol dir. Moltes coses **només surten si hi ha alguna cosa a dir**.
 
-[FOTO id=tauler-targetes ruta=/ descripcio="Graella de targetes d'avís del tauler, unes en blanc amb ✓ OK i altres de color amb Atenció" marques="✓ OK|Atenció|Cobraments pendents|Fitxes amb dades pendents|Pendents d'enviar a Mossos"]
+[FOTO id=tauler-targetes ruta=/ descripcio="Graella de targetes d'avís del tauler, unes en blanc amb ✓ OK i altres de color amb Atenció (la segona és la de simplificades de més de 400 €)" marques="✓ OK|Atenció|Cobraments pendents|Simplificades de més de 400 € (cal factura completa)|Fitxes amb dades pendents|Pendents d'enviar a Mossos"]
 
 ### Capçalera: «Tauler» i cercador
 Títol, la frase «Visió general de l'Hostal Coll» i la caixa de cerca. Mira «Com cerco qualsevol cosa».
@@ -1685,6 +1685,9 @@ Només si algun servei de «Proveïdors i serveis» (per exemple, una asseguran�
 
 ### «Cobraments pendents» (rosa)
 Pagaments previstos d'estades que **no estan pagats** i que han de pagar **demà, avui o ja han vençut**. Línia: «Nom · import» i «Ha de pagar el [data] · concepte». Obre l'estada.
+
+### «Simplificades de més de 400 € (cal factura completa)» (groga)
+Factures **simplificades** (no de dipòsit) de **més de 400 €** que encara no tenen cap factura fiscal que les cobreixi. Per a l'allotjament, per sobre de 400 € cal factura completa. Línia: «Titular · import» i «Simplificada N del [data] · fes-ne la factura completa». Obre l'estada: fes-hi «Fiscal de simplificades». La veu tothom. Vegeu [Què faig amb una simplificada de més de 400 €](/manual/factures#que-faig-amb-una-simplificada-de-mes-de-400-avis-del-tauler).
 
 ### «Fitxes amb dades pendents» (groga)
 Estades (no cancel·lades) on falta alguna **dada obligatòria per als Mossos**. Línia: «Nom · contracte» i «Falta: …» amb els camps que falten. És la mateixa comprovació que fa servir «Justificants». Si una estada té l'avís de dades silenciat, no surt.

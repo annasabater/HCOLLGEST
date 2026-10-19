@@ -17,7 +17,7 @@ Això és el que fa per tu:
 - **Mossos d'Esquadra.** Prepara el fitxer per comunicar els hostes a la policia (cal fer-ho en **24 hores**) i, si està configurada, el puja sola al portal.
 - **Llibre de registre.** Omple sol el llibre de registre de viatgers i les fitxes que signen els hostes.
 - **Diners.** Apuntes el que cobres, les fiances i les factures. L'app fa el balanç del mes i de l'any.
-- **Despeses i impostos.** Apuntes les factures dels proveïdors (amb una foto, si vols). L'app prepara el **llibre d'IVA** per a la gestoria i les xifres dels impostos de cada trimestre.
+- **Despeses i impostos.** Apuntes les factures dels proveïdors (amb una foto, si vols). L'app prepara el **llibre d'IVA** per a la gestoria i les xifres dels impostos de cada trimestre, amb el **formulari oficial**, el **fitxer per a la Seu** de l'AEAT i, si vols, la **presentació directa** amb el certificat digital.
 - **Taxa turística.** Calcula quant has de pagar cada semestre i la llista de persones.
 - **El dia a dia.** El tauler t'avisa del que tens pendent. També hi ha el calendari, el full de neteja, la bugaderia, les tarifes, els missatges de WhatsApp als hostes i el compte de les persones que treballen amb tu.
 - **Còpies.** Cada mes t'envia una còpia de les dades per correu i, si està connectat, desa els documents a Google Drive.
@@ -51,10 +51,10 @@ El menú té quatre blocs. Aquí tens què hi ha a cada lloc, en una línia:
 
 **Bloc «Gestió»**
 
-- **«Plantilles»**: missatges de WhatsApp i correus ja preparats (benvinguda, gràcies, avís a la persona de neteja, avís als hostes).
+- **«Plantilles»**: missatges de WhatsApp i correus ja preparats (benvinguda, gràcies, avís a la persona de neteja, avís als hostes) i, per als administradors, els formularis oficials dels impostos.
 - **«Treballadors»**: les persones que treballen a l'hostal, com cobren i el seu compte.
 - **«Balanç»**: com t'ha anat un mes o un any: ingressos, despeses, benefici i fiances.
-- **«Impostos»**: què toca presentar a Hisenda cada trimestre i a final d'any, i fins quan tens.
+- **«Impostos»**: què toca presentar a Hisenda cada trimestre i a final d'any (i la taxa turística, model 950), fins quan tens, els formularis i fitxers oficials, i la presentació a l'AEAT.
 - **«Facturació»**: totes les factures juntes i l'entrada al llibre d'IVA de cada trimestre.
 - **«Pressupostos»**: els preus que envies a algú abans que vingui.
 - **«Tarifes»**: el full de preus per tipus d'habitació i temporada.
@@ -267,7 +267,7 @@ Aquí tens, per ordre alfabètic dins de cada grup, les paraules que poden confo
 - **Factura de dipòsit**: un paper (factura simplificada, sense IVA) que demostra que l'hoste t'ha deixat un dipòsit. No compta com a ingrés.
 - **Factura fiscal / factura completa**: la factura amb el nom i el NIF del client. Cal quan el client és una empresa o la demana per desgravar-se-la. Numeració 01/26, 02/26…
 - **Factura rectificativa / sèrie R**: la factura amb import negatiu que rebaixa una factura anterior (per exemple, perquè has tornat diners). Té una numeració pròpia: R26-001, R26-002…
-- **Factura simplificada** (a l'app, «Factura simple»): la factura normal per a un particular, sense NIF del client. Porta el número de contracte (26001, 26001.1…).
+- **Factura simplificada** (a l'app, «Factura simple»): la factura normal per a un particular, sense NIF del client. Porta el número de contracte (26001, 26001.1…). Per a l'allotjament, **només fins a 400 €** IVA inclòs: per sobre, cal la factura completa.
 - **Fiança**: diners que l'hoste et deixa en garantia i que normalment li tornes en marxar. No és un ingrés.
 - **Fiscal de simplificades**: una factura fiscal que fas quan l'hoste ja tenia simplificades i després et demana la fiscal. Les simplificades es conserven i l'IVA no es compta dues vegades.
 - **Pagament** (cobrament): els diners que t'ha donat l'hoste. És el que compta com a **ingrés** al balanç, el dia que poses.
@@ -289,9 +289,15 @@ Aquí tens, per ordre alfabètic dins de cada grup, les paraules que poden confo
 
 ### Impostos
 
-- **AEAT**: l'Agència Tributària de l'Estat (Hisenda). Allà es presenten el 303, el 130, el 115, el 390, el 180 i la renda.
-- **ATC**: l'Agència Tributària de Catalunya. Allà es paga la taxa turística.
+- **AEAT**: l'Agència Tributària de l'Estat (Hisenda). Allà es presenten el 303, el 130, el 115, el 390, el 180, el 347 i la renda.
+- **ATC**: l'Agència Tributària de Catalunya. Allà es declara i es paga la taxa turística (model 950).
+- **BOE**: el Butlletí Oficial de l'Estat. Hi surten els formularis oficials dels models. Si en surt un de nou, l'app t'avisa a «Impostos».
+- **Certificat digital**: un fitxer (.p12 o .pfx, normalment de la FNMT) que fa de «DNI a internet». Serveix per presentar els models. A l'app es desa xifrat i la contrasenya no es desa mai.
+- **CSV**: el codi segur de verificació que dona l'AEAT quan una declaració s'ha presentat. Demostra que s'ha presentat.
 - **Base imposable**: el preu **sense IVA**. Si una habitació costa 110 € amb l'IVA del 10 % inclòs, la base és 100 € i l'IVA 10 €.
+- **Domiciliació**: quan l'AEAT cobra l'impost directament del teu compte l'últim dia del termini. Només es pot triar fins a 5 dies abans que s'acabi el termini.
+- **Esborrany (de l'AEAT)**: el formulari omplert per la mateixa AEAT a partir del fitxer de l'app, amb la marca d'esborrany. Serveix per revisar; no presenta res.
+- **Fitxer d'importació**: un fitxer de text en el format oficial de l'AEAT. A la Seu, amb el botó «Importar», omple totes les caselles del model.
 - **Gestoria**: la persona o empresa que et presenta els impostos.
 - **IEET / taxa turística**: l'impost català per persona i nit d'hostatge. Paguen els majors de l'edat que tinguis configurada (per defecte, 17 anys) i fins a un màxim de nits (per defecte, 7).
 - **IVA**: l'impost que va dins dels preus. L'allotjament porta l'IVA del **10 %**, ja inclòs al preu.
@@ -303,8 +309,12 @@ Aquí tens, per ordre alfabètic dins de cada grup, les paraules que poden confo
 - **Model 130**: el pagament a compte de la renda, cada trimestre (el 20 % del que guanyes, menys el que ja has pagat).
 - **Model 180**: el resum de l'any de les retencions del lloguer.
 - **Model 303**: la declaració de l'IVA de cada trimestre: l'IVA cobrat menys l'IVA pagat.
+- **Model 347**: la declaració informativa (no es paga res) dels clients i proveïdors amb qui has fet operacions de més de 3.005,06 € en un any. Només si cal; es presenta al febrer.
 - **Model 390**: el resum de l'any de l'IVA (la suma dels quatre 303).
-- **Seu electrònica**: la web de l'AEAT on es presenten els models.
+- **Model 950**: la declaració de la taxa turística a l'ATC, cada semestre. Hi poses les estades subjectes (les que paguen) i les exemptes (els menors).
+- **NRC**: el número que et dona el banc quan pagues un impost. Cal si pagues sense domiciliar.
+- **Seu electrònica**: la web de l'AEAT on es presenten els models (l'ATC en té una altra per a la taxa turística).
+- **Validar (a l'AEAT)**: demanar a l'AEAT que revisi el model abans de presentar-lo. Diu si hi ha errors; no presenta res.
 - **Trimestre (T)**: tres mesos. 1T = gener–març, 2T = abril–juny, 3T = juliol–setembre, 4T = octubre–desembre.
 - **Veri\*Factu**: el sistema de l'AEAT perquè les factures no es puguin manipular. A l'app està preparat, però l'enviament a l'AEAT encara no està actiu.
 

@@ -88,6 +88,10 @@ const BASE: Record<string, Recepta> = {
   'factura-diposit-impresa': { ruta: '/imprimir/factura-simple/{factura:26010.2}' },
   'facturacio-botons': { ruta: '/estancies/{estada:26090}' },
   'factura-simple-formulari': { ruta: '/estancies/{estada:26013}', noObrir: true, mida: { width: 1180, height: 1300 }, abans: [{ clic: 'Facturació (0)' }, { clic: 'Factura simple' }, { espera: 8000 }, { scroll: 'Crear factura' }] },
+  // Estada de 480 € sense factura (demo-extra/impostos-aeat.ts): surt l'avís dels 400 €.
+  // Les simplificades de demo de més de 400 € sense fiscal (26004, 26005…) surten a la targeta.
+  'tauler-simplificades-400': { abans: [{ espera: 6000 }, { clic: 'Simplificades de més de 400 € (cal factura completa)' }, { espera: 4000 }] },
+  'factura-simple-400': { ruta: '/estancies/{estada:25099}', noObrir: true, mida: { width: 1180, height: 1300 }, abans: [{ espera: 4000 }, { clic: 'Facturació (0)' }, { espera: 3000 }, { clic: 'Factura simple' }, { espera: 8000 }, { scroll: 'Fes-la fiscal' }] },
   'factura-amb-sense-fianca': { ruta: '/estancies/{estada:26013}', noObrir: true, mida: { width: 1180, height: 1300 }, abans: [{ clic: 'Facturació (0)' }, { clic: 'Factura simple' }, { espera: 8000 }, { scroll: 'Crear factura' }] },
   'factura-fiscal-formulari': { ruta: '/estancies/{estada:26013}', noObrir: true, mida: { width: 1180, height: 1300 }, abans: [{ clic: 'Facturació (0)' }, { clic: 'Factura fiscal' }, { espera: 8000 }, { scroll: 'Crear factura' }] },
   // 02/26 és la fiscal de l'empresa (amb les dades del client empresa).

@@ -19,7 +19,7 @@ I una segona idea, igual d'important:
 
 | Document | Com es diu a l'app | Numeració | Per a què |
 |---|---|---|---|
-| Factura simplificada | «Factura simple» | Número de contracte de l'estada: 26001, i les següents 26001.1, 26001.2… | El document normal per a un hoste particular. |
+| Factura simplificada | «Factura simple» | Número de contracte de l'estada: 26001, i les següents 26001.1, 26001.2… | El document normal per a un hoste particular, **fins a 400 €** IVA inclòs. |
 | Factura fiscal (completa) | «Factura fiscal» | Sèrie pròpia per any: 01/26, 02/26… | Quan l'hoste és una empresa o et demana factura amb el seu NIF. |
 | Factura fiscal a partir de simplificades | «Fiscal de simplificades» | Sèrie fiscal: 01/26, 02/26… | L'hoste ja tenia simplificades i després et demana la fiscal. |
 | Factura rectificativa | «Factura rectificativa» | Sèrie pròpia: R26-001, R26-002… | Has retornat diners i cal un document que rebaixi una factura anterior. |
@@ -45,7 +45,8 @@ I una segona idea, igual d'important:
 
 | Situació | Què has de fer |
 |---|---|
-| L'hoste paga l'estada i és un particular. | Registra el pagament i fes una «Factura simple». |
+| L'hoste paga l'estada i és un particular. | Registra el pagament i fes una «Factura simple» (fins a **400 €** IVA inclòs). |
+| L'estada passa de 400 €. | «Factura fiscal» (completa), amb el NIF/NIE i l'adreça del client, encara que sigui un particular. |
 | L'hoste és una empresa o et demana factura amb NIF. | Registra el pagament i fes una «Factura fiscal». Després, a la impressió, posa-hi el nom i el NIF de l'empresa i prem «Desar canvis». |
 | Ja vas fer simplificades i ara l'hoste et demana la factura fiscal. | «Fiscal de simplificades». No esborris les simplificades. |
 | L'hoste paga una part ara i una part més endavant. | Registra el pagament d'ara. Apunta la resta a «Cobraments pendents». Quan pagui, registra el nou pagament. |
@@ -669,11 +670,14 @@ Fitxa de l'estada, caixa «Facturació», botó «Factura simple».
 7. A «Pagaments (ingrés)» hi ha tots els pagaments sense factura, **ja marcats**. Desmarca els que no vulguis incloure.
 8. Si hi ha fiances en custòdia, surt «Fiança inclosa a la factura:» amb els botons «Amb fiança» i «Sense fiança», i la llista de fiances, també **ja marcades** (mira la secció següent per decidir-ho bé).
 9. Mira el resum: «Factura: …» amb el total.
-10. Prem «Crear factura».
+10. Si el total passa de **400 €**, surt un requadre taronja: «**Passa de 400,00 €:** per a l’allotjament ha de ser una **factura completa** (fiscal), amb el NIF/NIE i l’adreça del client.» Prem **«Fes-la fiscal»**: el requadre es torna «Nova factura fiscal», amb el número de la sèrie fiscal i tots els pagaments pendents marcats de nou. Mira «Com faig per fer una factura fiscal».
+11. Prem «Crear factura».
+
+[FOTO id=factura-simple-400 ruta=/estancies/[id] descripcio="Requadre Nova factura simple d'una estada de 480 € amb l'avís taronja que passa de 400 € i el botó Fes-la fiscal" marques="Nova factura simple|Passa de 400,00 €:|Fes-la fiscal|Crear factura"]
 
 [FOTO id=factura-simple-formulari ruta=/estancies/[id] descripcio="Requadre Nova factura simple amb el número, la data, els pagaments marcats, la fiança i el resum" marques="Nova factura simple|Núm. factura:|Data factura:|Pagaments (ingrés)|Fiança inclosa a la factura:|Crear factura"]
 
-11. S'obre la factura en una pestanya nova, preparada per imprimir.
+12. S'obre la factura en una pestanya nova, preparada per imprimir.
 
 **Què passa després / d'on surten les dades**
 - La factura té **una sola línia** d'allotjament amb el total. La descripció es fa sola: tipus d'habitació, persones i dates (per exemple «Habitació doble (2 persones) · Del 01/07/2026 al 05/07/2026»). Si algun pagament era «A compte», hi afegeix una segona línia «A compte».
@@ -686,6 +690,7 @@ Fitxa de l'estada, caixa «Facturació», botó «Factura simple».
 
 **Per què es fa així**
 La factura simplificada és la que permet el Reglament de facturació (RD 1619/2012) per a clients particulars. No cal el NIF del client. La numeració per contracte et permet trobar la factura de cada estada d'un cop d'ull.
+Per a l'**allotjament**, la simplificada només es pot fer fins a **400 €, IVA inclòs** (RD 1619/2012, art. 4.1). El límit de 3.000 € que diu la mateixa norma és per a restaurants, bars i similars, **no** per a l'hospedatge (consultes de la DGT V2030-18 i V1454/2026). Per sobre de 400 €, cal la factura completa.
 
 **Si t'has equivocat**
 - Per canviar l'import, el text o el número: mira «Com faig per editar una factura».
@@ -696,6 +701,35 @@ La factura simplificada és la que permet el Reglament de facturació (RD 1619/2
 - Si l'estada no té número de contracte, el número serà de l'estil 2026-0001.
 - Si escrius a mà un número que ja existeix, et dirà que ja existeix: canvia'l o deixa'l buit.
 - Una factura ha de tenir com a mínim un pagament o una fiança seleccionats.
+- L'avís dels 400 € compta el total del requadre (amb la fiança, si tries «Amb fiança»). Només avisa: si prems «Crear factura» igualment, la simplificada es crea, i surtirà al tauler a la targeta **«Simplificades de més de 400 € (cal factura completa)»** fins que en facis la fiscal (mira la secció següent).
+
+---
+
+## Què faig amb una simplificada de més de 400 € (avís del tauler)
+
+**Per a què serveix:** trobar les factures simplificades d'allotjament que passen de 400 € i que encara no tenen factura completa, per fer-la.
+
+**On és:** **Tauler** → targeta groga **«Simplificades de més de 400 € (cal factura completa)»**. La veu tothom que veu el tauler.
+
+**Pas a pas:**
+
+1. Toca la targeta per desplegar-la. Cada línia diu «Nom del titular · import» i, a sota, «Simplificada 26005 del dd/mm/aaaa · fes-ne la factura completa».
+2. Toca el nom: s'obre l'estada.
+3. A la caixa «Facturació», prem **«Fiscal de simplificades»**, deixa marcada aquella simplificada i crea la fiscal. Mira «Com faig per fer una factura fiscal a partir de simplificades».
+4. A la impressió de la fiscal, posa-hi el **NIF/NIE** i l'**adreça** del client i prem «Desar canvis».
+5. Torna al tauler: la línia ja no hi surt.
+
+[FOTO id=tauler-simplificades-400 ruta=/ descripcio="Targeta del tauler Simplificades de més de 400 € (cal factura completa) desplegada, amb les simplificades sense factura completa" marques="Simplificades de més de 400 € (cal factura completa)|fes-ne la factura completa|Amaga"]
+
+**Què passa després / d'on surten les dades:** surten les factures **simplificades** (no les de dipòsit ni les esborrades) amb un total de **més de 400 €** que **no tenen cap factura fiscal** que les cobreixi. Quan fas la «Fiscal de simplificades», la simplificada queda lligada a la fiscal i desapareix de la llista.
+
+**Per què es fa així:** per a l'allotjament, la factura simplificada només es pot fer fins a 400 € IVA inclòs (RD 1619/2012, art. 4.1). Per sobre, cal la factura completa amb les dades del client.
+
+**Si t'has equivocat:** si has fet la fiscal d'una simplificada que no tocava, elimina la fiscal: la simplificada torna a quedar lliure (i tornarà a sortir a la targeta).
+
+**Compte!**
+- «Amaga» treu la línia **per sempre**, però no arregla res: l'obligació de la factura completa continua.
+- Per a la factura completa et caldrà el **NIF/NIE** i l'**adreça** del client: demana'ls abans que marxi.
 
 ---
 
@@ -865,7 +899,7 @@ Caixa «Facturació» de l'estada, botó «Factura rectificativa».
 **Compte!**
 - Sense una devolució registrada, el botó no surt. No es pot fer una rectificativa «en blanc».
 - No es pot rectificar una altra rectificativa ni un document de dipòsit.
-- La **data** de la rectificativa surt amb la data d'entrada de l'estada. Si no és la bona, canvia-la a la impressió (casella «Data») i prem «Desar canvis». Mira els DUBTES.
+- La **data** de la rectificativa és la del dia que la crees (la data d'expedició). Per això entra al llibre d'IVA del **trimestre en què la fas**, encara que l'estada sigui d'un trimestre anterior. Si l'has de canviar, fes-ho a la impressió (casella «Data») i prem «Desar canvis».
 - La sèrie R no reaprofita números: si n'esborres una del mig, quedarà un forat.
 
 ---
@@ -1458,6 +1492,9 @@ Des de l'estada, no: necessites com a mínim un pagament o una fiança seleccion
 **18. Un pressupost compta per al balanç o per a l'IVA?**
 No. Un pressupost només és una oferta.
 
+**19. Un particular paga 600 € per una setmana. Puc fer-li una simplificada?**
+No: per a l'allotjament, la simplificada només arriba a 400 € IVA inclòs. Fes-li una «Factura fiscal» amb el seu NIF/NIE i l'adreça. Si ja li has fet la simplificada, fes «Fiscal de simplificades».
+
 ---
 
 ## DUBTES
@@ -1471,16 +1508,16 @@ No. Un pressupost només és una oferta.
 5. **Retenció parcial.** No hi ha opció per retenir només una part d'una fiança. La pregunta freqüent 4 proposa editar l'import i retenir; cal validar que és el procediment desitjat.
 6. **Missatge contradictori en eliminar una factura.** Al detall de la factura (`/factures/[id]`) el missatge diu que els cobraments «deixaran de comptar com a ingrés», però el codi els desvincula i continuen comptant. El missatge de l'estada i de la llista («Els pagaments tornen a «a compte»») és el correcte. Corregir el text?
 7. **Editar número al detall de la factura.** El component «Editar número» de `/factures/[id]` desa el número com «AAAA-seqüència» (per exemple, de 26001 a «2026-26001»). Sembla un error amb les numeracions de contracte i fiscals.
-8. **Data de la rectificativa.** La pantalla no envia cap data i el servidor posa la data d'entrada de l'estada. Hauria de ser la data d'avui o de la devolució?
+8. **Data de la rectificativa.** *(Resolt al codi actual: ara es data el dia que es crea.)* Les rectificatives creades abans del canvi poden portar la data d'entrada de l'estada; revisar-les si cal.
 9. **Devolucions fora de la sortida anticipada.** L'única manera de registrar una devolució des de la pantalla és «Sortida anticipada» → «Torno diners». Existeix un formulari de cobrament/devolució per factura (`cobrament-form`, API `/api/factures/[id]/cobraments`) que no es fa servir enlloc. Com s'ha de registrar una devolució que no sigui per sortida anticipada?
 10. **Mode «simple + fiscal alhora».** Hi ha codi per crear les dues factures alhora («Nova factura simple + fiscal», «Crear les dues»), però cap botó l'obre. Està retirat o falta el botó?
 11. **Veri*Factu desactivat.** La creació de registres Veri*Factu està comentada al codi; la pantalla `/verifactu` diu «Factura fiscal creada i registre Veri*Factu generat» però no en genera. Confirmar l'estat real abans d'explicar-ho a l'usuària, i revisar aquest missatge.
 12. **Taxa turística (IEET) a la factura.** Només s'aplica des de `/verifactu` amb «Aplicar tassa turística…». El tractament a Veri*Factu (no subjecte, N1) està pendent de confirmar segons CLAUDE.md. S'ha d'explicar a l'usuària aquest camí o no s'utilitza?
 13. **IVA dels pressupostos.** Per defecte és el 21% i se suma a sobre. Per a l'allotjament seria el 10%. Canviar el valor per defecte?
-14. **Límit de la factura simplificada.** El RD 1619/2012 posa límits d'import a les simplificades (400 € IVA inclòs en general, i 3.000 € per a algunes activitats). No he trobat cap control a l'app. Confirmar amb la gestoria si l'hostal hi està afectat i a partir de quin import cal fiscal.
+14. **Límit de la factura simplificada.** *(Resolt al codi actual.)* L'app avisa a partir de 400 € (RD 1619/2012 art. 4.1; DGT V2030-18 i V1454/2026, citades al codi). Només avisa: no impedeix crear la simplificada. L'avís del formulari compta la fiança si es tria «Amb fiança», però la targeta del tauler mira el `total` desat de la factura. No he verificat si «Fes-la fiscal» manté la data o l'habitació triades (crida `obrir('fiscal')`, que torna a calcular-ho tot).
 15. **Factura de dipòsit i «Estades a facturar».** Com que la factura de dipòsit és de tipus simplificada, una estada amb només aquest document desapareix de l'avís «Estades a facturar». És el comportament desitjat?
 16. **Botó «Amb fiança» / «Sense fiança» del detall.** Només desa una preferència; no canvia l'import ni, en la pràctica, el contingut imprès (a la impressió simple les files de fiança només s'afegeixen si la factura no té la fiança inclosa, cosa que no passa quan es tria «Amb fiança»). Quina és la funció real d'aquest interruptor?
 17. **Rebut de fiança (`/imprimir/fianca/[estanciaId]`).** Existeix una pàgina «Rebut de fiança» («Total en custòdia») però no he trobat cap botó que hi porti. S'ha de documentar o està en desús?
-18. **Dades d'emissor per defecte.** Si la configuració no té titular/NIF de facturació, les impressions posen uns valors fixos (titular i NIF concrets). Confirmar que a `/config` → «Titular de facturació» i «NIF de facturació» estan ben omplerts.
+18. **Dades d'emissor per defecte.** Si la configuració no té titular/NIF de facturació, les impressions posen uns valors fixos (ara «Elisabeth Nualart Coll», abans «Elisabet»; també al rebut de fiança i al pressupost). Confirmar que a `/config` → «Titular de facturació» i «NIF de facturació» estan ben omplerts.
 19. **Llibre d'IVA desat.** Si un trimestre s'ha desat a mà, les factures noves, editades o eliminades després poden no reflectir-se al llibre desat. Confirmar com s'ha d'explicar (capítol d'impostos).
 20. **Base legal.** He citat RD 1619/2012 (art. 6.1.a i 15), el tipus del 10% de l'hostaleria (Llei de l'IVA, art. 91) i RD 1007/2023 (Veri*Factu) de manera general. Cal revisió d'un assessor abans de publicar.

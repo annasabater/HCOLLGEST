@@ -72,7 +72,21 @@ const BASE: Record<string, Recepta> = {
   // «+ Afegir fila» sol trobaria el botó de la barra de dalt: no es marca.
   'llibre-iva-libro-gastos': { marques: ['Libro de gastos', 'Restaurar columnes', 'Mostrar columnes buides'] },
   'llibre-iva-emeses': { abans: [{ scroll: 'Libro de ingresos' }] },
-  'impostos-trimestre': { abans: [{ espera: 5000 }], sencera: true },
+  // Dades: scripts/manual/demo-extra/impostos-aeat.ts (avís del BOE de prova, certificat
+  // fictici a «proves», 2T presentat → la pàgina s'obre al 3T, amb la targeta del 950).
+  // PROHIBIT: cap recepta prem «Validar a l’AEAT», «Presentar…», «PDF oficial (AEAT)» ni res
+  // que connecti amb l'AEAT o el BOE; els botons només es marquen.
+  'impostos-trimestre': { abans: [{ espera: 12000 }], sencera: true },
+  'impostos-botons-aeat': { abans: [{ espera: 12000 }] },
+  'impostos-certificat': { abans: [{ espera: 12000 }, { clic: 'Presentació directa a l’AEAT · PROVES' }, { espera: 2000 }, { scroll: 'Esborra el certificat' }] },
+  'impostos-avis-boe': { abans: [{ espera: 8000 }] },
+  'impostos-950': { abans: [{ espera: 12000 }] },
+  'impostos-347': { abans: [{ espera: 8000 }, { clic: 'Anual · 390 i 180' }, { espera: 8000 }] },
+  // Només s'obre el bloc d'impostos (els altres blocs de Plantilles queden plegats).
+  'plantilles-impostos': {
+    noObrir: true,
+    abans: [{ espera: 15000 }, { clic: 'Impostos · formularis oficials de l’AEAT' }, { espera: 15000 }],
+  },
   'impostos-marcar-presentada': {
     abans: [{ espera: 12000 }, { clic: 'Marca com a presentada' }, { espera: 3000 }],
     // En mode edició el 303 ja no mostra «Seu electrònica» (el motor marcaria la del 130).

@@ -37,7 +37,7 @@ Truca a la porta una persona que no ha estat mai a l'hostal i vol dormir-hi avui
 9. **Fes signar cada viatger** al bloc «Viatgers» → «Firmar» → «Desar firma». Vegeu [Com faig signar els viatgers](/manual/estades#com-faig-signar-els-viatgers).
 10. **Comunica-ho a Mossos el mateix dia.** A la columna de la dreta, «Comunicació a Mossos» → «Pujar a Mossos» o «Descarregar .txt (manual)». Vegeu [Com comunico l'estada a Mossos des de la fitxa](/manual/estades#com-comunico-l-estada-a-mossos-des-de-la-fitxa).
 11. **Quan pagui**, «Pagaments i fiances» → «Afegir pagament». Vegeu [Com faig per registrar un pagament](/manual/factures#com-faig-per-registrar-un-pagament).
-12. **Fes la factura**: «Facturació» → «Factura simple» → revisa els pagaments marcats → «Crear factura». Vegeu [Com faig per fer una factura simple](/manual/factures#com-faig-per-fer-una-factura-simple-simplificada).
+12. **Fes la factura**: «Facturació» → «Factura simple» → revisa els pagaments marcats → «Crear factura». Si el total passa de **400 €**, l'app t'avisa: prem «Fes-la fiscal» i fes la factura completa. Vegeu [Com faig per fer una factura simple](/manual/factures#com-faig-per-fer-una-factura-simple-simplificada).
 13. **L'endemà**, envia la benvinguda des del tauler («Benvingudes pendents»). Vegeu [Com envio la benvinguda als hostes des del tauler](/manual/dia-a-dia#com-envio-la-benvinguda-als-hostes-des-del-tauler).
 
 **Què queda fet al final**
@@ -445,7 +445,7 @@ Un hoste s'hi està uns quants mesos i paga cada mes.
 4. **Cada mes, quan pagui:**
    - «Pagaments i fiances» → «Afegir pagament», amb la data real del pagament.
    - Al cobrament pendent d'aquell mes, «Marcar pagat».
-   - «Facturació» → «Factura simple» → **desmarca** els altres pagaments i deixa només el d'aquest mes → «Crear factura». La numeració segueix sola (26004, 26004.1, 26004.2…).
+   - «Facturació» → «Factura simple» → **desmarca** els altres pagaments i deixa només el d'aquest mes → «Crear factura». La numeració segueix sola (26004, 26004.1, 26004.2…). Si el mes passa de **400 €**, fes «Factura fiscal» en lloc de «Factura simple» (l'app t'avisa amb «Passa de 400,00 €» i el botó «Fes-la fiscal»).
 5. Si un dia et paga **diversos mesos de cop**, en apuntar el pagament prem «Proposar per mesos» perquè el balanç posi a cada mes la seva part. Vegeu [Com faig per repartir un pagament entre diversos mesos](/manual/factures#com-faig-per-repartir-un-pagament-entre-diversos-mesos).
 6. **Deixa constància dels serveis.** Apunta les neteges de repàs al full de «Neteja» com a «Manteniment» i, si n'hi ha, la bugaderia. Vegeu [Com preparo el full de neteja del dia](/manual/dia-a-dia#com-preparo-el-full-de-neteja-del-dia) i el capítol [Obligacions i inspeccions](/manual/inspeccio#punts-sensibles-a-tenir-clars).
 7. Si es queda més temps del previst, fes una **ampliació**.
@@ -462,7 +462,7 @@ Un hoste s'hi està uns quants mesos i paga cada mes.
 
 - **Fer la factura amb tots els pagaments marcats.** L'app els marca tots per defecte. Desmarca els que no són d'aquell mes.
 - **Fer «Marcar pagat» i oblidar «Afegir pagament».** El balanç no veuria aquells diners.
-- **Factures simplificades d'imports grans.** Hi ha un límit d'import per a les simplificades. Vegeu [Punts sensibles a tenir clars](/manual/inspeccio#punts-sensibles-a-tenir-clars) i pregunta a la gestoria.
+- **Fer simplificades de més de 400 €.** Un mes d'allotjament sol passar de 400 €: per a l'allotjament, per sobre de 400 € IVA inclòs cal **factura completa** («Factura fiscal», amb el NIF/NIE i l'adreça de l'hoste). L'app t'avisa al requadre («Passa de 400,00 €») i al tauler. Vegeu [Què faig amb una simplificada de més de 400 €](/manual/factures#que-faig-amb-una-simplificada-de-mes-de-400-avis-del-tauler).
 
 ---
 
@@ -547,22 +547,23 @@ S'acaba un trimestre (març, juny, setembre o desembre) i cal preparar el llibre
 
 **Pas a pas**
 
-1. **Factures pendents.** Al tauler, mira la targeta «Estades a facturar». Fes la factura de les que falten. Els cobraments sense factura **no entren** al llibre d'IVA.
+1. **Factures pendents.** Al tauler, mira la targeta «Estades a facturar». Fes la factura de les que falten. Els cobraments sense factura **no entren** al llibre d'IVA. Mira també «Simplificades de més de 400 € (cal factura completa)» i fes la fiscal de les que hi surtin («Fiscal de simplificades»).
 2. **Despeses.** A «Despeses», tria el període «Trimestre» i revisa cada despesa: proveïdor amb NIF, número de factura, base, % IVA i el clip del justificant. Comprova que les fiances estan marcades com a fiança. Vegeu [Com miro el resum de despeses](/manual/comptabilitat#com-miro-el-resum-de-despeses-resum-variables-personal).
 3. **Serveis.** Mira la targeta del tauler «Factures fixes pendents de pujar» i puja les que falten.
 4. **Llibre d'IVA.** «Facturació» → targeta «Llibre d'IVA trimestral (ingressos)» → tria el trimestre amb ‹ › → «Obrir / editar / imprimir». Vegeu [Com obro el llibre d'IVA d'un trimestre](/manual/comptabilitat#com-obro-el-llibre-d-iva-d-un-trimestre).
 5. Revisa els fulls. Al full intern «Tarifas y precios aplicados», escriu les tarifes del trimestre i, a «Precios especiales», cada preu especial amb el motiu.
 6. Prem «Desar». Surt «Desat dd/mm/aaaa». Vegeu [Com edito, afegeixo files i deso el llibre d'IVA](/manual/comptabilitat#com-edito-afegeixo-files-i-deso-el-llibre-d-iva).
 7. Prem «Imprimir PDF» i envia el PDF a la gestoria. Vegeu [Com imprimeixo el llibre d'IVA per a la gestoria](/manual/comptabilitat#com-imprimeixo-el-llibre-d-iva-per-a-la-gestoria).
-8. **Impostos.** Menú «Impostos» → pestanya del trimestre. Revisa «Model 303 · IVA», «Model 130 · IRPF a compte» i «Model 115 · Retencions del lloguer». Vegeu [Com preparo els impostos del trimestre](/manual/comptabilitat#com-preparo-els-impostos-del-trimestre-pagina-impostos).
-9. Quan la gestoria (o tu, a la «Seu electrònica») els hagi presentat, prem «Marca com a presentada», escriu **exactament** les xifres presentades i el «Núm. de justificant (opcional)», i prem «Desa com a presentada».
-10. **Taxa turística.** Si el trimestre acaba al **març** o al **setembre**, toca també la taxa turística (de l'1 al 20 d'abril o d'octubre). Vegeu [Com preparo la taxa turística](/manual/comptabilitat#com-preparo-la-taxa-turistica-ieet).
-11. Si la gestoria ho vol, treu el «CSV» del «Balanç» amb el període «Trimestre».
+8. **Impostos.** Menú «Impostos» → pestanya del trimestre. Revisa «Model 303 · IVA», «Model 130 · IRPF a compte» i «Model 115 · Retencions del lloguer». Si a dalt surt la franja vermella del BOE, llegeix-la abans. Vegeu [Com preparo els impostos del trimestre](/manual/comptabilitat#com-preparo-els-impostos-del-trimestre-pagina-impostos).
+9. A cada model, prem «Validar a l’AEAT» i comprova que surt en verd. Després presenta'l: amb «Fitxer per importar a la Seu» (a la Seu, «Importar»), passant-lo a la gestoria, o amb «Presentar a l’AEAT» si tens el certificat a l'app. Vegeu [Com trec el formulari oficial, el fitxer per a la Seu i la validació de l'AEAT](/manual/comptabilitat#com-trec-el-formulari-oficial-el-fitxer-per-a-la-seu-i-la-validacio-de-l-aeat).
+10. Si l'has presentat fora de l'app, prem «Marca com a presentada», escriu **exactament** les xifres presentades i el «Núm. de justificant (opcional)», i prem «Desa com a presentada». (Si l'has presentat des de l'app a producció, ja queda marcada.)
+11. **Taxa turística.** Si el trimestre acaba al **març** o al **setembre**, toca també la taxa turística (de l'1 al 20 d'abril o d'octubre). A la mateixa pestanya d'Impostos tens la targeta «Model 950 · Taxa turística (ATC)» amb les xifres i els passos; quan l'hagis pagada, «Marca com a presentat». Vegeu [Com presento la taxa turística](/manual/comptabilitat#com-presento-la-taxa-turistica-targeta-del-model-950).
+12. Si la gestoria ho vol, treu el «CSV» del «Balanç» amb el període «Trimestre».
 
 **Què queda fet al final**
 
 - **Llibre d'IVA:** desat (queda fix tal com l'has entregat) i en PDF.
-- **Impostos:** els models marcats com a presentats. El trimestre següent es calcula a partir de les xifres presentades.
+- **Impostos:** els models (i el 950, si tocava) marcats com a presentats. El trimestre següent es calcula a partir de les xifres presentades.
 - **Google Drive:** si està connectat, l'arxiu mensual desa sol els Excel i les factures de cada mes.
 
 **Errors habituals**
@@ -589,16 +590,17 @@ Arriba el gener i cal tancar l'any anterior.
 2. **Resums anuals.** «Impostos» → pestanya «Anual · 390 i 180». Vegeu [Com preparo els resums anuals (390, 180) i la renda](/manual/comptabilitat#com-preparo-els-resums-anuals-390-180-i-la-renda-model-100).
 3. Revisa el «Model 390 · Resum anual d’IVA». Quan estigui presentat (fins al 30 de gener), marca'l.
 4. Al «Model 180 · Resum anual del lloguer», comprova que la propietària té NIF (si posa «falta», omple'l a la fitxa del proveïdor). Escriu la «Referència cadastral del local (obligatòria al 180)» i prem «Desa». Quan estigui presentat (fins al 31 de gener), marca'l.
-5. **Renda.** La targeta «Model 100 · Renda» et dona la part de l'hostal. Passa-la a la gestoria per a la declaració (la campanya és a la primavera).
-6. Si surt l'avís de **Mobiliari** o **Electrodomèstics** de més de 300 €, pregunta a la gestoria si s'han d'amortitzar.
-7. **Balanç de l'any.** «Balanç» → «Any» → «PDF» i «CSV». Guarda'ls.
-8. **Llibre de registre.** «Llibre registre de viatgers» → tria l'«Any» → «Exportar Excel». Guarda'l.
-9. **Còpia de seguretat.** «Configuració» → «Còpia de seguretat de les dades» → «Descarregar còpia (JSON)». Guarda-la en un lloc segur. Vegeu [Còpies i arxiu](/manual/inspeccio#copies-i-arxiu).
-10. **Tarifes.** Revisa el full de preus del nou any a «Tarifes» i torna a imprimir el PDF. Vegeu [Com canvio les tarifes](/manual/dia-a-dia#com-canvio-les-tarifes-el-full-de-preus).
+5. **347.** Mira la targeta «Model 347 · Operacions amb terceres persones». Si posa «No cal», no has de fer res. Si surten tercers, presenta'l a la Seu de l'1 al 28 de febrer i marca'l. Vegeu [Com sé si he de presentar el 347](/manual/comptabilitat#com-se-si-he-de-presentar-el-347).
+6. **Renda.** La targeta «Model 100 · Renda» et dona la part de l'hostal. Passa-la a la gestoria per a la declaració (la campanya és a la primavera).
+7. Si surt l'avís de **Mobiliari** o **Electrodomèstics** de més de 300 €, pregunta a la gestoria si s'han d'amortitzar.
+8. **Balanç de l'any.** «Balanç» → «Any» → «PDF» i «CSV». Guarda'ls.
+9. **Llibre de registre.** «Llibre registre de viatgers» → tria l'«Any» → «Exportar Excel». Guarda'l.
+10. **Còpia de seguretat.** «Configuració» → «Còpia de seguretat de les dades» → «Descarregar còpia (JSON)». Guarda-la en un lloc segur. Vegeu [Còpies i arxiu](/manual/inspeccio#copies-i-arxiu).
+11. **Tarifes.** Revisa el full de preus del nou any a «Tarifes» i torna a imprimir el PDF. Vegeu [Com canvio les tarifes](/manual/dia-a-dia#com-canvio-les-tarifes-el-full-de-preus).
 
 **Què queda fet al final**
 
-- **Impostos:** els quatre trimestres i el 390 i el 180, marcats com a presentats.
+- **Impostos:** els quatre trimestres i el 390 i el 180 (i el 347, si calia), marcats com a presentats.
 - **Arxiu:** el balanç anual, el llibre de registre de l'any i una còpia de les dades, guardats fora de l'app.
 - **Taxa turística:** recorda que el semestre octubre–març passa d'un any a l'altre i es paga a l'abril.
 
@@ -671,7 +673,7 @@ Què fer cada matí, en ordre, perquè no se t'escapi res.
 6. **Benvingudes.** Al quadre «Benvingudes pendents», envia el WhatsApp i prem «Feta».
 7. **Neteja d'avui.** Menú «Neteja» → «Dia» → «Persona encarregada» → marca les habitacions i el tipus («Sortida habitació» o «Manteniment») → «Desar full». Vegeu [Com preparo el full de neteja del dia](/manual/dia-a-dia#com-preparo-el-full-de-neteja-del-dia).
 8. **Neteja de demà.** «Plantilles» → «Avís a la dona de neteja» i «Avís als hostes (neteja)». Vegeu [Com aviso la dona de neteja per WhatsApp](/manual/dia-a-dia#com-aviso-la-dona-de-neteja-per-whatsapp).
-9. **Diners i serveis** (si ets administradora): «Cobraments pendents», «Estades a facturar», «Factures fixes pendents de pujar» i «Vigències a punt de caducar».
+9. **Diners i serveis** (si ets administradora): «Cobraments pendents», «Simplificades de més de 400 € (cal factura completa)», «Estades a facturar», «Factures fixes pendents de pujar» i «Vigències a punt de caducar».
 10. **Qui arriba.** Mira «Properes entrades (7 dies)» i prepara les reserves.
 11. **Durant el dia**, quan acabi cada neteja, marca-la «Feta» (a «Neteja», o al «Calendari» amb la persona triada al desplegable).
 12. **De tant en tant**, mira «Clients» → «Valoracions». L'app no t'avisa quan n'arriba una.
@@ -767,7 +769,7 @@ Has escrit malament un nom, un document o una adreça.
 3. **Fiança del lloguer tornada.** Quan la propietària torna la fiança pagada (despesa amb «És una fiança»), no hi ha cap botó per marcar-la com a recuperada. Continua sortint a «Fiances pagades» del període en què es va pagar. Cal decidir el procediment (esborrar-la? deixar-la?).
 4. **Firma dels menors.** No he comprovat si el tauler «Firmes pendents» demana la firma dels menors ni si cal que signin. He escrit «fes signar els viatgers» de manera general.
 5. **Fiança retinguda i IVA/factura.** Igual que al capítol de factures (dubte 4): no queda clar si la retenció s'ha de facturar i amb quin IVA. He remès a la gestoria.
-6. **Data de la rectificativa** (surt la d'entrada de l'estada) i **«Editar número»** del detall: errors ja apuntats al capítol de factures; aquí només s'avisa.
+6. **«Editar número»** del detall: error ja apuntat al capítol de factures; aquí només s'avisa. (La data de la rectificativa ja és la del dia que es crea.)
 7. **Pagament inicial en crear l'estada:** segons el dubte 2 d'estades, la data i l'etapa no es guarden. Per això el recorregut diu «revisa la data a la fitxa». Si es confirma l'error, potser cal recomanar apuntar els pagaments sempre des de la fitxa.
 8. **Neteja de l'habitació que es deixa en un canvi d'habitació.** No he trobat que l'app creï cap tasca de neteja per a l'habitació antiga; per això el recorregut diu de preparar-la al full de «Neteja». Confirmar.
 9. **Enllaç de pressupost a reserva sense número.** L'EstadaPicker cerca via `/api/cerca`, que per a estades només busca pel número de contracte: una reserva sense número no es pot enllaçar. Confirmat al codi; potser caldria permetre cercar pel nom.

@@ -14,7 +14,7 @@ Per a cada cosa et diem **d'on la treus a l'app** (quina pantalla, quin botó) o
 Per saber, mes a mes, què toca presentar o pagar, i on ho prepares a l'app.
 
 **On és**
-A l'app, la pàgina **«Impostos»** et mostra a dalt una franja taronja amb el **«Proper termini»** i els dies que queden. La pàgina **«Taxa turística»** et diu si toca pagar. Aquest calendari ho recull tot junt.
+A l'app, la pàgina **«Impostos»** et mostra a dalt una franja taronja amb el **«Proper termini»** i els dies que queden (també de la taxa turística). Si el BOE canvia algun formulari, hi surt una franja vermella. La pàgina **«Taxa turística»** et diu si toca pagar. Aquest calendari ho recull tot junt.
 
 | Quan | Què | On ho prepares a l'app |
 |---|---|---|
@@ -24,13 +24,14 @@ A l'app, la pàgina **«Impostos»** et mostra a dalt una franja taronja amb el 
 | **Gener, fins al 30** | Models 303 (IVA) i 130 (renda a compte) del 4T | «Impostos» → «4T» (abans, el llibre d'IVA: «Facturació» → «Llibre d'IVA trimestral (ingressos)») |
 | **Gener, fins al 30** | Model 390 (resum anual de l'IVA) | «Impostos» → «Anual · 390 i 180» |
 | **Gener, fins al 31** | Model 180 (resum anual del lloguer) | «Impostos» → «Anual · 390 i 180» |
-| **Febrer i març** | Res de fix (només Mossos, cada dia) | — |
-| **Abril, de l'1 al 20** | Taxa turística del semestre octubre–març | «Taxa turística» |
+| **Febrer, de l'1 al 28** | Model 347 (clients i proveïdors de més de 3.005,06 € l'any), **només si cal** | «Impostos» → «Anual · 390 i 180» → «Model 347 · Operacions amb terceres persones» |
+| **Març** | Res de fix (només Mossos, cada dia) | — |
+| **Abril, de l'1 al 20** | Taxa turística (model 950, a l'ATC) del semestre octubre–març | «Taxa turística» i «Impostos» → «1T» → «Model 950 · Taxa turística (ATC)» |
 | **Abril, fins al 20** | Models 303, 130 i 115 del 1T (gener–març) | «Impostos» → «1T» |
 | **Abril a juny** | Campanya de la renda (model 100). Segons l'app, fins al **30 de juny** | «Impostos» → «Anual · 390 i 180» → «Model 100 · Renda» |
 | **Juliol, fins al 20** | Models 303, 130 i 115 del 2T (abril–juny) | «Impostos» → «2T» |
 | **Agost i setembre** | Res de fix (només Mossos, cada dia) | — |
-| **Octubre, de l'1 al 20** | Taxa turística del semestre abril–setembre | «Taxa turística» |
+| **Octubre, de l'1 al 20** | Taxa turística (model 950, a l'ATC) del semestre abril–setembre | «Taxa turística» i «Impostos» → «3T» → «Model 950 · Taxa turística (ATC)» |
 | **Octubre, fins al 20** | Models 303, 130 i 115 del 3T (juliol–setembre) | «Impostos» → «3T» |
 | **Novembre i desembre** | Res de fix. Bon moment per revisar les tarifes del nou any | «Tarifes» |
 
@@ -45,7 +46,7 @@ A l'app, la pàgina **«Impostos»** et mostra a dalt una franja taronja amb el 
 
 - **Mossos:** sempre, en 24 hores.
 - **Impostos de cada trimestre (303, 130 i 115):** fins al 20 d'abril, el 20 de juliol, el 20 d'octubre i el 30 de gener (el 115 del 4T, fins al 20 de gener).
-- **Resums de l'any:** el 390 fins al 30 de gener; el 180 fins al 31 de gener.
+- **Resums de l'any:** el 390 fins al 30 de gener; el 180 fins al 31 de gener; el 347 (només si cal) al febrer.
 - **Renda:** a la primavera (l'app posa el 30 de juny).
 - **Taxa turística:** de l'1 al 20 d'abril i de l'1 al 20 d'octubre.
 - **Guardar:** el registre, 3 anys; les factures i els llibres, 4 anys (millor 6).
@@ -77,7 +78,7 @@ Per saber què et poden demanar i treure-ho ràpid, sense nervis.
 - **Les factures que has fet.** «Facturació» → clic al número → «Imprimir PDF». Si Google Drive està connectat, també són a la carpeta de cada mes, a «factures» i «factures + custodia». Vegeu [Com faig servir la pàgina Facturació](/manual/factures#com-faig-servir-la-pagina-facturacio-factures).
 - **Els abonaments (factures rectificatives).** També a «Facturació», amb l'etiqueta «Devolució» i el número de la sèrie R (R26-001…). Al llibre d'IVA surten en negatiu amb «(RECTIFICA …)». Els abonaments dels proveïdors són a «Despeses», amb l'import en negatiu.
 - **Les factures dels proveïdors.** «Despeses» → «Variables» → icona del **clip** de cada despesa. **Guarda també els originals** en paper o PDF: l'app guarda la foto que hi vas pujar, no l'original.
-- **Models 303, 130 i 115 (de cada trimestre) i 390 i 180 (de l'any).** «Impostos» → trimestre o «Anual · 390 i 180». Hi veus les xifres que vas presentar i el «Núm. de justificant» si el vas escriure. **El justificant oficial (PDF de la Seu electrònica) no és a l'app**: l'has de guardar tu o demanar-lo a la gestoria.
+- **Models 303, 130 i 115 (de cada trimestre) i 390, 180 i 347 (de l'any).** «Impostos» → trimestre o «Anual · 390 i 180». Hi veus les xifres que vas presentar i el «Núm. de justificant» si el vas escriure. El «Formulari oficial (PDF)» et torna a fer el formulari amb les xifres presentades. Si el vas presentar **des de l'app** (a producció), el justificant de l'AEAT és a «Obre el justificant (PDF)»; si no, **el justificant oficial no és a l'app**: l'has de guardar tu o demanar-lo a la gestoria.
 - **Justificants de cobrament** (com t'han pagat). A cada estada, bloc «Pagaments i fiances» (import, mètode i data). Tot junt: «Balanç» → tria el període → llista «Moviments» → filtre «Ingressos», i el botó «CSV». A Google Drive, l'Excel mensual «Ingressos i despeses.xlsx». **Els extractes del banc i els tiquets del datàfon no són a l'app**: guarda'ls a part.
 - **Fiances.** «Balanç» → bloc «Fiances» (rebudes i pagades). Les fiances en custòdia no són ingrés; les retingudes, sí.
 - **Pagaments al personal.** «Treballadors» → nom → «Exportar el període». Les nòmines no tenen pantalla a l'app: guarda-les a part.
@@ -148,7 +149,12 @@ Una factura entregada **no s'esborra ni es canvia** si l'import baixa: es fa una
 La factura simplificada («Factura simple») no porta el NIF del client. Si un client necessita una factura amb el seu NIF (per exemple, una empresa), fes-li una **factura fiscal** o una «Fiscal de simplificades». Al llibre d'IVA, la columna «NIF / NIE» només surt quan hi ha factures completes. Vegeu [Un client que vol factura a nom d'una empresa](/manual/recorreguts#un-client-que-vol-factura-a-nom-d-una-empresa).
 
 **4. Factures simplificades de més de 400 €**
-La norma de facturació posa un **límit d'import** a les factures simplificades (en general, 400 € amb l'IVA inclòs, amb algunes excepcions). **L'app no et posa cap límit ni t'avisa.** En estades llargues o grups, l'import pot passar de llarg. Pregunta a la gestoria a partir de quin import has de fer factura fiscal.
+Per a l'**allotjament**, la factura simplificada només es pot fer fins a **400 € amb l'IVA inclòs** (RD 1619/2012, art. 4.1). El límit de 3.000 € de la mateixa norma és per a restaurants, bars i similars, no per a l'hospedatge. Per sobre de 400 €, cal **factura completa** (fiscal), amb el NIF/NIE i l'adreça del client, encara que sigui un particular. En estades llargues o grups, és fàcil passar-se'n. L'app t'avisa de dues maneres:
+
+- en fer la «Factura simple», si el total passa de 400 €, surt «Passa de 400,00 €» amb el botó «Fes-la fiscal»;
+- al tauler, la targeta «Simplificades de més de 400 € (cal factura completa)» llista les que ja has fet i encara no tenen fiscal. Fes-ne la «Fiscal de simplificades».
+
+Vegeu [Què faig amb una simplificada de més de 400 €](/manual/factures#que-faig-amb-una-simplificada-de-mes-de-400-avis-del-tauler). Al model **347**, en canvi, les simplificades no compten (no hi ha obligació d'identificar el client); les factures completes, sí.
 
 **5. La facturació per avançat**
 Si cobres i factures **abans** de l'estada (una paga i senyal, o un mes per avançat), la factura entra al llibre d'IVA del trimestre de la **data de la factura**, no del trimestre de l'estada. Per defecte, la data de la factura és la del pagament més recent que hi incloguis. Ha de quadrar tot: el cobrament, la data de la factura i el període que diu el text de la factura («Del … al …»). No facis factures sense cobrament ni amb dates que no són.
@@ -186,7 +192,7 @@ Les còpies automàtiques es configuren a «Configuració» → «Còpia de segu
 - **Factures emeses** (4 anys, millor 6). A l'app: «Facturació». A Google Drive: a cada mes, «factures» i «factures + custodia».
 - **Factures rebudes** (4 anys, millor 6). A l'app: «Despeses» (icona del clip). **Guarda els originals.** A Google Drive, a cada mes, l'Excel «Ingressos i despeses.xlsx» (la llista, no les factures).
 - **Llibre d'IVA de cada trimestre** (4 anys, millor 6). A l'app: «Facturació» → «Llibres desats». Guarda també el PDF que vas enviar a la gestoria.
-- **Models d'impostos presentats** (4 anys, millor 6). A l'app: «Impostos» (les xifres i el número de justificant). Els PDF oficials de la Seu electrònica, guarda'ls tu o demana'ls a la gestoria.
+- **Models d'impostos presentats** (4 anys, millor 6). A l'app: «Impostos» (les xifres i el número de justificant; i el PDF del justificant, si el vas presentar des de l'app). Els PDF oficials dels models presentats a la Seu o per la gestoria, guarda'ls tu o demana'ls a la gestoria.
 - **Taxa turística.** A l'app: «Taxa turística» (Excel i PDF). A Google Drive: l'Excel de cada semestre. Les declaracions dels menors signades i el justificant de pagament a l'ATC, guarda'ls tu.
 - **Balanç de l'any.** A l'app: «Balanç» → «Any» → «PDF» i «CSV». Guarda'ls cada gener.
 - **Totes les dades de l'app.** Cada dia 1 de mes arriba per correu a hostalcoll@gmail.com un Excel amb totes les dades. També pots descarregar-ne una còpia quan vulguis: «Configuració» → «Còpia de seguretat de les dades» → «Descarregar còpia (JSON)». Vegeu [Com faig per descarregar una còpia de seguretat](/manual/configuracio#com-faig-per-descarregar-una-copia-de-seguretat).
@@ -195,7 +201,7 @@ Les còpies automàtiques es configuren a «Configuració» → «Còpia de segu
 
 - La inscripció al Registre de Turisme de Catalunya.
 - Els fulls de reclamació.
-- Els justificants oficials dels impostos i de la taxa turística.
+- Els justificants oficials dels impostos presentats fora de l'app i de la taxa turística (model 950).
 - Els extractes del banc i els tiquets del datàfon.
 - Els originals de les factures dels proveïdors.
 - Les nòmines.
@@ -220,13 +226,13 @@ Aquest capítol és una ajuda pràctica; per a qualsevol dubte fiscal, consulta 
 
 1. **Dates del 115 i del 180.** L'encàrrec no les esmentava; les he posat perquè l'app les calcula (115 del 4T fins al 20/01; 180 fins al 31/01). Cal confirmar-les amb la gestoria (dubte 16 de comptabilitat).
 2. **Renda (model 100).** He posat «fins al 30 de juny» perquè és el que diu el calendari de l'app; la campanya pot canviar cada any.
-3. **Límit de 400 € de les simplificades.** He escrit «en general, 400 € amb l'IVA inclòs, amb algunes excepcions» (RD 1619/2012, art. 4). No he confirmat si l'hostal entra en alguna excepció (fins a 3.000 €). L'app no fa cap control (dubte 14 de factures).
+3. **Límit de 400 € de les simplificades.** *(Resolt al codi actual.)* El codi diu que per a l'allotjament el límit és 400 € (RD 1619/2012 art. 4.1.a) i que el de 3.000 € no inclou l'hospedatge (DGT V2030-18 i V1454/2026). Ho he explicat així; convé que la gestoria ho confirmi. L'app avisa però no bloqueja.
 4. **Hospedatge amb serveis vs. lloguer.** He explicat el risc de manera general i he llistat les proves que guarda l'app (neteges de «Manteniment», bugaderia, factures de bugaderia, reglament signat). No he citat cap article. Cal validar-ho amb la gestoria i veure si convé posar una línia de «serveis inclosos» a les factures d'estades llargues.
 5. **Facturació per avançat.** No he explicat la regla de meritació de l'IVA dels avançaments; només que la factura va al trimestre de la seva data i que ha de quadrar amb el cobrament. Validar amb la gestoria.
 6. **Conservació de fitxes signades i comprovants.** He posat el registre a 3 anys; per a les fitxes signades i els comprovants no he indicat cap termini concret. Confirmar.
 7. **Registre de Turisme de Catalunya.** L'app no en té cap dada. El full imprès del llibre posa a «Número de Registro de Alquiler (NRA o NRUA)» el «File identifier» de Mossos (dubte del capítol de Mossos); potser hauria de ser el número d'inscripció de turisme. Revisar.
 8. **Fulls de reclamació, preus exposats i altres obligacions de Turisme.** No he trobat res a l'app més enllà del PDF de tarifes i del «Cartell normes». La llista d'obligacions de Turisme és la de l'encàrrec; no l'he contrastat amb la normativa.
 9. **Capçalera fixa del PDF de tarifes** («Full de preus 2025 – 2026», dubte 7 de dia-a-dia): si es penja a recepció com a «preus exposats», pot quedar desfasada.
-10. **Justificant oficial dels models.** L'app només guarda el «Núm. de justificant (opcional)», no el PDF. Confirmar si es vol poder adjuntar.
+10. **Justificant oficial dels models.** Si es presenta des de l'app (producció), es desa el PDF del justificant i el CSV. Si es presenta fora, l'app només guarda el «Núm. de justificant (opcional)», no el PDF. Confirmar si es vol poder adjuntar en aquest cas.
 11. **Compte de propietat i inspeccions.** El compte restringit amaga estades amb «ZP11» al llibre i els cobraments «Altres» dels ingressos. Per això el capítol recomana treure els papers amb l'usuari d'administradora. Convé que la propietària en sigui conscient.
 12. **Google Drive i factures rebudes.** Comprovat a `api/cron/drive-mensual`: l'arxiu mensual no puja els fitxers adjunts de les despeses (només l'Excel «Ingressos i despeses.xlsx»). Si es vol que les factures rebudes també quedin a Drive, caldria afegir-ho.

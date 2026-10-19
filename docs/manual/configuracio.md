@@ -460,9 +460,9 @@ Per decidir què surt a la capçalera de les factures i rebuts impresos: qui fac
    - «Adreça».
    - «Codi postal».
    - «Població».
-   - «IBAN»: el número de compte on et poden pagar per transferència.
-   - «Titular de facturació»: la **persona** que surt com a emissora de la factura. Pot ser diferent del titular que consta a Mossos.
-   - «NIF de facturació»: el NIF que surt a les factures. Pot ser diferent del CIF de «Dades de l'establiment».
+   - «IBAN»: el número de compte on et poden pagar per transferència. És també el compte on l'AEAT **domicilia** els impostos quan fas servir el fitxer o la presentació des de la pàgina «Impostos»: ha de ser un IBAN espanyol vàlid.
+   - «Titular de facturació»: la **persona** que surt com a emissora de la factura (per exemple «Elisabeth Nualart Coll»). Pot ser diferent del titular que consta a Mossos. Si el deixes buit, les factures posen «Elisabeth Nualart Coll».
+   - «NIF de facturació»: el NIF que surt a les factures. Pot ser diferent del CIF de «Dades de l'establiment». La pàgina «Impostos» també fa servir aquest NIF per als models (el nom, en canvi, hi surt sempre com consta a Hisenda: «NUALART COLL ELISABETH»).
 3. Prem «Desar configuració».
 
 [FOTO id=config-factura ruta=/config descripcio="Targeta Dades per a la factura oberta amb tots els camps (titular, descriptor, telèfon, adreça, CP, població, IBAN, titular i NIF de facturació)" marques="Titular / raó social|IBAN|Titular de facturació|NIF de facturació|Desar configuració"]

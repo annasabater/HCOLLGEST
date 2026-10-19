@@ -6,8 +6,8 @@ Aquest capítol t'explica tota la part de **diners** de l'app de l'Hostal Coll:
 - com **apuntar les despeses** (factures, tiquets, lloguer, fiances, abonaments);
 - com tenir controlats els **proveïdors** i els **serveis que es repeteixen** (assegurança, extintors, llum…);
 - com preparar el **llibre d'IVA de cada trimestre** per a la gestoria;
-- com veure **què toca pagar a Hisenda** i quan (pàgina **Impostos**);
-- com preparar la **taxa turística**;
+- com veure **què toca pagar a Hisenda** i quan (pàgina **Impostos**), treure els **formularis oficials**, fer-los **validar per l'AEAT** i, si vols, **presentar-los des de l'app**;
+- com preparar la **taxa turística** (model 950);
 - i què és **Veri\*Factu** i en quin punt és dins l'app.
 
 No cal que sàpigues comptabilitat. Cada vegada que surti una paraula "de gestoria", te l'expliquem el primer cop que apareix.
@@ -25,8 +25,9 @@ No cal que sàpigues comptabilitat. Cada vegada que surti una paraula "de gestor
 | **Retenció** | Un tros de la factura que **no pagues al proveïdor** sinó que guardes per pagar-lo tu a Hisenda en nom seu. Passa amb el lloguer del local (normalment el 19 %). |
 | **Fiança** | Diners que es donen **en garantia** i que es tornaran. Pot ser que te la donin a tu (un client) o que la donis tu (a un proveïdor). **No és ni un ingrés ni una despesa**. |
 | **Trimestre (T)** | Tres mesos: 1T = gener–març, 2T = abril–juny, 3T = juliol–setembre, 4T = octubre–desembre. |
-| **Model 303, 130, 115, 390, 180, 100** | Els formularis d'Hisenda (l'**AEAT**, Agència Tributària). Els expliquem a la secció d'impostos. |
-| **Taxa turística (IEET)** | Impost català per persona i nit d'hostatge. Es paga a l'**ATC** (Agència Tributària de Catalunya), no a l'AEAT. |
+| **Model 303, 130, 115, 390, 180, 347, 100** | Els formularis d'Hisenda (l'**AEAT**, Agència Tributària). Els expliquem a la secció d'impostos. |
+| **Taxa turística (IEET) · model 950** | Impost català per persona i nit d'hostatge. Es declara i es paga a l'**ATC** (Agència Tributària de Catalunya) amb el **model 950**, no a l'AEAT. |
+| **Certificat digital** | Un fitxer (.p12 o .pfx, normalment de la FNMT) que fa de «DNI a internet». Amb ell es poden presentar els models a l'AEAT. |
 | **Gestoria** | La persona o empresa que et presenta els impostos. |
 
 > **Qui ho pot veure?** Les pàgines **Balanç**, **Impostos**, **Despeses**, **Tarifes** i **Veri\*Factu** són per als usuaris amb rol **administrador** (ADMIN). **Proveïdors i serveis** i **Taxa turística** surten al menú per a tothom, però per crear o canviar coses cal ser administrador o recepció. Si entres amb una **vista restringida de propietat**, l'app t'amaga les fiances i alguns apartats (personal, neteja, taxa turística).
@@ -796,20 +797,27 @@ Si escrius a mà una d'aquestes caselles, queda fixa i es desa amb el llibre.
 
 **Pas a pas:**
 
-1. Entra a **Impostos**. A dalt surt el nom i el NIF del titular de facturació i «calculat del Llibre d’IVA de cada trimestre». A la dreta, **‹ any ›** per canviar d'any.
-2. Si hi ha alguna cosa pendent, surt una franja taronja **«Proper termini: dd/mm/aaaa»** amb els dies que queden i quins models són.
-3. Tria la pestanya **«1T»**, **«2T»**, **«3T»** o **«4T»**. El puntet de color diu l'estat: taronja = pendent, verd = tot presentat, gris = res a fer o encara no. Per defecte s'obre el primer trimestre amb coses pendents.
-4. Llegeix la targeta **«D’on surten les xifres del …T»**: ingressos (base i IVA), gastos amb IVA (base i IVA), gastos sense IVA (només 130), nòmines (només 130) i IVA suportat per tipus. Si el llibre està desat, etiqueta **«versió desada (editada)»**. Botó **«Obre el llibre d’IVA»**.
-5. Mira les tres targetes: **«Model 303 · IVA»**, **«Model 130 · IRPF a compte»** i **«Model 115 · Retencions del lloguer»**. Cada una té:
+1. Entra a **Impostos**. A dalt surt el titular **tal com consta a Hisenda** (cognoms i nom en majúscules, «NUALART COLL ELISABETH»), el NIF i «calculat del Llibre d’IVA de cada trimestre». A la dreta, **‹ any ›** per canviar d'any.
+2. Si ha sortit una ordre nova al BOE sobre els models, surt primer una **franja vermella** («Nova ordre al BOE…»). Mira [Què vol dir l'avís vermell del BOE](#que-vol-dir-l-avis-vermell-del-boe).
+3. Si hi ha alguna cosa pendent, surt una franja taronja **«Proper termini: dd/mm/aaaa»** amb els dies que queden i quins models són (també la taxa turística, el **950**).
+4. Tria la pestanya **«1T»**, **«2T»**, **«3T»** o **«4T»**. El puntet de color diu l'estat: taronja = pendent, verd = tot presentat, gris = res a fer o encara no. Per defecte s'obre el primer trimestre amb coses pendents.
+5. Llegeix la targeta **«D’on surten les xifres del …T»**: ingressos (base i IVA), gastos amb IVA (base i IVA), gastos sense IVA (només 130), nòmines (només 130) i IVA suportat per tipus. Si el llibre està desat, etiqueta **«versió desada (editada)»**. Botó **«Obre el llibre d’IVA»**.
+6. Mira les tres targetes: **«Model 303 · IVA»**, **«Model 130 · IRPF a compte»** i **«Model 115 · Retencions del lloguer»**. Cada una té:
    - l'estat: «Presentada», «No cal», «Encara no», «Trimestre en curs», «Pendent · queden N dies», «Avui és l’últim dia» o «Fora de termini»;
    - «Termini: dd/mm/aaaa»;
    - el resultat en gran («A ingressar», «A compensar (no pagues res)», «A retornar (o a compensar)», «Resultat zero…», «Sense retencions»);
-   - la taula de **caselles** amb el número oficial, el text i l'import; al costat de cada import, un botó per **copiar-lo** («Copia per enganxar a la Seu»), ja amb coma decimal.
-6. Prem **«Seu electrònica»** per obrir el tràmit a la web de l'AEAT i enganxa-hi les xifres.
-7. Quan l'hagis presentat, torna i prem **«Marca com a presentada»**. Les caselles es tornen editables: posa-hi **exactament** el que has presentat, el **«Núm. de justificant (opcional)»** i prem **«Desa com a presentada»** (o **«Cancel·la»**).
-8. Si t'has equivocat de marcar-la, **«Desmarca»** i confirma.
+   - la taula de **caselles** amb el número oficial, el text i l'import; al costat de cada import, un botó per **copiar-lo** («Copia per enganxar a la Seu»), ja amb coma decimal;
+   - a sota, una fila de **botons** per treure el formulari, el fitxer per a la Seu i la validació de l'AEAT. Els expliquem a [Com trec el formulari oficial, el fitxer per a la Seu i la validació de l'AEAT](#com-trec-el-formulari-oficial-el-fitxer-per-a-la-seu-i-la-validacio-de-l-aeat).
+7. Als trimestres **1T** i **3T**, a sota hi ha també la targeta **«Model 950 · Taxa turística (ATC)»**. Mira [Com presento la taxa turística (targeta del model 950)](#com-presento-la-taxa-turistica-targeta-del-model-950).
+8. Presenta el model d'una d'aquestes maneres:
+   - **a la Seu de l'AEAT, important el fitxer** (botó **«Fitxer per importar a la Seu»**): la manera recomanada si ho fas tu;
+   - **a la Seu, a mà**: **«Seu electrònica»** obre el tràmit i hi enganxes les xifres amb els botons de copiar;
+   - **des de l'app**, amb el certificat digital (botó **«Presentar a l’AEAT»**). Només surt si has pujat el certificat. Mira [Com presento un model directament a l'AEAT des de l'app](#com-presento-un-model-directament-a-l-aeat-des-de-l-app);
+   - o ho fa la **gestoria**.
+9. Si l'has presentat **fora de l'app**, torna i prem **«Marca com a presentada»**. Les caselles es tornen editables: posa-hi **exactament** el que has presentat, el **«Núm. de justificant (opcional)»** i prem **«Desa com a presentada»** (o **«Cancel·la»**). Si l'has presentat des de l'app (de veritat, no de prova), ja queda marcada sola.
+10. Si t'has equivocat de marcar-la, **«Desmarca»** i confirma.
 
-[FOTO id=impostos-trimestre ruta=/impostos descripcio="Pàgina Impostos amb la franja de proper termini, les pestanyes de trimestres, la targeta d'origen de dades i les tres targetes de models" marques="Proper termini|1T|Anual · 390 i 180|Obre el llibre d’IVA|Model 303 · IVA|Model 130 · IRPF a compte|Model 115 · Retencions del lloguer"]
+[FOTO id=impostos-trimestre ruta=/impostos descripcio="Pàgina Impostos al 3T: franja vermella del BOE, franja de proper termini, pestanyes de trimestres, targeta d'origen de dades, les tres targetes de models amb els botons de l'AEAT i, a baix, la targeta del 950 i el bloc Presentació directa a l'AEAT" marques="Nova ordre al BOE|Proper termini|3T|Anual · 390 i 180|Obre el llibre d’IVA|Model 303 · IVA|Model 130 · IRPF a compte|Model 115 · Retencions del lloguer|Model 950 · Taxa turística (ATC)|Presentació directa a l’AEAT"]
 
 [FOTO id=impostos-marcar-presentada ruta=/impostos descripcio="Targeta del 303 en mode edició després de prémer Marca com a presentada: les caselles es poden escriure i surten el justificant i els botons per desar o cancel·lar" marques="Núm. de justificant (opcional)|Desa com a presentada|Cancel·la"]
 
@@ -828,7 +836,180 @@ Si escrius a mà una d'aquestes caselles, queda fixa i es desa amb el llibre.
 - Les **fiances no compten mai**, ni les pagades ni la fiança inclosa en una factura.
 - Els **cobraments sense factura** no compten: fes-los factura perquè entrin al llibre.
 - La casella 06 del 130 (retencions que t'han fet) sempre surt a 0.
+- El nom del titular que surt a dalt i als formularis és **fix** («ELISABETH · NUALART COLL», com consta al cens d'Hisenda). No surt del «Titular de facturació» de Configuració. El **NIF** sí: si a Configuració hi ha el «NIF de facturació», mana aquest.
 - Aquests càlculs són una **ajuda**: confirma'ls amb la gestoria abans de presentar.
+
+---
+
+## Com trec el formulari oficial, el fitxer per a la Seu i la validació de l'AEAT
+
+**Per a què serveix:** no haver de copiar les caselles una a una. Des de cada targeta pots treure el **formulari oficial omplert**, un **fitxer** que la Seu de l'AEAT llegeix sola, i demanar a l'AEAT que **revisi** les dades abans de presentar-les.
+
+**On és:** **Impostos** → pestanya del trimestre → fila de botons a sota de les caselles de cada model. Els mateixos documents també surten a **Plantilles** (mira [Com trec els formularis oficials des de Plantilles](#com-trec-els-formularis-oficials-des-de-plantilles)).
+
+**Pas a pas:**
+
+1. Entra a **Impostos** i tria el trimestre.
+2. A sota de les caselles del model trobaràs aquests botons (segons el model):
+   - **«Formulari oficial (PDF)»** (303, 130 i, a la pestanya anual, 390): obre en una pestanya nova el formulari **del BOE** amb les caselles ja escrites. Si el model ja està marcat com a presentat, hi posa les xifres presentades; si no, les calculades.
+   - **«Fitxer per importar a la Seu»** (303, 130 i 115): baixa un fitxer de text (per exemple `303_2026_3T.txt`) en el format oficial de l'AEAT.
+   - **«Validar a l’AEAT»** (303, 130 i 115): envia aquest mateix fitxer al servei de **validació** de l'AEAT. No demana certificat i **no presenta res**.
+   - **«Seu electrònica»**: obre la fitxa del tràmit a la web de l'AEAT.
+3. **Per presentar-lo important el fitxer:** a la Seu, entra al model amb Cl@ve o certificat, clica **«Importar»**, tria el fitxer que has baixat i totes les caselles s'omplen soles. Revisa-les i acaba amb «Firmar y enviar».
+4. **Per validar-lo:** prem **«Validar a l’AEAT»** i espera. A sota dels botons surt la resposta:
+   - en verd, **«L’AEAT l’ha validat sense errors. Encara no s’ha presentat.»**;
+   - en vermell, **«L’AEAT hi ha trobat errors:»** i la llista d'errors;
+   - els avisos surten en taronja, amb **«Avís:»** al davant;
+   - si l'AEAT ha fet l'esborrany, l'enllaç **«Obre l’esborrany oficial (PDF)»**: és el formulari omplert per la mateixa AEAT, amb la marca d'esborrany.
+
+[FOTO id=impostos-botons-aeat ruta=/impostos descripcio="Targeta del Model 303 del 3T amb el resultat, les últimes caselles i la fila de botons: formulari oficial, fitxer per a la Seu, validar a l'AEAT, presentar (proves), Seu electrònica i marcar com a presentada" marques="Formulari oficial (PDF)|Fitxer per importar a la Seu|Validar a l’AEAT|Presentar a l’AEAT (proves)|Seu electrònica|Marca com a presentada"]
+
+**Què passa després / d'on surten les dades:**
+- Totes les xifres són les **calculades** a la mateixa targeta (les del llibre d'IVA del trimestre). El titular és el de dalt de la pàgina; l'IBAN, el de **Configuració → «Dades per a la factura» → «IBAN»**.
+- **Pagament:** si encara falten **més de 5 dies** per a l'últim dia del termini, el fitxer diu que el pagament es **domicilia** (l'AEAT el carrega al compte l'últim dia). Si en falten menys, diu que pagues **amb ingrés** (NRC del banc), perquè ja no s'hi és a temps.
+- Els botons de fitxer i de validació només surten a partir del **2026** i quan el trimestre ja ha començat.
+- Cada descàrrega, validació o presentació queda apuntada a l'auditoria.
+
+**Per què es fa així:** el fitxer és el **disseny de registre oficial** de l'AEAT: la Seu l'entén sense que hagis d'escriure res, i així no t'equivoques copiant. La validació és el mateix control que fa la Seu abans de deixar-te presentar: si hi ha un error, el veus abans.
+
+**Si t'has equivocat:** baixar, obrir o validar **no canvia res**: ho pots fer tantes vegades com vulguis. Si l'AEAT troba errors, corregeix l'origen (factures, despeses, llibre d'IVA, dades de Configuració) i torna a validar.
+
+**Compte!**
+- Si falta el NIF, surt «Falta el NIF del titular (Configuració → dades de facturació)». Si es domicilia i l'IBAN no és un IBAN espanyol vàlid: «Per domiciliar cal un IBAN espanyol vàlid (Configuració → dades de facturació)».
+- El **«Formulari oficial (PDF)»** és una còpia fixa del formulari del BOE (303 i 390: Orden HAC/27/2026; 130: Orden HAP/258/2015). Si el BOE en publica un de nou, l'app t'avisa amb la franja vermella.
+- El 115 no té «Formulari oficial (PDF)»: per veure'l en PDF, fes servir l'esborrany de l'AEAT (validació o Plantilles).
+- **«Validar a l’AEAT»** necessita connexió amb l'AEAT; si el servei no respon, surt «No s’ha pogut validar amb l’AEAT».
+
+---
+
+## Com presento un model directament a l'AEAT des de l'app
+
+**Per a què serveix:** presentar el **303**, el **130** o el **115** sense sortir de l'app, amb el **certificat digital** de la titular.
+
+**On és:** **Impostos** → targeta del model → botó **«Presentar a l’AEAT (proves)»** o **«Presentar a l’AEAT»**. Només surt si has pujat el certificat (mira la secció següent) i si el model encara no està presentat. A la foto de la secció anterior és el botó ④.
+
+**Pas a pas:**
+
+1. Revisa les caselles i fes **«Validar a l’AEAT»** (secció anterior).
+2. Prem **«Presentar a l’AEAT (proves)»** (entorn de proves) o **«Presentar a l’AEAT»** (entorn de producció). S'obre un requadre dins la targeta.
+3. Llegeix el títol:
+   - **«Presentació de PROVA (entorn de proves de l’AEAT)»**, o
+   - **«Presentació REAL a Hisenda (no es pot anul·lar)»**.
+4. Revisa el resum: «Model … · …T … · resultat: import», com es paga i la «Presentadora» (nom i NIF del certificat):
+   - «domiciliació (l’AEAT el carrega l’últim dia del termini al compte de la configuració)», o
+   - «ingrés amb NRC (ja l’has pagat al banc)».
+5. Si surt a ingressar i ja no es pot domiciliar, escriu el **«NRC del pagament (22 caràcters, el dona el banc en pagar)»**. Abans, paga-ho al banc.
+6. Marca la casella **«He revisat les caselles i l’esborrany («Validar a l’AEAT») i dono la meva conformitat a aquestes dades per presentar la declaració.»**
+7. Escriu la **«Contrasenya del certificat»**.
+8. Prem **«Envia la prova»** (proves) o **«Presenta-la ara»** (producció). Mentre treballa posa «Presentant…». **«Cancel·la»** tanca el requadre sense enviar res.
+9. Llegeix el resultat:
+   - a proves: **«Prova correcta: l’AEAT l’ha acceptada al seu entorn de proves (no compta).»**;
+   - a producció: **«Presentada a l’AEAT ✓»**, amb el **CSV**, el número de justificant, la data i l'enllaç **«Obre el justificant (PDF)»**;
+   - si no ha anat bé: «L’AEAT hi ha trobat errors (no s’ha presentat):» o «L’AEAT no l’ha acceptada:», amb la llista.
+
+**Què passa després / d'on surten les dades:**
+- Abans d'enviar, l'app comprova: que hi ha certificat i no ha caducat; que el **NIF del certificat** és el de la titular; que (a producció) el model no consta ja presentat; i que, si cal, hi ha un NRC de 22 caràcters. Després el fa **validar per l'AEAT**: si hi ha errors, **no l'envia**.
+- **A producció**, si l'AEAT l'accepta, el model queda marcat com a **presentat** amb les caselles enviades, el CSV i el PDF del justificant, i els trimestres següents ja s'hi encadenen.
+- **A proves**, no es desa res: el model continua pendent.
+- La contrasenya **no es desa**: s'esborra en acabar.
+
+**Per què es fa així:** l'AEAT obliga a mostrar les dades i recollir la **conformitat** abans de presentar. La presentació és **irreversible**: per això cal la casella i la contrasenya cada vegada.
+
+**Si t'has equivocat:**
+- A **proves** no passa res: no compta.
+- A **producció**, una declaració presentada **no es pot anul·lar** des de l'app. Si les xifres eren errònies, cal una declaració **complementària o rectificativa a la Seu**: parla amb la gestoria.
+
+**Compte!**
+- Fes primer una **prova** a l'entorn de proves (l'AEAT només l'obre els dies laborables de 8 a 15 h).
+- Si la contrasenya és incorrecta o l'AEAT no respon, surt el missatge d'error i no es presenta res.
+- Si ja l'has presentat a la Seu o ho ha fet la gestoria, **no** la tornis a presentar des d'aquí: prem «Marca com a presentada».
+
+---
+
+## Com pujo el certificat digital (Presentació directa a l'AEAT)
+
+**Per a què serveix:** deixar el certificat de la titular a l'app perquè surti el botó «Presentar a l’AEAT», i triar si les presentacions són **de prova** o **reals**.
+
+**On és:** **Impostos** → a baix de tot, el bloc plegable **«Presentació directa a l’AEAT»** (amb «· PROVES» o «· PRODUCCIÓ» al títol si ja hi ha certificat).
+
+**Pas a pas:**
+
+1. Obre el bloc **«Presentació directa a l’AEAT»**.
+2. A **«Certificat (.p12 o .pfx)»** (o **«Substituir el certificat»**, si ja n'hi ha un), tria el fitxer del certificat.
+3. Escriu la **«Contrasenya del certificat»**.
+4. Prem **«Puja»**. Surt «Certificat desat (xifrat). La contrasenya no s’ha desat: te la demanarem a cada presentació.»
+5. Comprova el requadre: nom · NIF del certificat i «Caduca el …».
+6. A **«Entorn:»**, tria **«Proves»** o **«Producció (real)»**. Per passar a producció, l'app pregunta: «A PRODUCCIÓ les declaracions es presenten DE VERITAT a Hisenda i no es poden anul·lar. Hi passem?».
+7. Per treure'l del servidor: **«Esborra el certificat»** i confirma.
+
+[FOTO id=impostos-certificat ruta=/impostos descripcio="Bloc Presentació directa a l'AEAT obert, amb un certificat de prova (fictici) carregat, l'entorn Proves triat i els camps per substituir-lo" marques="Presentació directa a l’AEAT|Caduca el|Proves|Producció (real)|Esborra el certificat|Substituir el certificat|Contrasenya del certificat|Puja"]
+
+**Què passa després / d'on surten les dades:** el certificat es desa **xifrat** al servidor. L'app en llegeix el nom, el NIF i la data de caducitat. La contrasenya **mai** es desa. Cada canvi (pujar, canviar l'entorn, esborrar) queda a l'auditoria.
+
+**Per què es fa així:** per presentar en nom de la titular cal el seu certificat. Començar a **proves** permet comprovar que tot funciona sense presentar res de veritat.
+
+**Si t'has equivocat:** torna a pujar el certificat bo (el substitueix), torna l'entorn a «Proves» o esborra'l.
+
+**Compte!**
+- Errors possibles en pujar-lo: «La contrasenya del certificat no és correcta», «El fitxer no és un certificat .p12/.pfx vàlid», «No s’ha trobat el NIF al certificat (ha de ser de persona física)», que ja ha caducat o que «El certificat no es pot fer servir per connectar amb l’AEAT».
+- Quan falten menys de **60 dies** perquè caduqui, la data surt en taronja amb «renova’l a la FNMT».
+- Només els administradors veuen aquest bloc.
+
+---
+
+## Què vol dir l'avís vermell del BOE
+
+**Per a què serveix:** els formularis oficials de l'app són còpies dels que publica el **BOE**. Si surt una ordre nova que els canvia, l'app t'avisa perquè no presentis amb un formulari antic.
+
+**On és:** a dalt de la pàgina **Impostos**, una franja vermella. També arriba un **correu** a l'adreça de les còpies de seguretat (per defecte hostalcoll@gmail.com).
+
+**Pas a pas:**
+
+1. Llegeix la franja: **«Nova ordre al BOE (dd/mm/aaaa) sobre els models …»** i «Pot canviar caselles dels formularis: cal revisar-los abans de presentar.» A sota hi ha el títol de l'ordre.
+2. Clica el codi de l'ordre (per exemple «BOE-A-2026-…») per obrir-la al BOE.
+3. Avisa qui manté l'app i la gestoria: cal comprovar si canvien les caselles i actualitzar els formularis.
+4. Quan estigui revisat, prem **«Revisat»**. La franja desapareix.
+
+[FOTO id=impostos-avis-boe ruta=/impostos descripcio="Franja vermella d'una ordre nova del BOE (aquí, una ordre inventada de les dades de prova) amb l'enllaç i el botó Revisat" marques="Nova ordre al BOE|Revisat"]
+
+**Què passa després / d'on surten les dades:** cada **dilluns** al matí, l'app mira els sumaris del BOE dels últims 8 dies i busca ordres que parlin de «modelo(s)» **303, 130, 115, 390, 180 o 100**. Les ordres que ja fa servir l'app (Orden HAC/27/2026 i Orden HAP/258/2015) no avisen.
+
+**Per què es fa així:** si el BOE canvia el formulari, les caselles poden canviar de número o de lloc, i un fitxer o un PDF antic pot ser incorrecte.
+
+**Si t'has equivocat:** si has premut «Revisat» massa d'hora, des de l'app no es pot tornar a mostrar. Torna a mirar l'ordre al BOE.
+
+**Compte!** «Revisat» només treu l'avís: **no actualitza** cap formulari. Mentre no s'actualitzi, revisa a la Seu les caselles abans de presentar.
+
+---
+
+## Com trec els formularis oficials des de Plantilles
+
+**Per a què serveix:** tenir en un sol lloc, d'un clic, els formularis de tots els models d'un trimestre i de l'any, sense passar per cada targeta d'Impostos.
+
+**On és:** menú **Gestió → Plantilles** → bloc plegable **«Impostos · formularis oficials de l’AEAT»**. Només el veuen els administradors.
+
+**Pas a pas:**
+
+1. Obre **Plantilles** i desplega **«Impostos · formularis oficials de l’AEAT»**.
+2. Tria l'**any** (l'actual o l'anterior) i el **trimestre** («1r trimestre»…). Per defecte surt el trimestre que toca presentar ara (l'anterior a l'actual).
+3. Cada fila diu el model, el resultat («… a ingressar», «… a compensar», «Resultat zero», «No cal presentar-lo», «Informatiu · …»), el termini i, si ja està fet, «presentat».
+4. Botons de cada fila:
+   - **303, 130 i 115:** **«PDF oficial (AEAT)»** (el formulari omplert per la mateixa AEAT, amb la marca d'esborrany) i **«Fitxer per presentar»** (el fitxer per importar a la Seu);
+   - **390:** **«Formulari oficial (PDF)»** (el formulari del BOE omplert per l'app);
+   - **180** i **347**, o qualsevol model que no calgui presentar: **«Obre Impostos»**.
+5. Per presentar amb el fitxer: a la Seu, entra al model, clica **«Importar»**, tria el fitxer, revisa les caselles i clica «Firmar y enviar».
+
+[FOTO id=plantilles-impostos ruta=/plantilles descripcio="Bloc Impostos · formularis oficials de l'AEAT de Plantilles, amb el selector d'any i trimestre i una fila per model amb els seus botons (no s'ha premut cap botó)" marques="Impostos · formularis oficials de l’AEAT|PDF oficial (AEAT)|Fitxer per presentar|Formulari oficial (PDF)|Obre Impostos"]
+
+**Què passa després / d'on surten les dades:** les xifres són les de la pàgina **Impostos** (les presentades, si el model ja està marcat; si no, les calculades). Per fer el **«PDF oficial (AEAT)»**, l'app envia les dades al servei de validació de l'AEAT i en mostra el PDF; si l'AEAT hi troba errors, en lloc del PDF surt un text amb els errors.
+
+**Per què es fa així:** el PDF de l'AEAT és el formulari que veuràs a la Seu, i el pots revisar o passar a la gestoria abans de presentar. El fitxer evita copiar les caselles a mà.
+
+**Si t'has equivocat:** obrir o baixar no canvia res.
+
+**Compte!**
+- **Des de Plantilles el fitxer sempre diu «ingrés»** (no domiciliació). Si vols domiciliar el pagament, baixa'l des de la targeta d'**Impostos** (que ho tria segons la data) o canvia-ho a la Seu.
+- El **180**, el **347** i la **renda (100)** es fan directament a la Seu amb les dades d'Impostos; la **taxa turística (950)**, a la Seu de l'ATC amb les dades de la targeta del 950.
 
 ---
 
@@ -841,13 +1022,14 @@ Si escrius a mà una d'aquestes caselles, queda fixa i es desa amb el llibre.
 **Pas a pas:**
 
 1. Entra a **Impostos**, tria l'any i la pestanya **«Anual · 390 i 180»**.
-2. Targeta **«Model 390 · Resum anual d’IVA»** («Informatiu: suma dels quatre 303»). A sota hi ha les «Dades estadístiques (apartat 3)»: clau **A03**, epígraf IAE **682** (comprova'l a la teva alta censal).
+2. Targeta **«Model 390 · Resum anual d’IVA»** («Informatiu: suma dels quatre 303»). A sota hi ha les «Dades estadístiques (apartat 3)»: clau **A03**, epígraf IAE **682** (comprova'l a la teva alta censal). El botó **«Formulari oficial (PDF)»** obre el 390 del BOE omplert, amb l'activitat, la clau i l'epígraf, i amb la «X» de la casella **D** si toca presentar el 347.
 3. Targeta **«Model 180 · Resum anual del lloguer»**: taula de perceptors (**«Perceptor»**, **«NIF»** —«falta» en taronja si no en té—, **«Base»**, **«%»**, **«Retenció»**). A sota, **«Referència cadastral del local (obligatòria al 180)»**: escriu-la (20 caràcters, del rebut de l'IBI) i prem **«Desa»**.
-4. Targeta **«Model 100 · Renda AAAA (part de l’hostal)»**: «Ingressos íntegres (sense IVA)», les despeses per concepte, «Total despeses», «Diferència», «Provisions i despeses de difícil justificació (5 %, màx. 2.000 €)», **«Rendiment net»**, si escau «Reducció per inici d’activitat (20 %)», **«Rendiment net reduït»** i «Pagaments fraccionats (130) de l’any». Cada import té el botó de copiar.
-5. Marca el 390 i el 180 com a presentats igual que els trimestrals.
-6. Al final hi ha el recordatori de la **taxa turística** amb el botó **«Obre la taxa turística»**.
+4. Targeta **«Model 347 · Operacions amb terceres persones»**: mira [Com sé si he de presentar el 347](#com-se-si-he-de-presentar-el-347).
+5. Targeta **«Model 100 · Renda AAAA (part de l’hostal)»**: «Ingressos íntegres (sense IVA)», les despeses per concepte, «Total despeses», «Diferència», «Provisions i despeses de difícil justificació (5 %, màx. 2.000 €)», **«Rendiment net»**, si escau «Reducció per inici d’activitat (20 %)», **«Rendiment net reduït»** i «Pagaments fraccionats (130) de l’any». Cada import té el botó de copiar.
+6. Marca el 390, el 180 i (si cal) el 347 com a presentats igual que els trimestrals.
+7. Al final hi ha el recordatori de la **taxa turística** amb el botó **«Obre la taxa turística»**.
 
-[FOTO id=impostos-anual ruta=/impostos descripcio="Pestanya Anual amb el 390, el 180 amb la taula de perceptors i la referència cadastral, i la targeta de la renda" marques="Anual · 390 i 180|Model 390 · Resum anual d’IVA|Model 180 · Resum anual del lloguer|Referència cadastral del local (obligatòria al 180)|Model 100 · Renda|Rendiment net|Obre la taxa turística"]
+[FOTO id=impostos-anual ruta=/impostos descripcio="Pestanya Anual amb el 390 i el seu formulari oficial, el 180 amb la taula de perceptors i la referència cadastral, el 347 i la targeta de la renda" marques="Anual · 390 i 180|Model 390 · Resum anual d’IVA|Formulari oficial (PDF)|Model 180 · Resum anual del lloguer|Referència cadastral del local (obligatòria al 180)|Model 347 · Operacions amb terceres persones|Model 100 · Renda|Obre la taxa turística"]
 
 **Què passa després / d'on surten les dades:**
 - **390:** suma dels quatre trimestres (bases i quotes per tipus, IVA deduïble per tipus, resultat, total ingressat als 303, el que queda a compensar o retornar a l'últim 303, volum d'operacions). Els imports del 4T entren quan s'acaba l'any.
@@ -863,6 +1045,46 @@ Si escrius a mà una d'aquestes caselles, queda fixa i es desa amb el llibre.
 - La regla del 5 % és la de la renda 2025: comprova que no canviï.
 - La reducció d'inici d'activitat: confirma-la amb el gestor.
 - El 390 diu que no hi ha quotes de l'any anterior a compensar (casella 85 = 0, pensat per a 2026 com a primer any).
+
+---
+
+## Com sé si he de presentar el 347
+
+**Per a què serveix:** el **model 347** és una declaració **informativa** (no es paga res) on es diuen els clients i proveïdors amb qui has fet operacions de **més de 3.005,06 €** en un any (IVA inclòs). L'app calcula sola si t'hi obliga.
+
+**On és:** **Impostos** → pestanya **«Anual · 390 i 180»** → targeta **«Model 347 · Operacions amb terceres persones»** («Informatiu: clients i proveïdors de més de 3.005,06 € l’any»).
+
+**Pas a pas:**
+
+1. Tria l'any i obre la pestanya **«Anual · 390 i 180»**.
+2. Mira l'estat de la targeta:
+   - **«No cal»** i «Sense activitat en aquest període: no cal presentar-lo.»: ningú no passa del límit;
+   - si algú hi passa, la targeta mostra les caselles **01** («Persones i entitats a declarar») i **02** («Import total de les seves operacions (IVA inclòs)») i una franja taronja: «Cal presentar-lo (febrer de …). El formulari del 390 ja porta la «X» a la casella D.»
+3. Revisa la taula: **«Tercer»**, **«NIF»** («falta» en taronja si no en té), **«Clau»** (A = proveïdor, B = client), l'import de cada trimestre (**«1T»**…**«4T»**) i el **«Total»**.
+4. Llegeix les llistes de sota, si surten:
+   - **«Passen de 3.005,06 € però NO es declaren:»**, amb el motiu;
+   - **«S’hi acosten (vigila’ls a final d’any):»** (més del 70 % del límit);
+   - l'avís de **cobraments en efectiu de més de 6.000 €** d'un mateix client, que al 347 s'han d'indicar a part.
+5. Si un tercer no té NIF, posa'l a la fitxa del proveïdor o a la factura completa.
+6. Presenta'l a la **Seu de l'AEAT** (només per internet, de l'**1 al 28 de febrer** de l'any següent) i, després, **«Marca com a presentada»**.
+
+[FOTO id=impostos-347 ruta=/impostos descripcio="Targeta del Model 347 a la pestanya anual (amb les dades de prova ningú no passa del límit i surt No cal)" marques="Model 347 · Operacions amb terceres persones|No cal"]
+
+**Què passa després / d'on surten les dades:**
+- **Proveïdors (clau A):** totes les despeses de l'any (sense fiances), agrupades pel NIF del proveïdor (o el nom). L'import és el total amb IVA; al lloguer amb retenció s'hi torna a sumar l'IRPF retingut.
+- **Clients (clau B):** només les **factures completes** (fiscals), agrupades pel NIF del client (o el document del titular), sense la fiança inclosa.
+- **No es declaren:** el lloguer amb retenció («Lloguer amb retenció (ja es declara al 180)»), les despeses de categoria «Impostos» o «Impostos i taxes» («Tributs…»), les d'«Autònoms» o «Seguretat Social» («Cotitzacions socials») i les **factures simplificades** («no era obligatori identificar el client»).
+- Si cal presentar-lo, el formulari oficial del **390** surt amb la «X» a la casella **D**.
+- Es torna a calcular sol cada vegada que obres la pàgina, fins al 31 de desembre.
+
+**Per què es fa així:** ho demana el Reglament general de gestió tributària (art. 33 RGAT): quan amb una mateixa persona o empresa passes de 3.005,06 € en un any, Hisenda vol creuar les dades amb les seves.
+
+**Si t'has equivocat:** corregeix la despesa, el proveïdor o la factura d'origen; la targeta es recalcula. Si ja l'has marcat com a presentat, «Desmarca».
+
+**Compte!**
+- Els imports van **amb IVA**.
+- El termini que surt a l'app és l'**últim dia de febrer** (si cau en cap de setmana, el dilluns).
+- Els casos dubtosos, confirma'ls amb la gestoria.
 
 ---
 
@@ -904,7 +1126,47 @@ Si escrius a mà una d'aquestes caselles, queda fixa i es desa amb el llibre.
 **Compte!**
 - Terminis: **abril–setembre** es paga de l'**1 al 20 d'octubre**; **octubre–març**, de l'**1 al 20 d'abril**.
 - A Configuració hi ha un altre camp, «IEET (€/persona·nit)» dins «Facturació i RGPD», que és per a les factures, **no** per a aquesta pàgina (vegeu DUBTES).
-- Al model que es presenta a l'ATC (model 950) l'app no el presenta: et dona les dades.
+- El model que es presenta a l'ATC (**model 950**) l'app no el presenta: et dona les dades, a la pàgina **Impostos** (mira la secció següent).
+
+---
+
+## Com presento la taxa turística (targeta del model 950)
+
+**Per a què serveix:** tenir les **dues xifres** que demana l'ATC (estades subjectes i exemptes), l'import a pagar i els passos, al costat dels altres impostos del trimestre.
+
+**On és:** **Impostos** → pestanya **«3T»** (semestre abril–setembre, es paga de l'1 al 20 d'octubre) o **«1T»** (semestre octubre–març, es paga de l'1 al 20 d'abril) → targeta **«Model 950 · Taxa turística (ATC)»**.
+
+**Pas a pas:**
+
+1. Entra a **Impostos** i obre la pestanya **«3T»** o **«1T»**.
+2. Baixa fins a la targeta **«Model 950 · Taxa turística (ATC)»**. A dalt a la dreta, l'estat i «Termini: dd/mm/aaaa».
+3. Mira l'import gran (**«A ingressar»** o «Sense estades que paguin») i la taula:
+   - «Persones allotjades» i «Persones que paguen»;
+   - **«Estades subjectes (nits que paguen, màx. 7 per persona)»**;
+   - **«Estades exemptes (menors de 17 anys)»**;
+   - «Tarifa per persona i nit» i **«Quota (nits × tarifa)»**.
+   Les tres xifres clau tenen el botó de copiar.
+4. Si surt l'avís taronja «… dades del viatger incompletes. Omple-les a Taxa turística abans de presentar.», prem **«Obre la taxa turística»** i completa les fitxes.
+5. Segueix els passos de la targeta, a la **Seu de l'ATC** (amb el teu certificat o idCAT; botó **«ATC»**):
+   1. pestanya **Establiments**: l'hostal amb el seu número del **Registre de Turisme de Catalunya** (es recupera de l'autoliquidació anterior);
+   2. pestanya **Estades**: tria l'any i el període i escriu les estades **subjectes** i les **exemptes**;
+   3. el formulari calcula la quota: comprova que doni el mateix import i paga (targeta, Bizum o domiciliació) o descarrega la carta de pagament.
+6. Torna a l'app i prem **«Marca com a presentat»**. Surt «Presentat el dd/mm/aaaa». Si t'has equivocat, **«Desmarca»**.
+
+[FOTO id=impostos-950 ruta=/impostos descripcio="Targeta del Model 950 al 3T amb l'import, les estades subjectes i exemptes, els passos per presentar-lo a l'ATC i els botons" marques="Model 950 · Taxa turística (ATC)|Estades subjectes|Estades exemptes|Obre la taxa turística|ATC|Marca com a presentat"]
+
+**Què passa després / d'on surten les dades:**
+- Les xifres són les mateixes de la pàgina **Taxa turística** per a aquell semestre: estades acabades amb número de contracte, màxim de nits i tarifa de Configuració.
+- **Estades exemptes** = les nits dels **menors** de l'edat mínima.
+- En marcar-lo, l'app desa les nits i l'import. El 950 també surt a la franja de **«Proper termini»**.
+
+**Per què es fa així:** a l'ATC no es puja cap fitxer ni cap llista d'hostes: només aquestes dues xifres. L'Excel i el PDF de **Taxa turística** són el teu **justificant** de les estades: guarda'ls, amb les declaracions dels menors.
+
+**Si t'has equivocat:** **«Desmarca»** i torna-ho a marcar. Si les xifres no són bones, corregeix les estades o les fitxes.
+
+**Compte!**
+- Mentre el semestre no s'ha acabat, l'estat és «Trimestre en curs»; si encara no ha començat: «El període encara no ha començat.»
+- La targeta no surt al 2T ni al 4T.
 
 ---
 
@@ -981,20 +1243,22 @@ Adreça: `/imprimir/ieet-declaracio/<estada>` (o `/imprimir/ieet-declaracio/blan
 
 ## Calendari d'obligacions
 
-Aquest calendari surt del que l'app calcula (pàgina **Impostos** i **Taxa turística**). Si l'últim dia cau en **dissabte o diumenge**, l'app el passa al **dilluns**. Confirma sempre les dates amb la gestoria, perquè l'app no té en compte festius.
+Aquest calendari surt del que l'app calcula (pàgina **Impostos**, que ja inclou la taxa turística, i **Taxa turística**). Si l'últim dia cau en **dissabte o diumenge**, l'app el passa al **dilluns**. Confirma sempre les dates amb la gestoria, perquè l'app no té en compte festius.
 
 | Quan (últim dia) | Què | Període | On ho prepares a l'app |
 |---|---|---|---|
 | **20 d'abril** | 303 (IVA), 130 (renda a compte), 115 (retencions lloguer) | 1T (gener–març) | Impostos → 1T |
-| **20 d'abril** (de l'1 al 20) | Taxa turística | octubre–març | Taxa turística |
+| **20 d'abril** (de l'1 al 20) | Taxa turística (model 950, ATC) | octubre–març | Taxa turística i Impostos → 1T → Model 950 |
 | **30 de juny** (campanya des d'abril) | Renda (model 100), part de l'hostal | any anterior | Impostos → Anual → Model 100 |
 | **20 de juliol** | 303, 130, 115 | 2T (abril–juny) | Impostos → 2T |
 | **20 d'octubre** | 303, 130, 115 | 3T (juliol–setembre) | Impostos → 3T |
-| **20 d'octubre** (de l'1 al 20) | Taxa turística | abril–setembre | Taxa turística |
+| **20 d'octubre** (de l'1 al 20) | Taxa turística (model 950, ATC) | abril–setembre | Taxa turística i Impostos → 3T → Model 950 |
 | **20 de gener** | 115 | 4T (octubre–desembre) | Impostos → 4T |
 | **30 de gener** | 303 i 130 | 4T | Impostos → 4T |
 | **30 de gener** | 390 (resum anual IVA) | any anterior | Impostos → Anual |
 | **31 de gener** | 180 (resum anual lloguer) | any anterior | Impostos → Anual |
+| **Últim dia de febrer** (de l'1 al 28/29) | 347 (operacions amb terceres persones), **només si cal** | any anterior | Impostos → Anual → Model 347 |
+| Cada **dilluns** | L'app mira si el BOE ha canviat els models (avís vermell i correu) | — | Impostos (a dalt) |
 | Cada trimestre, abans del 303 | Llibre d'IVA per a la gestoria | trimestre | Facturació → Llibre d'IVA trimestral |
 | Cada **24 h** | Comunicació de viatgers a Mossos | — | (fora d'aquest capítol) |
 
@@ -1050,7 +1314,19 @@ Clica la fila, completa la fitxa del viatger i torna a la pàgina. Els menors de
 Només surt si hi ha alguna **factura completa** al trimestre (a les simplificades no és obligatori). Si escrius un NIF a qualsevol fila, la columna apareix.
 
 **16. Puc enviar ja les factures a l'AEAT amb Veri\*Factu?**
-Encara no: falta el certificat digital i algunes dades del software. Els registres es van generant igualment.
+Encara no: falta el certificat digital i algunes dades del software. Els registres es van generant igualment. (El certificat de **«Presentació directa a l’AEAT»** d'Impostos només serveix per presentar el 303, el 130 i el 115.)
+
+**17. «Validar a l’AEAT» vol dir que ja està presentat?**
+No. Només és una revisió: l'AEAT diu si hi ha errors i en fa l'esborrany. El model continua pendent fins que el presentes.
+
+**18. Quina diferència hi ha entre «Formulari oficial (PDF)» i «PDF oficial (AEAT)»?**
+El primer és el formulari del BOE omplert per l'**app**. El segon, que surt a Plantilles (i a «Obre l’esborrany oficial (PDF)» després de validar), l'omple la **mateixa AEAT** amb el fitxer de l'app.
+
+**19. He presentat des de l'app en mode «Proves». Ja està?**
+No. A proves no compta per a Hisenda i el model continua pendent. Quan tot funcioni, passa a «Producció (real)» o presenta'l a la Seu.
+
+**20. El fitxer que he baixat diu «domiciliació», però ja és l'últim dia.**
+L'app només domicilia si falten més de 5 dies per acabar el termini. Si l'has baixat abans, torna'l a baixar: ara dirà «ingrés».
 
 ---
 
@@ -1075,3 +1351,11 @@ Encara no: falta el certificat digital i algunes dades del software. Els registr
 15. **Cron:** l'hora (06:30 UTC) surt de `vercel.json`; si l'app no està a Vercel o falta `CRON_SECRET`, la generació depèn d'obrir el Tauler.
 16. **Termini del 130 al 4T i del 390/180:** l'app calcula 30/01 (303 i 130), 20/01 (115), 30/01 (390) i 31/01 (180), sense festius. Confirmar amb la gestoria.
 17. **Desglossament d'IVA per a ingressos:** si alguna factura emesa tingués IVA guardat a un tipus diferent del 10 %, el «Libro de ingresos» continua posant la capçalera «IVA 10%».
+18. **347 sense detall quan «No cal».** Quan ningú no passa del límit, l'estat és `no_cal` i la targeta només mostra «Sense activitat en aquest període: no cal presentar-lo.». El text del component `Detall347` («Ara mateix no cal… Es torna a calcular sol fins al 31 de desembre») i la llista «S’hi acosten» **no surten mai** en aquest cas, perquè `ModelCard` no pinta l'`extra` quan l'estat és `no_cal`. Sembla un error: el «S’hi acosten» seria útil precisament llavors.
+19. **347 a Plantilles.** El missatge del commit diu «fitxer per a la Seu a Plantilles», però al codi el 347 de Plantilles només té «Obre Impostos» (sense fitxer). He documentat el codi.
+20. **Fitxer de Plantilles sempre amb «ingrés».** A Plantilles, «PDF oficial (AEAT)» i «Fitxer per presentar» porten sempre `pagament=I`; a Impostos es tria U/I segons la data. Confirmar que és volgut (si la usuària domicilia, ha de baixar el fitxer des d'Impostos).
+21. **Formulari oficial (PDF) del BOE:** no he pogut confirmar si aquest PDF omplert serveix per presentar-lo en paper o només per revisar-lo. El manual diu que és per revisar/tenir-lo i que es presenta a la Seu.
+22. **Avís del BOE:** només vigila els models 303, 130, 115, 390, 180 i 100. **No** vigila el 347 ni el 950 (ATC, que no surt al BOE). El correu va a `BACKUP_EMAIL_TO` o hostalcoll@gmail.com. El cron (`30 7 * * 1`, dilluns 07:30 UTC) depèn de Vercel i de `CRON_SECRET`. Un avís marcat «Revisat» no es pot tornar a mostrar des de l'app.
+23. **Titular fix a Impostos.** El nom «ELISABETH · NUALART COLL» i el NIF per defecte (38835174L) estan escrits al codi (`TITULAR_AEAT`); només el NIF es pot canviar des de Configuració. Si mai canvia la titular, cal tocar el codi.
+24. **Presentació directa:** no he provat (prohibit) ni la validació ni la presentació. El text del manual surt del codi. La casella `importResultat` del 303 quan surt «a compensar» es mostra en valor absolut; no he verificat com es veu un 303 negatiu al resum del requadre.
+25. **950 al 1T de l'any següent:** el 950 d'octubre–març es mostra al 1T de l'any **següent** (p. ex. octubre 2026 – març 2027 a l'any 2027 → 1T). Al 1T del 2026 surt el semestre octubre 2025 – març 2026.
