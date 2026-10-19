@@ -99,6 +99,29 @@ const BASE: Record<string, Recepta> = {
   'config-taxa-turistica': { abans: [{ espera: 30000 }, { clic: 'Taxa turística (declaració)' }, { espera: 1500 }] },
   verifactu: {},
   'ieet-declaracio': { sencera: true },
+  // Captures reals de la Seu de l'AEAT i de l'ATC (19/10/2026), amb les dades personals tapades:
+  // no es poden refer amb l'app de proves.
+  'aeat-130-pagina-seu': { ometre: true },
+  'aeat-130-dades-identificatives': { ometre: true },
+  'aeat-115-importar-avis': { ometre: true },
+  'aeat-130-importat': { ometre: true },
+  'aeat-115-importat': { ometre: true },
+  'aeat-formalitzar-ingres': { ometre: true },
+  'aeat-pagament-opcions': { ometre: true },
+  'aeat-pagament-tpv-confirmar': { ometre: true },
+  'aeat-pagament-nrc-targeta': { ometre: true },
+  'aeat-pagament-nrc-compte': { ometre: true },
+  'aeat-panell-nrc': { ometre: true },
+  'atc-950-tramit': { ometre: true },
+  'atc-950-establiments-buit': { ometre: true },
+  'atc-950-alta-establiment': { ometre: true },
+  'atc-950-establiments-llista': { ometre: true },
+  'atc-950-estades-llista': { ometre: true },
+  'atc-950-introduir-estades': { ometre: true },
+  'atc-950-estades-desades': { ometre: true },
+  'atc-950-autoliquidacions': { ometre: true },
+  'atc-950-pagament': { ometre: true },
+  'atc-950-fet': { ometre: true },
 };
 
 /** Receptes de les fotos del capítol. */

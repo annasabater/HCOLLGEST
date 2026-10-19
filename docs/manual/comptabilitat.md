@@ -898,9 +898,9 @@ Si escrius a mà una d'aquestes caselles, queda fixa i es desa amb el llibre.
 4. Revisa el resum: «Model … · …T … · resultat: import», com es paga i la «Presentadora» (nom i NIF del certificat):
    - «domiciliació (l’AEAT el carrega l’últim dia del termini al compte de la configuració)», o
    - «ingrés amb NRC (ja l’has pagat al banc)».
-5. Si surt a ingressar i ja no es pot domiciliar, escriu el **«NRC del pagament (22 caràcters, el dona el banc en pagar)»**. Abans, paga-ho al banc.
+5. Si surt a ingressar i ja no es pot domiciliar, escriu el **«NRC del pagament (22 caràcters, el dona el banc en pagar)»**. Abans, paga-ho: mira [Com pago un model a ingressar quan ja no es pot domiciliar (NRC)](#com-pago-un-model-a-ingressar-quan-ja-no-es-pot-domiciliar-nrc).
 6. Marca la casella **«He revisat les caselles i l’esborrany («Validar a l’AEAT») i dono la meva conformitat a aquestes dades per presentar la declaració.»**
-7. Escriu la **«Contrasenya del certificat»**.
+7. Si la contrasenya del certificat **no** està desada, escriu-la a **«Contrasenya del certificat»** (si està desada, aquest camp no surt).
 8. Prem **«Envia la prova»** (proves) o **«Presenta-la ara»** (producció). Mentre treballa posa «Presentant…». **«Cancel·la»** tanca el requadre sense enviar res.
 9. Llegeix el resultat:
    - a proves: **«Prova correcta: l’AEAT l’ha acceptada al seu entorn de proves (no compta).»**;
@@ -911,9 +911,9 @@ Si escrius a mà una d'aquestes caselles, queda fixa i es desa amb el llibre.
 - Abans d'enviar, l'app comprova: que hi ha certificat i no ha caducat; que el **NIF del certificat** és el de la titular; que (a producció) el model no consta ja presentat; i que, si cal, hi ha un NRC de 22 caràcters. Després el fa **validar per l'AEAT**: si hi ha errors, **no l'envia**.
 - **A producció**, si l'AEAT l'accepta, el model queda marcat com a **presentat** amb les caselles enviades, el CSV i el PDF del justificant, i els trimestres següents ja s'hi encadenen.
 - **A proves**, no es desa res: el model continua pendent.
-- La contrasenya **no es desa**: s'esborra en acabar.
+- Si la contrasenya no està desada, només es fa servir per a aquesta presentació i s'esborra en acabar.
 
-**Per què es fa així:** l'AEAT obliga a mostrar les dades i recollir la **conformitat** abans de presentar. La presentació és **irreversible**: per això cal la casella i la contrasenya cada vegada.
+**Per què es fa així:** l'AEAT obliga a mostrar les dades i recollir la **conformitat** abans de presentar. La presentació és **irreversible**: per això cal marcar la casella cada vegada.
 
 **Si t'has equivocat:**
 - A **proves** no passa res: no compta.
@@ -923,6 +923,75 @@ Si escrius a mà una d'aquestes caselles, queda fixa i es desa amb el llibre.
 - Fes primer una **prova** a l'entorn de proves (l'AEAT només l'obre els dies laborables de 8 a 15 h).
 - Si la contrasenya és incorrecta o l'AEAT no respon, surt el missatge d'error i no es presenta res.
 - Si ja l'has presentat a la Seu o ho ha fet la gestoria, **no** la tornis a presentar des d'aquí: prem «Marca com a presentada».
+
+---
+
+## Com pago un model a ingressar quan ja no es pot domiciliar (NRC)
+
+**Per a què serveix:** el **303**, el **130** o el **115** surten a pagar i ja ha passat el **dia 15** del mes de presentació, així que no es poden domiciliar. L'AEAT demana **pagar abans** i escriure el codi del pagament (l'**NRC**, 22 lletres i números) en presentar. Aquí tens com fer-ho des de la Seu, amb el certificat.
+
+**Abans del dia 15 no cal res d'això:** prem «Presentar a l’AEAT» i l'import es domicilia sol (l'AEAT el carrega al compte el dia 20).
+
+**Enllaços directes (Seu de l'AEAT):**
+- Model **130**: [Seu de l'AEAT · Modelo 130](https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml)
+- Model **115**: [Seu de l'AEAT · Modelo 115](https://sede.agenciatributaria.gob.es/Sede/procedimientoini/GH02.shtml)
+- Model **303**: [Seu de l'AEAT · Modelo 303](https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml)
+- Ajuda de l'AEAT sobre el pagament i l'NRC: [Pago de autoliquidaciones mediante cargo en cuenta. Obtención de un NRC](https://sede.agenciatributaria.gob.es/Sede/ayuda/consultas-informaticas/pago-impuestos-deudas-tasas-ayuda-tecnica/pago-autoliquidaciones.html)
+
+**Pas a pas (exemple: el 130):**
+
+1. A l'app, a la targeta del model, prem **«Fitxer per importar a la Seu»** (es baixa, per exemple, `130_2026_3T.txt`) i després **«Seu electrònica»**.
+2. A la Seu, a **«Gestiones destacadas»**, clica el primer enllaç: **«Modelo 130. Ejercicio 2026. Presentación y servicio de ayuda Pre 130»**. No triïs el de «predeclaración» (és per imprimir en paper). Identifica't amb el **certificat**.
+
+[FOTO id=aeat-130-pagina-seu descripcio="Pàgina del model 130 a la Seu de l'AEAT: cal clicar el primer enllaç de Gestiones destacadas" marques="Modelo 130. Ejercicio 2026. Presentación y servicio de ayuda Pre 130"]
+
+3. A **«Datos Identificativos»** no omplis res: prem **«Importar»** i tria el fitxer de **Descàrregues**. (Al 115, abans surt «Si continúa se borrarán los datos de la declaración»: prem **«Sí»**.)
+
+[FOTO id=aeat-130-dades-identificatives descripcio="Finestra Datos Identificativos del 130: es prem Importar sense omplir res" marques="Importar"]
+
+[FOTO id=aeat-115-importar-avis descripcio="Al 115, avís en importar: es prem Sí" marques="Sí"]
+
+4. Comprova que les caselles són les de l'app i que a **«Errores y avisos»** posa **«No existen errores»**. Prem **«Formalizar Ingreso / Devolución»**.
+
+[FOTO id=aeat-130-importat descripcio="130 importat: caselles plenes, casella 19 amb l'import i «No existen errores»" marques="No existen errores|Formalizar Ingreso / Devolución"]
+
+[FOTO id=aeat-115-importat descripcio="115 importat: perceptors, base, retencions i «No existen errores»" marques="No existen errores|Formalizar Ingreso / Devolución"]
+
+5. Comprova **«A ingresar»** i l'**import**. Prem **«Realizar pago (NRC)»**. **No** premis encara «Firmar y Enviar».
+
+[FOTO id=aeat-formalitzar-ingres descripcio="Finestra Formalizar Ingreso/Devolución: A ingresar, l'import i el botó Realizar pago (NRC)" marques="A ingresar|Realizar pago (NRC)"]
+
+6. Tria com pagues:
+   - **«Pago con cargo en cuenta»**: escrius l'**IBAN** (el compte ha de ser **a nom teu**, no compartit) i surt dels diners del compte. **Recomanat:** no té límit de targeta;
+   - **«Pago con tarjeta o con Bizum»**: dades de la targeta i confirmació del banc al mòbil. Algunes targetes tenen un **límit diari** («Excede el límite de la transacción»): llavors paga amb càrrec al compte.
+
+[FOTO id=aeat-pagament-opcions descripcio="Pantalla Pago de impuesto y obtención de NRC: càrrec en compte o targeta/Bizum" marques="Pago con cargo en cuenta|Pago con tarjeta o con Bizum"]
+
+7. Revisa el resum (model, exercici, període, import), marca **«Conforme»** i prem **«Firmar y Enviar»**.
+
+[FOTO id=aeat-pagament-tpv-confirmar descripcio="Resum del pagament abans de confirmar: model, període, import i Conforme" marques="Conforme|Firmar y Enviar"]
+
+8. Surt **«El pago ha sido realizado con éxito»** i **«El NRC generado es: …»**. **Copia l'NRC** i prem **«Justificante de Pago»** per desar el rebut. **No** premis «Presentar declaración» si la presentaràs des de l'app.
+
+[FOTO id=aeat-pagament-nrc-targeta descripcio="Pagament fet amb targeta: l'NRC (tapat a la foto) i els botons" marques="El NRC generado es|Justificante de Pago"]
+
+[FOTO id=aeat-pagament-nrc-compte descripcio="Pagament fet amb càrrec al compte: el mateix resultat, amb l'NRC" marques="El NRC generado es|Justificante de Pago"]
+
+9. Torna a l'app → targeta del model → **«Presentar a l’AEAT»** → enganxa l'NRC a **«NRC del pagament»** → marca la conformitat → **«Presenta-la ara»**. Surt «Presentada a l’AEAT ✓» amb el justificant en PDF.
+
+[FOTO id=aeat-panell-nrc descripcio="Requadre de presentació real a l'app, amb el camp de l'NRC" marques="NRC del pagament|Presenta-la ara"]
+
+**Què passa després / d'on surten les dades:** el pagament i la presentació són **dues coses**: l'NRC demostra que has pagat, i en presentar l'AEAT el lliga a la declaració. A l'app queden el CSV, el justificant i el PDF.
+
+**Per què es fa així:** l'AEAT **no accepta transferències** per a aquests models. Fora del termini de domiciliació, només deixa pagar amb càrrec al compte, targeta, Bizum o al banc, i sempre abans de presentar.
+
+**Si t'has equivocat:**
+- Si **has pagat però no tens l'NRC** (s'ha tancat la finestra), a «Formalizar Ingreso» prem **«Recuperar un pago previo (NRC)»**: et torna l'NRC **sense tornar a cobrar**.
+- Si en presentar surt «Si la forma de pago es cualquier tipo con ingreso, el campo Número de Referencia NRC es obligatorio», encara no has posat l'NRC.
+
+**Compte!**
+- L'NRC va lligat a l'**import exacte** (amb cèntims): si no coincideix, l'AEAT rebutja la presentació.
+- Presenta la declaració **una sola vegada**: o des de l'app o amb «Presentar declaración» a la Seu, no totes dues.
 
 ---
 
@@ -937,14 +1006,15 @@ Si escrius a mà una d'aquestes caselles, queda fixa i es desa amb el llibre.
 1. Obre el bloc **«Presentació directa a l’AEAT»**.
 2. A **«Certificat (.p12 o .pfx)»** (o **«Substituir el certificat»**, si ja n'hi ha un), tria el fitxer del certificat.
 3. Escriu la **«Contrasenya del certificat»**.
-4. Prem **«Puja»**. Surt «Certificat desat (xifrat). La contrasenya no s’ha desat: te la demanarem a cada presentació.»
-5. Comprova el requadre: nom · NIF del certificat i «Caduca el …».
-6. A **«Entorn:»**, tria **«Proves»** o **«Producció (real)»**. Per passar a producció, l'app pregunta: «A PRODUCCIÓ les declaracions es presenten DE VERITAT a Hisenda i no es poden anul·lar. Hi passem?».
-7. Per treure'l del servidor: **«Esborra el certificat»** i confirma.
+4. Deixa marcada **«Recorda la contrasenya»** si no la vols escriure a cada presentació (es desa xifrada). Prem **«Puja»**. Surt «Certificat i contrasenya desats (xifrats).» (o, sense la casella, «… La contrasenya no s’ha desat: te la demanarem a cada presentació.»).
+5. Si no l'havies desat, a **«Contrasenya:»** pots escriure-la més tard i prémer **«Recorda-la»**; **«Oblida-la»** l'esborra.
+6. Comprova el requadre: nom · NIF del certificat i «Caduca el …».
+7. A **«Entorn:»**, tria **«Proves»** o **«Producció (real)»**. Per passar a producció, l'app pregunta: «A PRODUCCIÓ les declaracions es presenten DE VERITAT a Hisenda i no es poden anul·lar. Hi passem?».
+8. Per treure'l del servidor: **«Esborra el certificat»** i confirma.
 
 [FOTO id=impostos-certificat ruta=/impostos descripcio="Bloc Presentació directa a l'AEAT obert, amb un certificat de prova (fictici) carregat, l'entorn Proves triat i els camps per substituir-lo" marques="Presentació directa a l’AEAT|Caduca el|Proves|Producció (real)|Esborra el certificat|Substituir el certificat|Contrasenya del certificat|Puja"]
 
-**Què passa després / d'on surten les dades:** el certificat es desa **xifrat** al servidor. L'app en llegeix el nom, el NIF i la data de caducitat. La contrasenya **mai** es desa. Cada canvi (pujar, canviar l'entorn, esborrar) queda a l'auditoria.
+**Què passa després / d'on surten les dades:** el certificat es desa **xifrat** al servidor. L'app en llegeix el nom, el NIF i la data de caducitat. La contrasenya només es desa (xifrada) si ho tries. Cada canvi (pujar, canviar l'entorn, esborrar) queda a l'auditoria.
 
 **Per què es fa així:** per presentar en nom de la titular cal el seu certificat. Començar a **proves** permet comprovar que tot funciona sense presentar res de veritat.
 
@@ -1150,7 +1220,9 @@ Si escrius a mà una d'aquestes caselles, queda fixa i es desa amb el llibre.
 5. Segueix els passos de la targeta, a la **Seu de l'ATC** (amb el teu certificat o idCAT; botó **«ATC»**):
    1. pestanya **Establiments**: l'hostal amb el seu número del **Registre de Turisme de Catalunya** (es recupera de l'autoliquidació anterior);
    2. pestanya **Estades**: tria l'any i el període i escriu les estades **subjectes** i les **exemptes**;
-   3. el formulari calcula la quota: comprova que doni el mateix import i paga (targeta, Bizum o domiciliació) o descarrega la carta de pagament.
+   3. el formulari calcula la quota: comprova que doni el mateix import i paga (càrrec a compte o targeta).
+
+   Ho tens explicat amb fotos i enllaços a [Com presento el 950 a la Seu de l'ATC, pas a pas](#com-presento-el-950-a-la-seu-de-l-atc-pas-a-pas).
 6. Torna a l'app i prem **«Marca com a presentat»**. Surt «Presentat el dd/mm/aaaa». Si t'has equivocat, **«Desmarca»**.
 
 [FOTO id=impostos-950 ruta=/impostos descripcio="Targeta del Model 950 al 3T amb l'import, les estades subjectes i exemptes, els passos per presentar-lo a l'ATC i els botons" marques="Model 950 · Taxa turística (ATC)|Estades subjectes|Estades exemptes|Obre la taxa turística|ATC|Marca com a presentat"]
@@ -1167,6 +1239,82 @@ Si escrius a mà una d'aquestes caselles, queda fixa i es desa amb el llibre.
 **Compte!**
 - Mentre el semestre no s'ha acabat, l'estat és «Trimestre en curs»; si encara no ha començat: «El període encara no ha començat.»
 - La targeta no surt al 2T ni al 4T.
+
+---
+
+## Com presento el 950 a la Seu de l'ATC, pas a pas
+
+**Per a què serveix:** declarar i pagar la **taxa turística** a l'Agència Tributària de Catalunya amb les dues xifres de la targeta del 950. Terminis: de l'**1 al 20 d'octubre** (estades d'abril a setembre) i de l'**1 al 20 d'abril** (d'octubre a març).
+
+**Enllaç directe:** [ATC · Declarar estades en establiments turístics](https://atc.gencat.cat/ca/tributs/ieet/tramit-ieet/) (també el botó **«ATC»** de la targeta).
+
+**Dades de l'hostal per a l'ATC** (Registre de Turisme de Catalunya):
+
+| Camp | Valor |
+|---|---|
+| Número RTC | **HB - 003022 - 26** |
+| Nom comercial | COLL |
+| Adreça | Carrer de Sant Isidre, 54 · 08370 Calella (Barcelona) |
+| Tipus / Categoria | Establiment hoteler / Resta d'establiments i equipaments |
+| Tarifa | ET3 - 0,90 € per persona i nit |
+
+**Pas a pas:**
+
+1. A l'app, a la targeta **«Model 950»**, apunta les **estades subjectes** i les **exemptes** (botó de copiar).
+2. Obre l'enllaç i prem **«Inicia el tràmit»**. Identifica't amb el **certificat** de la titular.
+
+[FOTO id=atc-950-tramit descripcio="Pàgina del tràmit a l'ATC amb el botó Inicia el tràmit" marques="Inicia el tràmit"]
+
+3. **Només la primera vegada:** a la pestanya **«Establiments / Creuers»**, si posa «Actualment no consta cap establiment ni creuer», prem **«Afegir establiments»**:
+   1. **Subjecte passiu:** tria la titular (nom i NIF);
+   2. marca **«Tinc número RTC»** i escriu **HB**, **003022** i **26** a les tres caselles; l'ATC omple sola el nom i l'adreça;
+   3. **Tipus:** «Establiment hoteler»; **Categoria:** «Resta d'establiments i equipaments»; deixa **«Establiment actiu»** encès;
+   4. prem **«Confirmar»**. Surt «Establiment creat correctament i afegit a la llista».
+
+[FOTO id=atc-950-establiments-buit descripcio="Pestanya Establiments sense cap establiment: es prem Afegir establiments" marques="Afegir establiments"]
+
+[FOTO id=atc-950-alta-establiment descripcio="Formulari d'alta de l'establiment amb el número RTC HB-003022-26 i les dades de l'hostal" marques="Tinc número RTC|Número RTC|Establiment hoteler|Confirmar"]
+
+[FOTO id=atc-950-establiments-llista descripcio="L'hostal ja donat d'alta a la llista d'establiments" marques="Establiment creat correctament|Estades"]
+
+4. Pestanya **«Estades»**: tria l'**exercici** i el **període** (per exemple «Abril 2026 a Setembre 2026»). A la fila de l'hostal, prem el **llapis**.
+
+[FOTO id=atc-950-estades-llista descripcio="Pestanya Estades amb l'exercici i el període triats i l'hostal a la llista" marques="Període|Editar"]
+
+5. A **«Introduir estades»**:
+   - **«Nombre d'unitats d'estada subjectes»**: les **estades subjectes** de l'app;
+   - **«Menors»**: les **estades exemptes** de l'app;
+   - **Socials**, **Força major** i **Salut**: 0;
+   - **no** marquis «No ha tingut activitat» ni «Complementària».
+   Prem **«Desar i tancar»**.
+
+[FOTO id=atc-950-introduir-estades descripcio="Finestra Introduir estades: subjectes i exempcions" marques="Nombre d'unitats d'estada subjectes|Menors|Desar i tancar"]
+
+[FOTO id=atc-950-estades-desades descripcio="Estades desades a la llista (encara «No presentat»)" marques="No presentat"]
+
+6. Pestanya **«Autoliquidacions»**: amb el mateix exercici i període, comprova que l'**import** és el de l'app. Marca la **casella** de la fila i prem **«Presentar»**.
+
+[FOTO id=atc-950-autoliquidacions descripcio="Pestanya Autoliquidacions amb l'import a ingressar i el botó Presentar" marques="Presentar"]
+
+7. Deixa **«Presentació i pagament telemàtics»** i tria **«Càrrec a compte»** (escriu l'**IBAN**; el compte ha de ser de la titular del certificat). Confirma i signa.
+
+[FOTO id=atc-950-pagament descripcio="Pagament i presentació: modalitat telemàtica, total a ingressar i formes de pagament" marques="Presentació i pagament telemàtics|Càrrec a compte"]
+
+8. Surt **«Tràmit realitzat correctament»**: descarrega el **justificant** (PDF) i, si vols, prem **«Enviar»** per rebre'l per correu.
+
+[FOTO id=atc-950-fet descripcio="Tràmit realitzat correctament amb el justificant de presentació i el CSV" marques="Justificant de presentació|Enviar"]
+
+9. Torna a l'app i, a la targeta del 950, prem **«Marca com a presentat»** (si demana el número, posa el del justificant).
+
+**Què passa després / d'on surten les dades:** l'ATC cobra l'import del compte i et dona el justificant amb el CSV per comprovar-lo. A l'app, el 950 passa a «Presentat».
+
+**Per què es fa així:** l'ATC no té cap manera d'enviar-ho des d'un programa: només aquest formulari web. A partir de la segona vegada, l'establiment ja hi és i comences directament al pas 4.
+
+**Si t'has equivocat:** si has desat malament les estades i encara no has presentat, torna al llapis i corregeix-les. Si ja està presentat, cal una **complementària** (casella «Complementària» al pas 5): parla amb la gestoria.
+
+**Compte!**
+- Si el període no té cap estada que pagui, **no cal presentar-lo**.
+- Al Registre de Turisme l'hostal pot constar encara a nom de la titular anterior: no impedeix presentar, però convé demanar el **canvi de titularitat** a l'Ajuntament.
 
 ---
 

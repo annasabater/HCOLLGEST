@@ -269,6 +269,9 @@ export function PresentarAeat({
             <label className="block text-xs text-slate-600">
               NRC del pagament (22 caràcters, el dona el banc en pagar)
               <Input value={nrc} onChange={(e) => setNrc(e.target.value)} maxLength={26} />
+              <a className="mt-1 inline-block font-semibold text-brand-700 underline" href="/manual/comptabilitat#com-pago-un-model-a-ingressar-quan-ja-no-es-pot-domiciliar-nrc" target="_blank" rel="noreferrer">
+                Com pago i aconsegueixo l’NRC (pas a pas amb fotos)
+              </a>
             </label>
           )}
           <label className="flex items-start gap-2 text-xs">

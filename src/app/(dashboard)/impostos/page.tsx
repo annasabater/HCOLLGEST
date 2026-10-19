@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Copy, Check, Download, ExternalLink, FileText, FileDown, ShieldCheck, Undo2, CalendarClock, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, Check, Download, ExternalLink, FileText, FileDown, ShieldCheck, BookOpen, Undo2, CalendarClock, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -111,7 +111,7 @@ const TITOL: Record<ModelFiscal, { nom: string; sub: string }> = {
 const SEU: Partial<Record<ModelFiscal, string>> = {
   '303': 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G414.shtml',
   '130': 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml',
-  '115': 'https://sede.agenciatributaria.gob.es/Sede/procedimientos/GH02.shtml',
+  '115': 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/GH02.shtml',
   '390': 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G412.shtml',
 };
 
@@ -587,9 +587,12 @@ function Ieet950Card({ t, onCanvi }: { t: Ieet950; onCanvi: () => Promise<void> 
               </div>
               <div className="flex flex-wrap gap-2 pt-1">
                 <Link href="/taxa-turistica"><Button size="sm" variant="outline"><FileText className="h-4 w-4" /> Obre la taxa turística</Button></Link>
-                <a href="https://atc.gencat.cat/ca/tributs/impost-estades-turistiques/" target="_blank" rel="noreferrer">
+                <a href="https://atc.gencat.cat/ca/tributs/ieet/tramit-ieet/" target="_blank" rel="noreferrer">
                   <Button size="sm" variant="outline"><ExternalLink className="h-4 w-4" /> ATC</Button>
                 </a>
+                <Link href="/manual/comptabilitat#com-presento-el-950-a-la-seu-de-l-atc-pas-a-pas">
+                  <Button size="sm" variant="outline"><BookOpen className="h-4 w-4" /> Pas a pas amb fotos</Button>
+                </Link>
                 {t.presentada ? (
                   <Button size="sm" variant="ghost" onClick={() => void marca(false)} disabled={busy}><Undo2 className="h-4 w-4" /> Desmarca</Button>
                 ) : (
