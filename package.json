@@ -26,7 +26,12 @@
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset",
     "mossos:upload": "tsx --conditions=react-server scripts/mossos-upload.ts",
-    "user:hcoll": "tsx scripts/create-hcoll-user.ts"
+    "user:hcoll": "tsx scripts/create-hcoll-user.ts",
+    "manual:contingut": "tsx scripts/manual/build-content.ts",
+    "manual:fotos": "tsx --env-file=.env scripts/manual/captures.ts && tsx scripts/manual/fotos-especials.ts",
+    "manual:pdf": "tsx --env-file=.env scripts/manual/pdf.ts",
+    "manual:demo": "tsx scripts/manual/demo-tot.ts",
+    "manual:optimitza": "tsx scripts/manual/optimitza.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

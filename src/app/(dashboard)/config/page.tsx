@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Download, ShieldCheck, BookOpen, Mail, CloudUpload, Shirt } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
@@ -104,19 +105,29 @@ export default async function ConfigPage({
       </CollapsibleCard>
 
       <CollapsibleCard
-        title="Guia d'ús"
+        title="Manual d'usuari"
         icon={<BookOpen className="h-4 w-4 text-brand-600" />}
       >
         <div className="space-y-3 text-sm text-slate-600">
-          <p>Manual en PDF que explica què hi ha a cada secció i què fa. Sempre actualitzat.</p>
-          <a
-            href="/api/guia"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <BookOpen className="h-4 w-4" /> Obrir la guia (PDF)
-          </a>
+          <p>
+            El manual explica com es fa cada cosa, pas a pas i amb fotos. També és al menú, a «Manual d’usuari», i
+            es pot descarregar en PDF per imprimir-lo.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/manual"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <BookOpen className="h-4 w-4" /> Obrir el manual
+            </Link>
+            <a
+              href="/manual/manual-hostal-coll.pdf"
+              download
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <BookOpen className="h-4 w-4" /> Descarregar PDF
+            </a>
+          </div>
         </div>
       </CollapsibleCard>
     </div>

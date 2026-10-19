@@ -20,6 +20,7 @@ import {
   Wallet,
  Landmark,
   Calculator,
+  LifeBuoy,
 } from 'lucide-react';
 import type { Role } from '@prisma/client';
 import { cn } from '@/lib/utils';
@@ -66,6 +67,10 @@ const GROUPS: NavGroup[] = [
       { href: '/serveis', label: 'Proveïdors i serveis', icon: Truck },
       { href: '/justificants', label: 'Justificants', icon: FileCheck },
     ],
+  },
+  {
+    title: 'Ajuda',
+    items: [{ href: '/manual', label: 'Manual d’usuari', icon: LifeBuoy }],
   },
 ];
 

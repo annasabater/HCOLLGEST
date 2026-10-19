@@ -46,3 +46,9 @@ yarn-error.log*
 *.tsbuildinfo
 
 .vercel
+
+# Manual d'usuari: entorn de proves local
+.manual-storage/
+scripts/manual/captures-informe*.json
+public/manual/fotos/*.jpg
+public/manual/fotos-pdf/
