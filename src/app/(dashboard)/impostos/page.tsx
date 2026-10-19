@@ -827,7 +827,9 @@ export default function ImpostosPage() {
       {d && trim && (
         <>
           <OrigenDades t={trim} any={any} />
-          <div className="grid gap-4 xl:grid-cols-3">
+          {/* key per trimestre: en canviar de pestanya, les targetes es creen de nou
+              (si no, l'estat d'una —p. ex. el resultat d'una presentació— passava a l'altra). */}
+          <div key={`${any}-${trim.trimestre}`} className="grid gap-4 xl:grid-cols-3">
             <ModelCard m={trim.models['303']} any={any} onCanvi={load} />
             <ModelCard
               m={trim.models['130']}
