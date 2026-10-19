@@ -9,6 +9,7 @@ import { computeActiuInfo } from '../actiu-alerts';
 import { habitacioLlibre } from '../habitacio-llibre';
 import { generarDespesesVencudes } from './serveis-recurrents';
 import { indicadorsHostal } from '../indicadors-hostal';
+import { LIMIT_SIMPLIFICADA } from '../factura-calc';
 
 export interface FinanceOpts {
   /**
@@ -432,6 +433,28 @@ export async function getResum(opts?: FinanceOpts) {
     };
   });
 
+  // Factures simplificades d'allotjament de més de 400 € sense factura completa
+  // vinculada: per llei han de ser completes (RD 1619/2012 art. 4.1; DGT V1454/2026).
+  const simplificadesGrans = (
+    await prisma.factura.findMany({
+      where: {
+        deletedAt: null, esDiposit: false, tipusDocument: 'FACTURA_SIMPLIFICADA',
+        facturaFiscalId: null, total: { gt: LIMIT_SIMPLIFICADA },
+      },
+      orderBy: { data: 'asc' },
+      select: {
+        id: true, numero: true, data: true, total: true, estanciaId: true,
+        estancia: { select: { viatgers: { where: { esTitular: true }, take: 1, select: { huesped: { select: { nom: true, cognom1: true } } } } } },
+      },
+    })
+  ).map((f) => {
+    const t = f.estancia?.viatgers[0]?.huesped;
+    return {
+      id: f.id, numero: f.numero, data: f.data.toISOString(), total: Number(f.total), estanciaId: f.estanciaId,
+      titular: t ? `${t.nom} ${t.cognom1}`.trim() : '—',
+    };
+  });
+
   // Avisos descartats manualment ("amaga per sempre"): es treuen de les llistes.
   const descartats = await prisma.avisDescartat.findMany({ select: { tipus: true, entitatId: true } });
   const amagat = new Set(descartats.map((d) => `${d.tipus}:${d.entitatId}`));
@@ -458,6 +481,7 @@ export async function getResum(opts?: FinanceOpts) {
     properesSortides,
     sortidesToday,
     estadesAFacturar,
+    simplificadesGrans,
     cobramentsPendents,
     serveisProxims: serveisProximsList,
     serveisPendentsFactura,

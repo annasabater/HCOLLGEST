@@ -67,7 +67,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const emNom = esc(establiment?.raoSocial || establiment?.nom || 'Hostal Coll');
   const emDescriptor = esc(establiment?.poblacio ? `${T.casa} · ${establiment.poblacio}` : `${T.casa} · Calella`);
   // Emissor (dades del hostal) — igual que a la factura fiscal.
-  const emTitular = esc(establiment?.facturaTitular || 'Elisabet Nualart Coll');
+  const emTitular = esc(establiment?.facturaTitular || 'Elisabeth Nualart Coll');
   const emNif = esc(establiment?.facturaNif ? `NIF ${establiment.facturaNif}` : 'NIF 38835174L');
   const emAdreca = esc(establiment?.adreca || 'C/ Sant Isidre, 54');
   const emLocalitat = esc(

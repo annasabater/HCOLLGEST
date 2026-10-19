@@ -1000,11 +1000,9 @@ export async function createFacturaRectificativa(
     });
     if (!original) throw new Error('Validación fallida: factura original no trobada');
 
-    const estancia = await tx.estancia.findUniqueOrThrow({
-      where: { id: estanciaId },
-      select: { dataEntrada: true },
-    });
-    const dataFactura = input.data ?? estancia.dataEntrada ?? new Date();
+    // Data d'expedició: el dia que es fa la rectificativa (no la d'entrada de
+    // l'estada, que la podia fer caure en un trimestre anterior).
+    const dataFactura = input.data ?? new Date();
 
     // Import negatiu (reducció) i text del motiu.
     const imp = -Math.abs(round2(input.import));

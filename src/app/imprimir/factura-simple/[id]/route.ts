@@ -70,7 +70,7 @@ export async function GET(
 
   // Titular/NIF/adreça de l'emissor: sobreescriptura de la factura si n'hi ha,
   // si no els de l'establiment (config), si no el valor històric per defecte.
-  const emTitular = esc(factura.emissorTitular || establiment?.facturaTitular || 'Elisabet Nualart Coll');
+  const emTitular = esc(factura.emissorTitular || establiment?.facturaTitular || 'Elisabeth Nualart Coll');
   const emNif = esc(factura.emissorNif || `NIF ${establiment?.facturaNif || '38835174L'}`);
   const emAdreca = esc(factura.emissorAdreca || establiment?.adreca || 'C/ Sant Isidre, 54');
   const emLocalitat = esc(

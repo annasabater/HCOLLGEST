@@ -203,7 +203,7 @@ export function ConfigForm() {
             <Input
               value={e.facturaTitular ?? ''}
               onChange={(ev) => setE({ ...e, facturaTitular: ev.target.value })}
-              placeholder="p. ex. Elisabet Nualart Coll"
+              placeholder="p. ex. Elisabeth Nualart Coll"
             />
           </Field>
           <Field

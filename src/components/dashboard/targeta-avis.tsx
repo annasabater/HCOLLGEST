@@ -22,7 +22,8 @@ export type AvisTipus =
   | 'DADES_PENDENTS'
   | 'FACTURAR'
   | 'SERVEI_FACTURA'
-  | 'COBRAMENT';
+  | 'COBRAMENT'
+  | 'SIMPLIFICADA_400';
 export interface AvisItem {
   key: string;
   nom: string;

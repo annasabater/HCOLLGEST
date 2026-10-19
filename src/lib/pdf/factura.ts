@@ -132,7 +132,7 @@ export async function buildFacturaPdf(factura: FacturaAmb, establiment: Establim
 
   // Emissor (amb sobreescriptures de la factura o config de l'establiment).
   const emDescriptor = establiment?.poblacio ? `Casa de Hostes · ${establiment.poblacio}` : 'Casa de Hostes · Calella';
-  const emTitular = factura.emissorTitular || establiment?.facturaTitular || 'Elisabet Nualart Coll';
+  const emTitular = factura.emissorTitular || establiment?.facturaTitular || 'Elisabeth Nualart Coll';
   const emNif = factura.emissorNif || `NIF ${establiment?.facturaNif || '38835174L'}`;
   const emAdreca = factura.emissorAdreca || establiment?.adreca || 'C/ Sant Isidre, 54';
   const emLocalitat =

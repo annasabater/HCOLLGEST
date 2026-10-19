@@ -34,7 +34,7 @@ export function buildFacturaWord(establiment: Establiment | null, tipus: 'fiscal
   const emDescriptor = esc(
     establiment?.poblacio ? `Casa de Hostes · ${establiment.poblacio}` : 'Casa de Hostes · Calella',
   );
-  const emTitular = esc(establiment?.facturaTitular || 'Elisabet Nualart Coll');
+  const emTitular = esc(establiment?.facturaTitular || 'Elisabeth Nualart Coll');
   const emNif = esc(establiment?.facturaNif ? `NIF ${establiment.facturaNif}` : 'NIF 38835174L');
   const emAdreca = esc(establiment?.adreca || 'C/ Sant Isidre, 54');
   const emLocalitat = esc(

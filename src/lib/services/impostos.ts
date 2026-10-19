@@ -11,14 +11,40 @@
 import 'server-only';
 import { prisma } from '../db';
 import {
-  agrupaPerceptors, calc100, calc115, calc130, calc180, calc303, calc390, concepte100, pendentDespres303, round2, termini,
-  type Anterior130, type Caselles, type Concepte100, type ModelFiscal, type Perceptor, type PerTipus, type Resultat100,
-  type TotalsTrimestre,
+  agrupaPerceptors, calc100, calc115, calc130, calc180, calc303, calc347, calc390, concepte100, pendentDespres303, round2, termini,
+  type Anterior130, type Caselles, type Concepte100, type ModelFiscal, type Operacio347, type Perceptor, type PerTipus,
+  type Resultat100, type Resultat347, type TotalsTrimestre,
 } from '../impostos';
 import { liniesIva } from '../gasto-iva';
 import { esCategoriaSenseIva, getFiancesSoportades, getGastosSoportats, getLlibreIngressos, rangTrimestre } from './llibre-iva';
+import { getIeetPeriode } from './ieet';
+import { avisosBoePendents, type AvisBoe } from './boe-formularis';
+import { infoPeriode } from '../ieet';
 
 export type EstatModel = 'presentada' | 'pendent' | 'en_curs' | 'futur' | 'no_cal';
+
+/**
+ * Model 950 (ATC): taxa turística, SEMESTRAL. Surt a la pestanya del trimestre en
+ * què es paga: abril–setembre al 3T (1–20 d'octubre) i octubre–març al 1T (1–20 d'abril).
+ */
+export interface Ieet950 {
+  clau: string; // "2026-1"
+  etiqueta: string;
+  inici: string;
+  fi: string;
+  termini: string;
+  estat: EstatModel;
+  persones: number;
+  personesPaguen: number;
+  nits: number;
+  /** Estades exemptes (menors de l'edat mínima): l'ATC les demana a part de les subjectes. */
+  nitsExemptes: number;
+  import: number;
+  tarifa: number;
+  /** Estades amb dades del viatger incompletes (cal omplir-les a Taxa turística). */
+  incompletes: number;
+  presentada: { caselles: Caselles; justificant: string | null; presentadaEl: string } | null;
+}
 
 export interface ModelInfo {
   model: ModelFiscal;
@@ -39,14 +65,24 @@ export interface TrimestreInfo {
   llibreDesat: boolean;
   totals: TotalsTrimestre;
   models: { '303': ModelInfo; '130': ModelInfo; '115': ModelInfo };
+  /** Taxa turística que es paga en aquest trimestre (només 1T i 3T). */
+  ieet: Ieet950 | null;
 }
 
 export interface ImpostosAny {
   any: number;
-  titular: { nom: string; nif: string };
+  /** Titular tal com consta a l'AEAT (nom i cognoms per separat, com al 130). */
+  titular: { nom: string; cognoms: string; nif: string };
   referenciaCadastral: string;
+  /** Ordres noves del BOE sobre aquests models, encara per revisar. */
+  avisosBoe: AvisBoe[];
   trimestres: TrimestreInfo[];
-  anual: { '390': ModelInfo; '180': ModelInfo & { perceptors: Perceptor[] } };
+  anual: {
+    '390': ModelInfo;
+    '180': ModelInfo & { perceptors: Perceptor[] };
+    /** 347: si cal presentar-lo marca també la casella «D» del 390. */
+    '347': ModelInfo & Resultat347 & { efectiu: { nom: string; total: number }[] };
+  };
   /** Renda (model 100): només la part de l'activitat de l'hostal. */
   renda: Resultat100 & {
     termini: string;
@@ -56,8 +92,20 @@ export interface ImpostosAny {
   };
 }
 
+/**
+ * Titular de les autoliquidacions TAL COM CONSTA A L'AEAT (impresos del 2T:
+ * NIF 38835174L · ELISABETH · NUALART COLL). El nom no surt del titular de
+ * facturació (/config), que a les factures s'escriu «Elisabet»: a Hisenda ha de
+ * coincidir amb el cens. El NIF de /config, si s'hi ha escrit, mana.
+ */
+const TITULAR_AEAT = { nom: 'ELISABETH', cognoms: 'NUALART COLL', nif: '38835174L' };
+
+function titularFiscal(facturaNif?: string | null): ImpostosAny['titular'] {
+  return { ...TITULAR_AEAT, nif: facturaNif?.trim().toUpperCase() || TITULAR_AEAT.nif };
+}
+
 /** Clau de casella del resultat de cada model (per detectar canvis). */
-const CASELLA_RESULTAT: Record<ModelFiscal, string> = { '303': '71', '130': '19', '115': '05', '390': '86', '180': '03' };
+const CASELLA_RESULTAT: Record<ModelFiscal, string> = { '303': '71', '130': '19', '115': '05', '390': '86', '180': '03', '347': '02' };
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -133,10 +181,11 @@ const totalGastos130 = (t: TotalsTrimestre) => round2(t.gastos.baseAmbIva + t.ga
 export async function getImpostosAny(any: number, avui = new Date()): Promise<ImpostosAny> {
   const [establiment, declaracions] = await Promise.all([
     prisma.establiment.findFirst({ select: { facturaTitular: true, facturaNif: true, nom: true, referenciaCadastral: true } }),
-    prisma.declaracioFiscal.findMany({ where: { any } }),
+    // L'any anterior també: el 950 d'octubre–març es paga l'abril de l'any següent.
+    prisma.declaracioFiscal.findMany({ where: { any: { in: [any - 1, any] } } }),
   ]);
-  const presentada = (model: ModelFiscal, periode: number) => {
-    const d = declaracions.find((x) => x.model === model && x.periode === periode);
+  const presentada = (model: ModelFiscal | '950', periode: number, anyDecl = any) => {
+    const d = declaracions.find((x) => x.model === model && x.periode === periode && x.any === anyDecl);
     return d
       ? { caselles: d.caselles as unknown as Caselles, justificant: d.justificant, presentadaEl: d.presentadaEl.toISOString() }
       : null;
@@ -158,6 +207,29 @@ export async function getImpostosAny(any: number, avui = new Date()): Promise<Im
       difereix: !!p && Math.abs((p.caselles[clau] ?? 0) - (calculades[clau] ?? 0)) >= 0.01,
     };
   };
+
+  async function ieet950(clau: string): Promise<Ieet950> {
+    const p = infoPeriode(clau);
+    const [anyClau, sem] = clau.split('-').map(Number) as [number, number];
+    const decl = presentada('950', sem, anyClau);
+    const futur = avuiIso < p.inici;
+    const d = futur ? null : await getIeetPeriode(clau, avui);
+    const r = d?.resum;
+    let estat: EstatModel;
+    if (decl) estat = 'presentada';
+    else if (futur) estat = 'futur';
+    else if (avuiIso <= p.fi) estat = 'en_curs';
+    else if (!r || r.personesPaguen === 0) estat = 'no_cal';
+    else estat = 'pendent';
+    return {
+      clau, etiqueta: p.etiqueta, inici: p.inici, fi: p.fi, termini: p.pagamentFins, estat,
+      persones: r?.persones ?? 0, personesPaguen: r?.personesPaguen ?? 0, nits: r?.nitsPaguen ?? 0,
+      nitsExemptes: d?.files.filter((f) => f.menor).reduce((a, f) => a + f.nitsPaguen, 0) ?? 0,
+      import: round2(r?.import ?? 0), tarifa: d?.config.tarifa ?? 0,
+      incompletes: d?.files.filter((f) => f.falten.length > 0).length ?? 0,
+      presentada: decl,
+    };
+  }
 
   const trimestres: TrimestreInfo[] = [];
   let pendent303 = 0;
@@ -210,13 +282,20 @@ export async function getImpostosAny(any: number, avui = new Date()): Promise<Im
     }
 
     per390.push({ totals, c303: efectiu303 });
-    trimestres.push({ trimestre: t, inici, fi, llibreDesat, totals, models: { '303': m303, '130': m130, '115': m115 } });
+    const ieet = t === 3 ? await ieet950(`${any}-1`) : t === 1 ? await ieet950(`${any - 1}-2`) : null;
+    trimestres.push({ trimestre: t, inici, fi, llibreDesat, totals, models: { '303': m303, '130': m130, '115': m115 }, ieet });
   }
 
   const fiAny = `${any}-12-31`;
   const perceptorsAny = agrupaPerceptors(lloguerAny);
   const m390 = info('390', 0, calc390(per390), fiAny, per390.every((x) => x.totals.ingressos.base === 0 && x.totals.gastos.baseAmbIva === 0));
   const m180 = info('180', 0, calc180(perceptorsAny), fiAny, perceptorsAny.length === 0);
+  const { r347, efectiu } = await model347(any);
+  const m347 = info(
+    '347', 0,
+    { '01': r347.declarats.length, '02': round2(r347.declarats.reduce((a, t) => a + t.total, 0)) },
+    fiAny, !r347.obligat,
+  );
 
   const pagaments130 = round2(
     trimestres.reduce((a, t) => a + Math.max(0, (t.models['130'].presentada?.caselles ?? t.models['130'].calculades)['19'] ?? 0), 0),
@@ -224,12 +303,82 @@ export async function getImpostosAny(any: number, avui = new Date()): Promise<Im
 
   return {
     any,
-    titular: { nom: establiment?.facturaTitular ?? establiment?.nom ?? '', nif: establiment?.facturaNif ?? '' },
+    titular: titularFiscal(establiment?.facturaNif),
     referenciaCadastral: establiment?.referenciaCadastral ?? '',
+    avisosBoe: await avisosBoePendents(),
     trimestres,
-    anual: { '390': m390, '180': { ...m180, perceptors: perceptorsAny } },
+    anual: { '390': m390, '180': { ...m180, perceptors: perceptorsAny }, '347': { ...m347, ...r347, efectiu } },
     renda: await renda(any, acumIngressos, pagaments130),
   };
+}
+
+/**
+ * 347: operacions de l'any amb cada tercer, IVA inclòs (art. 33 RGAT). Queden fora:
+ * el lloguer amb retenció (ja va al 180), tributs i cotitzacions, i les vendes amb
+ * factura simplificada (no és obligatori identificar-hi el client). També
+ * s'avisa dels cobraments en efectiu de més de 6.000 € d'un mateix client.
+ */
+async function model347(any: number): Promise<{ r347: Resultat347; efectiu: { nom: string; total: number }[] }> {
+  const data = { gte: new Date(any, 0, 1), lte: new Date(any, 11, 31, 23, 59, 59, 999) };
+  const trim = (d: Date) => Math.floor(d.getMonth() / 3) + 1;
+  const [gastos, factures, cobraments] = await Promise.all([
+    prisma.gasto.findMany({
+      where: { deletedAt: null, esFianca: false, data },
+      include: { proveidor: { select: { nom: true, cif: true } }, categoria: { select: { nom: true } } },
+    }),
+    prisma.factura.findMany({
+      where: { deletedAt: null, data, esDiposit: false, tipusDocument: { in: ['FACTURA', 'FACTURA_SIMPLIFICADA'] } },
+      include: {
+        diposits: { select: { import: true } },
+        estancia: { select: { viatgers: { where: { esTitular: true }, take: 1, select: { huesped: { select: { nom: true, cognom1: true, cognom2: true, numDocument: true } } } } } },
+      },
+    }),
+    prisma.cobrament.findMany({
+      where: { data, metode: 'EFECTIU' },
+      select: { import: true, estancia: { select: { viatgers: { where: { esTitular: true }, take: 1, select: { huesped: { select: { id: true, nom: true, cognom1: true } } } } } } },
+    }),
+  ]);
+
+  const ops: Operacio347[] = [];
+  for (const g of gastos) {
+    const cat = (g.categoria?.nom ?? '').trim().toLowerCase();
+    const irpf = g.irpfPercent && g.baseImposable != null ? round2((Number(g.baseImposable) * Number(g.irpfPercent)) / 100) : 0;
+    const exclosa = g.irpfPercent
+      ? 'Lloguer amb retenció (ja es declara al 180)'
+      : ['impostos', 'impostos i taxes'].includes(cat)
+        ? 'Tributs (no és una operació comercial)'
+        : ['autònoms', 'autonoms', 'seguretat social'].includes(cat)
+          ? 'Cotitzacions socials'
+          : undefined;
+    ops.push({
+      nif: g.proveidor?.cif ?? '', nom: g.proveidor?.nom ?? g.descripcio, clau: 'A',
+      import: round2(Number(g.import) + irpf), trimestre: trim(g.data), exclosa,
+    });
+  }
+  for (const f of factures) {
+    // Una simplificada coberta per una factura fiscal ja hi compta a través de la fiscal.
+    if (f.tipusDocument === 'FACTURA_SIMPLIFICADA' && f.facturaFiscalId) continue;
+    const h = f.estancia?.viatgers[0]?.huesped;
+    const nom = (f.clientNom?.trim() || (h ? [h.nom, h.cognom1, h.cognom2].filter(Boolean).join(' ') : '—')).toUpperCase();
+    const fianca = f.fiancaInclosa ? f.diposits.reduce((a, d) => a + Number(d.import), 0) : 0;
+    // Només la factura COMPLETA obliga a identificar el client: les simplificades
+    // queden fora encara que hi consti el document (art. 33.2.a RGAT).
+    const esFiscal = f.tipusDocument === 'FACTURA';
+    const nif = f.clientNif?.trim() || h?.numDocument || '';
+    ops.push({
+      nif, nom, clau: 'B', import: round2(Number(f.total) - fianca), trimestre: trim(f.data),
+      exclosa: esFiscal ? undefined : 'Factures simplificades (no era obligatori identificar el client)',
+    });
+  }
+  const perHoste = new Map<string, { nom: string; total: number }>();
+  for (const c of cobraments) {
+    const h = c.estancia?.viatgers[0]?.huesped;
+    if (!h) continue;
+    const o = perHoste.get(h.id) ?? { nom: `${h.nom} ${h.cognom1}`.trim().toUpperCase(), total: 0 };
+    o.total = round2(o.total + Number(c.import));
+    perHoste.set(h.id, o);
+  }
+  return { r347: calc347(ops), efectiu: [...perHoste.values()].filter((o) => o.total > 6000) };
 }
 
 /** Part de l'activitat de la renda: gastos de l'any per concepte (sense fiances). */

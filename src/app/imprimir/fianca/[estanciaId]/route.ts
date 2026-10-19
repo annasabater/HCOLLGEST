@@ -228,7 +228,7 @@ export async function GET(
         <div class="brand-sub"><input class="in" aria-label="Descriptor" value="${emDescriptor}" style="width:280px"></div>
       </div>
       <div class="issuer">
-        <input class="in" aria-label="Titular" value="Elisabet Nualart Coll" style="color:var(--slate);font-weight:500"><br>
+        <input class="in" aria-label="Titular" value="Elisabeth Nualart Coll" style="color:var(--slate);font-weight:500"><br>
         <input class="in" aria-label="NIF" value="NIF 38835174L"><br>
         <input class="in" aria-label="Adreça" value="C/ Sant Isidre, 54"><br>
         <input class="in" aria-label="CP i Localitat" value="08370 Calella (Barcelona)"><br>

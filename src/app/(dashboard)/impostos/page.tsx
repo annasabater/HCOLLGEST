@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Copy, Check, ExternalLink, FileText, Undo2, CalendarClock, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, Check, Download, ExternalLink, FileText, FileDown, ShieldCheck, Undo2, CalendarClock, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,10 @@ import { Input } from '@/components/ui/input';
 import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { formatEur, cn } from '@/lib/utils';
 import { CONCEPTES_100, type Caselles, type Concepte100, type ModelFiscal, type PerTipus } from '@/lib/impostos';
-import type { ImpostosAny, ModelInfo, TrimestreInfo } from '@/lib/services/impostos';
+import type { ImpostosAny, Ieet950, ModelInfo, TrimestreInfo } from '@/lib/services/impostos';
+import type { AvisBoe } from '@/lib/services/boe-formularis';
+import type { ResultatValidacio } from '@/lib/aeat/servei';
+import { CertificatAeatCard, PresentarAeat } from '@/components/impostos/presentacio-aeat';
 
 type Unitat = 'eur' | 'pct' | 'n';
 interface Fila { c: string; text: string; u?: Unitat; clau?: boolean }
@@ -89,6 +92,10 @@ const FILES: Record<ModelFiscal, Fila[]> = {
     { c: '02', text: 'Base de les retencions de l’any' },
     { c: '03', text: 'Retencions de l’any', clau: true },
   ],
+  '347': [
+    { c: '01', text: 'Persones i entitats a declarar', u: 'n', clau: true },
+    { c: '02', text: 'Import total de les seves operacions (IVA inclòs)' },
+  ],
 };
 
 const TITOL: Record<ModelFiscal, { nom: string; sub: string }> = {
@@ -97,6 +104,7 @@ const TITOL: Record<ModelFiscal, { nom: string; sub: string }> = {
   '115': { nom: 'Model 115 · Retencions del lloguer', sub: 'El 19 % retingut a la propietària del local' },
   '390': { nom: 'Model 390 · Resum anual d’IVA', sub: 'Informatiu: suma dels quatre 303' },
   '180': { nom: 'Model 180 · Resum anual del lloguer', sub: 'Informatiu: suma dels quatre 115' },
+  '347': { nom: 'Model 347 · Operacions amb terceres persones', sub: 'Informatiu: clients i proveïdors de més de 3.005,06 € l’any' },
 };
 
 /** Fitxa del tràmit a la Seu electrònica de l'AEAT. */
@@ -105,6 +113,13 @@ const SEU: Partial<Record<ModelFiscal, string>> = {
   '130': 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G601.shtml',
   '115': 'https://sede.agenciatributaria.gob.es/Sede/procedimientos/GH02.shtml',
   '390': 'https://sede.agenciatributaria.gob.es/Sede/procedimientoini/G412.shtml',
+};
+
+/** D'on surt el formulari oficial que s'omple (annex del BOE). */
+const FONT_FORMULARI: Partial<Record<ModelFiscal, string>> = {
+  '303': 'BOE Orden HAC/27/2026',
+  '390': 'BOE Orden HAC/27/2026',
+  '130': 'BOE Orden HAP/258/2015',
 };
 
 const dataCurta = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
@@ -140,10 +155,12 @@ function resultat(m: ModelInfo, c: Caselles): { import: number; text: string; to
       return { import: c['86'] ?? 0, text: 'Informativa (no es paga res)', tone: 'info' };
     case '180':
       return { import: c['03'] ?? 0, text: 'Informativa (no es paga res)', tone: 'info' };
+    case '347':
+      return { import: c['02'] ?? 0, text: 'Informativa (no es paga res)', tone: 'info' };
   }
 }
 
-function EstatBadge({ m }: { m: ModelInfo }) {
+function EstatBadge({ m }: { m: Pick<ModelInfo, 'estat' | 'termini'> }) {
   if (m.estat === 'presentada') return <Badge tone="success">Presentada</Badge>;
   if (m.estat === 'no_cal') return <Badge>No cal</Badge>;
   if (m.estat === 'futur') return <Badge>Encara no</Badge>;
@@ -199,6 +216,56 @@ function ModelCard({ m, any, onCanvi, extra }: { m: ModelInfo; any: number; onCa
       await onCanvi();
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : 'No s’ha pogut desar');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Fitxer d'importació de l'AEAT (303/130/115). Es domicilia el pagament si
+  // encara som dins del termini de domiciliació (fins a 5 dies abans del final).
+  const pagamentAeat = () => {
+    const limitDomiciliacio = new Date(`${m.termini}T23:59:59`);
+    limitDomiciliacio.setDate(limitDomiciliacio.getDate() - 5);
+    return new Date() <= limitDomiciliacio ? 'U' : 'I';
+  };
+  const [validacio, setValidacio] = useState<ResultatValidacio | null>(null);
+
+  // Validació oficial de l'AEAT (ServValiDos): no presenta res.
+  async function validaAeat() {
+    setBusy(true);
+    setErr(null);
+    setValidacio(null);
+    try {
+      setValidacio(await postJSON<ResultatValidacio>('/api/impostos/validar', { model: m.model, any, trimestre: m.periode, pagament: pagamentAeat() }));
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : 'No s’ha pogut validar amb l’AEAT');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function obreEsborrany(b64: string) {
+    const bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0));
+    window.open(URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })), '_blank');
+  }
+
+  async function baixaFitxer() {
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch(`/api/impostos/fitxer?model=${m.model}&any=${any}&trimestre=${m.periode}&pagament=${pagamentAeat()}`);
+      if (!res.ok) {
+        const j = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(j?.error ?? 'No s’ha pogut generar el fitxer');
+      }
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${m.model}_${any}_${m.periode}T.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'No s’ha pogut generar el fitxer');
     } finally {
       setBusy(false);
     }
@@ -304,6 +371,35 @@ function ModelCard({ m, any, onCanvi, extra }: { m: ModelInfo; any: number; onCa
 
             {!edit && (
               <div className="mt-4 flex flex-wrap gap-2">
+                {FONT_FORMULARI[m.model] && (
+                  <a
+                    href={`/api/impostos/formulari?model=${m.model}&any=${any}&periode=${m.periode}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={`Formulari oficial: ${FONT_FORMULARI[m.model]}`}
+                  >
+                    <Button size="sm" variant="outline"><Download className="h-4 w-4" /> Formulari oficial (PDF)</Button>
+                  </a>
+                )}
+                {(m.model === '303' || m.model === '130' || m.model === '115') && m.periode >= 1 && any >= 2026 && m.estat !== 'futur' && (
+                  <Button size="sm" variant="outline" onClick={() => void baixaFitxer()} disabled={busy}
+                    title="Fitxer en format oficial de l’AEAT: a la Seu, obre el formulari i fes «Importar»">
+                    <FileDown className="h-4 w-4" /> Fitxer per importar a la Seu
+                  </Button>
+                )}
+                {(m.model === '303' || m.model === '130' || m.model === '115') && m.periode >= 1 && any >= 2026 && m.estat !== 'futur' && (
+                  <Button size="sm" variant="outline" onClick={() => void validaAeat()} disabled={busy}
+                    title="L’AEAT revisa el fitxer i en torna l’esborrany oficial en PDF. No presenta res.">
+                    <ShieldCheck className="h-4 w-4" /> Validar a l’AEAT
+                  </Button>
+                )}
+                {(m.model === '303' || m.model === '130' || m.model === '115') && m.periode >= 1 && any >= 2026 && m.estat !== 'futur' && !m.presentada && (
+                  <PresentarAeat
+                    model={m.model} any={any} periode={m.periode} resum={r.text}
+                    importResultat={r.tone === 'danger' ? r.import : -r.import}
+                    pagament={pagamentAeat()} onFet={onCanvi}
+                  />
+                )}
                 {SEU[m.model] && (
                   <a href={SEU[m.model]} target="_blank" rel="noreferrer">
                     <Button size="sm" variant="outline"><ExternalLink className="h-4 w-4" /> Seu electrònica</Button>
@@ -322,6 +418,25 @@ function ModelCard({ m, any, onCanvi, extra }: { m: ModelInfo; any: number; onCa
                       Marca com a presentada
                     </Button>
                   )
+                )}
+              </div>
+            )}
+            {!edit && err && <p className="mt-2 text-xs text-red-700">{err}</p>}
+            {!edit && validacio && (
+              <div className={cn('mt-3 rounded-lg px-3 py-2 text-xs', validacio.errors.length ? 'bg-red-50 text-red-900' : 'bg-green-50 text-green-900')}>
+                <p className="font-semibold">
+                  {validacio.errors.length ? 'L’AEAT hi ha trobat errors:' : 'L’AEAT l’ha validat sense errors. Encara no s’ha presentat.'}
+                </p>
+                {[...validacio.errors, ...validacio.avisos].length > 0 && (
+                  <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                    {validacio.errors.map((e) => <li key={`e${e}`}>{e}</li>)}
+                    {validacio.avisos.map((a) => <li key={`a${a}`} className="text-amber-800">Avís: {a}</li>)}
+                  </ul>
+                )}
+                {validacio.pdfBase64 && (
+                  <button type="button" className="mt-1 font-semibold underline" onClick={() => obreEsborrany(validacio.pdfBase64!)}>
+                    Obre l’esborrany oficial (PDF)
+                  </button>
                 )}
               </div>
             )}
@@ -393,6 +508,175 @@ function RendaCard({ r, any }: { r: ImpostosAny['renda']; any: number }) {
   );
 }
 
+function Ieet950Card({ t, onCanvi }: { t: Ieet950; onCanvi: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const [anyClau, sem] = t.clau.split('-').map(Number) as [number, number];
+  async function marca(presentar: boolean) {
+    setBusy(true);
+    try {
+      if (presentar) {
+        await postJSON('/api/impostos/declaracions', { model: '950', any: anyClau, periode: sem, caselles: { nits: t.nits, import: t.import } });
+      } else {
+        if (!confirm('Vols desmarcar el 950 com a presentat?')) return;
+        await delJSON(`/api/impostos/declaracions?model=950&any=${anyClau}&periode=${sem}`);
+      }
+      await onCanvi();
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Card className="xl:col-span-3">
+      <CardHeader className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <CardTitle>Model 950 · Taxa turística (ATC)</CardTitle>
+          <p className="text-xs text-slate-500">Impost sobre les estades en establiments turístics · {t.etiqueta}</p>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <EstatBadge m={t} />
+          <span className="flex items-center gap-1 text-xs text-slate-500">
+            <CalendarClock className="h-3.5 w-3.5" /> Termini: {dataCurta(t.termini)}
+          </span>
+        </div>
+      </CardHeader>
+      <CardBody>
+        {t.estat === 'futur' ? (
+          <p className="text-sm text-slate-500">El període encara no ha començat.</p>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div>
+              <div className="mb-3 flex items-baseline justify-between gap-3 rounded-lg bg-brand-50 px-4 py-3">
+                <span className="text-sm font-medium text-slate-700">{t.import > 0 ? 'A ingressar' : 'Sense estades que paguin'}</span>
+                <span className="text-2xl font-semibold tabular-nums text-brand-800">{formatEur(t.import)}</span>
+              </div>
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="border-t border-slate-100"><td className="py-1.5 text-slate-700">Persones allotjades</td><td className="text-right tabular-nums">{t.persones}</td></tr>
+                  <tr className="border-t border-slate-100"><td className="py-1.5 text-slate-700">Persones que paguen</td><td className="text-right tabular-nums">{t.personesPaguen}</td></tr>
+                  <tr className="border-t border-slate-100"><td className="py-1.5 text-slate-700">Estades <b>subjectes</b> (nits que paguen, màx. 7 per persona)</td><td className="text-right tabular-nums">{t.nits}<BotoCopia n={t.nits} /></td></tr>
+                  <tr className="border-t border-slate-100"><td className="py-1.5 text-slate-700">Estades <b>exemptes</b> (menors de 17 anys)</td><td className="text-right tabular-nums">{t.nitsExemptes}<BotoCopia n={t.nitsExemptes} /></td></tr>
+                  <tr className="border-t border-slate-100"><td className="py-1.5 text-slate-700">Tarifa per persona i nit</td><td className="text-right tabular-nums">{formatEur(t.tarifa)}</td></tr>
+                  <tr className="border-t border-slate-100 bg-slate-50 font-semibold"><td className="py-1.5">Quota ({t.nits} × {formatEur(t.tarifa)})</td><td className="text-right tabular-nums">{formatEur(t.import)}<BotoCopia n={t.import} /></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="space-y-2 text-xs text-slate-600">
+              {t.incompletes > 0 && (
+                <p className="flex gap-2 rounded-lg bg-amber-50 px-3 py-2 text-amber-900">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  {t.incompletes} {t.incompletes === 1 ? 'estada té' : 'estades tenen'} dades del viatger incompletes. Omple-les a Taxa turística abans de presentar.
+                </p>
+              )}
+              {t.presentada && <p className="text-green-800">Presentat el {dataCurta(t.presentada.presentadaEl)}.</p>}
+              <div>
+                <p className="mb-1 font-medium text-slate-700">Com es presenta (Seu de l’ATC, amb el teu certificat o idCAT):</p>
+                <ol className="list-decimal space-y-0.5 pl-5">
+                  <li>Pestanya <b>Establiments</b>: l’hostal amb el seu número del <b>Registre de Turisme de Catalunya</b> (es recupera de l’autoliquidació anterior).</li>
+                  <li>Pestanya <b>Estades</b>: tria l’any i el període i escriu les estades <b>subjectes</b> i les <b>exemptes</b> (les dues xifres de l’esquerra).</li>
+                  <li>El formulari calcula la quota; comprova que doni el mateix import. Paga amb targeta, Bizum o domiciliació, o descarrega la carta de pagament.</li>
+                </ol>
+                <p className="mt-1">No es puja cap fitxer ni cap llista d’hostes. L’Excel i el PDF de Taxa turística són el teu justificant de les estades: guarda’ls (i les declaracions dels exempts).</p>
+              </div>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Link href="/taxa-turistica"><Button size="sm" variant="outline"><FileText className="h-4 w-4" /> Obre la taxa turística</Button></Link>
+                <a href="https://atc.gencat.cat/ca/tributs/impost-estades-turistiques/" target="_blank" rel="noreferrer">
+                  <Button size="sm" variant="outline"><ExternalLink className="h-4 w-4" /> ATC</Button>
+                </a>
+                {t.presentada ? (
+                  <Button size="sm" variant="ghost" onClick={() => void marca(false)} disabled={busy}><Undo2 className="h-4 w-4" /> Desmarca</Button>
+                ) : (
+                  t.estat !== 'no_cal' && <Button size="sm" onClick={() => void marca(true)} disabled={busy}>Marca com a presentat</Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </CardBody>
+    </Card>
+  );
+}
+
+function Detall347({ m, any }: { m: ImpostosAny['anual']['347']; any: number }) {
+  const clau = (c: 'A' | 'B') => (c === 'A' ? 'Proveïdor (A · compres)' : 'Client (B · vendes)');
+  return (
+    <div className="mt-3 space-y-3 text-xs text-slate-600">
+      <p className={cn('rounded-lg px-3 py-2', m.obligat ? 'bg-amber-50 text-amber-900' : 'bg-green-50 text-green-900')}>
+        {m.obligat
+          ? <>Cal presentar-lo (febrer de {any + 1}). El formulari del 390 ja porta la «X» a la casella <b>D</b>.</>
+          : <>Ara mateix <b>no cal</b>: ningú no passa de 3.005,06 € l’any comptant el que s’hi ha de declarar. Es torna a calcular sol fins al 31 de desembre.</>}
+      </p>
+      {m.declarats.length > 0 && (
+        <table className="w-full">
+          <thead><tr className="text-left text-slate-500"><th className="py-1">Tercer</th><th>NIF</th><th>Clau</th><th className="text-right">1T</th><th className="text-right">2T</th><th className="text-right">3T</th><th className="text-right">4T</th><th className="text-right">Total</th></tr></thead>
+          <tbody>
+            {m.declarats.map((t) => (
+              <tr key={`${t.clau}${t.nif}${t.nom}`} className="border-t border-slate-100">
+                <td className="py-1">{t.nom}</td>
+                <td>{t.nif || <span className="italic text-orange-700">falta</span>}</td>
+                <td>{t.clau}</td>
+                {t.perTrimestre.map((v, i) => <td key={i} className="text-right tabular-nums">{formatEur(v)}</td>)}
+                <td className="text-right font-semibold tabular-nums">{formatEur(t.total)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {m.exclosos.length > 0 && (
+        <div>
+          <p className="mb-1 font-medium text-slate-700">Passen de 3.005,06 € però NO es declaren:</p>
+          <ul className="list-disc space-y-0.5 pl-5">
+            {m.exclosos.map((e) => <li key={`${e.clau}${e.nom}${e.motiu}`}>{e.nom} · {clau(e.clau)} · {formatEur(e.total)} — {e.motiu}</li>)}
+          </ul>
+        </div>
+      )}
+      {m.aprop.length > 0 && (
+        <div>
+          <p className="mb-1 font-medium text-slate-700">S’hi acosten (vigila’ls a final d’any):</p>
+          <ul className="list-disc space-y-0.5 pl-5">
+            {m.aprop.map((t) => <li key={`${t.clau}${t.nif}${t.nom}`}>{t.nom} · {clau(t.clau)} · {formatEur(t.total)}</li>)}
+          </ul>
+        </div>
+      )}
+      {m.efectiu.length > 0 && (
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-amber-900">
+          Cobraments en efectiu de més de 6.000 € d’un mateix client ({m.efectiu.map((e) => `${e.nom}: ${formatEur(e.total)}`).join(', ')}): al 347 s’han d’indicar a part.
+        </p>
+      )}
+      <p>Les imports van amb IVA. Es presenta només per internet (Seu de l’AEAT), del 1 al 28 de febrer. Confirma els casos dubtosos amb el gestor.</p>
+    </div>
+  );
+}
+
+function AvisosBoe({ avisos, onCanvi }: { avisos: AvisBoe[]; onCanvi: () => Promise<void> }) {
+  if (avisos.length === 0) return null;
+  return (
+    <div className="mb-4 space-y-2">
+      {avisos.map((a) => (
+        <div key={a.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          <span className="flex gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              <b>Nova ordre al BOE ({dataCurta(a.data)}) sobre els models {a.models.join(', ')}.</b> Pot canviar caselles dels formularis: cal revisar-los abans de presentar.{' '}
+              <a href={a.url} target="_blank" rel="noreferrer" className="underline">{a.id}</a>
+              <span className="mt-1 block text-xs text-red-800">{a.titol.slice(0, 220)}{a.titol.length > 220 ? '…' : ''}</span>
+            </span>
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              await postJSON('/api/avisos/descartar', { tipus: 'BOE_FORMULARI', entitatId: a.id });
+              await onCanvi();
+            }}
+          >
+            Revisat
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function sumaTipus(p: PerTipus) {
   return Object.entries(p)
     .filter(([, v]) => v.base !== 0)
@@ -449,6 +733,7 @@ export default function ImpostosPage() {
     const pendents = [
       ...d.trimestres.flatMap((t) => Object.values(t.models).map((m) => ({ m, etiqueta: `${m.model} del ${t.trimestre}T` }))),
       ...Object.values(d.anual).map((m) => ({ m, etiqueta: m.model })),
+      ...d.trimestres.flatMap((t) => (t.ieet ? [{ m: t.ieet, etiqueta: `950 (${t.ieet.etiqueta.toLowerCase()})` }] : [])),
     ].filter((x) => x.m.estat === 'pendent');
     if (pendents.length === 0) return null;
     const minim = pendents.reduce((a, x) => (x.m.termini < a ? x.m.termini : a), pendents[0]!.m.termini);
@@ -483,7 +768,7 @@ export default function ImpostosPage() {
     <>
       <PageHeader
         title="Impostos"
-        subtitle={d ? `${d.titular.nom}${d.titular.nif ? ` · NIF ${d.titular.nif}` : ''} · calculat del Llibre d’IVA de cada trimestre` : 'Carregant…'}
+        subtitle={d ? `${d.titular.cognoms} ${d.titular.nom} · NIF ${d.titular.nif} · calculat del Llibre d’IVA de cada trimestre` : 'Carregant…'}
         actions={
           <div className="flex items-center gap-1">
             <Button size="sm" variant="ghost" onClick={() => { setTab(null); setAny(any - 1); }} aria-label="Any anterior"><ChevronLeft className="h-4 w-4" /></Button>
@@ -492,6 +777,8 @@ export default function ImpostosPage() {
           </div>
         }
       />
+
+      {d && <AvisosBoe avisos={d.avisosBoe} onCanvi={load} />}
 
       {proper && (
         <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -556,6 +843,7 @@ export default function ImpostosPage() {
                 )
               }
             />
+            {trim.ieet && <Ieet950Card t={trim.ieet} onCanvi={load} />}
           </div>
         </>
       )}
@@ -612,6 +900,9 @@ export default function ImpostosPage() {
               </div>
             }
           />
+          <div className="xl:col-span-2">
+            <ModelCard m={d.anual['347']} any={any} onCanvi={load} extra={<Detall347 m={d.anual['347']} any={any} />} />
+          </div>
           <RendaCard r={d.renda} any={any} />
           <Card className="xl:col-span-2">
             <CardBody className="flex flex-wrap items-center justify-between gap-3 text-sm">
@@ -623,6 +914,8 @@ export default function ImpostosPage() {
           </Card>
         </div>
       )}
+
+      {d && <CertificatAeatCard />}
     </>
   );
 }
