@@ -86,15 +86,6 @@ export default async function DashboardPage() {
     tipus: 'FACTURAR',
     entitatId: e.id,
   }));
-  // Simplificades de més de 400 € sense factura completa: per a l'allotjament han de ser completes.
-  const itemsSimplificades: AvisItem[] = resum.simplificadesGrans.map((f) => ({
-    key: f.id,
-    nom: `${f.titular} · ${formatEur(f.total)}`,
-    sub: `Simplificada ${f.numero} del ${formatDate(f.data)} · fes-ne la factura completa`,
-    href: `/estancies/${f.estanciaId}`,
-    tipus: 'SIMPLIFICADA_400',
-    entitatId: f.id,
-  }));
   // Fitxes amb dades obligatòries pendents (mateixa validació que /justificants).
   const itemsFitxes: AvisItem[] = fitxesPendents.map((f) => ({
     key: f.id,
@@ -129,7 +120,6 @@ export default async function DashboardPage() {
   const senseAmagats = (items: AvisItem[]) =>
     items.filter((i) => !(i.tipus && i.entitatId && amagatSet.has(`${i.tipus}:${i.entitatId}`)));
   const itemsFacturarVis = senseAmagats(itemsFacturar);
-  const itemsSimplificadesVis = senseAmagats(itemsSimplificades);
   const itemsFitxesVis = senseAmagats(itemsFitxes);
   const itemsFixesVis = senseAmagats(itemsFixes);
   const itemsCobrarVis = senseAmagats(itemsCobrar);
@@ -212,7 +202,6 @@ export default async function DashboardPage() {
       {/* Cards d'alerta */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <TargetaAvis label="Cobraments pendents" ok={itemsCobrarVis.length === 0} color="rose" iconKey="Coins" items={itemsCobrarVis} />
-        <TargetaAvis label="Simplificades de més de 400 € (cal factura completa)" ok={itemsSimplificadesVis.length === 0} color="amber" iconKey="Receipt" items={itemsSimplificadesVis} />
         <TargetaAvis label="Fitxes amb dades pendents" ok={itemsFitxesVis.length === 0} color="amber" iconKey="FileEdit" items={itemsFitxesVis} />
         <TargetaAvis label="Factures fixes pendents de pujar" ok={itemsFixesVis.length === 0} color="amber" iconKey="Receipt" items={itemsFixesVis} />
         <TargetaAvis label="Pendents d'enviar a Mossos" ok={itemsMossos.length === 0} color="amber" iconKey="Send" items={itemsMossos} />

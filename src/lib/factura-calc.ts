@@ -30,10 +30,3 @@ export function computeFacturaTotals(input: FacturaTotalsInput): FacturaTotals {
   const total = round2(base + iva + tasaTotal);
   return { base, iva, tasaTotal, total };
 }
-
-/**
- * Import màxim (IVA inclòs) d'una factura SIMPLIFICADA per a l'allotjament: 400 €
- * (RD 1619/2012, art. 4.1.a). El límit de 3.000 € de l'art. 4.2.e és per a
- * restaurants, bares i similars, no per a l'hospedatge (DGT V2030-18 i V1454/2026).
- */
-export const LIMIT_SIMPLIFICADA = 400;

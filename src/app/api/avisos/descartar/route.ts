@@ -16,7 +16,6 @@ const Schema = z.object({
     'SERVEI_FACTURA',
     'COBRAMENT',
     'BOE_FORMULARI', // ordre nova del BOE sobre un model d'impostos (/impostos)
-    'SIMPLIFICADA_400', // simplificada de més de 400 € sense factura completa
   ]),
   entitatId: z.string().min(1),
 });

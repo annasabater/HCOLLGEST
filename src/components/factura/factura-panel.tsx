@@ -9,7 +9,6 @@ import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { formatEur, formatDate } from '@/lib/utils';
-import { LIMIT_SIMPLIFICADA } from '@/lib/factura-calc';
 import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 import { tipusDocumentLabel, estatFacturaLabel } from '@/lib/factura-display';
 
@@ -792,19 +791,6 @@ export function FacturaPanel({
               <span className="text-slate-500"> · amb fiança: <strong>{formatEur(totalPag + totalFi)}</strong></span>
             )}
           </div>
-
-          {/* Allotjament: la simplificada només fins a 400 € IVA inclòs (RD 1619/2012 art. 4.1;
-              DGT V2030-18 i V1454/2026: el límit de 3.000 € no inclou l'hospedatge). */}
-          {!esFiscal && !dupla && totalFactura > LIMIT_SIMPLIFICADA && (
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              <span>
-                <strong>Passa de {formatEur(LIMIT_SIMPLIFICADA)}:</strong> per a l’allotjament ha de ser una <strong>factura completa</strong> (fiscal), amb el NIF/NIE i l’adreça del client.
-              </span>
-              <Button type="button" size="sm" variant="outline" onClick={() => void obrir('fiscal')}>
-                Fes-la fiscal
-              </Button>
-            </div>
-          )}
 
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex items-center gap-3">
