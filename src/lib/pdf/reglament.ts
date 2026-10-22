@@ -50,6 +50,7 @@ const NORMES: string[] = [
   'Si tiene niños, por favor manténgalos en silencio por respeto a los demás: sus ruidos pueden ser muy molestos.',
   'Los niños deben estar acompañados de sus padres en todo momento. No nos hacemos responsables de los accidentes que puedan suceder.',
   'El uso de muebles, ropa y demás objetos de servicio será racional y moderado. Si el huésped daña dichos objetos, deberá reportarlo a la administración; en caso de sustracción se cargará el precio de mercado del bien. Al salir de la habitación, debe dejar cerradas las puertas y apagadas las luces y la calefacción.',
+  'El hostal dispone de aire acondicionado en las habitaciones, cuyo funcionamiento puede regularse de forma remota.',
   'No le abra la puerta a NADIE.',
   'El Hostal no se hace responsable de la pérdida de dinero u objetos de cualquier índole.',
   'Toda queja, sugerencia o felicitación deberá anotarse en los formatos que la administración pone a disposición, conforme a los lineamientos de la Secretaría de Turismo.',
@@ -196,7 +197,8 @@ function drawBullet(doc: PDFDocument, cur: Cur, text: string, font: PDFFont): Cu
     cur.page.drawText(l, { x: M + indent, y: cur.y - size, size, font, color: INK });
     cur.y -= lineH;
   });
-  cur.y -= 2;
+  // 1,5 (no 2): amb la norma de l'aire condicionat, la firma ha de cabre a la 1a pàgina.
+  cur.y -= 1.5;
   return cur;
 }
 
