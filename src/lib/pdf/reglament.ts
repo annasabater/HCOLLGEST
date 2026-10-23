@@ -35,7 +35,7 @@ function sanitize(s: string): string {
 }
 
 const NORMES: string[] = [
-  'El pago de la habitación debe hacerse por adelantado, a la hora de registrarse. El pago debe realizarse mediante efectivo. No podemos garantizar una habitación específica pero sí podemos mantener una con características similares. Si usted decide alargar su estancia, no le podemos garantizar que el hostal tenga habitación disponible; en caso de no haber disponibilidad, deberá dejar la habitación libre.',
+  'El pago de la habitación debe hacerse por adelantado, a la hora de registrarse. No podemos garantizar una habitación específica pero sí podemos mantener una con características similares. Si usted decide alargar su estancia, no le podemos garantizar que el hostal tenga habitación disponible; en caso de no haber disponibilidad, deberá dejar la habitación libre.',
   'Si el cliente no paga por adelantado, pierde el derecho al uso de la habitación.',
   'Los pagos realizados en el momento de la reserva irán a cuenta del precio total de la estancia acordada y no son reembolsables en caso de cancelación; el no presentarse el día acordado supone perder la reserva y el derecho al uso de la habitación.',
   'Debe llevar sus llaves en todo momento. Si pierde el juego de llaves, se le cobrará el coste de 2 cerraduras y sus juegos de llaves (90 euros).',
