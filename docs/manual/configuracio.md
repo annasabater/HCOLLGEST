@@ -631,6 +631,43 @@ Fes servir el **punt** com a separador de decimals si el teu teclat t'ho demana 
 
 ---
 
+## Com faig per canviar les normes del hostal (reglament i cartell)
+
+**Per a què serveix**
+Per canviar les normes de la casa que surten al **reglament que signa cada hoste** i al **cartell** que es penja a la paret: modificar-ne el text, afegir-ne de noves, treure'n o canviar-ne l'ordre.
+
+**On és**
+«Configuració» → targeta «Normes del hostal (reglament i cartell)».
+
+**Pas a pas**
+
+1. Obre la targeta. Surten totes les normes numerades, cadascuna en un requadre.
+2. Per **canviar** una norma: escriu directament dins del seu requadre.
+3. Per **afegir-ne** una: prem «Afegeix una norma». Surt un requadre buit al final; escriu-hi el text.
+4. Per **treure'n** una: prem la paperera de la dreta d'aquella norma.
+5. Per **canviar l'ordre**: fes servir les fletxes amunt i avall de la dreta.
+6. Quan acabis, prem «Desa les normes». Surt «Normes desades».
+7. Per comprovar com queda, prem «Veure el cartell» o «Veure el reglament».
+
+**Què passa després**
+El cartell i els reglaments que es generin a partir d'ara porten les normes noves.
+
+**Per què es fa així**
+Cada vegada que deses, l'aplicació guarda una **versió nova** amb la data. Així, el reglament que un hoste ja va signar es continua veient amb les normes que hi havia **el dia que va signar**, encara que després les canviïs.
+
+**Si t'has equivocat**
+
+- Si encara no has desat, torna a carregar la pàgina i es perden els canvis.
+- Si ja has desat, corregeix el text i torna a prémer «Desa les normes».
+- Per tornar a les normes de l'inici, prem «Normes originals».
+
+**Compte!**
+
+- Si hi ha moltes normes o són molt llargues, el reglament que signa l'hoste pot passar a ocupar dues pàgines. Mira'l amb «Veure el reglament» abans de donar-lo per bo.
+- Només ho pot fer l'administradora.
+
+---
+
 ## Com faig per configurar la bugaderia (articles i valors per habitació)
 
 **Per a què serveix**

@@ -294,6 +294,10 @@ model Establiment {
   preuNetejaManteniment Decimal? @map("preu_neteja_manteniment") @db.Decimal(10, 2)
   preuNetejaZones       Decimal? @map("preu_neteja_zones") @db.Decimal(10, 2) // pack passadís+vorera+pati
 
+  // Normes de la casa del reglament i del cartell (array de textos, editables a
+  // /config). null = les normes per defecte de src/lib/pdf/reglament.ts.
+  normesReglament Json? @map("normes_reglament")
+
   estancies Estancia[]
 
   createdAt DateTime @default(now()) @map("created_at")

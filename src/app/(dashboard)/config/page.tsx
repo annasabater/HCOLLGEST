@@ -8,6 +8,7 @@ import { ConfigForm } from '@/components/config/config-form';
 import { BackupEmailButton } from '@/components/config/backup-email-button';
 import { DriveConnect } from '@/components/config/drive-connect';
 import { BugaderiaConfig } from '@/components/config/bugaderia-config';
+import { NormesReglament } from '@/components/config/normes-reglament';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,6 +96,13 @@ export default async function ConfigPage({
             mascotes&hellip;) i no conté contrasenyes. Queda registrada a l&apos;auditoria.
           </p>
         </div>
+      </CollapsibleCard>
+
+      <CollapsibleCard
+        title="Normes del hostal (reglament i cartell)"
+        icon={<BookOpen className="h-4 w-4 text-brand-600" />}
+      >
+        <NormesReglament />
       </CollapsibleCard>
 
       <CollapsibleCard

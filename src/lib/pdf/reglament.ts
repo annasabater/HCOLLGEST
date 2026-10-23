@@ -34,7 +34,8 @@ function sanitize(s: string): string {
     .replace(/…/g, '...');
 }
 
-const NORMES: string[] = [
+/** Normes per defecte (si a /config no se n'han desat d'altres). */
+export const NORMES_PER_DEFECTE: string[] = [
   'El pago de la habitación debe hacerse por adelantado, a la hora de registrarse. No podemos garantizar una habitación específica pero sí podemos mantener una con características similares. Si usted decide alargar su estancia, no le podemos garantizar que el hostal tenga habitación disponible; en caso de no haber disponibilidad, deberá dejar la habitación libre.',
   'Si el cliente no paga por adelantado, pierde el derecho al uso de la habitación.',
   'Los pagos realizados en el momento de la reserva irán a cuenta del precio total de la estancia acordada y no son reembolsables en caso de cancelación; el no presentarse el día acordado supone perder la reserva y el derecho al uso de la habitación.',
@@ -58,6 +59,32 @@ const NORMES: string[] = [
   'He leído y comprendo todas las regulaciones indicadas y las acepto. Soy consciente de que cualquier indicio de consumo de tabaco, abuso de alcohol o posesión de narcóticos ilegales, u otro incumplimiento de las normas, supondrá mi expulsión inmediata.',
   'Soy conocedor/a de que solo tengo garantizada la habitación por la(s) noche(s) especificada(s) en el recibo.',
 ];
+
+/** Una versió de les normes, vigent des de `desDe` (ISO). */
+export interface VersioNormes { desDe: string; normes: string[] }
+
+/** Versions desades a /config (camp `normesReglament`: { versions: [...] }), de la més antiga a la més nova. */
+export function versionsNormes(establiment: { normesReglament?: unknown } | null | undefined): VersioNormes[] {
+  const raw = (establiment?.normesReglament as { versions?: unknown } | null | undefined)?.versions;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((v): v is VersioNormes => !!v && typeof v.desDe === 'string' && Array.isArray(v.normes))
+    .map((v) => ({ desDe: v.desDe, normes: v.normes.filter((x): x is string => typeof x === 'string' && x.trim() !== '') }))
+    .filter((v) => v.normes.length > 0)
+    .sort((a, b) => a.desDe.localeCompare(b.desDe));
+}
+
+/**
+ * Normes vigents en una data (la de la firma de l'hoste: un reglament signat ha de
+ * mostrar les normes que va signar). Sense data, les d'ara. Si la data és anterior a
+ * la primera edició, o mai s'han editat, les per defecte.
+ */
+export function normesDe(establiment: { normesReglament?: unknown } | null | undefined, data?: Date | null): string[] {
+  const versions = versionsNormes(establiment);
+  const quan = data ? data.toISOString() : null;
+  const vigents = quan ? versions.filter((v) => v.desDe <= quan) : versions;
+  return vigents[vigents.length - 1]?.normes ?? NORMES_PER_DEFECTE;
+}
 
 const INTRO =
   'Por favor, lea cuidadosamente nuestras normas y firme la hoja si está de acuerdo. Esta información es importante para que su estancia con nosotros sea lo más placentera posible.';
@@ -346,7 +373,9 @@ async function renderReglamentDoc(
   cur.y -= 5;
 
   cur = drawEyebrow(doc, cur, 'Normas de la casa', bold);
-  for (const n of NORMES) cur = drawBullet(doc, cur, n, font);
+  // Signat: les normes vigents el dia de la firma (o d'entrada); en blanc: les d'ara.
+  const dataNormes = estancia ? (v?.signatura?.data ?? estancia.dataEntrada ?? null) : null;
+  for (const n of normesDe(establiment, dataNormes)) cur = drawBullet(doc, cur, n, font);
   cur.y -= 5;
 
   cur = drawEyebrow(doc, cur, 'Protección de datos', bold);
@@ -470,7 +499,7 @@ export async function buildCartellPdf(establiment: Establiment): Promise<Uint8Ar
 
   // Normes en UNA columna, a 9,5pt (totes càpiguen a la primera pàgina).
   const indent = 14;
-  for (const t of NORMES) {
+  for (const t of normesDe(establiment)) {
     wrap(font, t, 9.5, W - indent).forEach((l, i) => {
       brk(12.5);
       if (i === 0) page.drawText('•', { x: M, y: y - 9.5, size: 9.5, font, color: ACCENT });
