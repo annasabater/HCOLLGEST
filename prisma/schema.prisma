@@ -1352,8 +1352,9 @@ model TarifaTipus {
 model TarifaTipusVersio {
   id        String   @id @default(cuid())
   files     Json // files de la matriu (sense ids), com les retorna /api/tarifes-tipus
-  usuariId  String?  @map("usuari_id")
-  createdAt DateTime @default(now()) @map("created_at")
+  usuariId  String?   @map("usuari_id")
+  createdAt DateTime  @default(now()) @map("created_at") // vigent des d'aquí
+  editadaEl DateTime? @map("editada_el") // últim desat afegit a aquesta versió
 
   @@index([createdAt])
   @@map("tarifa_tipus_versio")

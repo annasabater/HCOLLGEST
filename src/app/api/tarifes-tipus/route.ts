@@ -3,7 +3,7 @@ import { authorize, clientIp } from '@/lib/auth/guard';
 import { ROLES_ADMIN } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
 import { ok, handleApiError } from '@/lib/http';
-import { TarifaTipusBulkSchema } from '@/lib/validation/tarifa-tipus';
+import { TarifaTipusBulkSchema, DIES_EDICIO } from '@/lib/validation/tarifa-tipus';
 
 const num = (d: unknown) => (d == null ? null : Number(d));
 
@@ -88,10 +88,17 @@ export async function PUT(req: Request) {
       await tx.tarifaTipus.deleteMany({ where: { id: { notIn: conservats.length ? conservats : ['__cap__'] } } });
       const ara = await tx.tarifaTipus.findMany({ orderBy: [{ grup: 'asc' }, { ordre: 'asc' }] });
 
-      // Versió nova només si els preus han canviat respecte de l'última.
-      const ultima = await tx.tarifaTipusVersio.findFirst({ orderBy: { createdAt: 'desc' } });
+      // Els desats dels DIES_EDICIO primers dies d'una versió (feta des d'aquí, no la
+      // inicial) s'hi acumulen: editar els preus durant uns dies és una sola versió.
+      // Passat aquest termini, el següent canvi en comença una de nova.
+      const [ultima, previa] = await tx.tarifaTipusVersio.findMany({ orderBy: { createdAt: 'desc' }, take: 2 });
       const versio = instantania(ara);
-      if (!ultima || estable(ultima.files) !== estable(versio)) {
+      const oberta = !!ultima?.usuariId && Date.now() - ultima.createdAt.getTime() < DIES_EDICIO * 86_400_000;
+      if (oberta) {
+        // Si s'ha desfet tot el canvi (torna a ser com la versió d'abans), la versió sobra.
+        if (previa && estable(previa.files) === estable(versio)) await tx.tarifaTipusVersio.delete({ where: { id: ultima!.id } });
+        else await tx.tarifaTipusVersio.update({ where: { id: ultima!.id }, data: { files: versio, usuariId: auth.id, editadaEl: new Date() } });
+      } else if (!ultima || estable(ultima.files) !== estable(versio)) {
         await tx.tarifaTipusVersio.create({ data: { files: versio, usuariId: auth.id } });
       }
       return ara;

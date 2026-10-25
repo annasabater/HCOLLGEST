@@ -1243,7 +1243,8 @@ Menú → «Gestió» → «Tarifes». Només administradors.
 - La calculadora del tauler fa servir aquests preus a partir del moment que deses.
 - El full en PDF també.
 - Les temporades que has esborrat de la pantalla s'esborren de veritat en desar.
-- Cada cop que deses amb algun canvi, els preus queden guardats com una **versió** a «Versions anteriors», a baix de tot de la pàgina, amb la data i qui els ha desat.
+- Quan canvies preus i deses, queden guardats com una **versió** a «Versions anteriors», a baix de tot de la pàgina, amb la data i qui els ha desat.
+- **Si estàs uns quants dies retocant els preus, és una sola versió.** Durant els **7 dies** després del primer desat, tot el que desis s'afegeix a aquella versió (surt un avís blau «En edició fins al …»). Passats els 7 dies, el següent canvi de preus ja fa una versió nova.
 
 **Veure els preus d'abans**
 1. Baixa fins a **«Versions anteriors»**. Cada línia diu «Des del …» i «fins al …» (la de dalt de tot són els «preus actuals»).

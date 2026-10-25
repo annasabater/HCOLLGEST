@@ -10,6 +10,9 @@ export const GRUP_TARIFA_LABELS: Record<GrupTarifa, string> = {
   DOBLE: 'Habitació Doble',
 };
 
+/** Dies (des del primer desat) durant els quals els desats s'afegeixen a la mateixa versió de preus. */
+export const DIES_EDICIO = 7;
+
 // Preu opcional: '' o absent → null; si no, número no negatiu.
 const preu = z.preprocess(
   (v) => (v === '' || v === undefined || v === null ? null : v),

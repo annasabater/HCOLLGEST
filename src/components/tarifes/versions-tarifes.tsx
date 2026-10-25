@@ -21,7 +21,7 @@ export interface FilaVersio {
   nota: string | null;
 }
 
-interface Versio { id: string; desDe: string; usuari: string | null; files: FilaVersio[] }
+interface Versio { id: string; desDe: string; editadaEl: string | null; obertaFins: string | null; usuari: string | null; files: FilaVersio[] }
 
 type CampNum = 'preuDia' | 'preuDia4' | 'preuSetmana' | 'preuDosSetmanes' | 'preuMes' | 'reserva';
 const COLS: { camp: CampNum; label: string }[] = [
@@ -35,9 +35,11 @@ const COLS: { camp: CampNum; label: string }[] = [
 
 const clau = (f: FilaVersio) => `${f.grup}|${f.etiqueta}`;
 const data = (iso: string) => new Date(iso).toLocaleString('ca-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+const dia = (iso: string) => new Date(iso).toLocaleDateString('ca-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 /**
- * Historial de la matriu de tarifes: cada desat amb canvis és una versió. Es pot
+ * Historial de la matriu de tarifes: cada canvi de preus és una versió (els desats
+ * dels primers dies s'hi acumulen, perquè editar-los uns quants dies sigui una sola). Es pot
  * obrir per veure els preus (en groc, el que va canviar respecte de la versió
  * anterior) i recuperar-la a l'editor (després cal desar-la).
  */
@@ -66,8 +68,15 @@ export function VersionsTarifes({ recarrega, onRecupera }: { recarrega: number; 
             const previ = new Map((anterior?.files ?? []).map((f) => [clau(f), f]));
             const fins = i > 0 ? versions[i - 1]!.desDe : null;
             const esOberta = obert === v.id;
+            const enEdicio = !!v.obertaFins && new Date(v.obertaFins) > new Date();
             return (
               <li key={v.id}>
+                {enEdicio && (
+                  <p className="bg-blue-50 px-4 py-2 text-xs text-blue-800">
+                    <b>En edició fins al {dia(v.obertaFins!)}:</b> els canvis que desis fins aleshores s’afegeixen a aquesta versió
+                    (no en fan una de nova){v.editadaEl && <> · últim desat el {data(v.editadaEl)}</>}. A partir d’aquell dia, el següent canvi començarà una versió nova.
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={() => setObert(esOberta ? null : v.id)}
