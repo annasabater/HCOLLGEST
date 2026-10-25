@@ -15,6 +15,8 @@ import { addDays, toISODate } from '@/lib/dates';
 import { formatDate, formatEur } from '@/lib/utils';
 import {
   fillTemplate,
+  salutacio,
+  ajustaSalutacio,
   enviaWhatsApp,
   descriuTasques,
   tipusNetejaLabel,
@@ -619,11 +621,14 @@ function HostesCard() {
 
   function msgFor(e: Estancia): string {
     const l = langs[e.id] ?? 'ca';
-    return fillTemplate(tpls[l], {
+    const text = fillTemplate(tpls[l], {
+      salutacio: salutacio(l),
       nom: nomFor(e),
       hora,
       habitacio: e.habitacio?.nom ?? '',
     });
+    // Plantilles desades amb una salutació fixa: posa la que toca a aquesta hora.
+    return ajustaSalutacio(text, l);
   }
 
   return (
@@ -715,7 +720,7 @@ function HostesCard() {
           </div>
           <Textarea className="mt-2" rows={2} value={tpls[editLang]} onChange={(e) => saveTpl(e.target.value)} />
           <p className="mt-1 text-xs text-slate-400">
-            Variables: {'{nom}'} {'{hora}'} {'{habitacio}'}. Es desa al navegador.
+            Variables: {'{salutacio}'} (bon dia / bona tarda / bona nit segons l’hora) {'{nom}'} {'{hora}'} {'{habitacio}'}. Es desa al navegador.
           </p>
         </details>
       </div>

@@ -14,13 +14,41 @@ export const LANGS: { code: Lang; label: string }[] = [
   { code: 'en', label: 'Anglès' },
 ];
 
-/** Plantilla per a l'hoste (variables {nom} {hora} {habitacio}). */
+/**
+ * Plantilla per a l'hoste (variables {salutacio} {nom} {hora} {habitacio}).
+ * {salutacio} = bon dia / bona tarda / bona nit segons l'hora en què s'envia.
+ */
 export const PLANTILLA_HOSTE: Record<Lang, string> = {
-  ca: 'Bon dia {nom}, demà cap a les {hora} vindrem a netejar l’habitació {habitacio}. Gràcies!',
-  es: 'Buenos días {nom}, mañana sobre las {hora} vendremos a limpiar la habitación {habitacio}. ¡Gracias!',
-  fr: 'Bonjour {nom}, demain vers {hora} nous viendrons nettoyer la chambre {habitacio}. Merci !',
-  en: 'Hello {nom}, tomorrow around {hora} we will come to clean room {habitacio}. Thank you!',
+  ca: '{salutacio} {nom}, demà cap a les {hora} vindrem a netejar l’habitació {habitacio}. Gràcies!',
+  es: '{salutacio} {nom}, mañana sobre las {hora} vendremos a limpiar la habitación {habitacio}. ¡Gracias!',
+  fr: '{salutacio} {nom}, demain vers {hora} nous viendrons nettoyer la chambre {habitacio}. Merci !',
+  en: '{salutacio} {nom}, tomorrow around {hora} we will come to clean room {habitacio}. Thank you!',
 };
+
+// Salutacions per franja: matí (fins a les 14 h), tarda (14–20 h), nit (des de les 20 h).
+const SALUTACIONS: Record<Lang, [string, string, string]> = {
+  ca: ['Bon dia', 'Bona tarda', 'Bona nit'],
+  es: ['Buenos días', 'Buenas tardes', 'Buenas noches'],
+  fr: ['Bonjour', 'Bonjour', 'Bonsoir'],
+  en: ['Good morning', 'Good afternoon', 'Good evening'],
+};
+
+/** Salutació segons l'hora: fins a les 14 h dia, de 14 a 20 h tarda, des de les 20 h nit. */
+export function salutacio(lang: Lang, ara: Date = new Date()): string {
+  const h = ara.getHours();
+  return SALUTACIONS[lang][h < 14 ? 0 : h < 20 ? 1 : 2];
+}
+
+/**
+ * Si el missatge comença amb una salutació fixa (p. ex. una plantilla desada
+ * antiga amb «Buenas noches»), la canvia per la que toca ara.
+ */
+export function ajustaSalutacio(text: string, lang: Lang, ara: Date = new Date()): string {
+  // Les més llargues primer («Buenas noches» abans que «Buenas»).
+  const fixes = [...new Set([...Object.values(SALUTACIONS).flat(), 'Buenas', 'Bones'])].sort((a, b) => b.length - a.length);
+  const m = fixes.find((s) => text.toLowerCase().startsWith(s.toLowerCase()) && !/\p{L}/u.test(text.charAt(s.length)));
+  return m ? salutacio(lang, ara) + text.slice(m.length) : text;
+}
 
 /**
  * Plantilla de benvinguda + valoració (variables {nom} {enllac}).

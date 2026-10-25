@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
+  salutacio,
+  ajustaSalutacio,
   fillTemplate,
   waLink,
   descriuTasques,
@@ -116,5 +118,24 @@ describe('plantilla de neteja (multilínia)', () => {
       '¡Hola Rossy! 😊\nTe paso el trabajo de mañana:\n🛏️ Habitaciones:\n- Núm. 1. salida.\n' +
         'También habrá que hacer el pasillo, el patio y la acera.\n¡Muchas gracias!',
     );
+  });
+});
+
+describe('salutacio segons l’hora', () => {
+  const a = (h: number) => new Date(2026, 9, 25, h, 0);
+  it('dia fins a les 14 h, tarda fins a les 20 h, nit després', () => {
+    expect(salutacio('es', a(9))).toBe('Buenos días');
+    expect(salutacio('es', a(16))).toBe('Buenas tardes');
+    expect(salutacio('es', a(21))).toBe('Buenas noches');
+    expect(salutacio('ca', a(13))).toBe('Bon dia');
+    expect(salutacio('ca', a(14))).toBe('Bona tarda');
+    expect(salutacio('ca', a(20))).toBe('Bona nit');
+  });
+
+  it('canvia una salutació fixa desada a la plantilla', () => {
+    expect(ajustaSalutacio('Buenas noches Ana, mañana…', 'es', a(16))).toBe('Buenas tardes Ana, mañana…');
+    expect(ajustaSalutacio('Bon dia Joan', 'ca', a(21))).toBe('Bona nit Joan');
+    expect(ajustaSalutacio('Hola Ana', 'es', a(21))).toBe('Hola Ana');
+    expect(ajustaSalutacio('Bonita mañana', 'es', a(21))).toBe('Bonita mañana');
   });
 });
