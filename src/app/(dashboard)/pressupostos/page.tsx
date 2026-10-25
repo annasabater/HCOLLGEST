@@ -5,7 +5,7 @@ import { getSessionUser } from '@/lib/auth/session';
 import { PageHeader } from '@/components/ui/page-header';
 import { FinancesNav } from '@/components/balanc/finances-nav';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
-import { Eur } from '@/components/finances/amounts-visibility';
+import { Eur, HideAmountsButton } from '@/components/finances/amounts-visibility';
 import { NouPressupostButton } from '@/components/pressupost/nou-pressupost-button';
 import { formatDate } from '@/lib/utils';
 
@@ -26,7 +26,12 @@ export default async function PressupostosPage() {
       <PageHeader
         title="Pressupostos"
         subtitle={`${pressupostos.length} pressupostos`}
-        actions={<NouPressupostButton />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <HideAmountsButton />
+            <NouPressupostButton />
+          </div>
+        }
       />
 
       <FinancesNav />
