@@ -13,6 +13,8 @@ import { teVistaRestringida } from '@/lib/auth/restriccions';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BenvingudesPendents } from '@/components/dashboard/benvingudes-pendents';
+import { ProrroguesPanel } from '@/components/dashboard/prorrogues-panel';
+import { getProrrogues } from '@/lib/services/prorrogues';
 import { CalculadoraPreu } from '@/components/dashboard/calculadora-preu';
 import { GlobalSearch } from '@/components/layout/global-search';
 import { TargetaAvis, type AvisItem } from '@/components/dashboard/targeta-avis';
@@ -48,6 +50,7 @@ export default async function DashboardPage() {
   const user = await getSessionUser();
   const resum = await getResum({ excloureMetodeAltres: teVistaRestringida(user) });
   const fitxesPendents = await fitxesDadesPendents();
+  const prorrogues = await getProrrogues();
   const isAdmin = user?.role === 'ADMIN';
 
   type ColorKey = keyof typeof colorMap;
@@ -146,6 +149,8 @@ export default async function DashboardPage() {
         automatica={resum.benvingudes.automatica}
         tothom={resum.benvingudes.tothom}
       />
+
+      <ProrroguesPanel avisos={prorrogues.avisos} aplacades={prorrogues.aplacades} surtenDema={prorrogues.surtenDema} />
 
       {/* Sortides avui */}
       {resum.sortidesToday.length > 0 && (

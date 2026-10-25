@@ -25,6 +25,54 @@ export const PLANTILLA_HOSTE: Record<Lang, string> = {
   en: '{salutacio} {nom}, tomorrow around {hora} we will come to clean room {habitacio}. Thank you!',
 };
 
+/**
+ * Missatges de pròrroga i sortida (variables {salutacio} {nom} {hora} {import}
+ * {sortida}). `sortidaGrup` / `sortidaUna`: recordatori del dia abans, segons si
+ * a l'habitació hi ha diverses persones o una.
+ */
+export const MISSATGES_PRORROGA = ['pregunta', 'noContesta', 'sortidaGrup', 'sortidaUna'] as const;
+export type MissatgeProrroga = (typeof MISSATGES_PRORROGA)[number];
+
+export const MISSATGE_PRORROGA_LABELS: Record<MissatgeProrroga, string> = {
+  pregunta: 'Vol allargar l’estada?',
+  noContesta: 'No ha contestat',
+  sortidaGrup: 'Recordatori de sortida (diverses persones)',
+  sortidaUna: 'Recordatori de sortida (una persona)',
+};
+
+export const PLANTILLA_PRORROGA: Record<MissatgeProrroga, Record<Lang, string>> = {
+  pregunta: {
+    ca: '{salutacio},\nSi vol allargar la seva estada a l’hostal, passaria a cobrar demà cap a les {hora} h els {import} de reserva. Si us plau, em confirma si li interessa?\nRebi una salutació cordial.',
+    es: '{salutacio},\nSi desea prolongar su estancia en el hostal, pasaría a cobrar mañana alrededor de las {hora} h los {import} de reserva. Por favor, ¿me confirma si le interesa?\nReciba un cordial saludo.',
+    fr: '{salutacio},\nSi vous souhaitez prolonger votre séjour à l’hostal, je passerais demain vers {hora} h encaisser les {import} de réservation. Pourriez-vous me confirmer si cela vous intéresse ?\nCordialement.',
+    en: '{salutacio},\nIf you would like to extend your stay at the hostal, I would come by tomorrow around {hora} to collect the {import} deposit. Could you please confirm whether you are interested?\nKind regards.',
+  },
+  noContesta: {
+    ca: '{salutacio},\nCom que no he rebut resposta per part seva, entenc que no està interessat a continuar l’estada ni a reservar l’habitació més temps. Per tant, haurà de deixar l’habitació el dia {sortida} abans de les 11:00 h.\nSalutacions.',
+    es: '{salutacio},\nComo no he recibido respuesta por su parte, entiendo que no está interesado en continuar con la estancia ni en reservar la habitación por más tiempo. Por lo tanto, deberá dejar la habitación el día {sortida} antes de las 11:00 h.\nSaludos.',
+    fr: '{salutacio},\nN’ayant pas reçu de réponse de votre part, je comprends que vous ne souhaitez pas prolonger votre séjour ni réserver la chambre plus longtemps. Vous devrez donc libérer la chambre le {sortida} avant 11 h.\nCordialement.',
+    en: '{salutacio},\nAs I have not received a reply from you, I understand that you are not interested in extending your stay or keeping the room any longer. Therefore, you will need to leave the room on {sortida} before 11:00.\nRegards.',
+  },
+  sortidaGrup: {
+    ca: '{salutacio},\nLes recordo que demà han de deixar l’habitació abans de les 11:00 h.\nDeixin les claus al lloc que vam acordar.\nUna salutació.',
+    es: '{salutacio},\nRecordarles que mañana deben dejar la habitación antes de las 11:00 h.\nDejen las llaves en el lugar que acordamos.\nUn saludo.',
+    fr: '{salutacio},\nJe vous rappelle que demain vous devez libérer la chambre avant 11 h.\nLaissez les clés à l’endroit convenu.\nCordialement.',
+    en: '{salutacio},\nThis is a reminder that tomorrow you need to leave the room before 11:00.\nPlease leave the keys in the place we agreed.\nKind regards.',
+  },
+  sortidaUna: {
+    ca: '{salutacio},\nLi recordo que demà ha de deixar l’habitació abans de les 11:00 h.\nSi fos tan amable de desendollar la nevera i el microones i tancar la porta de l’habitació amb clau.\nDeixi les claus en un dels calaixos del moble del passadís.\nMoltes gràcies.',
+    es: '{salutacio},\nRecordarle que mañana debe dejar la habitación antes de las 11:00 h.\nSi fuera tan amable de desenchufar la nevera y el microondas y cerrar la puerta de la habitación con llave.\nDeje las llaves en uno de los cajones del mueble del pasillo.\nMuchas gracias.',
+    fr: '{salutacio},\nJe vous rappelle que demain vous devez libérer la chambre avant 11 h.\nPourriez-vous débrancher le réfrigérateur et le micro-ondes et fermer la porte de la chambre à clé ?\nLaissez les clés dans l’un des tiroirs du meuble du couloir.\nMerci beaucoup.',
+    en: '{salutacio},\nThis is a reminder that tomorrow you need to leave the room before 11:00.\nCould you please unplug the fridge and the microwave and lock the room door?\nLeave the keys in one of the drawers of the hallway cabinet.\nThank you very much.',
+  },
+};
+
+/** Data de sortida en text per al missatge («12 de noviembre», «12 November»…). */
+export function dataLlarga(d: Date, lang: Lang): string {
+  const locale = { ca: 'ca-ES', es: 'es-ES', fr: 'fr-FR', en: 'en-GB' }[lang];
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'long' });
+}
+
 // Salutacions per franja: matí (fins a les 14 h), tarda (14–20 h), nit (des de les 20 h).
 const SALUTACIONS: Record<Lang, [string, string, string]> = {
   ca: ['Bon dia', 'Bona tarda', 'Bona nit'],

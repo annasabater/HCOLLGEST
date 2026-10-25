@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MessageCircle, Copy, Sparkles, Users, Phone, Hand, Mail, CheckCircle, RotateCcw, Download, Landmark } from 'lucide-react';
+import { MessageCircle, Copy, Sparkles, Users, Phone, Hand, Mail, CheckCircle, RotateCcw, Download, Landmark, CalendarPlus } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input, Select, Textarea } from '@/components/ui/input';
@@ -27,8 +27,13 @@ import {
   PLANTILLA_GRACIES,
   HORA_NETEJA_TXT,
   LANGS,
+  MISSATGES_PRORROGA,
+  MISSATGE_PRORROGA_LABELS,
+  PLANTILLA_PRORROGA,
   type Lang,
+  type MissatgeProrroga,
 } from '@/lib/plantilles';
+import { DIES_AVIS_PRORROGA, MIN_NITS_PRORROGA } from '@/lib/prorroga';
 
 interface Treballador {
   id: string;
@@ -142,9 +147,75 @@ export default function PlantillesPage() {
         <BenvingudaCard />
         {!restringit && <NetejaCard />}
         <HostesCard />
+        <ProrrogaCard />
         <GraciesCard />
       </div>
     </div>
+  );
+}
+
+// --- Pròrroga d'estada i recordatori de sortida (s'envien des del tauler) -----
+function ProrrogaCard() {
+  const [editLang, setEditLang] = useState<Lang>('es');
+  const [tpls, setTpls] = useState(PLANTILLA_PRORROGA);
+  const [importe, setImporte] = useState('300 €');
+  const [hora, setHora] = useState('15:00');
+
+  useEffect(() => {
+    const out = { ...PLANTILLA_PRORROGA };
+    MISSATGES_PRORROGA.forEach((m) => {
+      out[m] = { ...out[m] };
+      LANGS.forEach(({ code }) => { out[m][code] = lsGet(`plantilla_prorroga_${m}_${code}`, PLANTILLA_PRORROGA[m][code]); });
+    });
+    setTpls(out);
+    setImporte(lsGet('prorroga_import', '300 €'));
+    setHora(lsGet('prorroga_hora', '15:00'));
+  }, []);
+
+  function saveTpl(m: MissatgeProrroga, v: string) {
+    setTpls((p) => ({ ...p, [m]: { ...p[m], [editLang]: v } }));
+    window.localStorage.setItem(`plantilla_prorroga_${m}_${editLang}`, v);
+  }
+  function restaura(m: MissatgeProrroga) {
+    window.localStorage.removeItem(`plantilla_prorroga_${m}_${editLang}`);
+    setTpls((p) => ({ ...p, [m]: { ...p[m], [editLang]: PLANTILLA_PRORROGA[m][editLang] } }));
+  }
+
+  return (
+    <CollapsibleCard title="Pròrroga d’estada i recordatori de sortida" icon={<CalendarPlus className="h-4 w-4 text-brand-600" />}>
+      <div className="space-y-4 text-sm">
+        <p className="text-slate-500">
+          Al tauler surt un avís {DIES_AVIS_PRORROGA} dies abans que s’acabi una estada d’almenys {MIN_NITS_PRORROGA} nits, i el dia
+          abans de cada sortida, el recordatori. Els missatges s’envien des d’allà.
+        </p>
+        <div className="grid max-w-md gap-3 sm:grid-cols-2">
+          <Field label="Import de reserva">
+            <Input value={importe} onChange={(e) => { setImporte(e.target.value); window.localStorage.setItem('prorroga_import', e.target.value); }} />
+          </Field>
+          <Field label="Hora de cobrar">
+            <Input value={hora} onChange={(e) => { setHora(e.target.value); window.localStorage.setItem('prorroga_hora', e.target.value); }} />
+          </Field>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-500">Idioma:</span>
+          <LangSelect value={editLang} onChange={setEditLang} className="max-w-40" />
+        </div>
+        {MISSATGES_PRORROGA.map((m) => (
+          <div key={m} className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-600">{MISSATGE_PRORROGA_LABELS[m]}</span>
+              <Button type="button" size="sm" variant="ghost" onClick={() => restaura(m)}>
+                <RotateCcw className="h-3.5 w-3.5" /> Per defecte
+              </Button>
+            </div>
+            <Textarea rows={5} value={tpls[m][editLang]} onChange={(e) => saveTpl(m, e.target.value)} />
+          </div>
+        ))}
+        <p className="text-xs text-slate-400">
+          Variables: {'{salutacio}'} (bon dia / bona tarda / bona nit segons l’hora) {'{nom}'} {'{hora}'} {'{import}'} {'{sortida}'}. Es desa al navegador.
+        </p>
+      </div>
+    </CollapsibleCard>
   );
 }
 

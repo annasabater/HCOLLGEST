@@ -207,6 +207,36 @@ L'app **no envia res sola**: només et prepara el missatge. Així sempre ets tu 
 
 ---
 
+## Com pregunto si volen allargar l'estada (pròrrogues) i envio el recordatori de sortida
+
+**Per a què serveix**
+Quan una estada llarga s'acaba aviat, el tauler et recorda que has de preguntar a l'hoste si vol allargar. I el dia abans de cada sortida, et recorda que li enviïs el recordatori (deixar l'habitació abans de les 11:00, les claus…).
+
+**On és**
+Menú → «Tauler» → quadre «Pròrrogues i sortides». Només surt si hi ha alguna cosa per fer.
+
+**Pas a pas**
+
+1. Les estades d'**almenys 20 nits** surten **18 dies abans** de la sortida, amb l'etiqueta «Per preguntar».
+2. Clica «Preguntar». S'obre el missatge «Vol allargar l'estada?» ja escrit, en l'idioma de l'estada, amb la salutació segons l'hora (bon dia / bona tarda / bona nit), l'import de la reserva i l'hora de cobrar. Pots triar un altre dels 4 missatges, canviar l'idioma, l'import o el text.
+3. Clica «Enviar per WhatsApp», confirma i envia'l des de WhatsApp. L'etiqueta passa a «Esperant resposta» amb el dia que vas preguntar.
+4. Quan et contestin:
+   - «Sí, allarga» o «No, marxa»: l'estada desapareix del quadre.
+   - «+5 dies per decidir»: si et demanen temps, desapareix i torna a sortir d'aquí a 5 dies.
+   - «No contesta…»: obre el missatge «No ha contestat» (haurà de deixar l'habitació el dia de sortida). En enviar-lo, queda com «No».
+5. Si encara no vols preguntar, «Aplaçar…» i tria 1, 3, 5 o 7 dies. Queda en gris a sota («aplaçat fins al …») i torna a sortir aquell dia; «Mostra ara» el torna a posar. Si ja saps la resposta sense preguntar, «Ja m'ha dit que sí» / «Ja m'ha dit que no».
+6. A «Surten demà» hi ha totes les estades que acaben l'endemà. «Recordatori de sortida» obre el missatge ja triat segons la gent de l'habitació (una persona: nevera, microones i claus al calaix; diverses: claus al lloc acordat). En enviar-lo, o amb «Fet», desapareix.
+
+**Què passa després / d'on surten les dades**
+- Els textos, l'import de reserva (300 €) i l'hora de cobrar (15:00) es canvien a «Plantilles» → «Pròrroga d'estada i recordatori de sortida» (es desen al navegador, com les altres plantilles).
+- Si la data de sortida de l'estada canvia, o es fa una ampliació, l'avís es reinicia per a la nova data.
+
+**Compte!**
+- L'app **no envia res sola**: només et prepara el missatge.
+- Si no hi ha cap adult amb telèfon, el botó d'enviar està apagat.
+
+---
+
 ## Com gestiono la finestra de «Cobraments a punt»
 
 **Per a què serveix**

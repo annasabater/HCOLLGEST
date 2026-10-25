@@ -451,6 +451,15 @@ model Estancia {
   avisMossosParat     Boolean       @default(false) @map("avis_mossos_parat")
   // Benvinguda (WhatsApp) ja enviada/gestionada → treu l'avís del tauler.
   benvingudaEnviada   Boolean       @default(false) @map("benvinguda_enviada")
+  // Pròrroga (avís al tauler abans que s'acabi una estada llarga). Estat: null =
+  // per preguntar, PREGUNTAT, SI, NO. Val per a la sortida `prorrogaSortida`: si
+  // la data de sortida canvia, l'estat es torna a considerar buit.
+  prorrogaEstat       String?       @map("prorroga_estat")
+  prorrogaSortida     DateTime?     @map("prorroga_sortida")
+  prorrogaPreguntatAt DateTime?     @map("prorroga_preguntat_at")
+  prorrogaAplacatFins DateTime?     @map("prorroga_aplacat_fins")
+  // Recordatori de sortida (el dia abans) enviat per a aquesta data de sortida.
+  recordatoriSortida  DateTime?     @map("recordatori_sortida")
 
   // Habitació ACTUAL (la de l'últim tram). Si l'hoste ha canviat d'habitació a
   // mitja estada, els trams anteriors són a `canvisHabitacio`.
