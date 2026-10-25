@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight, History, RotateCcw } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileDown, History, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getJSON } from '@/lib/api';
 import { formatEur } from '@/lib/utils';
@@ -77,16 +77,27 @@ export function VersionsTarifes({ recarrega, onRecupera }: { recarrega: number; 
                     (no en fan una de nova){v.editadaEl && <> · últim desat el {data(v.editadaEl)}</>}. A partir d’aquell dia, el següent canvi començarà una versió nova.
                   </p>
                 )}
-                <button
-                  type="button"
-                  onClick={() => setObert(esOberta ? null : v.id)}
-                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm hover:bg-slate-50"
-                >
-                  {esOberta ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
-                  <span className="font-medium text-slate-800">Des del {data(v.desDe)}</span>
-                  <span className="text-slate-500">{fins ? `fins al ${data(fins)}` : '· preus actuals'}</span>
-                  {v.usuari && <span className="ml-auto text-xs text-slate-400">{v.usuari}</span>}
-                </button>
+                <div className="flex items-center hover:bg-slate-50">
+                  <button
+                    type="button"
+                    onClick={() => setObert(esOberta ? null : v.id)}
+                    className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 py-2.5 pl-4 text-left text-sm"
+                  >
+                    {esOberta ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
+                    <span className="font-medium text-slate-800">Des del {data(v.desDe)}</span>
+                    <span className="text-slate-500">{fins ? `fins al ${data(fins)}` : '· preus actuals'}</span>
+                    {v.usuari && <span className="ml-auto text-xs text-slate-400">{v.usuari}</span>}
+                  </button>
+                  <a
+                    href={`/imprimir/tarifes?versio=${v.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="Full de preus d’aquesta versió (per imprimir o desar en PDF)"
+                    className="mx-3 flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:border-brand-300 hover:text-brand-700"
+                  >
+                    <FileDown className="h-3.5 w-3.5" /> PDF
+                  </a>
+                </div>
                 {esOberta && (
                   <div className="space-y-4 px-4 pb-4">
                     {GRUP_TARIFA.map((grup) => {

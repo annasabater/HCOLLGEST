@@ -93,14 +93,30 @@ export async function GET(req: Request) {
   const user = await getSessionUser();
   if (!user) redirect('/login');
 
-  const grupParam = new URL(req.url).searchParams.get('grup');
+  const params = new URL(req.url).searchParams;
+  const grupParam = params.get('grup');
   const grups = grupParam && ORDRE_GRUP.includes(grupParam as GrupTarifa) ? [grupParam as GrupTarifa] : ORDRE_GRUP;
 
-  // Es carreguen TOTES les tarifes (no només les del grup filtrat) perquè, per a
-  // Doble 1 persona, cal accedir als preus reals de l'Habitació Doble.
-  const files = (await prisma.tarifaTipus.findMany({
-    orderBy: [{ grup: 'asc' }, { ordre: 'asc' }],
-  })) as unknown as Row[];
+  // ?versio=<id>: el full d'una versió anterior (historial de /tarifes, només ADMIN).
+  const versioId = params.get('versio');
+  let vigencia: string | null = null;
+  let files: Row[];
+  if (versioId) {
+    if (user.role !== 'ADMIN') redirect('/');
+    const v = await prisma.tarifaTipusVersio.findUnique({ where: { id: versioId } });
+    if (!v) return new Response('Versió no trobada', { status: 404 });
+    const seguent = await prisma.tarifaTipusVersio.findFirst({ where: { createdAt: { gt: v.createdAt } }, orderBy: { createdAt: 'asc' } });
+    const dia = (d: Date) => d.toLocaleDateString('ca-ES', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Madrid' });
+    vigencia = seguent ? `Preus vigents del ${dia(v.createdAt)} al ${dia(seguent.createdAt)}` : `Preus vigents des del ${dia(v.createdAt)}`;
+    files = (v.files as unknown as Row[]).slice().sort((a, b) =>
+      a.grup.localeCompare(b.grup) || ((a as { ordre?: number }).ordre ?? 0) - ((b as { ordre?: number }).ordre ?? 0));
+  } else {
+    // Es carreguen TOTES les tarifes (no només les del grup filtrat) perquè, per a
+    // Doble 1 persona, cal accedir als preus reals de l'Habitació Doble.
+    files = (await prisma.tarifaTipus.findMany({
+      orderBy: [{ grup: 'asc' }, { ordre: 'asc' }],
+    })) as unknown as Row[];
+  }
 
   const seccions = grups
     .map((g) => taulaGrup(
@@ -110,7 +126,7 @@ export async function GET(req: Request) {
     ))
     .join('');
 
-  const titol = grupParam ? `Tarifes · ${GRUP_TARIFA_LABELS[grupParam as GrupTarifa]}` : 'Tarifes';
+  const titol = (grupParam ? `Tarifes · ${GRUP_TARIFA_LABELS[grupParam as GrupTarifa]}` : 'Tarifes') + (vigencia ? ` · ${vigencia}` : '');
 
   const html = `<!doctype html>
 <html lang="ca">
@@ -185,7 +201,7 @@ export async function GET(req: Request) {
         <div class="brand">HOSTAL COLL</div>
         <div class="brand-sub">Casa de Hostes · Calella</div>
       </div>
-      <div class="period">Full de preus<br>2025 – 2026</div>
+      <div class="period">Full de preus<br>${vigencia ? esc(vigencia) : '2025 – 2026'}</div>
     </div>
     <div class="accent-rule"></div>
     ${seccions || '<p style="color:#7A6868">No hi ha tarifes configurades.</p>'}

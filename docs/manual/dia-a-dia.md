@@ -1280,6 +1280,7 @@ Menú → «Gestió» → «Tarifes». Només administradors.
 1. Baixa fins a **«Versions anteriors»**. Cada línia diu «Des del …» i «fins al …» (la de dalt de tot són els «preus actuals»).
 2. Clica una línia per obrir-la: surten les tres taules amb els preus que hi havia aleshores.
 3. Les caselles **en groc** són les que van canviar en aquella versió. Si hi passes el ratolí, diu el preu d'abans.
+4. Per tenir-la en paper o en PDF, clica **«PDF»** a la dreta de la línia: s'obre el full de preus d'aquella versió (amb «Preus vigents del … al …»). Clica «Imprimir / Guardar PDF».
 
 **Per què es fa així**
 Perquè només hi hagi un lloc on canviar els preus i tot l'altre (calculadora, PDF) quedi al dia.
