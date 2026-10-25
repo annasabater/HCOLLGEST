@@ -1347,6 +1347,18 @@ model TarifaTipus {
   @@map("tarifa_tipus")
 }
 
+// Historial de la matriu de tarifes: cada desat amb canvis guarda una instantània
+// sencera (vigent des de `createdAt`), per veure i recuperar els preus anteriors.
+model TarifaTipusVersio {
+  id        String   @id @default(cuid())
+  files     Json // files de la matriu (sense ids), com les retorna /api/tarifes-tipus
+  usuariId  String?  @map("usuari_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("tarifa_tipus_versio")
+}
+
 // Llibre d'IVA trimestral (ingressos) DESAT: instantània editable d'un trimestre.
 // Es genera de les factures, l'usuari el pot editar a la impressió i desar-lo;
 // queda un registre de tots els trimestres desats (un per període, s'actualitza).

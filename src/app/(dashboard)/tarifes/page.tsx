@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { FinancesNav } from '@/components/balanc/finances-nav';
 import { getJSON, ApiError } from '@/lib/api';
 import { GRUP_TARIFA, GRUP_TARIFA_LABELS, type GrupTarifa } from '@/lib/validation/tarifa-tipus';
+import { VersionsTarifes, type FilaVersio } from '@/components/tarifes/versions-tarifes';
 
 interface Fila {
   _key: string;
@@ -46,6 +47,8 @@ export default function TarifesPage() {
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState(false);
+  // Es canvia en cada desat perquè l'historial de versions es torni a carregar.
+  const [versioDesada, setVersioDesada] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,6 +80,14 @@ export default function TarifesPage() {
     setDirty(true);
   }
 
+  // Carrega una versió anterior a l'editor (sense ids: en desar se substitueix la matriu).
+  function recupera(versio: FilaVersio[]) {
+    setFiles(versio.map((f) => ({ ...f, _key: nouKey() })));
+    setDirty(true);
+    setOkMsg(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   function eliminarFila(key: string) {
     setFiles((prev) => prev.filter((f) => f._key !== key));
     setDirty(true);
@@ -103,6 +114,7 @@ export default function TarifesPage() {
       setFiles((data.files as Omit<Fila, '_key'>[]).map((f) => ({ ...f, _key: nouKey() })));
       setDirty(false);
       setOkMsg(true);
+      setVersioDesada((n) => n + 1);
       setTimeout(() => setOkMsg(false), 2500);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Error desant les tarifes');
@@ -235,6 +247,8 @@ export default function TarifesPage() {
         Els camps buits es deixen en blanc a la taula i al PDF. «4 dies» és el preu per dia a partir del 4t dia.
         Els «Mesos» (1–12) serviran per detectar la temporada automàticament a la calculadora de preus.
       </p>
+
+      <VersionsTarifes recarrega={versioDesada} onRecupera={recupera} />
     </div>
   );
 }

@@ -20,6 +20,23 @@ function serialitza(r: {
   };
 }
 
+/** Instantània d'una versió: les files sense id (els ids canvien en esborrar/crear). */
+function instantania(rows: Parameters<typeof serialitza>[0][]) {
+  return rows.map((r) => {
+    const { id: _id, ...resta } = serialitza(r);
+    return resta;
+  });
+}
+
+/** JSON amb les claus ordenades (el JSONB de Postgres no conserva l'ordre). */
+function estable(v: unknown): string {
+  return JSON.stringify(v, (_k, x) =>
+    x && typeof x === 'object' && !Array.isArray(x)
+      ? Object.fromEntries(Object.entries(x as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)))
+      : x,
+  );
+}
+
 // GET /api/tarifes-tipus — matriu de tarifes per tipus + temporada (ADMIN).
 export async function GET() {
   try {
@@ -42,6 +59,15 @@ export async function PUT(req: Request) {
     const { files } = TarifaTipusBulkSchema.parse(body);
 
     const saved = await prisma.$transaction(async (tx) => {
+      // Primer desat amb historial: guarda també els preus d'abans, perquè no es perdin.
+      if ((await tx.tarifaTipusVersio.count()) === 0) {
+        const abans = await tx.tarifaTipus.findMany({ orderBy: [{ grup: 'asc' }, { ordre: 'asc' }] });
+        if (abans.length > 0) {
+          const desDe = new Date(Math.max(...abans.map((r) => r.updatedAt.getTime())));
+          await tx.tarifaTipusVersio.create({ data: { files: instantania(abans), createdAt: desDe } });
+        }
+      }
+
       const conservats: string[] = [];
       for (const f of files) {
         const data = {
@@ -60,7 +86,15 @@ export async function PUT(req: Request) {
       }
       // Esborra les files que ja no són al payload.
       await tx.tarifaTipus.deleteMany({ where: { id: { notIn: conservats.length ? conservats : ['__cap__'] } } });
-      return tx.tarifaTipus.findMany({ orderBy: [{ grup: 'asc' }, { ordre: 'asc' }] });
+      const ara = await tx.tarifaTipus.findMany({ orderBy: [{ grup: 'asc' }, { ordre: 'asc' }] });
+
+      // Versió nova només si els preus han canviat respecte de l'última.
+      const ultima = await tx.tarifaTipusVersio.findFirst({ orderBy: { createdAt: 'desc' } });
+      const versio = instantania(ara);
+      if (!ultima || estable(ultima.files) !== estable(versio)) {
+        await tx.tarifaTipusVersio.create({ data: { files: versio, usuariId: auth.id } });
+      }
+      return ara;
     });
 
     await audit({ usuariId: auth.id, accio: 'MODIFICACIO', entitat: 'tarifa_tipus', detall: { files: files.length }, ip: clientIp(req) });

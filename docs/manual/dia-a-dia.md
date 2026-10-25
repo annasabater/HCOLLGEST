@@ -1243,13 +1243,19 @@ Menú → «Gestió» → «Tarifes». Només administradors.
 - La calculadora del tauler fa servir aquests preus a partir del moment que deses.
 - El full en PDF també.
 - Les temporades que has esborrat de la pantalla s'esborren de veritat en desar.
+- Cada cop que deses amb algun canvi, els preus queden guardats com una **versió** a «Versions anteriors», a baix de tot de la pàgina, amb la data i qui els ha desat.
+
+**Veure els preus d'abans**
+1. Baixa fins a **«Versions anteriors»**. Cada línia diu «Des del …» i «fins al …» (la de dalt de tot són els «preus actuals»).
+2. Clica una línia per obrir-la: surten les tres taules amb els preus que hi havia aleshores.
+3. Les caselles **en groc** són les que van canviar en aquella versió. Si hi passes el ratolí, diu el preu d'abans.
 
 **Per què es fa així**
 Perquè només hi hagi un lloc on canviar els preus i tot l'altre (calculadora, PDF) quedi al dia.
 
 **Si t'has equivocat**
 - Si encara **no has desat**, recarrega la pàgina: tornen els preus d'abans.
-- Si ja has desat, torna a escriure els preus bons i desa de nou.
+- Si ja has desat, obre la versió bona a «Versions anteriors» i clica **«Recupera aquests preus»**: es carreguen a dalt. Després clica **«Desar canvis»** perquè tornin a ser els vigents.
 
 **Compte!**
 - **Res es desa fins que cliques «Desar canvis».** Si surts de la pàgina abans, perds els canvis. El botó està apagat mentre no hagis canviat res.
