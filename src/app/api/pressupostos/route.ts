@@ -3,12 +3,14 @@ import { authorize, clientIp } from '@/lib/auth/guard';
 import { ROLES_ADMIN } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
 import { created, handleApiError } from '@/lib/http';
-import { proximNumeroPressupost } from '@/lib/services/pressupost';
+import { proximNumeroPressupost, calculaTotalsPressupost } from '@/lib/services/pressupost';
+import { PressupostCalculSchema } from '@/lib/validation/pressupost';
 
 // POST /api/pressupostos — crea un pressupost nou amb el següent número i una
 // línia buida, i el compte per defecte (IBAN de l'establiment). Retorna l'id.
 // Opcionalment s'enllaça a una estada (?estanciaId o body.estanciaId): en aquest
 // cas prefilla les dades del client amb les del titular de l'estada.
+// Des de la calculadora de preus, el body porta també { linies, ivaPercent, notes }.
 export async function POST(req: Request) {
   try {
     const auth = await authorize(ROLES_ADMIN);
@@ -44,6 +46,12 @@ export async function POST(req: Request) {
       }
     }
 
+    // Des de la calculadora de preus: ja ve amb línies, IVA i notes.
+    const calcul = PressupostCalculSchema.safeParse(body);
+    const linies = calcul.success && calcul.data.linies.length ? calcul.data.linies : [{ descripcio: '', import: 0 }];
+    const ivaPercent = calcul.success ? calcul.data.ivaPercent : 21;
+    const totals = calculaTotalsPressupost(linies, ivaPercent);
+
     const numero = await proximNumeroPressupost(prisma);
     const est = await prisma.establiment.findFirst({ select: { iban: true } });
     const p = await prisma.pressupost.create({
@@ -55,11 +63,10 @@ export async function POST(req: Request) {
         clientAdreca,
         clientLocalitat,
         compte: est?.iban ?? null,
-        ivaPercent: 21,
-        base: 0,
-        iva: 0,
-        total: 0,
-        linies: { create: [{ descripcio: '', import: 0 }] },
+        notes: calcul.success ? calcul.data.notes || null : null,
+        ivaPercent,
+        ...totals,
+        linies: { create: linies },
       },
     });
     await audit({ usuariId: auth.id, accio: 'CREACIO', entitat: 'pressupost', entitatId: p.id, ip: clientIp(req) });

@@ -149,7 +149,7 @@ export default async function DashboardPage() {
         <GlobalSearch />
       </div>
 
-      <CalculadoraPreu />
+      <CalculadoraPreu potFerPressupost={isAdmin} />
 
       <BenvingudesPendents
         pendents={resum.benvingudes.pendents}

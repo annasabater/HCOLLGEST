@@ -3,13 +3,21 @@ import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { BackLink } from '@/components/ui/back-link';
 import { PageHeader } from '@/components/ui/page-header';
-import { PressupostForm, type PressupostData } from '@/components/pressupost/pressupost-form';
+import { PressupostForm, type PressupostData, type CalculOrigen } from '@/components/pressupost/pressupost-form';
 import { toISODate } from '@/lib/dates';
+import { GRUP_TARIFA, type GrupTarifa } from '@/lib/validation/tarifa-tipus';
 
 export const dynamic = 'force-dynamic';
 
-export default async function PressupostDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PressupostDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   const { id } = await params;
+  const sp = await searchParams;
   const user = await getSessionUser();
   if (user?.role !== 'ADMIN') redirect('/');
 
@@ -51,11 +59,17 @@ export default async function PressupostDetailPage({ params }: { params: Promise
       : [{ descripcio: '', import: '' }],
   };
 
+  // Ve de la calculadora amb canvi d'habitació: permet mostrar-lo o amagar-lo.
+  const calcul: CalculOrigen | null =
+    sp.grup && GRUP_TARIFA.includes(sp.grup as GrupTarifa) && sp.entrada && sp.sortida
+      ? { grup: sp.grup as GrupTarifa, entrada: sp.entrada, sortida: sp.sortida, mostrarCanvi: sp.canvi === '1' }
+      : null;
+
   return (
     <div>
       <BackLink fallback="/pressupostos">Pressupostos</BackLink>
       <PageHeader title={`Pressupost ${p.numero}`} subtitle="Edita’l i imprimeix-lo" />
-      <PressupostForm inicial={inicial} />
+      <PressupostForm inicial={inicial} calcul={calcul} />
     </div>
   );
 }
