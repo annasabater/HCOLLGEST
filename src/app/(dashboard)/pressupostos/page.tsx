@@ -5,9 +5,8 @@ import { getSessionUser } from '@/lib/auth/session';
 import { PageHeader } from '@/components/ui/page-header';
 import { FinancesNav } from '@/components/balanc/finances-nav';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
-import { Eur, HideAmountsButton } from '@/components/finances/amounts-visibility';
 import { NouPressupostButton } from '@/components/pressupost/nou-pressupost-button';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatEur } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,12 +25,7 @@ export default async function PressupostosPage() {
       <PageHeader
         title="Pressupostos"
         subtitle={`${pressupostos.length} pressupostos`}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <HideAmountsButton />
-            <NouPressupostButton />
-          </div>
-        }
+        actions={<NouPressupostButton />}
       />
 
       <FinancesNav />
@@ -58,9 +52,8 @@ export default async function PressupostosPage() {
                 </Td>
                 <Td>{formatDate(p.data)}</Td>
                 <Td>{p.clientNom || '—'}</Td>
-                <Td className="text-right font-medium">
-                  <Eur value={Number(p.total)} />
-                </Td>
+                {/* Sempre visible: un pressupost no és un import de caixa (no s'amaga amb l'ull). */}
+                <Td className="text-right font-medium">{formatEur(Number(p.total))}</Td>
               </Tr>
             ))}
           </tbody>
