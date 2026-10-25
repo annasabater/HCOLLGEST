@@ -5,6 +5,7 @@ import { ROLES_WRITE } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
 import { created, handleApiError, ok } from '@/lib/http';
 import { buscaDuplicats, respostaDuplicat } from '@/lib/services/gasto-duplicats';
+import { vinculaGastoAServei } from '@/lib/services/serveis-recurrents';
 import { GastoCreateSchema } from '@/lib/validation/gasto';
 import { campsIva, type LiniaIva } from '@/lib/gasto-iva';
 
@@ -123,7 +124,13 @@ export async function POST(req: Request) {
       detall: { import: data.import, categoriaId: data.categoriaId },
       ip: clientIp(req),
     });
-    return created({ gasto });
+
+    // Factura d'un proveïdor amb servei recurrent (p. ex. Gestaigua) → queda
+    // vinculada al servei i n'avança la propera data.
+    const servei = proveidorId && !gasto.esFianca
+      ? await vinculaGastoAServei(gasto.id, proveidorId, gasto.categoriaId, gasto.data, auth.id)
+      : null;
+    return created({ gasto, servei });
   } catch (err) {
     return handleApiError(err);
   }

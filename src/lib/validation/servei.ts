@@ -7,6 +7,7 @@ import { metodeCobramentValues } from './enums';
 
 export const frequenciaServeiValues = [
   'MENSUAL',
+  'BIMESTRAL',
   'TRIMESTRAL',
   'SEMESTRAL',
   'ANUAL',
@@ -18,6 +19,7 @@ export type FrequenciaServeiValue = (typeof frequenciaServeiValues)[number];
 
 export const FREQUENCIA_SERVEI_LABELS: Record<FrequenciaServeiValue, string> = {
   MENSUAL: 'Mensual',
+  BIMESTRAL: 'Bimestral (cada 2 mesos)',
   TRIMESTRAL: 'Trimestral (cada 3 mesos)',
   SEMESTRAL: 'Semestral (cada 6 mesos)',
   ANUAL: 'Anual (1 cop a l’any)',
@@ -28,6 +30,7 @@ export const FREQUENCIA_SERVEI_LABELS: Record<FrequenciaServeiValue, string> = {
 /** Mesos entre dues ocurrències, o null si és puntual (sense recurrència). */
 export const FREQUENCIA_MESOS: Record<FrequenciaServeiValue, number | null> = {
   MENSUAL: 1,
+  BIMESTRAL: 2,
   TRIMESTRAL: 3,
   SEMESTRAL: 6,
   ANUAL: 12,

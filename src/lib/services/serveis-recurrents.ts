@@ -119,6 +119,57 @@ export async function registrarFacturaServei(
 }
 
 /**
+ * Vincula una despesa pujada des de «Despeses» al servei del seu proveïdor
+ * (p. ex. una factura de Gestaigua → servei «Aigua»), com si s'hagués registrat
+ * des de «Serveis». Només si el proveïdor té UN sol servei actiu de la mateixa
+ * categoria (o sense categoria): si en té més, no sabem quin és, i una despesa
+ * d'una altra categoria (p. ex. el 50 % de la llum que es paga a la propietària)
+ * no és la factura del servei. En mode "només recordatori" (generaDespesa = false) també
+ * avança la propera data un període, sempre que la factura sigui del període
+ * pendent (data ≥ properaData − mig període): una factura antiga només es vincula.
+ * Els serveis automàtics ja avancen sols quan generen la seva despesa.
+ */
+export async function vinculaGastoAServei(
+  gastoId: string,
+  proveidorId: string,
+  categoriaId: string,
+  dataGasto: Date,
+  usuariId?: string | null,
+): Promise<{ serveiId: string; activitat: string; properaData: Date | null } | null> {
+  const serveis = await prisma.serveiRecurrent.findMany({
+    where: { proveidorId, deletedAt: null, actiu: true, OR: [{ categoriaId: null }, { categoriaId }] },
+  });
+  if (serveis.length !== 1) return null;
+  const s = serveis[0]!;
+
+  await prisma.gasto.update({ where: { id: gastoId }, data: { serveiRecurrentId: s.id } });
+
+  let properaData: Date | null = null;
+  if (!s.generaDespesa) {
+    const mesos = FREQUENCIA_MESOS[s.frequencia as FrequenciaServeiValue];
+    const llindar = addMonthsKeepDay(s.properaData, -Math.max(1, Math.floor((mesos ?? 2) / 2)));
+    if (dataGasto >= llindar) {
+      // Claim condicional: si una altra petició ja l'ha avançat, no l'avancem dos cops.
+      const seguent = mesos != null ? addMonthsKeepDay(s.properaData, mesos) : null;
+      const claim = await prisma.serveiRecurrent.updateMany({
+        where: { id: s.id, properaData: s.properaData },
+        data: seguent ? { properaData: seguent } : { actiu: false },
+      });
+      if (claim.count === 1) properaData = seguent;
+    }
+  }
+
+  await audit({
+    usuariId: usuariId ?? null,
+    accio: 'MODIFICACIO',
+    entitat: 'gasto',
+    entitatId: gastoId,
+    detall: { origen: 'vinculat_a_servei', serveiId: s.id, properaData },
+  });
+  return { serveiId: s.id, activitat: s.activitat, properaData };
+}
+
+/**
  * Genera les despeses de tots els serveis vençuts (properaData ≤ ara) i avança
  * la data. Retorna el nombre de despeses creades. Segur per cridar sovint.
  */

@@ -207,6 +207,7 @@ enum TipusAbsencia {
 // Periodicitat d'un servei/manteniment recurrent (assegurances, extintors, LOPD…).
 enum FrequenciaServei {
   MENSUAL
+  BIMESTRAL
   TRIMESTRAL
   SEMESTRAL
   ANUAL

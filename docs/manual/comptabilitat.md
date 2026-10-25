@@ -479,7 +479,7 @@ No cal que sàpigues comptabilitat. Cada vegada que surti una paraula "de gestor
 1. Prem **«Nou servei»** (a dalt a la dreta). S'obre **«Nou servei recurrent»**.
 2. **«Activitat / servei»** (obligatori): p. ex. «Sistema de protecció contra incendi».
 3. **«Proveïdor»**: tria'l de la llista.
-4. **«Freqüència»** (obligatori): «Mensual», «Trimestral (cada 3 mesos)», «Semestral (cada 6 mesos)», «Anual (1 cop a l’any)», «Cada 2 anys» o «Puntual (un sol cop)».
+4. **«Freqüència»** (obligatori): «Mensual», «Bimestral (cada 2 mesos)», «Trimestral (cada 3 mesos)», «Semestral (cada 6 mesos)», «Anual (1 cop a l’any)», «Cada 2 anys» o «Puntual (un sol cop)».
 5. **«Propera data (visita/renovació/pagament)»** (obligatori).
 6. **«Import previst €»**: el que costa cada vegada (total).
 7. **«Mètode de pagament»**.

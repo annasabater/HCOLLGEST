@@ -174,6 +174,8 @@ function GastosVariablesTab({
   const fileRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Avís quan la despesa s'ha vinculat sola a un servei recurrent (p. ex. Gestaigua).
+  const [avisServei, setAvisServei] = useState<string | null>(null);
 
   // Escàner del tiquet/factura (OCR amb Claude): estat de la lectura.
   const [scanning, setScanning] = useState(false);
@@ -262,7 +264,13 @@ function GastosVariablesTab({
         esFianca: nova.esFianca,
       };
       const desa = async (ignoraDuplicat: boolean) => {
-        await postJSON('/api/gastos', { ...payload, ...(ignoraDuplicat ? { ignoraDuplicat: true } : {}) });
+        const res = await postJSON<{ servei: { activitat: string; properaData: string | null } | null }>(
+          '/api/gastos', { ...payload, ...(ignoraDuplicat ? { ignoraDuplicat: true } : {}) },
+        );
+        setAvisServei(res?.servei
+          ? `Despesa vinculada al servei «${res.servei.activitat}»` +
+            (res.servei.properaData ? `. Propera factura: ${formatDate(res.servei.properaData)}.` : '.')
+          : null);
         setNova(novaBuida());
         setFile(null); setScanWarnings([]); setScanNouProv(null); setShowForm(false);
         onSavedDate(nova.data);
@@ -537,6 +545,13 @@ function GastosVariablesTab({
       <div className="mb-4 flex justify-end">
         <Button onClick={() => setShowForm((s) => !s)}><Plus className="h-4 w-4" /> Nova despesa</Button>
       </div>
+
+      {avisServei && (
+        <div className="mb-4 flex items-start justify-between gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          <span>{avisServei}</span>
+          <button onClick={() => setAvisServei(null)} className="shrink-0 text-green-600 hover:text-green-800">✕</button>
+        </div>
+      )}
 
       {showForm && (
         <Card className="mb-6">

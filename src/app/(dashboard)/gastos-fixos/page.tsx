@@ -21,9 +21,10 @@ interface GasFix {
   gastos: { id: string; data: string; import: string }[];
 }
 
-const FREQUENCIES = ['MENSUAL', 'TRIMESTRAL', 'SEMESTRAL', 'ANUAL', 'BIENNAL', 'PUNTUAL'];
+const FREQUENCIES = ['MENSUAL', 'BIMESTRAL', 'TRIMESTRAL', 'SEMESTRAL', 'ANUAL', 'BIENNAL', 'PUNTUAL'];
 const FREQ_LABELS: Record<string, string> = {
   MENSUAL: 'Mensual',
+  BIMESTRAL: 'Bimestral',
   TRIMESTRAL: 'Trimestral',
   SEMESTRAL: 'Semestral',
   ANUAL: 'Anual',
@@ -54,6 +55,7 @@ function advanceDate(date: Date, frequencia: string): Date {
   const next = new Date(date);
   switch (frequencia) {
     case 'MENSUAL': next.setMonth(next.getMonth() + 1); break;
+    case 'BIMESTRAL': next.setMonth(next.getMonth() + 2); break;
     case 'TRIMESTRAL': next.setMonth(next.getMonth() + 3); break;
     case 'SEMESTRAL': next.setMonth(next.getMonth() + 6); break;
     case 'ANUAL': next.setMonth(next.getMonth() + 12); break;
