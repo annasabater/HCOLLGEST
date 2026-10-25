@@ -3,41 +3,25 @@
  * disponibilitat d'habitacions per al taulell. Regles (acordades):
  * - L'estada es PARTEIX per temporada: cada tram de dates (p. ex. dies de maig i
  *   dies de juny) es cobra amb el preu de la seva temporada.
- * - Dins de cada tram, combinació per blocs grans primer: mes (30) → 2 setmanes
- *   (14) → setmana (7); els dies que sobren a `preuDia4` si en queden ≥4, si no `preuDia`.
+ * - Dins de cada tram, el preu el fa `desglossa` (../preu-estada): 30 nits o més
+ *   → mes ÷ 30 × nits; menys → 2 setmanes / setmana / dies, amb el mes de màxim.
  * - Temporada AUTOMÀTICA pel mes de cada nit (via `mesos`); es pot FORÇAR una
  *   sola temporada per a tota l'estada amb el desplegable.
  */
 import 'server-only';
 import { prisma } from '../db';
 import { nights, toISODate } from '../dates';
-import { whereTocaHabitacio, tramsSolapats, SELECT_CANVIS } from '../habitacio-trams';
+import { whereTocaHabitacio, tramsSolapats, tramsHabitacio, SELECT_CANVIS } from '../habitacio-trams';
 import { GRUP_TARIFA, type GrupTarifa } from '../validation/tarifa-tipus';
 import { planificaHabitacions, type TramPla } from '../pressupost-calcul';
+import { desglossa, NITS_MES, type LiniaCalcul, type Preus } from '../preu-estada';
+
+export type { LiniaCalcul } from '../preu-estada';
 
 const n = (d: unknown) => (d == null ? null : Number(d));
 const r2 = (x: number) => Math.round((x + Number.EPSILON) * 100) / 100;
 const addDies = (d: Date, dies: number) => { const x = new Date(d); x.setDate(x.getDate() + dies); return x; };
-// Suma `m` mesos de CALENDARI mantenint el dia del mes (clamp al darrer dia si
-// el mes destí no el té: 31/01 + 1 mes → 28/02). Així un "mes" va del dia X al
-// mateix dia del mes següent, tingui 28, 30 o 31 dies.
-const addMesos = (d: Date, m: number) => {
-  const x = new Date(d);
-  const dia = x.getDate();
-  x.setDate(1);
-  x.setMonth(x.getMonth() + m);
-  const ultimDia = new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate();
-  x.setDate(Math.min(dia, ultimDia));
-  return x;
-};
 const MESOS_CA = ['gener', 'febrer', 'març', 'abril', 'maig', 'juny', 'juliol', 'agost', 'setembre', 'octubre', 'novembre', 'desembre'];
-
-export interface LiniaCalcul {
-  concepte: string;
-  quantitat: number;
-  preuUnitat: number;
-  subtotal: number;
-}
 
 export interface SegmentCalcul {
   etiqueta: string;
@@ -69,10 +53,6 @@ export interface ResultatCalcul {
   } | null;
 }
 
-interface Preus {
-  preuDia: number | null; preuDia4: number | null;
-  preuSetmana: number | null; preuDosSetmanes: number | null; preuMes: number | null;
-}
 type Fila = { id: string; etiqueta: string; nota: string | null; mesos: number[] } & Preus;
 
 function preusDe(f: { preuDia: unknown; preuDia4: unknown; preuSetmana: unknown; preuDosSetmanes: unknown; preuMes: unknown }): Preus {
@@ -83,47 +63,6 @@ function preusDe(f: { preuDia: unknown; preuDia4: unknown; preuSetmana: unknown;
 }
 const esBuida = (p: Preus) => p.preuDia == null && p.preuDia4 == null && p.preuSetmana == null && p.preuDosSetmanes == null && p.preuMes == null;
 
-/**
- * Desglossa una estada [desde, fins) en MESOS DE CALENDARI + 2 setmanes + setmana
- * + dies, amb el preu de cada tram. Un mes és del dia X al mateix dia del mes
- * següent (no 30 nits fixos): 01/08→01/09 = 1 mes, 01/02→01/04 = 2 mesos. El dia
- * de sortida no es paga (no dormen aquella nit).
- */
-function desglossa(desde: Date, fins: Date, p: Preus): LiniaCalcul[] {
-  const linies: LiniaCalcul[] = [];
-
-  // 1) Mesos de calendari complets.
-  let cursor = new Date(desde);
-  if (p.preuMes) {
-    let mesos = 0;
-    while (addMesos(cursor, 1) <= fins) { cursor = addMesos(cursor, 1); mesos++; }
-    if (mesos > 0) {
-      linies.push({ concepte: 'Mes', quantitat: mesos, preuUnitat: p.preuMes, subtotal: r2(mesos * p.preuMes) });
-    }
-  }
-
-  // 2) Nits que sobren després de l'últim mes complet.
-  let rem = nights(cursor, fins);
-  const bloc = (preu: number | null, dies: number, nom: string) => {
-    if (!preu || rem < dies) return;
-    const q = Math.floor(rem / dies);
-    if (q <= 0) return;
-    linies.push({ concepte: nom, quantitat: q, preuUnitat: preu, subtotal: r2(q * preu) });
-    rem -= q * dies;
-  };
-  bloc(p.preuDosSetmanes, 14, '2 setmanes');
-  bloc(p.preuSetmana, 7, 'Setmana');
-  if (rem > 0) {
-    const diaFb = p.preuDia ?? p.preuDia4 ?? (p.preuSetmana ? p.preuSetmana / 7 : p.preuMes ? p.preuMes / 30 : 0);
-    const dia4Fb = p.preuDia4 ?? p.preuDia ?? diaFb;
-    const usaDia4 = rem >= 4 && (p.preuDia4 != null || p.preuDia == null);
-    const preuUnitat = r2(usaDia4 ? dia4Fb : diaFb);
-    linies.push({ concepte: rem >= 4 ? 'Dia (4+ dies)' : 'Dia', quantitat: rem, preuUnitat, subtotal: r2(rem * preuUnitat) });
-    rem = 0;
-  }
-  return linies;
-}
-
 function tipusFisic(grup: GrupTarifa): { label: string; match: string } {
   return grup === 'INDIVIDUAL' ? { label: 'Individual', match: 'ndividual' } : { label: 'Doble', match: 'oble' };
 }
@@ -133,6 +72,9 @@ export async function calcularPreu(opts: {
   entrada: Date;
   sortida: Date;
   temporadaId?: string | null;
+  // A preu de mes ÷ 30. Per defecte, si aquest càlcul fa 30 nits o més; quan és
+  // un tram d'una estada més llarga (o s'allarga), el decideix qui crida.
+  mensual?: boolean;
 }): Promise<ResultatCalcul> {
   const buit = (error: string): ResultatCalcul => ({
     ok: false, error, nits: 0, grup: opts.grup, grupUsat: opts.grup,
@@ -180,7 +122,7 @@ export async function calcularPreu(opts: {
     let j = i + 1;
     while (j < nits && filaDe(j).fila.id === start.fila.id) j++;
     const segNits = j - i;
-    const linies = desglossa(addDies(opts.entrada, i), addDies(opts.entrada, j), start.preus);
+    const linies = desglossa(segNits, start.preus, opts.mensual ?? nits >= NITS_MES);
     segments.push({
       etiqueta: start.fila.etiqueta,
       desde: toISODate(addDies(opts.entrada, i)),
@@ -285,7 +227,7 @@ export async function proposaPeriodesPerMes(estanciaId: string, importe: number)
 
   const est = await prisma.estancia.findFirst({
     where: { id: estanciaId, deletedAt: null },
-    select: { dataEntrada: true, dataSortida: true, numViatgers: true, habitacio: { select: { tipus: true } } },
+    select: { habitacioId: true, dataEntrada: true, dataSortida: true, numViatgers: true, ...SELECT_CANVIS },
   });
   if (!est?.dataEntrada || !est?.dataSortida) return fail("L'estada no té dates d'entrada i sortida");
   const entrada = est.dataEntrada;
@@ -294,17 +236,33 @@ export async function proposaPeriodesPerMes(estanciaId: string, importe: number)
   if (nitsTotal <= 0) return fail('Dates no vàlides');
 
   // Tipus d'habitació → grup de tarifa.
-  const tipus = est.habitacio?.tipus ?? '';
-  const grup: GrupTarifa = /ndividual/i.test(tipus)
+  const grupDe = (tipus: string): GrupTarifa => /ndividual/i.test(tipus)
     ? 'INDIVIDUAL'
     : (est.numViatgers ?? 2) <= 1 ? 'DOBLE_1P' : 'DOBLE';
 
-  const calc = await calcularPreu({ grup, entrada, sortida });
-  const calculadoraTotal = calc.total;
+  // Si ha canviat d'habitació (p. ex. de doble a individual), cada tram es
+  // calcula amb la tarifa de la seva habitació, però com a part de l'estada
+  // sencera (una estada d'un mes va a preu de mes a tots els trams).
+  const trams = tramsHabitacio(est);
+  const habs = await prisma.habitacio.findMany({
+    where: { id: { in: trams.map((t) => t.habitacioId).filter((id): id is string => !!id) } },
+    select: { id: true, tipus: true },
+  });
+  const tipusDe = new Map(habs.map((h) => [h.id, h.tipus ?? '']));
+  const grup = grupDe(tipusDe.get(est.habitacioId ?? '') ?? '');
+  const segments: SegmentCalcul[] = [];
+  for (const t of trams) {
+    const desde = t.desde ?? entrada;
+    const fins = t.fins ?? sortida;
+    if (fins <= desde) continue;
+    const calc = await calcularPreu({ grup: grupDe(tipusDe.get(t.habitacioId ?? '') ?? ''), entrada: desde, sortida: fins, mensual: nitsTotal >= NITS_MES });
+    segments.push(...calc.segments);
+  }
+  const calculadoraTotal = r2(segments.reduce((a, s) => a + s.subtotal, 0));
 
   // Preu/nit efectiu de cada nit segons el segment (temporada/tram) que la cobreix.
   const perNightDe = (dataISO: string): number => {
-    const seg = calc.segments.find((s) => dataISO >= s.desde && dataISO < s.fins);
+    const seg = segments.find((s) => dataISO >= s.desde && dataISO < s.fins);
     if (!seg || seg.nits <= 0) return 1;
     return seg.subtotal / seg.nits;
   };

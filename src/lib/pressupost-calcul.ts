@@ -133,3 +133,36 @@ export function liniesPressupost(opts: {
     notes: `L'estada inclou ${canvis.length === 1 ? 'un canvi' : `${canvis.length} canvis`} d'habitació ${canvis.join(' i ')}, de la mateixa categoria i al mateix preu.`,
   };
 }
+
+export interface TramCalcul {
+  tipus: string; // "Habitació Doble"
+  entrada: string;
+  sortida: string;
+  nits: number;
+  total: number; // amb IVA inclòs
+  detall?: string; // "650 €/mes ÷ 30"
+  observacio?: string;
+}
+
+/**
+ * Pressupost d'una estada feta a trams a la calculadora (p. ex. uns dies a la
+ * doble i després a la individual): una línia per tram, amb el seu detall i
+ * observació. La base total quadra amb el total amb IVA; l'última línia
+ * absorbeix el residu d'arrodoniment.
+ */
+export function liniesPressupostTrams(trams: TramCalcul[]): PressupostDeCalcul {
+  const total = r2(trams.reduce((a, t) => a + t.total, 0));
+  const base = baseDeTotal(total);
+  let acumulat = 0;
+  return {
+    ivaPercent: IVA_ALLOTJAMENT,
+    linies: trams.map((t, k) => {
+      const v = k === trams.length - 1 ? r2(base - acumulat) : r2(total ? (base * t.total) / total : 0);
+      acumulat = r2(acumulat + v);
+      const detall = t.detall ? ` (${t.detall})` : '';
+      const obs = t.observacio?.trim() ? ` — ${t.observacio.trim()}` : '';
+      return { descripcio: `${t.tipus} · del ${dataCurta(t.entrada)} al ${dataCurta(t.sortida)} · ${nitsTxt(t.nits)}${detall}${obs}`, import: v };
+    }),
+    notes: '',
+  };
+}

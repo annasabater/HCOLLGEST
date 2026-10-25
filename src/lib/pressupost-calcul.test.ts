@@ -1,5 +1,20 @@
 import { describe, it, expect } from 'vitest';
-import { planificaHabitacions, liniesPressupost, baseDeTotal, isoMesDies } from './pressupost-calcul';
+import { planificaHabitacions, liniesPressupost, liniesPressupostTrams, baseDeTotal, isoMesDies } from './pressupost-calcul';
+
+describe('liniesPressupostTrams', () => {
+  it('una línia per tram amb detall i observació; les bases quadren amb el total', () => {
+    const p = liniesPressupostTrams([
+      { tipus: 'Habitació Doble', entrada: '2026-10-25', sortida: '2026-10-27', nits: 2, total: 43.33, detall: '650 €/mes ÷ 30' },
+      { tipus: 'Habitació Individual', entrada: '2026-10-27', sortida: '2026-11-24', nits: 28, total: 457.33, detall: '490 €/mes ÷ 30', observacio: ' Quan quedi lliure la 3 ' },
+    ]);
+    expect(p.linies.map((l) => l.descripcio)).toEqual([
+      'Habitació Doble · del 25/10/2026 al 27/10/2026 · 2 nits (650 €/mes ÷ 30)',
+      'Habitació Individual · del 27/10/2026 al 24/11/2026 · 28 nits (490 €/mes ÷ 30) — Quan quedi lliure la 3',
+    ]);
+    const base = p.linies.reduce((a, l) => a + l.import, 0);
+    expect(Math.round(base * 100) / 100).toBe(baseDeTotal(500.66));
+  });
+});
 
 describe('isoMesDies', () => {
   it('suma dies sense salts d’hora (canvi d’horari d’octubre)', () => {
