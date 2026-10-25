@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Calculator, BedDouble, Check, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Calculator, BedDouble, Check, X, Repeat, FilePlus2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
-import { getJSON, ApiError } from '@/lib/api';
+import { getJSON, postJSON, ApiError } from '@/lib/api';
+import { liniesPressupost, type TramPla } from '@/lib/pressupost-calcul';
 import { formatEur } from '@/lib/utils';
 import { GRUP_TARIFA, GRUP_TARIFA_LABELS, type GrupTarifa } from '@/lib/validation/tarifa-tipus';
 
@@ -21,7 +23,13 @@ interface Resultat {
   segments: Segment[];
   total: number;
   nota: string | null;
-  disponibilitat: { tipus: string; lliures: number; total: number; habitacions: { nom: string; lliure: boolean; ocupadaPer: string | null }[] } | null;
+  disponibilitat: {
+    tipus: string;
+    lliures: number;
+    total: number;
+    habitacions: { nom: string; lliure: boolean; ocupadaPer: string | null }[];
+    pla: TramPla[] | null;
+  } | null;
 }
 
 function avui(offset = 0): string {
@@ -33,7 +41,9 @@ function fmt(iso: string): string {
   return new Date(iso + 'T12:00:00').toLocaleDateString('ca-ES', { day: '2-digit', month: '2-digit' });
 }
 
-export function CalculadoraPreu() {
+export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost?: boolean }) {
+  const router = useRouter();
+  const [creant, setCreant] = useState(false);
   const [entrada, setEntrada] = useState(avui());
   const [sortida, setSortida] = useState(avui(1));
   const [grup, setGrup] = useState<GrupTarifa>('DOBLE');
@@ -60,6 +70,28 @@ export function CalculadoraPreu() {
 
   function onCanviBase() {
     setRes(null);
+  }
+
+  // Crea un pressupost amb aquest preu (i el canvi d'habitació, si n'hi ha) i hi
+  // entra. Les dades del càlcul van a la URL perquè el pressupost pugui mostrar o
+  // amagar el canvi.
+  async function ferPressupost() {
+    if (!res) return;
+    setCreant(true);
+    setError(null);
+    try {
+      const pla = res.disponibilitat?.pla ?? null;
+      const dades = liniesPressupost({
+        tipus: GRUP_TARIFA_LABELS[res.grup], entrada, sortida, nits: res.nits, total: res.total,
+        segments: res.segments, pla, mostrarCanvi: true,
+      });
+      const r = await postJSON<{ id: string }>('/api/pressupostos', dades);
+      const q = pla ? `?${new URLSearchParams({ grup, entrada, sortida, canvi: '1' }).toString()}` : '';
+      router.push(`/pressupostos/${r.id}${q}`);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'No s’ha pogut crear el pressupost');
+      setCreant(false);
+    }
   }
 
   const multi = (res?.segments.length ?? 0) > 1;
@@ -153,8 +185,8 @@ export function CalculadoraPreu() {
                 <BedDouble className="h-4 w-4 text-slate-400" />
                 <span className="text-sm font-medium text-slate-700">
                   Disponibilitat {res.disponibilitat.tipus} ·{' '}
-                  <span className={res.disponibilitat.lliures > 0 ? 'text-green-600' : 'text-red-600'}>
-                    {res.disponibilitat.lliures} de {res.disponibilitat.total} lliures
+                  <span className={res.disponibilitat.lliures > 0 ? 'text-green-600' : res.disponibilitat.pla ? 'text-amber-700' : 'text-red-600'}>
+                    {res.disponibilitat.lliures} de {res.disponibilitat.total} lliures{res.disponibilitat.pla ? ' tota l’estada' : ''}
                   </span>
                 </span>
               </div>
@@ -170,6 +202,34 @@ export function CalculadoraPreu() {
                   </div>
                 ))}
               </div>
+              {res.disponibilitat.pla && (
+                <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
+                  <div className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-amber-800">
+                    <Repeat className="h-4 w-4" /> Es pot fer amb un canvi d&apos;habitació
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-slate-800">
+                    {res.disponibilitat.pla.map((t, i) => (
+                      <span key={i} className="flex items-center gap-2">
+                        {i > 0 && <span className="text-amber-700" aria-hidden="true">→</span>}
+                        <span className="rounded-md border border-amber-200 bg-white px-2 py-0.5">
+                          <strong>Hab. {t.habitacio}</strong> · {fmt(t.desde)}–{fmt(t.fins)}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {potFerPressupost && (
+            <div className="lg:col-span-2">
+              <Button variant="outline" className="w-full" onClick={ferPressupost} disabled={creant}>
+                <FilePlus2 className="h-4 w-4" /> {creant ? 'Creant…' : 'Fer pressupost amb aquest preu'}
+              </Button>
+              {res.disponibilitat && res.disponibilitat.lliures === 0 && !res.disponibilitat.pla && (
+                <p className="mt-1 text-center text-xs text-amber-700">No hi ha disponibilitat per a aquestes dates, però el pressupost es pot fer igualment.</p>
+              )}
             </div>
           )}
         </div>

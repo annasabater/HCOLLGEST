@@ -13,6 +13,7 @@ import { prisma } from '../db';
 import { nights, toISODate } from '../dates';
 import { whereTocaHabitacio, tramsSolapats, SELECT_CANVIS } from '../habitacio-trams';
 import { GRUP_TARIFA, type GrupTarifa } from '../validation/tarifa-tipus';
+import { planificaHabitacions, type TramPla } from '../pressupost-calcul';
 
 const n = (d: unknown) => (d == null ? null : Number(d));
 const r2 = (x: number) => Math.round((x + Number.EPSILON) * 100) / 100;
@@ -63,6 +64,8 @@ export interface ResultatCalcul {
     lliures: number;
     total: number;
     habitacions: { nom: string; lliure: boolean; ocupadaPer: string | null }[];
+    // Cap habitació lliure tota l'estada però sí canviant-ne: els trams (si no, null).
+    pla: TramPla[] | null;
   } | null;
 }
 
@@ -206,13 +209,25 @@ export async function calcularPreu(opts: {
     select: { habitacioId: true, dataEntrada: true, dataSortida: true, ...SELECT_CANVIS, viatgers: { where: { esTitular: true }, take: 1, select: { huesped: { select: { nom: true, cognom1: true } } } } },
   });
   const ocupadaPer = new Map<string, string>();
+  // Nits (índex 0..nits-1) que cada habitació està ocupada, per proposar canvis.
+  const nitsOcupades = new Map<string, Set<number>>();
+  const idx = (d: Date) => Math.round((d.getTime() - opts.entrada.getTime()) / 86_400_000);
   for (const o of ocupacions) {
     const h = o.viatgers[0]?.huesped;
     for (const t of tramsSolapats(o, opts.entrada, opts.sortida)) {
-      if (t.habitacioId) ocupadaPer.set(t.habitacioId, h ? `${h.nom} ${h.cognom1}` : 'Ocupada');
+      if (!t.habitacioId || !t.desde || !t.fins) continue;
+      ocupadaPer.set(t.habitacioId, h ? `${h.nom} ${h.cognom1}` : 'Ocupada');
+      const set = nitsOcupades.get(t.habitacioId) ?? new Set<number>();
+      for (let k = Math.max(0, idx(t.desde)); k < Math.min(nits, idx(t.fins)); k++) set.add(k);
+      nitsOcupades.set(t.habitacioId, set);
     }
   }
   const habitacions = habs.map((h) => ({ nom: h.nom, lliure: !ocupadaPer.has(h.id), ocupadaPer: ocupadaPer.get(h.id) ?? null }));
+  const pla = planificaHabitacions(
+    toISODate(opts.entrada),
+    nits,
+    habs.map((h) => ({ nom: h.nom, ocupades: nitsOcupades.get(h.id) ?? new Set<number>() })),
+  );
 
   return {
     ok: true,
@@ -229,6 +244,7 @@ export async function calcularPreu(opts: {
       lliures: habitacions.filter((h) => h.lliure).length,
       total: habitacions.length,
       habitacions,
+      pla,
     },
   };
 }

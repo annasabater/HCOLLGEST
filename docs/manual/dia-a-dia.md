@@ -85,11 +85,14 @@ Menú → «Tauler» → quadre «Calculadora de preus» (és el primer quadre, 
 5. A l'esquerra surt el preu: el nombre de nits, la temporada, una línia per cada tram (per exemple «Setmana ×1», «Dia ×3») amb el preu de cada tram i, a baix, el «Total».
 6. Si l'estada agafa dues temporades (per exemple, finals de juny i principis de juliol), surt un bloc per a cada temporada, amb «Del … al … · N nits» i el seu «Subtotal».
 7. A la dreta surt la disponibilitat: «Disponibilitat Doble · 2 de 4 lliures», i la llista de cada «Hab.» amb «Lliure» (en verd) o el nom de qui l'ocupa (en vermell).
+8. Si cap habitació està lliure **tota** l'estada però sí canviant d'habitació a mitja estada, a sota surt un requadre groc «Es pot fer amb un canvi d'habitació» amb la proposta, per exemple «Hab. 5 · 24/10–26/10 → Hab. 6 · 26/10–28/10».
+9. Si vols donar-li el preu per escrit, prem «Fer pressupost amb aquest preu» (només per a administradors). L'app crea un pressupost nou amb les dates, el tipus d'habitació i el preu ja posats (IVA del 10 % inclòs, el total és el mateix) i t'hi porta. Només cal posar-hi el client i desar.
+10. Si hi havia canvi d'habitació, al pressupost surt el quadre «Estada calculada» amb la casella «Mostrar el canvi d'habitació al pressupost». Marcada: una línia per a cada habitació i una nota que explica el canvi. Desmarcada: una sola línia per a tota l'estada. Cada cop que la canvies, es reescriuen els conceptes; després prem «Desar».
 
 [FOTO id=calculadora-resultat ruta=/ descripcio="Resultat de la calculadora amb dues temporades (dos blocs amb subtotal), el Total en gran i la llista de disponibilitat a la dreta" marques="Subtotal|Total|Disponibilitat|Lliure"]
 
 **Què passa després / d'on surten les dades**
-- La calculadora **no reserva res ni desa res**. Si canvies una data o el tipus, el resultat s'esborra fins que tornes a clicar «Calcular».
+- La calculadora **no reserva res ni desa res** (només el botó «Fer pressupost» crea un pressupost). Si canvies una data o el tipus, el resultat s'esborra fins que tornes a clicar «Calcular».
 - Els preus surten de la pantalla «Tarifes». Les temporades es trien soles segons els mesos que hi hagis posat a la columna «Mesos».
 - La disponibilitat mira totes les estades que no estan cancel·lades i que toquen aquelles nits (també els canvis d'habitació a mitja estada).
 - Com fa els comptes exactament ho tens a l'apartat «Com sé què calcularà la calculadora (com fa els comptes)».

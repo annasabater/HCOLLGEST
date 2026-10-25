@@ -10,6 +10,8 @@ import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { patchJSON, delJSON, ApiError } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EstadaPicker } from '@/components/pressupost/estada-picker';
+import { CanviHabitacioCard } from '@/components/pressupost/canvi-habitacio-card';
+import type { GrupTarifa } from '@/lib/validation/tarifa-tipus';
 import { LANGS, type Lang } from '@/lib/plantilles';
 import { formatEur } from '@/lib/utils';
 
@@ -31,9 +33,17 @@ export interface PressupostData {
   linies: { descripcio: string; import: string }[];
 }
 
+/** Pressupost creat des de la calculadora amb canvi d'habitació (dades a la URL). */
+export interface CalculOrigen {
+  grup: GrupTarifa;
+  entrada: string;
+  sortida: string;
+  mostrarCanvi: boolean;
+}
+
 const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
-export function PressupostForm({ inicial }: { inicial: PressupostData }) {
+export function PressupostForm({ inicial, calcul = null }: { inicial: PressupostData; calcul?: CalculOrigen | null }) {
   const router = useRouter();
   const [v, setV] = useState<PressupostData>(inicial);
   const [saving, setSaving] = useState(false);
@@ -138,6 +148,19 @@ export function PressupostForm({ inicial }: { inicial: PressupostData }) {
           </Field>
         </CardBody>
       </Card>
+
+      {calcul && (
+        <CanviHabitacioCard
+          calcul={calcul}
+          onCanvi={(d, notaAnterior) => setV((p) => ({
+            ...p,
+            ivaPercent: d.ivaPercent,
+            linies: d.linies.map((l) => ({ descripcio: l.descripcio, import: String(l.import) })),
+            // Treu la nota automàtica anterior i manté la resta del que hagi escrit.
+            notes: [notaAnterior ? p.notes.replace(notaAnterior, '').trim() : p.notes.trim(), d.notes].filter(Boolean).join('\n'),
+          }))}
+        />
+      )}
 
       <Card>
         <CardHeader><CardTitle>Estada (opcional)</CardTitle></CardHeader>

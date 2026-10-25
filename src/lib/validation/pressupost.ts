@@ -24,4 +24,11 @@ export const PressupostSaveSchema = z.object({
   linies: z.array(LiniaPressupostSchema).default([]),
 });
 
+// Pressupost nou creat des de la calculadora de preus (POST /api/pressupostos).
+export const PressupostCalculSchema = z.object({
+  linies: z.array(LiniaPressupostSchema).min(1),
+  ivaPercent: z.coerce.number().min(0),
+  notes: z.string().trim().default(''),
+});
+
 export type PressupostInput = z.infer<typeof PressupostSaveSchema>;
