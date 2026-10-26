@@ -20,17 +20,27 @@ describe('desglossa: estada de 30 nits o més (mes ÷ 30)', () => {
   });
   it('un tros curt d\'una estada llarga també va a ÷ 30 (canvi doble → individual)', () => {
     // 20 nits a la doble + 15 a la individual (estada de 35 nits).
-    expect(total(desglossa(20, DOBLE, true))).toBe(433.33);
-    expect(total(desglossa(15, INDIVIDUAL, true))).toBe(245);
+    expect(total(desglossa(20, DOBLE, true, 35))).toBe(433.33);
+    expect(total(desglossa(15, INDIVIDUAL, true, 35))).toBe(245);
   });
-  it('forçat a mà: allargar 10 nits una estada d\'un mes', () => {
-    expect(total(desglossa(10, DOBLE, true))).toBe(216.67);
+  it('forçat a mà, 10 nits: setmana ÷ 7', () => {
+    expect(total(desglossa(10, DOBLE, true))).toBe(500);
   });
   it('forçat a «per nits»: mes sencer + setmanes i dies', () => {
     expect(total(desglossa(31, DOBLE, false))).toBe(706); // 650 + 56
     expect(desglossa(32, DOBLE, false).map((l) => [l.concepte, l.quantitat])).toEqual([['Mes', 1], ['Dia', 2]]); // 650 + 2 × 56
     expect(total(desglossa(45, DOBLE, false))).toBe(1156); // 650 + 450 + 56
     expect(total(desglossa(67, DOBLE, false))).toBe(1650); // 2 × 650 + 350
+  });
+  it('regla de 3 forçada en estades curtes: el bloc més gran que hi cap', () => {
+    expect(desglossa(16, DOBLE, true)).toEqual([{ concepte: '450 €/2 setmanes ÷ 14', quantitat: 16, preuUnitat: 32.14, subtotal: 514.29 }]);
+    expect(total(desglossa(14, DOBLE, true))).toBe(450);
+    expect(total(desglossa(9, DOBLE, true))).toBe(450); // 350 ÷ 7 × 9
+    expect(total(desglossa(5, DOBLE, true))).toBe(108.33); // menys d'una setmana: mes ÷ 30
+  });
+  it('el bloc el decideixen les nits de l’estada sencera, no les del tram', () => {
+    expect(total(desglossa(10, DOBLE, true, 35))).toBe(216.67); // tram de 10 d'una estada de 35: mes ÷ 30
+    expect(total(desglossa(10, DOBLE, true, 16))).toBe(321.43); // tram de 10 d'una de 16: 450 ÷ 14
   });
   it('una línia amb el preu/nit i les nits', () => {
     expect(desglossa(31, DOBLE)).toEqual([{ concepte: '650 €/mes ÷ 30', quantitat: 31, preuUnitat: 21.67, subtotal: 671.67 }]);

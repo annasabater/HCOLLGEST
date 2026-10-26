@@ -75,6 +75,9 @@ export async function calcularPreu(opts: {
   // A preu de mes ÷ 30. Per defecte, si aquest càlcul fa 30 nits o més; quan és
   // un tram d'una estada més llarga (o s'allarga), el decideix qui crida.
   mensual?: boolean;
+  // Nits de l'estada sencera (si això n'és un tram): decideixen el bloc de la
+  // regla de 3 (mes, 2 setmanes o setmana). Per defecte, les d'aquest càlcul.
+  nitsEstada?: number;
 }): Promise<ResultatCalcul> {
   const buit = (error: string): ResultatCalcul => ({
     ok: false, error, nits: 0, grup: opts.grup, grupUsat: opts.grup,
@@ -122,7 +125,7 @@ export async function calcularPreu(opts: {
     let j = i + 1;
     while (j < nits && filaDe(j).fila.id === start.fila.id) j++;
     const segNits = j - i;
-    const linies = desglossa(segNits, start.preus, opts.mensual ?? nits >= NITS_MES);
+    const linies = desglossa(segNits, start.preus, opts.mensual ?? nits >= NITS_MES, opts.nitsEstada ?? nits);
     segments.push({
       etiqueta: start.fila.etiqueta,
       desde: toISODate(addDies(opts.entrada, i)),
@@ -255,7 +258,7 @@ export async function proposaPeriodesPerMes(estanciaId: string, importe: number)
     const desde = t.desde ?? entrada;
     const fins = t.fins ?? sortida;
     if (fins <= desde) continue;
-    const calc = await calcularPreu({ grup: grupDe(tipusDe.get(t.habitacioId ?? '') ?? ''), entrada: desde, sortida: fins, mensual: nitsTotal >= NITS_MES });
+    const calc = await calcularPreu({ grup: grupDe(tipusDe.get(t.habitacioId ?? '') ?? ''), entrada: desde, sortida: fins, mensual: nitsTotal >= NITS_MES, nitsEstada: nitsTotal });
     segments.push(...calc.segments);
   }
   const calculadoraTotal = r2(segments.reduce((a, s) => a + s.subtotal, 0));

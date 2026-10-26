@@ -100,7 +100,7 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
       // La temporada SEMPRE surt de les dates (partint per temporada si l'estada
       // creua mesos). El preu de mes es decideix per l'estada SENCERA, no per tram.
       const calculats = await Promise.all(trams.map(async (t, k) => {
-        const p = new URLSearchParams({ grup: t.grup, entrada: entradaDe(k), sortida: t.sortida, mensual: mensual ? '1' : '0' });
+        const p = new URLSearchParams({ grup: t.grup, entrada: entradaDe(k), sortida: t.sortida, mensual: mensual ? '1' : '0', nitsEstada: String(nitsTotal) });
         const r = await getJSON<Resultat>(`/api/tarifes-tipus/calcular?${p.toString()}`);
         return { entrada: entradaDe(k), sortida: t.sortida, grup: t.grup, observacio: t.observacio, res: r };
       }));
@@ -301,7 +301,7 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
               <span className="font-serif text-base text-slate-800">Total</span>
               <span className="text-xl font-bold text-brand-800">{formatEur(total)}</span>
             </div>
-            {mensual && <p className="mt-1 text-xs text-slate-500">Cada nit al preu del mes de la seva habitació i temporada ÷ 30, sense arrodonir: només s&apos;arrodoneix el total al cèntim.</p>}
+            {mensual && <p className="mt-1 text-xs text-slate-500">Regla de 3: cada nit al preu del bloc més gran que hi cap (mes ÷ 30, 2 setmanes ÷ 14 o setmana ÷ 7) de la seva habitació i temporada, sense arrodonir: només s&apos;arrodoneix el total al cèntim.</p>}
             {[...new Set(res.map((c) => c.res.nota).filter(Boolean))].map((n) => <p key={n} className="mt-1 text-xs text-slate-400">{n}</p>)}
           </div>
 
