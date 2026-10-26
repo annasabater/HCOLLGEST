@@ -21,6 +21,8 @@ export const PressupostSaveSchema = z.object({
   compte: optStr,
   notes: optStr,
   ivaPercent: z.coerce.number().min(0).default(21),
+  // Amaga Base i IVA al document imprès. Absent = no es toca.
+  ocultaIva: z.boolean().optional(),
   linies: z.array(LiniaPressupostSchema).default([]),
 });
 

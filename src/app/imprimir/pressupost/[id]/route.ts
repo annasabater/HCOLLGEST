@@ -56,10 +56,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   // Traduccions de les etiquetes del document imprès (per defecte català).
   const idioma = (['ca', 'es', 'fr', 'en'].includes(p.idioma) ? p.idioma : 'ca') as 'ca' | 'es' | 'fr' | 'en';
   const DICT = {
-    ca: { doc: 'Pressupost', oferta: 'Oferta', casa: 'Casa de Hostes', per: 'Per a', numero: 'Número', data: 'Data', valid: 'Vàlid fins a', estada: 'Estada · contracte', concepte: 'Concepte', import: 'Import (€)', base: 'Base', iva: 'IVA', total: 'Total', formaPag: 'Forma de pagament', phCli: 'Nom del client / empresa', phNif: 'NIF / CIF (opcional)', phDom: 'Domicili (opcional)', phLoc: 'Localitat (opcional)', phData: 'dd/mm/aaaa' },
-    es: { doc: 'Presupuesto', oferta: 'Oferta', casa: 'Casa de Huéspedes', per: 'Para', numero: 'Número', data: 'Fecha', valid: 'Válido hasta', estada: 'Estancia · contrato', concepte: 'Concepto', import: 'Importe (€)', base: 'Base', iva: 'IVA', total: 'Total', formaPag: 'Forma de pago', phCli: 'Nombre del cliente / empresa', phNif: 'NIF / CIF (opcional)', phDom: 'Domicilio (opcional)', phLoc: 'Localidad (opcional)', phData: 'dd/mm/aaaa' },
-    fr: { doc: 'Devis', oferta: 'Offre', casa: "Maison d'hôtes", per: 'Pour', numero: 'Numéro', data: 'Date', valid: "Valable jusqu'au", estada: 'Séjour · contrat', concepte: 'Description', import: 'Montant (€)', base: 'Base', iva: 'TVA', total: 'Total', formaPag: 'Mode de paiement', phCli: 'Nom du client / entreprise', phNif: 'NIF / CIF (facultatif)', phDom: 'Adresse (facultatif)', phLoc: 'Ville (facultatif)', phData: 'jj/mm/aaaa' },
-    en: { doc: 'Quote', oferta: 'Offer', casa: 'Guest House', per: 'For', numero: 'Number', data: 'Date', valid: 'Valid until', estada: 'Stay · contract', concepte: 'Description', import: 'Amount (€)', base: 'Subtotal', iva: 'VAT', total: 'Total', formaPag: 'Payment method', phCli: 'Client / company name', phNif: 'Tax ID (optional)', phDom: 'Address (optional)', phLoc: 'City (optional)', phData: 'dd/mm/yyyy' },
+    ca: { doc: 'Pressupost', oferta: 'Oferta', casa: 'Casa de Hostes', per: 'Per a', numero: 'Número', data: 'Data', valid: 'Vàlid fins a', estada: 'Estada · contracte', concepte: 'Concepte', import: 'Import (€)', base: 'Base', iva: 'IVA', total: 'Total', ivaIncl: '(IVA inclòs)', formaPag: 'Forma de pagament', phCli: 'Nom del client / empresa', phNif: 'NIF / CIF (opcional)', phDom: 'Domicili (opcional)', phLoc: 'Localitat (opcional)', phData: 'dd/mm/aaaa' },
+    es: { doc: 'Presupuesto', oferta: 'Oferta', casa: 'Casa de Huéspedes', per: 'Para', numero: 'Número', data: 'Fecha', valid: 'Válido hasta', estada: 'Estancia · contrato', concepte: 'Concepto', import: 'Importe (€)', base: 'Base', iva: 'IVA', total: 'Total', ivaIncl: '(IVA incluido)', formaPag: 'Forma de pago', phCli: 'Nombre del cliente / empresa', phNif: 'NIF / CIF (opcional)', phDom: 'Domicilio (opcional)', phLoc: 'Localidad (opcional)', phData: 'dd/mm/aaaa' },
+    fr: { doc: 'Devis', oferta: 'Offre', casa: "Maison d'hôtes", per: 'Pour', numero: 'Numéro', data: 'Date', valid: "Valable jusqu'au", estada: 'Séjour · contrat', concepte: 'Description', import: 'Montant (€)', base: 'Base', iva: 'TVA', total: 'Total', ivaIncl: '(TVA incluse)', formaPag: 'Mode de paiement', phCli: 'Nom du client / entreprise', phNif: 'NIF / CIF (facultatif)', phDom: 'Adresse (facultatif)', phLoc: 'Ville (facultatif)', phData: 'jj/mm/aaaa' },
+    en: { doc: 'Quote', oferta: 'Offer', casa: 'Guest House', per: 'For', numero: 'Number', data: 'Date', valid: 'Valid until', estada: 'Stay · contract', concepte: 'Description', import: 'Amount (€)', base: 'Subtotal', iva: 'VAT', total: 'Total', ivaIncl: '(VAT included)', formaPag: 'Payment method', phCli: 'Client / company name', phNif: 'Tax ID (optional)', phDom: 'Address (optional)', phLoc: 'City (optional)', phData: 'dd/mm/yyyy' },
   } as const;
   const T = DICT[idioma];
 
@@ -178,6 +178,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   .sum-row.grand{ margin-top:6px; background:var(--warm-tint); border-top:2px solid var(--accent); border-radius:4px; padding:13px 12px; }
   .sum-row.grand .lab{ color:var(--ink); font-family:Georgia,serif; font-size:16px; letter-spacing:.5px; }
   .sum-row.grand .val{ color:var(--ink); font-size:20px; }
+  /* Opció «Amagar base i IVA»: només queda el Total (IVA inclòs). */
+  body.oculta-iva .sum-iva{ display:none; }
+  .iva-incl{ display:none; font-family:"Manrope","Segoe UI",sans-serif; font-size:11px; color:var(--muted); letter-spacing:0; }
+  body.oculta-iva .iva-incl{ display:inline; }
+  body.oculta-iva .sum-row.grand{ margin-top:0; }
+  .tb-toggle{ display:flex; align-items:center; gap:6px; font-size:13px; color:var(--ink); cursor:pointer; user-select:none; }
 
   .footer{ margin-top:34px; padding-top:16px; border-top:1px solid var(--line); }
   .pay{ border:1px solid var(--line); background:var(--warm-tint); border-radius:6px; padding:12px 14px; font-size:12.5px; }
@@ -228,11 +234,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   }
 </style>
 </head>
-<body>
+<body${p.ocultaIva ? ' class="oculta-iva"' : ''}>
 
 <div class="toolbar">
   <div class="tb-brand">Hostal Coll<span class="tb-badge">Pressupost</span></div>
   <div class="tb-actions">
+    <label class="tb-toggle" title="Al PDF només surt el Total (IVA inclòs)"><input type="checkbox" id="ocultaIva"${p.ocultaIva ? ' checked' : ''}> Amagar base i IVA</label>
     <button id="addLine" class="btn ghost">+ Afegir línia</button>
     <button id="save" class="btn ghost" title="Desa número, data, client, línies i notes (queda guardat)">Desar canvis</button>
     <button id="printPdf" class="btn solid">Imprimir PDF</button>
@@ -290,9 +297,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     </div>
 
     <div class="summary">
-      <div class="sum-row"><span class="lab">${T.base}</span><span class="val" id="base">${money(base)}</span></div>
-      <div class="sum-row"><span class="lab">${T.iva} (<input id="ivaPercent" class="in iva-pct" inputmode="decimal" aria-label="${T.iva} %" value="${ivaPercent}">%)</span><span class="val" id="iva">${money(iva)}</span></div>
-      <div class="sum-row grand"><span class="lab">${T.total}</span><span class="val" id="total">${money(total)}</span></div>
+      <div class="sum-row sum-iva"><span class="lab">${T.base}</span><span class="val" id="base">${money(base)}</span></div>
+      <div class="sum-row sum-iva"><span class="lab">${T.iva} (<input id="ivaPercent" class="in iva-pct" inputmode="decimal" aria-label="${T.iva} %" value="${ivaPercent}">%)</span><span class="val" id="iva">${money(iva)}</span></div>
+      <div class="sum-row grand"><span class="lab">${T.total} <span class="iva-incl">${T.ivaIncl}</span></span><span class="val" id="total">${money(total)}</span></div>
     </div>
 
   </div>
@@ -373,6 +380,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     }
   }, true);
 
+  // «Amagar base i IVA»: s'aplica a l'instant i es desa amb «Desar canvis» / «Imprimir PDF».
+  document.getElementById('ocultaIva').addEventListener('change', e => {
+    document.body.classList.toggle('oculta-iva', e.target.checked);
+  });
+
   document.getElementById('addLine').addEventListener('click', () => {
     const tbody = document.querySelector('#items tbody');
     const row = document.querySelector('.item').cloneNode(true);
@@ -424,6 +436,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       clientAdreca: document.getElementById('clientAdreca').value,
       clientLocalitat: document.getElementById('clientLocalitat').value,
       ivaPercent: num(document.getElementById('ivaPercent').value),
+      ocultaIva: document.getElementById('ocultaIva').checked,
       linies,
     };
 

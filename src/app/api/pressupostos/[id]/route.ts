@@ -53,6 +53,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
           compte: input.compte === undefined ? undefined : input.compte,
           notes: input.notes === undefined ? undefined : input.notes,
           ivaPercent: input.ivaPercent,
+          ocultaIva: input.ocultaIva,
           base: totals.base,
           iva: totals.iva,
           total: totals.total,

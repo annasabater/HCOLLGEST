@@ -30,6 +30,7 @@ export interface PressupostData {
   compte: string;
   notes: string;
   ivaPercent: number;
+  ocultaIva: boolean; // al document imprès, només el Total (sense Base ni IVA)
   linies: { descripcio: string; import: string }[];
 }
 
@@ -79,6 +80,7 @@ export function PressupostForm({ inicial, calcul = null }: { inicial: Pressupost
         compte: v.compte,
         notes: v.notes,
         ivaPercent: Number(v.ivaPercent) || 0,
+        ocultaIva: v.ocultaIva,
         linies: v.linies
           .filter((l) => l.descripcio.trim() || l.import.trim())
           .map((l) => ({ descripcio: l.descripcio, import: parseFloat(l.import.replace(',', '.')) || 0 })),
@@ -233,6 +235,10 @@ export function PressupostForm({ inicial, calcul = null }: { inicial: Pressupost
             <div className="flex justify-between border-t border-slate-100 pt-1 text-base font-semibold text-slate-900">
               <span>Total</span><span>{formatEur(totals.total)}</span>
             </div>
+            <label className="flex items-center gap-2 pt-2 text-xs text-slate-600">
+              <input type="checkbox" checked={v.ocultaIva} onChange={(e) => set('ocultaIva', e.target.checked)} />
+              Amagar base i IVA al document imprès (només el total)
+            </label>
           </div>
         </CardBody>
       </Card>

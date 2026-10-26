@@ -54,6 +54,7 @@ export default async function PressupostDetailPage({
     compte: p.compte ?? '',
     notes: p.notes ?? '',
     ivaPercent: Number(p.ivaPercent),
+    ocultaIva: p.ocultaIva,
     linies: p.linies.length
       ? p.linies.map((l) => ({ descripcio: l.descripcio, import: String(Number(l.import)) }))
       : [{ descripcio: '', import: '' }],

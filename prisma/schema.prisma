@@ -825,6 +825,8 @@ model Pressupost {
   ivaPercent      Decimal   @default(21) @map("iva_percent") @db.Decimal(5, 2)
   iva             Decimal   @default(0) @db.Decimal(10, 2)
   total           Decimal   @default(0) @db.Decimal(10, 2)
+  // Al document imprès, amaga les files Base i IVA (només surt el Total).
+  ocultaIva       Boolean   @default(false) @map("oculta_iva")
 
   linies LiniaPressupost[]
 
