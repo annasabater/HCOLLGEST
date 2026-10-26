@@ -63,7 +63,13 @@ function preusDe(f: { preuDia: unknown; preuDia4: unknown; preuSetmana: unknown;
 }
 const esBuida = (p: Preus) => p.preuDia == null && p.preuDia4 == null && p.preuSetmana == null && p.preuDosSetmanes == null && p.preuMes == null;
 
-function tipusFisic(grup: GrupTarifa): { label: string; match: string } {
+/** Tarifes actives (el full de preus), per passar-les a `calcularPreu`. */
+export function carregaTarifes() {
+  return prisma.tarifaTipus.findMany({ where: { actiu: true }, orderBy: [{ grup: 'asc' }, { ordre: 'asc' }] });
+}
+export type TarifaFila = Awaited<ReturnType<typeof carregaTarifes>>[number];
+
+export function tipusFisic(grup: GrupTarifa): { label: string; match: string } {
   return grup === 'INDIVIDUAL' ? { label: 'Individual', match: 'ndividual' } : { label: 'Doble', match: 'oble' };
 }
 
@@ -78,6 +84,10 @@ export async function calcularPreu(opts: {
   // Nits de l'estada sencera (si això n'és un tram): decideixen el bloc de la
   // regla de 3 (mes, 2 setmanes o setmana). Per defecte, les d'aquest càlcul.
   nitsEstada?: number;
+  // Per calcular molts preus seguits (propostes): tarifes ja carregades i sense
+  // mirar la disponibilitat.
+  tarifes?: TarifaFila[];
+  senseDisponibilitat?: boolean;
 }): Promise<ResultatCalcul> {
   const buit = (error: string): ResultatCalcul => ({
     ok: false, error, nits: 0, grup: opts.grup, grupUsat: opts.grup,
@@ -88,7 +98,7 @@ export async function calcularPreu(opts: {
   const nits = nights(opts.entrada, opts.sortida);
   if (nits <= 0) return buit('La data de sortida ha de ser posterior a la d\'entrada');
 
-  const totes = await prisma.tarifaTipus.findMany({ where: { actiu: true }, orderBy: [{ grup: 'asc' }, { ordre: 'asc' }] });
+  const totes = opts.tarifes ?? (await carregaTarifes());
   const delGrup = totes.filter((t) => t.grup === opts.grup).map((t) => ({ id: t.id, etiqueta: t.etiqueta, nota: t.nota, mesos: t.mesos, ...preusDe(t) })) as Fila[];
   const doble = totes.filter((t) => t.grup === 'DOBLE').map((t) => ({ id: t.id, etiqueta: t.etiqueta, nota: t.nota, mesos: t.mesos, ...preusDe(t) })) as Fila[];
   const temporades = delGrup.map((t) => ({ id: t.id, etiqueta: t.etiqueta }));
@@ -137,6 +147,13 @@ export async function calcularPreu(opts: {
     i = j;
   }
   const total = r2(segments.reduce((a, s) => a + s.subtotal, 0));
+
+  if (opts.senseDisponibilitat) {
+    return {
+      ok: true, nits, grup: opts.grup, grupUsat, temporades, temporadaForcada: forcada?.id ?? null,
+      segments, total, nota: notes.size ? [...notes].join(' ') : null, disponibilitat: null,
+    };
+  }
 
   // Disponibilitat: habitacions del tipus físic lliures en el rang [entrada, sortida).
   const tf = tipusFisic(opts.grup);
