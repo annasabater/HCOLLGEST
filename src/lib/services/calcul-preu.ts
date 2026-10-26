@@ -14,7 +14,7 @@ import { nights, toISODate } from '../dates';
 import { whereTocaHabitacio, tramsSolapats, tramsHabitacio, SELECT_CANVIS } from '../habitacio-trams';
 import { GRUP_TARIFA, type GrupTarifa } from '../validation/tarifa-tipus';
 import { planificaHabitacions, type TramPla } from '../pressupost-calcul';
-import { desglossa, NITS_MES, type LiniaCalcul, type Preus } from '../preu-estada';
+import { desglossa, nitsPerBloc, NITS_MES, type BlocReglaDe3, type LiniaCalcul, type Preus } from '../preu-estada';
 
 export type { LiniaCalcul } from '../preu-estada';
 
@@ -84,6 +84,8 @@ export async function calcularPreu(opts: {
   // Nits de l'estada sencera (si això n'és un tram): decideixen el bloc de la
   // regla de 3 (mes, 2 setmanes o setmana). Per defecte, les d'aquest càlcul.
   nitsEstada?: number;
+  // Bloc de la regla de 3 triat a mà (sense: el que toca per les nits).
+  bloc?: BlocReglaDe3;
   // Per calcular molts preus seguits (propostes): tarifes ja carregades i sense
   // mirar la disponibilitat.
   tarifes?: TarifaFila[];
@@ -128,14 +130,17 @@ export async function calcularPreu(opts: {
   // Construeix els trams. Amb temporada forçada → un sol tram per tota l'estada.
   // En automàtic → un tram per cada seqüència de nits de la mateixa temporada.
   const segments: SegmentCalcul[] = [];
-  const filaDe = (i: number) => resoldre(addDies(opts.entrada, i).getMonth() + 1, forcada);
+  // Un mes de calendari sencer (febrer) compta com a mes encara que no arribi a 30 nits.
+  const nitsEstada = opts.nitsEstada ?? nitsPerBloc(toISODate(opts.entrada), toISODate(opts.sortida));
+  const mensual = opts.mensual ?? nitsEstada >= NITS_MES;
+  const filaDe =(i: number) => resoldre(addDies(opts.entrada, i).getMonth() + 1, forcada);
   let i = 0;
   while (i < nits) {
     const start = filaDe(i);
     let j = i + 1;
     while (j < nits && filaDe(j).fila.id === start.fila.id) j++;
     const segNits = j - i;
-    const linies = desglossa(segNits, start.preus, opts.mensual ?? nits >= NITS_MES, opts.nitsEstada ?? nits);
+    const linies = desglossa(segNits, start.preus, mensual, nitsEstada, opts.bloc);
     segments.push({
       etiqueta: start.fila.etiqueta,
       desde: toISODate(addDies(opts.entrada, i)),
@@ -254,6 +259,7 @@ export async function proposaPeriodesPerMes(estanciaId: string, importe: number)
   const sortida = est.dataSortida;
   const nitsTotal = nights(entrada, sortida);
   if (nitsTotal <= 0) return fail('Dates no vàlides');
+  const nitsBloc = nitsPerBloc(toISODate(entrada), toISODate(sortida));
 
   // Tipus d'habitació → grup de tarifa.
   const grupDe = (tipus: string): GrupTarifa => /ndividual/i.test(tipus)
@@ -275,7 +281,7 @@ export async function proposaPeriodesPerMes(estanciaId: string, importe: number)
     const desde = t.desde ?? entrada;
     const fins = t.fins ?? sortida;
     if (fins <= desde) continue;
-    const calc = await calcularPreu({ grup: grupDe(tipusDe.get(t.habitacioId ?? '') ?? ''), entrada: desde, sortida: fins, mensual: nitsTotal >= NITS_MES, nitsEstada: nitsTotal });
+    const calc = await calcularPreu({ grup: grupDe(tipusDe.get(t.habitacioId ?? '') ?? ''), entrada: desde, sortida: fins, mensual: nitsBloc >= NITS_MES, nitsEstada: nitsBloc });
     segments.push(...calc.segments);
   }
   const calculadoraTotal = r2(segments.reduce((a, s) => a + s.subtotal, 0));

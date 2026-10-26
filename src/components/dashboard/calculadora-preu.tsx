@@ -6,11 +6,12 @@ import { Calculator, BedDouble, Check, X, Repeat, FilePlus2, Plus, Lightbulb } f
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { getJSON, postJSON, ApiError } from '@/lib/api';
-import { liniesPressupost, liniesPressupostTrams, isoMesDies, type TramPla } from '@/lib/pressupost-calcul';
+import { liniesPressupost, liniesPressupostTrams, isoMesDies, type PressupostDeCalcul, type TramPla } from '@/lib/pressupost-calcul';
+import { nitsPerBloc, NITS_MES, type BlocAplicat, type BlocReglaDe3 } from '@/lib/preu-estada';
 import { formatEur } from '@/lib/utils';
 import { GRUP_TARIFA, GRUP_TARIFA_LABELS, type GrupTarifa } from '@/lib/validation/tarifa-tipus';
 
-interface Linia { concepte: string; quantitat: number; preuUnitat: number; subtotal: number }
+interface Linia { concepte: string; quantitat: number; preuUnitat: number; subtotal: number; bloc?: BlocAplicat }
 interface Segment { etiqueta: string; desde: string; fins: string; nits: number; linies: Linia[]; subtotal: number }
 interface Disponibilitat {
   tipus: string;
@@ -51,7 +52,50 @@ interface DisponibilitatPropostes { habitacions: HabitacioDies[]; propostes: Pro
 // en qualsevol estada: «Per nits» (també si en té 30 o més) o «Regla de tres».
 type Mode = 'auto' | 'nits' | 'mensual';
 
-const NITS_MES = 30;
+// Bloc de la regla de tres: «auto» = el més gran que hi cap; o triat a mà (p. ex.
+// qui ha estat un mes i allarga 2 setmanes → «1 mes»: les 14 nits a mes ÷ 30).
+type Bloc = 'auto' | BlocReglaDe3;
+const BLOCS: { id: Bloc; nom: string; sub: string }[] = [
+  { id: 'auto', nom: 'Automàtic', sub: 'el bloc que hi cap' },
+  { id: 'setmana', nom: '1 setmana', sub: 'preu setmana ÷ 7' },
+  { id: 'dues', nom: '2 setmanes', sub: 'preu 2 setm. ÷ 14' },
+  { id: 'mes', nom: '1 mes', sub: 'preu mes ÷ 30' },
+];
+
+// Correccions a mà d'una línia del resultat (text tal com s'escriu).
+interface LiniaEdit { preu?: string; dies?: string; nits?: string; preuNit?: string; subtotal?: string }
+interface LiniaEfectiva extends Linia { editada: boolean }
+
+const r2 = (x: number) => Math.round((x + Number.EPSILON) * 100) / 100;
+/** «1.026,50» / «21,5» / «21.5» → número (null si no ho és). */
+function num(s: string): number | null {
+  let t = s.trim().replace(/\s|€/g, '');
+  if (!t) return null;
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  else if (!/^-?\d+\.\d{1,2}$/.test(t)) t = t.replace(/\./g, '');
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
+const fmtNum = (n: number, dec = 2) => n.toLocaleString('ca-ES', { minimumFractionDigits: dec, maximumFractionDigits: 2 });
+
+/** La línia amb les correccions aplicades: preu/dies/nits recalculen la resta; el subtotal escrit mana. */
+function efectiva(l: Linia, e?: LiniaEdit): LiniaEfectiva {
+  if (!e || Object.keys(e).length === 0) return { ...l, editada: false };
+  const v = (s: string | undefined, def: number) => (s === undefined ? def : num(s) ?? 0);
+  const preu = l.bloc ? v(e.preu, l.bloc.preu) : 0;
+  const dies = l.bloc ? v(e.dies, l.bloc.dies) : 0;
+  const nits = v(e.nits, l.quantitat);
+  const preuNitCalc = l.bloc ? (dies ? preu / dies : 0) : l.preuUnitat;
+  const preuNit = v(e.preuNit, preuNitCalc);
+  const subtotal = e.subtotal !== undefined
+    ? num(e.subtotal) ?? 0
+    : e.preuNit !== undefined || !l.bloc ? r2(preuNit * nits) : r2(dies ? (preu * nits) / dies : 0);
+  const bloc = l.bloc ? { preu, dies, nom: l.bloc.nom } : undefined;
+  return {
+    concepte: bloc ? `${fmtNum(preu, 0)} €/${bloc.nom} ÷ ${dies}` : l.concepte,
+    quantitat: nits, preuUnitat: r2(preuNit), subtotal: r2(subtotal), bloc, editada: true,
+  };
+}
 
 function avui(offset = 0): string {
   const d = new Date();
@@ -81,16 +125,24 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
   // Ocupació dia a dia de les habitacions i propostes per a l'estada sencera.
   const [prop, setProp] = useState<DisponibilitatPropostes | null>(null);
   const [propSel, setPropSel] = useState(0);
+  const [bloc, setBloc] = useState<Bloc>('auto');
+  // Correccions a mà del resultat (clau «tram.segment.línia») i dates del pressupost per tram.
+  const [edits, setEdits] = useState<Record<string, LiniaEdit>>({});
+  const [datesP, setDatesP] = useState<Record<number, { desde: string; fins: string }>>({});
 
   const entradaDe = (k: number, ts: Tram[] = trams) => (k === 0 ? entrada : ts[k - 1]!.sortida);
   const nitsTotal = nitsEntre(entrada, trams[trams.length - 1]!.sortida);
-  const llarga = nitsTotal >= NITS_MES;
+  // Un mes de calendari sencer (el febrer) també compta com a mes encara que no arribi a 30 nits.
+  const llarga = nitsPerBloc(entrada, trams[trams.length - 1]!.sortida) >= NITS_MES;
   const mensual = mode === 'auto' ? llarga : mode === 'mensual';
 
   function canvia(fn: () => void) {
     fn();
     setRes(null);
     setProp(null);
+  }
+  function editaLinia(key: string, patch: LiniaEdit) {
+    setEdits((ed) => ({ ...ed, [key]: { ...ed[key], ...patch } }));
   }
   function setTram(k: number, patch: Partial<Tram>) {
     canvia(() => setTrams((ts) => ts.map((t, i) => (i === k ? { ...t, ...patch } : t))));
@@ -113,20 +165,23 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
       }
     }
     const sortida = ts[ts.length - 1]!.sortida;
-    const nitsEstada = nitsEntre(entrada, sortida);
+    const nitsEstada = nitsPerBloc(entrada, sortida);
     const esMensual = mode === 'auto' ? nitsEstada >= NITS_MES : mode === 'mensual';
+    const blocTriat: Record<string, string> = esMensual && bloc !== 'auto' ? { bloc } : {};
     setLoading(true);
+    setEdits({});
+    setDatesP({});
     try {
       // La temporada SEMPRE surt de les dates (partint per temporada si l'estada
       // creua mesos). El preu de mes es decideix per l'estada SENCERA, no per tram.
       const calculats = Promise.all(ts.map(async (t, k) => {
-        const p = new URLSearchParams({ grup: t.grup, entrada: entradaDe(k, ts), sortida: t.sortida, mensual: esMensual ? '1' : '0', nitsEstada: String(nitsEstada) });
+        const p = new URLSearchParams({ grup: t.grup, entrada: entradaDe(k, ts), sortida: t.sortida, mensual: esMensual ? '1' : '0', nitsEstada: String(nitsEstada), ...blocTriat });
         const r = await getJSON<Resultat>(`/api/tarifes-tipus/calcular?${p.toString()}`);
         return { entrada: entradaDe(k, ts), sortida: t.sortida, grup: t.grup, observacio: t.observacio, res: r };
       }));
       // Propostes per a l'estada sencera: 2 persones si algun tram és «Habitació Doble».
       const grupEstada: GrupTarifa = ts.some((t) => t.grup === 'DOBLE') ? 'DOBLE' : ts[0]!.grup;
-      const pp = new URLSearchParams({ grup: grupEstada, entrada, sortida, mensual: esMensual ? '1' : '0' });
+      const pp = new URLSearchParams({ grup: grupEstada, entrada, sortida, mensual: esMensual ? '1' : '0', ...blocTriat });
       const propostes = getJSON<DisponibilitatPropostes>(`/api/tarifes-tipus/propostes?${pp.toString()}`).catch(() => null);
       const [cs, pr] = await Promise.all([calculats, propostes]);
       const ko = cs.find((c) => !c.res.ok);
@@ -150,35 +205,56 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
     void calcular(ts, i);
   }
 
-  const total = res ? Math.round(res.reduce((a, c) => a + c.res.total, 0) * 100) / 100 : 0;
-  const detallDe = (c: TramCalculat) => (mensual ? [...new Set(c.res.segments.flatMap((s) => s.linies.map((l) => l.concepte)))].join(' + ') : undefined);
+  // Resultat amb les correccions a mà aplicades: segments i totals per tram.
+  const efectius = (res ?? []).map((c, k) => {
+    const segments = c.res.segments.map((s, si) => {
+      const linies = s.linies.map((l, i) => efectiva(l, edits[`${k}.${si}.${i}`]));
+      return { ...s, linies, subtotal: r2(linies.reduce((a, l) => a + l.subtotal, 0)) };
+    });
+    const totalTram = r2(segments.reduce((a, s) => a + s.subtotal, 0));
+    const linies = segments.flatMap((s) => s.linies);
+    // Si només hi ha línies de regla de tres, les nits són les de les línies (editables).
+    const nits = linies.length > 0 && linies.every((l) => l.bloc) ? linies.reduce((a, l) => a + l.quantitat, 0) : c.res.nits;
+    const dates = datesP[k] ?? { desde: c.entrada, fins: c.sortida };
+    return { ...c, segments, totalTram, nits, dates };
+  });
+  const total = r2(efectius.reduce((a, c) => a + c.totalTram, 0));
+  const hiHaEdicions = Object.keys(edits).length > 0 || Object.keys(datesP).length > 0;
+  const detallDe = (c: (typeof efectius)[number]) => (mensual ? [...new Set(c.segments.flatMap((s) => s.linies.map((l) => l.concepte)))].join(' + ') : undefined);
+  // Canvi d'habitació proposat (un sol tram): el pressupost en fa una línia per habitació.
+  const plaUnTram = efectius.length === 1 ? efectius[0]!.res.disponibilitat?.pla ?? null : null;
 
-  // Crea un pressupost amb aquest preu i hi entra. Amb un sol tram, com sempre
-  // (amb el canvi d'habitació proposat, si n'hi ha); amb trams, una línia per tram.
+  // Línies del pressupost tal com sortiran (també per ensenyar-les abans de crear-lo).
+  // Amb un sol tram, com sempre (amb el canvi d'habitació proposat, si n'hi ha); amb
+  // trams, una línia per tram.
+  function dadesPressupost(): PressupostDeCalcul | null {
+    if (efectius.length === 0) return null;
+    if (efectius.length === 1) {
+      const c = efectius[0]!;
+      const dades = liniesPressupost({
+        tipus: GRUP_TARIFA_LABELS[c.grup], entrada: c.dates.desde, sortida: c.dates.fins, nits: c.nits, total: c.totalTram,
+        segments: c.segments, pla: plaUnTram, mostrarCanvi: true,
+      });
+      dades.notes = [dades.notes, c.observacio.trim()].filter(Boolean).join('\n');
+      return dades;
+    }
+    return liniesPressupostTrams(efectius.map((c) => ({
+      tipus: GRUP_TARIFA_LABELS[c.grup], entrada: c.dates.desde, sortida: c.dates.fins, nits: c.nits,
+      total: c.totalTram, detall: detallDe(c), observacio: c.observacio,
+    })));
+  }
+
+  // Crea un pressupost amb aquest preu i hi entra.
   async function ferPressupost() {
-    if (!res) return;
+    const dades = dadesPressupost();
+    if (!dades) return;
     setCreant(true);
     setError(null);
     try {
-      if (res.length === 1) {
-        const c = res[0]!;
-        const pla = c.res.disponibilitat?.pla ?? null;
-        const dades = liniesPressupost({
-          tipus: GRUP_TARIFA_LABELS[c.grup], entrada: c.entrada, sortida: c.sortida, nits: c.res.nits, total: c.res.total,
-          segments: c.res.segments, pla, mostrarCanvi: true,
-        });
-        dades.notes = [dades.notes, c.observacio.trim()].filter(Boolean).join('\n');
-        const r = await postJSON<{ id: string }>('/api/pressupostos', dades);
-        const q = pla ? `?${new URLSearchParams({ grup: c.grup, entrada: c.entrada, sortida: c.sortida, canvi: '1' }).toString()}` : '';
-        router.push(`/pressupostos/${r.id}${q}`);
-      } else {
-        const dades = liniesPressupostTrams(res.map((c) => ({
-          tipus: GRUP_TARIFA_LABELS[c.grup], entrada: c.entrada, sortida: c.sortida, nits: c.res.nits,
-          total: c.res.total, detall: detallDe(c), observacio: c.observacio,
-        })));
-        const r = await postJSON<{ id: string }>('/api/pressupostos', dades);
-        router.push(`/pressupostos/${r.id}`);
-      }
+      const r = await postJSON<{ id: string }>('/api/pressupostos', dades);
+      const c = efectius[0]!;
+      const q = efectius.length === 1 && plaUnTram ? `?${new URLSearchParams({ grup: c.grup, entrada: c.entrada, sortida: c.sortida, canvi: '1' }).toString()}` : '';
+      router.push(`/pressupostos/${r.id}${q}`);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'No s’ha pogut crear el pressupost');
       setCreant(false);
@@ -225,6 +301,34 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
           </>
         )}
       </p>
+
+      {mensual && (
+        <div className="mb-3 rounded-xl border border-brand-200 bg-brand-50/50 p-3">
+          <p className="mb-2 text-xs font-semibold text-brand-800">Calcular sobre el preu de…</p>
+          <div role="group" aria-label="Bloc de la regla de tres" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {BLOCS.map((b) => {
+              const actiu = bloc === b.id;
+              return (
+                <button
+                  key={b.id}
+                  type="button"
+                  aria-pressed={actiu}
+                  onClick={() => canvia(() => setBloc(b.id))}
+                  className={`min-h-12 rounded-lg px-2 py-1.5 text-center ${actiu ? 'bg-brand-700 text-white' : 'border border-slate-300 bg-white text-slate-700 hover:border-brand-400'}`}
+                >
+                  <span className="block text-sm font-semibold">{b.nom}</span>
+                  <span className={`block text-xs ${actiu ? 'text-white/85' : 'text-slate-500'}`}>{b.sub}</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-xs text-slate-600">
+            {bloc === 'auto'
+              ? 'Agafa el bloc més gran que hi cap segons les nits (mes, 2 setmanes o setmana).'
+              : `Totes les nits al preu de ${BLOCS.find((b) => b.id === bloc)!.nom} de la tarifa, encara que en calculis menys (p. ex. qui ja ha estat ${BLOCS.find((b) => b.id === bloc)!.nom} i allarga).`}
+          </p>
+        </div>
+      )}
 
       <div className="space-y-2">
         {trams.map((t, k) => (
@@ -290,6 +394,14 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
           <div className="rounded-xl border border-slate-200 p-4">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <span className="text-sm text-slate-500">{nitsTxt(nitsTotal)}</span>
+              {hiHaEdicions && (
+                <span className="flex items-center gap-2 text-xs">
+                  <span className="font-semibold text-amber-800">Editat a mà</span>
+                  <button type="button" className="min-h-8 rounded-md border border-slate-300 px-2 text-slate-700 hover:bg-slate-50" onClick={() => { setEdits({}); setDatesP({}); }}>
+                    Restablir
+                  </button>
+                </span>
+              )}
               {mensual
                 ? <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-700">Llarga estada · preu mensual</span>
                 : res.length === 1 && res[0]!.res.segments.length === 1 && (
@@ -299,8 +411,8 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
                 )}
             </div>
 
-            {res.map((c, k) => {
-              const multiSeg = c.res.segments.length > 1;
+            {efectius.map((c, k) => {
+              const multiSeg = c.segments.length > 1;
               return (
                 <div key={k} className={varisTrams || multiSeg ? 'mb-2 rounded-lg bg-slate-50 p-2' : ''}>
                   {varisTrams && (
@@ -309,7 +421,7 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
                       <span className="text-slate-400">Del {fmt(c.entrada)} al {fmt(c.sortida)} · {nitsTxt(c.res.nits)}</span>
                     </div>
                   )}
-                  {c.res.segments.map((s, si) => (
+                  {c.segments.map((s, si) => (
                     <div key={si}>
                       {multiSeg && (
                         <div className="mt-1 flex items-center justify-between text-xs">
@@ -318,16 +430,48 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
                         </div>
                       )}
                       <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                        <table className="w-full min-w-[420px] text-sm">
                           <tbody>
-                            {s.linies.map((l, i) => (
-                              <tr key={i} className="border-b border-slate-100 last:border-0">
-                                <td className="py-1.5 text-slate-700">{l.concepte}</td>
-                                <td className="py-1.5 text-center text-slate-400">×{l.quantitat}</td>
-                                <td className="py-1.5 text-right text-slate-500">{formatEur(l.preuUnitat)}</td>
-                                <td className="py-1.5 text-right font-medium text-slate-800">{formatEur(l.subtotal)}</td>
-                              </tr>
-                            ))}
+                            {s.linies.map((l, i) => {
+                              const key = `${k}.${si}.${i}`;
+                              const e = edits[key] ?? {};
+                              const original = c.res.segments[si]!.linies[i]!;
+                              const camp = 'h-9 rounded-md border border-slate-200 bg-white px-2 text-sm focus:border-brand-400 focus:outline-none';
+                              return (
+                                <tr key={i} className="border-b border-slate-100 last:border-0">
+                                  <td className="py-1.5 pr-2 text-slate-700">
+                                    {l.bloc ? (
+                                      <span className="flex flex-wrap items-center gap-1">
+                                        <input aria-label="Preu del bloc (€)" inputMode="decimal" className={`${camp} w-20 text-right`}
+                                          value={e.preu ?? fmtNum(l.bloc.preu, 0)}
+                                          onChange={(ev) => editaLinia(key, { preu: ev.target.value, preuNit: undefined, subtotal: undefined })} />
+                                        <span className="whitespace-nowrap">€/{l.bloc.nom} ÷</span>
+                                        <input aria-label="Dividir entre (dies)" inputMode="numeric" className={`${camp} w-12 text-right`}
+                                          value={e.dies ?? String(l.bloc.dies)}
+                                          onChange={(ev) => editaLinia(key, { dies: ev.target.value, preuNit: undefined, subtotal: undefined })} />
+                                      </span>
+                                    ) : l.concepte}
+                                  </td>
+                                  <td className="py-1.5 pr-2 text-center text-slate-400">
+                                    <span className="inline-flex items-center gap-0.5">×
+                                      <input aria-label="Nits" inputMode="numeric" className={`${camp} w-14 text-center`}
+                                        value={e.nits ?? String(original.quantitat)}
+                                        onChange={(ev) => editaLinia(key, { nits: ev.target.value, subtotal: undefined })} />
+                                    </span>
+                                  </td>
+                                  <td className="py-1.5 pr-2 text-right">
+                                    <input aria-label="Preu per nit (€)" inputMode="decimal" className={`${camp} w-24 text-right text-slate-500`}
+                                      value={e.preuNit ?? fmtNum(l.preuUnitat)}
+                                      onChange={(ev) => editaLinia(key, { preuNit: ev.target.value, subtotal: undefined })} />
+                                  </td>
+                                  <td className="py-1.5 text-right">
+                                    <input aria-label="Subtotal (€)" inputMode="decimal" className={`${camp} w-28 text-right font-medium text-slate-800`}
+                                      value={e.subtotal ?? fmtNum(l.subtotal)}
+                                      onChange={(ev) => editaLinia(key, { subtotal: ev.target.value })} />
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -335,7 +479,7 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
                   ))}
                   {c.observacio.trim() && <p className="mt-1 text-xs italic text-slate-500">{c.observacio.trim()}</p>}
                   {(varisTrams || multiSeg) && (
-                    <div className="mt-1 text-right text-xs text-slate-500">Subtotal: <strong>{formatEur(c.res.total)}</strong></div>
+                    <div className="mt-1 text-right text-xs text-slate-500">Subtotal: <strong>{formatEur(c.totalTram)}</strong></div>
                   )}
                   {c.res.grupUsat !== c.res.grup && <p className="mt-1 text-xs text-amber-700">Aplicant tarifa d&apos;Habitació Doble.</p>}
                 </div>
@@ -346,7 +490,15 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
               <span className="font-serif text-base text-slate-800">Total</span>
               <span className="text-xl font-bold text-brand-800">{formatEur(total)}</span>
             </div>
-            {mensual && <p className="mt-1 text-xs text-slate-500">Regla de 3: cada nit al preu del bloc més gran que hi cap (mes ÷ 30, 2 setmanes ÷ 14 o setmana ÷ 7) de la seva habitació i temporada, sense arrodonir: només s&apos;arrodoneix el total al cèntim.</p>}
+            {mensual && (
+              <p className="mt-1 text-xs text-slate-500">
+                {bloc === 'auto'
+                  ? 'Regla de 3: cada nit al preu del bloc més gran que hi cap (mes ÷ 30, 2 setmanes ÷ 14 o setmana ÷ 7) de la seva habitació i temporada'
+                  : `Regla de 3 sobre el preu de ${BLOCS.find((b) => b.id === bloc)!.nom}, de la seva habitació i temporada`}
+                , sense arrodonir: només s&apos;arrodoneix el total al cèntim.
+              </p>
+            )}
+            <p className="mt-1 text-xs text-slate-400">Pots corregir el preu, els dies, les nits, el preu per nit o el subtotal: si toques el subtotal, mana el que hi posis.</p>
             {[...new Set(res.map((c) => c.res.nota).filter(Boolean))].map((n) => <p key={n} className="mt-1 text-xs text-slate-400">{n}</p>)}
           </div>
 
@@ -398,7 +550,31 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
           )}
 
           {potFerPressupost && (
-            <div className="lg:col-span-2">
+            <div className="space-y-2 lg:col-span-2">
+              {/* Dates que sortiran al pressupost (per defecte, les del càlcul) i com quedarà. */}
+              {!plaUnTram && (
+                <div className="flex flex-wrap items-end gap-3">
+                  {efectius.map((c, k) => (
+                    <div key={k} className="flex flex-wrap items-end gap-2">
+                      <span className="pb-2 text-xs font-medium text-slate-500">{varisTrams ? `Tram ${k + 1} al pressupost:` : 'Dates al pressupost:'}</span>
+                      <label className="text-xs text-slate-500">
+                        <span className="mb-1 block">Del</span>
+                        <Input type="date" value={c.dates.desde} onChange={(e) => setDatesP((d) => ({ ...d, [k]: { ...c.dates, desde: e.target.value } }))} />
+                      </label>
+                      <label className="text-xs text-slate-500">
+                        <span className="mb-1 block">Al</span>
+                        <Input type="date" value={c.dates.fins} onChange={(e) => setDatesP((d) => ({ ...d, [k]: { ...c.dates, fins: e.target.value } }))} />
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                <span className="font-medium text-slate-500">Al pressupost:</span>
+                <ul className="mt-0.5 space-y-0.5">
+                  {(dadesPressupost()?.linies ?? []).map((l, i) => <li key={i}>«{l.descripcio}»</li>)}
+                </ul>
+              </div>
               <Button variant="outline" className="w-full" onClick={ferPressupost} disabled={creant}>
                 <FilePlus2 className="h-4 w-4" /> {creant ? 'Creant…' : 'Fer pressupost amb aquest preu'}
               </Button>

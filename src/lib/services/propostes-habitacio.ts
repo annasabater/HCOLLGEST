@@ -4,7 +4,7 @@ import { nights, toISODate } from '../dates';
 import { whereTocaHabitacio, tramsSolapats, SELECT_CANVIS } from '../habitacio-trams';
 import { isoMesDies } from '../pressupost-calcul';
 import { proposaHabitacions, type Proposta } from '../propostes-habitacio';
-import { NITS_MES } from '../preu-estada';
+import { NITS_MES, nitsPerBloc, type BlocReglaDe3 } from '../preu-estada';
 import type { GrupTarifa } from '../validation/tarifa-tipus';
 import { calcularPreu, carregaTarifes } from './calcul-preu';
 
@@ -33,6 +33,7 @@ export async function disponibilitatIPropostes(opts: {
   entrada: Date;
   sortida: Date;
   mensual?: boolean;
+  bloc?: BlocReglaDe3;
 }): Promise<{ habitacions: HabitacioDies[]; propostes: Proposta[] }> {
   const nits = nights(opts.entrada, opts.sortida);
   if (nits <= 0) return { habitacions: [], propostes: [] };
@@ -87,7 +88,9 @@ export async function disponibilitatIPropostes(opts: {
 
   // Preu de cada tros amb la tarifa de la seva habitació, com a part de l'estada sencera.
   const tarifes = await carregaTarifes();
-  const mensual = opts.mensual ?? nits >= NITS_MES;
+  // Un mes de calendari sencer (febrer) compta com a mes encara que no arribi a 30 nits.
+  const nitsEstada = nitsPerBloc(entradaIso, toISODate(opts.sortida));
+  const mensual = opts.mensual ?? nitsEstada >= NITS_MES;
   const cache = new Map<string, number>();
   const preu = async (grup: string, i: number, j: number) => {
     const key = `${grup}|${i}|${j}`;
@@ -96,7 +99,7 @@ export async function disponibilitatIPropostes(opts: {
         grup: grup as GrupTarifa,
         entrada: new Date(`${isoMesDies(entradaIso, i)}T00:00:00Z`),
         sortida: new Date(`${isoMesDies(entradaIso, j)}T00:00:00Z`),
-        mensual, nitsEstada: nits, tarifes, senseDisponibilitat: true,
+        mensual, nitsEstada, bloc: opts.bloc, tarifes, senseDisponibilitat: true,
       });
       cache.set(key, r.total);
     }
