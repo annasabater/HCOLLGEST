@@ -47,9 +47,9 @@ interface PropostaHab {
   total: number;
 }
 interface DisponibilitatPropostes { habitacions: HabitacioDies[]; propostes: PropostaHab[] }
-// A partir de 30 nits SEMPRE és preu mensual; a mà només es pot activar per a
-// estades més curtes (p. ex. qui ja ha estat un mes i allarga uns dies).
-type Mode = 'auto' | 'mensual';
+// «auto»: a partir de 30 nits es posa sola la regla de tres. Es pot triar a mà
+// en qualsevol estada: «Per nits» (també si en té 30 o més) o «Regla de tres».
+type Mode = 'auto' | 'nits' | 'mensual';
 
 const NITS_MES = 30;
 
@@ -85,7 +85,7 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
   const entradaDe = (k: number, ts: Tram[] = trams) => (k === 0 ? entrada : ts[k - 1]!.sortida);
   const nitsTotal = nitsEntre(entrada, trams[trams.length - 1]!.sortida);
   const llarga = nitsTotal >= NITS_MES;
-  const mensual = llarga || mode === 'mensual';
+  const mensual = mode === 'auto' ? llarga : mode === 'mensual';
 
   function canvia(fn: () => void) {
     fn();
@@ -195,18 +195,15 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
           <h3 className="font-serif text-lg font-semibold text-slate-800">Calculadora de preus</h3>
         </div>
         <div role="group" aria-label="Tipus de càlcul" className="flex gap-1 rounded-lg bg-slate-100 p-1">
-          {([['auto', 'Per nits'], ['mensual', 'Regla de tres']] as const).map(([m, label]) => {
+          {([['nits', 'Per nits'], ['mensual', 'Regla de tres']] as const).map(([m, label]) => {
             const actiu = m === 'mensual' ? mensual : !mensual;
-            const bloquejat = m === 'auto' && llarga;
             return (
               <button
                 key={m}
                 type="button"
                 aria-pressed={actiu}
-                disabled={bloquejat}
-                title={bloquejat ? 'Una estada de 30 nits o més sempre va a preu mensual' : undefined}
                 onClick={() => canvia(() => setMode(m))}
-                className={`min-h-10 rounded-md px-3 text-sm ${actiu ? 'bg-brand-700 font-medium text-white' : 'text-slate-600 hover:text-slate-800'} disabled:cursor-not-allowed disabled:opacity-50`}
+                className={`min-h-10 rounded-md px-3 text-sm ${actiu ? 'bg-brand-700 font-medium text-white' : 'text-slate-600 hover:text-slate-800'}`}
               >
                 {label}
               </button>
@@ -215,11 +212,18 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
         </div>
       </div>
       <p className="mb-3 text-xs text-slate-500">
-        {llarga
-          ? 'Estada de 30 nits o més: preu del mes ÷ 30 × nits, encara que cada tram sigui més curt.'
-          : mode === 'mensual'
-            ? 'Preu mensual posat a mà (p. ex. allarga una estada d’un mes): preu del mes ÷ 30 × nits.'
-            : 'El preu mensual (preu del mes ÷ 30 × nits) s’activa sol quan l’estada arriba a 30 nits. Per a estades més curtes el pots posar a mà (p. ex. si allarga una estada d’un mes).'}
+        {mode === 'auto' ? (
+          llarga
+            ? 'Estada de 30 nits o més: regla de tres (preu del mes ÷ 30 × nits), encara que cada tram sigui més curt. Si vols, pots triar «Per nits».'
+            : 'La regla de tres (preu del mes ÷ 30 × nits) s’activa sola quan l’estada arriba a 30 nits. També la pots posar o treure a mà.'
+        ) : (
+          <>
+            {mode === 'mensual' ? 'Regla de tres triada a mà.' : 'Preu per nits triat a mà.'}{' '}
+            <button type="button" className="text-brand-700 underline" onClick={() => canvia(() => setMode('auto'))}>
+              Tornar a automàtic
+            </button>
+          </>
+        )}
       </p>
 
       <div className="space-y-2">
