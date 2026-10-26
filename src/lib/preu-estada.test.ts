@@ -26,8 +26,11 @@ describe('desglossa: estada de 30 nits o més (mes ÷ 30)', () => {
   it('forçat a mà: allargar 10 nits una estada d\'un mes', () => {
     expect(total(desglossa(10, DOBLE, true))).toBe(216.67);
   });
-  it('forçat a «per nits» encara que passi de 30 nits', () => {
-    expect(total(desglossa(31, DOBLE, false))).toBe(1068); // 2 × 450 + 3 × 56
+  it('forçat a «per nits»: mes sencer + setmanes i dies', () => {
+    expect(total(desglossa(31, DOBLE, false))).toBe(706); // 650 + 56
+    expect(desglossa(32, DOBLE, false).map((l) => [l.concepte, l.quantitat])).toEqual([['Mes', 1], ['Dia', 2]]); // 650 + 2 × 56
+    expect(total(desglossa(45, DOBLE, false))).toBe(1156); // 650 + 450 + 56
+    expect(total(desglossa(67, DOBLE, false))).toBe(1650); // 2 × 650 + 350
   });
   it('una línia amb el preu/nit i les nits', () => {
     expect(desglossa(31, DOBLE)).toEqual([{ concepte: '650 €/mes ÷ 30', quantitat: 31, preuUnitat: 21.67, subtotal: 671.67 }]);

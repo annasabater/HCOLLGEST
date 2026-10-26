@@ -5,6 +5,8 @@
  *   (mes ÷ 30 × nits). 31 nits = mes × 31/30; 45 nits = mes × 1,5. Si l'hoste
  *   canvia d'habitació o de temporada, cada tros va amb el seu preu de mes.
  *   També es pot forçar a mà (p. ex. qui ja ha estat un mes i allarga).
+ * - «Per nits» (forçat a mà) en una estada de 30+ nits: mes (30 nits) sencer i
+ *   la resta en setmanes i dies (32 nits = 1 mes + 2 dies).
  * - Menys de 30 nits: blocs grans primer, 2 setmanes (14) → setmana (7); els dies
  *   que sobren a `preuDia4` si en queden ≥4, si no `preuDia`. Sense límit: es
  *   paga el que diu la tarifa encara que passi del preu del mes.
@@ -45,7 +47,8 @@ export function desglossa(nits: number, p: Preus, mensual = nits >= NITS_MES): L
     }];
   }
 
-  // 2) Estada curta: blocs + dies.
+  // 2) Per nits: blocs grans primer (mes de 30 nits → 2 setmanes → setmana) + dies.
+  // El mes només hi entra si s'ha forçat «per nits» en una estada de 30+ nits.
   const linies: LiniaCalcul[] = [];
   let rem = nits;
   const bloc = (preu: number | null, dies: number, nom: string) => {
@@ -54,6 +57,7 @@ export function desglossa(nits: number, p: Preus, mensual = nits >= NITS_MES): L
     linies.push({ concepte: nom, quantitat: q, preuUnitat: preu, subtotal: r2(q * preu) });
     rem -= q * dies;
   };
+  bloc(p.preuMes, NITS_MES, 'Mes');
   bloc(p.preuDosSetmanes, 14, '2 setmanes');
   bloc(p.preuSetmana, 7, 'Setmana');
   if (rem > 0) {
