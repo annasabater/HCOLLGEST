@@ -41,6 +41,7 @@ interface FacturaLite {
   esDiposit?: boolean;
   importDiposit?: number;
   estatDiposit?: 'EN_CUSTODIA' | 'TORNAT' | 'RETINGUT';
+  dipositId?: string;
 }
 
 const ESTAT_DIPOSIT_LABEL: Record<'EN_CUSTODIA' | 'TORNAT' | 'RETINGUT', string> = {
@@ -438,6 +439,18 @@ export function FacturaPanel({
     }
   }
 
+  // Dipòsit: En custòdia ↔ Tornat; un de resolt (Tornat o Retingut) torna a custòdia.
+  // Així un «Tornat» marcat per error es desfà amb un altre clic.
+  async function toggleEstatDiposit(dipositId: string, actual: 'EN_CUSTODIA' | 'TORNAT' | 'RETINGUT') {
+    const nou = actual === 'EN_CUSTODIA' ? 'TORNAT' : 'EN_CUSTODIA';
+    try {
+      await patchJSON(`/api/diposits/${dipositId}`, { estat: nou });
+      router.refresh();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "No s'ha pogut canviar l'estat del dipòsit");
+    }
+  }
+
   async function obrirEdicio(f: FacturaLite) {
     try {
       const r = await getJSON<{
@@ -515,9 +528,22 @@ export function FacturaPanel({
               {f.esDiposit ? (
                 <>
                   <span title="Import del dipòsit (no compta com a ingrés)">{formatEur(f.importDiposit ?? 0)}</span>
-                  <Badge tone={f.estatDiposit === 'RETINGUT' ? 'success' : f.estatDiposit === 'TORNAT' ? 'neutral' : 'warning'}>
-                    {ESTAT_DIPOSIT_LABEL[f.estatDiposit ?? 'EN_CUSTODIA']}
-                  </Badge>
+                  {f.dipositId ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleEstatDiposit(f.dipositId!, f.estatDiposit ?? 'EN_CUSTODIA')}
+                      title={(f.estatDiposit ?? 'EN_CUSTODIA') === 'EN_CUSTODIA' ? 'Marcar com a tornat' : 'Tornar a custòdia (desfer)'}
+                      className="cursor-pointer"
+                    >
+                      <Badge tone={f.estatDiposit === 'RETINGUT' ? 'success' : f.estatDiposit === 'TORNAT' ? 'neutral' : 'warning'}>
+                        {ESTAT_DIPOSIT_LABEL[f.estatDiposit ?? 'EN_CUSTODIA']}
+                      </Badge>
+                    </button>
+                  ) : (
+                    <Badge tone={f.estatDiposit === 'RETINGUT' ? 'success' : f.estatDiposit === 'TORNAT' ? 'neutral' : 'warning'}>
+                      {ESTAT_DIPOSIT_LABEL[f.estatDiposit ?? 'EN_CUSTODIA']}
+                    </Badge>
+                  )}
                 </>
               ) : (
                 <>
