@@ -16,7 +16,7 @@ import {
   type Resultat100, type Resultat347, type TotalsTrimestre,
 } from '../impostos';
 import { liniesIva } from '../gasto-iva';
-import { esCategoriaSenseIva, getFiancesSoportades, getGastosSoportats, getLlibreIngressos, rangTrimestre } from './llibre-iva';
+import { esCategoriaSenseIva, getDipositsTrimestre, getFiancesSoportades, getGastosSoportats, getLlibreIngressos, rangTrimestre } from './llibre-iva';
 import { getIeetPeriode } from './ieet';
 import { avisosBoePendents, type AvisBoe } from './boe-formularis';
 import { infoPeriode } from '../ieet';
@@ -155,12 +155,16 @@ async function totalsTrimestre(any: number, t: number): Promise<{ totals: Totals
   const mesos = [1, 2, 3].map((m) => `${any}-${String((t - 1) * 3 + m).padStart(2, '0')}`);
   const nomines = await prisma.nomina.findMany({ where: { periode: { in: mesos } }, select: { total: true } });
 
+  // Dipòsits i fiances retinguts: ingrés sense IVA del trimestre en què es retenen.
+  const retinguts = (await getDipositsTrimestre(any, t)).totals.retinguts;
+
   const ambIva = gastos.filter((g) => g.ivaPercent > 0);
   const totals: TotalsTrimestre = {
     ingressos: {
       base: round2(ingressos.reduce((a, f) => a + f.base, 0)),
       iva: round2(ingressos.reduce((a, f) => a + f.iva, 0)),
       perTipus: sumaPerTipus(ingressos),
+      senseIva: retinguts,
     },
     gastos: {
       baseAmbIva: round2(ambIva.reduce((a, g) => a + g.base, 0)),
@@ -248,7 +252,7 @@ export async function getImpostosAny(any: number, avui = new Date()): Promise<Im
       ? { totals: buits(), llibreDesat: false }
       : await totalsTrimestre(any, t);
     const senseMoviments =
-      totals.ingressos.base === 0 && totals.gastos.baseAmbIva === 0 && totals.gastos.senseIva === 0 && totals.gastos.nomines === 0;
+      totals.ingressos.base === 0 && !totals.ingressos.senseIva && totals.gastos.baseAmbIva === 0 && totals.gastos.senseIva === 0 && totals.gastos.nomines === 0;
 
     // 303 — només el trimestre; arrossega el que quedi a compensar.
     const c303 = calc303(totals, { pendentAnterior: pendent303, ultimTrimestre: t === 4 });
@@ -257,7 +261,8 @@ export async function getImpostosAny(any: number, avui = new Date()): Promise<Im
     pendent303 = pendentDespres303(efectiu303);
 
     // 130 — acumulat: el que es va PRESENTAR fins al trimestre anterior + aquest.
-    acumIngressos = round2(acumIngressos + totals.ingressos.base);
+    // Ingressos del 130: la base de les factures + els dipòsits retinguts (sense IVA).
+    acumIngressos = round2(acumIngressos + totals.ingressos.base + (totals.ingressos.senseIva ?? 0));
     acumGastos = round2(acumGastos + totalGastos130(totals));
     const c130 = calc130({ ingressos: acumIngressos, gastos: acumGastos }, anteriors130);
     const m130 = info('130', t, c130, fi, senseMoviments && anteriors130.length === 0);

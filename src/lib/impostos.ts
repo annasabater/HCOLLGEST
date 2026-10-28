@@ -25,7 +25,11 @@ export interface Perceptor {
 
 /** Totals d'un trimestre, ja nets de fiances (vegeu services/impostos.ts). */
 export interface TotalsTrimestre {
-  ingressos: { base: number; iva: number; perTipus: PerTipus };
+  ingressos: {
+    base: number; iva: number; perTipus: PerTipus;
+    /** Dipòsits i fiances RETINGUTS del trimestre: ingrés sense IVA, només 130 (no 303). */
+    senseIva?: number;
+  };
   gastos: {
     /** Base dels gastos amb IVA deduïble (casella 28 del 303). */
     baseAmbIva: number;

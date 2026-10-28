@@ -711,6 +711,9 @@ function OrigenDades({ t, any }: { t: TrimestreInfo; any: number }) {
         </div>
         <div className="grid gap-x-6 gap-y-1 text-slate-600 sm:grid-cols-2">
           <p>Ingressos (base): <b className="text-slate-800">{formatEur(t.totals.ingressos.base)}</b> · IVA {formatEur(t.totals.ingressos.iva)}</p>
+          {!!t.totals.ingressos.senseIva && (
+            <p>Dipòsits retinguts (ingrés sense IVA, només 130): <b className="text-slate-800">{formatEur(t.totals.ingressos.senseIva)}</b></p>
+          )}
           <p>Gastos amb IVA (base): <b className="text-slate-800">{formatEur(g.baseAmbIva)}</b> · IVA {formatEur(g.iva)}</p>
           <p>Gastos sense IVA (només 130): <b className="text-slate-800">{formatEur(g.senseIva)}</b></p>
           <p>Nòmines (només 130): <b className="text-slate-800">{formatEur(g.nomines)}</b></p>
