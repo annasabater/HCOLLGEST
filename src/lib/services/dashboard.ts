@@ -925,16 +925,22 @@ export async function getBalancSituacio(start: Date, end: Date, opts?: { inclour
     prisma.diposit.aggregate({
       _sum: { import: true },
       where: {
-        data: { lte: end },
-        OR: [{ estat: 'EN_CUSTODIA' }, { dataResolucio: { gt: end } }],
         estancia: { deletedAt: null },
+        OR: [
+          { esDiposit: true, data: { lte: end }, OR: [{ estat: 'EN_CUSTODIA' }, { dataResolucio: { gt: end } }] },
+          // Fiances: com sempre, les rebudes dins del període i no resoltes al final.
+          { esDiposit: false, data: periode, OR: [{ dataResolucio: null }, { dataResolucio: { gt: end } }] },
+        ],
       },
     }),
     prisma.diposit.count({
       where: {
-        data: { lte: end },
-        OR: [{ estat: 'EN_CUSTODIA' }, { dataResolucio: { gt: end } }],
         estancia: { deletedAt: null },
+        OR: [
+          { esDiposit: true, data: { lte: end }, OR: [{ estat: 'EN_CUSTODIA' }, { dataResolucio: { gt: end } }] },
+          // Fiances: com sempre, les rebudes dins del període i no resoltes al final.
+          { esDiposit: false, data: periode, OR: [{ dataResolucio: null }, { dataResolucio: { gt: end } }] },
+        ],
       },
     }),
     // Tresoreria: ingressos cobrats DINS del període.

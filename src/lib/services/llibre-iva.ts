@@ -186,7 +186,7 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
       facturaFiscal: { select: { numero: true, clientNif: true } },
       rectifica: { select: { numero: true } },
       simplificades: { select: { id: true }, take: 1 },
-      diposits: { select: { import: true, esDiposit: true } },
+      diposits: { select: { import: true } },
       linies: { select: { import: true, descripcio: true, detall: true } },
       estancia: {
         select: {
@@ -251,9 +251,7 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
         // Si la simplificada té una fiscal vinculada, el seu número surt a la
         // columna "F." (la mateixa fila) i la fiscal no compta a part.
         numeroFiscal: esFiscal ? net(f.numero) : f.facturaFiscal ? net(f.facturaFiscal.numero) : '',
-        client: f.esDiposit
-          ? `${nom} (${f.diposits[0]?.esDiposit === false ? 'FIANZA' : 'DEPÓSITO'})`
-          : esAbono ? `${nom} (${etiquetaAbono})` : nom,
+        client: f.esDiposit ? `${nom} (DEPÓSITO)` : esAbono ? `${nom} (${etiquetaAbono})` : nom,
         periode,
         nif,
         rectificaNumero: f.rectifica?.numero ?? null,
@@ -322,6 +320,8 @@ export async function getDipositsTrimestre(year: number, trimestre: number): Pro
   const { start, end } = rangTrimestre(year, trimestre);
   const ds = await prisma.diposit.findMany({
     where: {
+      // Només dipòsits: les fiances no surten al llibre del trimestre.
+      esDiposit: true,
       estancia: { deletedAt: null },
       data: { lte: end },
       // Els resolts abans del trimestre ja no hi pinten res.

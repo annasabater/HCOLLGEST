@@ -96,24 +96,21 @@ function TipusPill({ tipus }: { tipus: 'PAGAMENT' | 'FIANCA' | 'DIPOSIT' }) {
   );
 }
 
-/**
- * Fiança o dipòsit. Tots dos poden tenir el seu document (p. ex. 26009.2); una
- * fiança amb document continua sent fiança.
- */
-const tipusDeFianca = (f: { esDiposit?: boolean }) => (f.esDiposit ? 'DIPOSIT' : 'FIANCA');
+/** Fiança o dipòsit (el dipòsit pot tenir la seva «Factura de dipòsit», p. ex. 26009.2). */
+const tipusDeFianca = (f: { esDiposit?: boolean; facturaEsDiposit?: boolean }) =>
+  f.esDiposit || f.facturaEsDiposit ? 'DIPOSIT' : 'FIANCA';
 
-/** «Tornat el 30/10/2026 · efectiu» / «Retingut 50,00 € el 30/10/2026 (tornats 100,00 €)». */
+/** Dipòsit: «Tornat el 30/10/2026 · efectiu» / «Retingut 50,00 € el 30/10/2026 (tornats 100,00 €)». */
 function resumResolucio(f: Fianca): string {
   if (f.estat === 'EN_CUSTODIA') return '';
   const quan = f.dataResolucio ? ` el ${formatDate(f.dataResolucio)}` : '';
   const com = f.metodeResolucio ? ` · ${METODE_COBRAMENT_LABELS[f.metodeResolucio].toLowerCase()}` : '';
-  const fem = tipusDeFianca(f) === 'FIANCA';
-  if (f.estat === 'TORNAT') return `${fem ? 'Tornada' : 'Tornat'}${quan}${com}`;
+  if (f.estat === 'TORNAT') return `Tornat${quan}${com}`;
   const retingut = f.importRetingut ?? f.import;
   const tornat = Math.round((f.import - retingut) * 100) / 100;
   return tornat > 0
-    ? `${fem ? 'Retinguda' : 'Retingut'} ${formatEur(retingut)}${quan} (tornats ${formatEur(tornat)}${com})`
-    : `${fem ? 'Retinguda' : 'Retingut'}${quan} · ingrés sense IVA`;
+    ? `Retingut ${formatEur(retingut)}${quan} (tornats ${formatEur(tornat)}${com})`
+    : `Retingut${quan} · ingrés sense IVA`;
 }
 
 export function PagamentsPanel({
@@ -364,13 +361,15 @@ export function PagamentsPanel({
     }
   }
 
-  // Tornar i retenir obren el diàleg (data, mètode, import); tornar a custòdia desa directament.
+  // Dipòsit: tornar i retenir obren el diàleg (data, mètode, import).
+  // Fiança (com sempre): tornar desa directament; retenir només demana el motiu.
   function resoldreFianca(id: string, estat: 'TORNAT' | 'RETINGUT' | 'EN_CUSTODIA') {
-    if (estat === 'EN_CUSTODIA') {
+    const f = fiances.find((x) => x.id === id);
+    const esFianca = !!f && tipusDeFianca(f) === 'FIANCA';
+    if (estat === 'EN_CUSTODIA' || (esFianca && estat === 'TORNAT')) {
       void desaResolucio(id, { estat });
       return;
     }
-    const f = fiances.find((x) => x.id === id);
     setResData(new Date().toISOString().slice(0, 10));
     setResMetode(f?.metode ?? 'EFECTIU');
     setResImport(f ? String(f.import) : '');
@@ -388,9 +387,9 @@ export function PagamentsPanel({
   }
 
   const fResolent = resolent ? fiances.find((x) => x.id === resolent.id) : undefined;
-  const nomResolent = fResolent && tipusDeFianca(fResolent) === 'FIANCA' ? 'la fiança' : 'el dipòsit';
+  const fiancaResolent = !!fResolent && tipusDeFianca(fResolent) === 'FIANCA';
   const retencioParcial =
-    resolent?.estat === 'RETINGUT' && !!fResolent && Number(resImport) > 0 && Number(resImport) < fResolent.import;
+    !fiancaResolent && resolent?.estat === 'RETINGUT' && !!fResolent && Number(resImport) > 0 && Number(resImport) < fResolent.import;
 
   /** Etiqueta «Contracte 26009.2» de la factura del dipòsit (com als pagaments ja facturats). */
   function EtiquetaFacturaDiposit({ f }: { f: Fianca }) {
@@ -441,18 +440,33 @@ export function PagamentsPanel({
       <ConfirmDialog
         open={resolent !== null}
         title={
-          resolent?.estat === 'RETINGUT'
-            ? `Retenir ${nomResolent}${fResolent ? ` de ${formatEur(fResolent.import)}` : ''}?`
-            : `Tornar ${nomResolent}${fResolent ? ` de ${formatEur(fResolent.import)}` : ''}?`
+          fiancaResolent
+            ? 'Retenir la fiança?'
+            : resolent?.estat === 'RETINGUT'
+              ? `Retenir el dipòsit${fResolent ? ` de ${formatEur(fResolent.import)}` : ''}?`
+              : `Tornar el dipòsit${fResolent ? ` de ${formatEur(fResolent.import)}` : ''}?`
         }
         message={
-          resolent?.estat === 'RETINGUT'
-            ? "El que et quedes passa a ser ingrés (sense IVA) del trimestre d'aquesta data."
-            : 'Surt de la custòdia i es retorna a l\'hoste. No és ingrés.'
+          fiancaResolent
+            ? "L'import retingut passa a comptar com a ingrés."
+            : resolent?.estat === 'RETINGUT'
+              ? "El que et quedes passa a ser ingrés (sense IVA) del trimestre d'aquesta data."
+              : 'Surt de la custòdia i es retorna a l\'hoste. No és ingrés.'
         }
         confirmLabel={resolent?.estat === 'RETINGUT' ? 'Retenir' : 'Tornar'}
         danger={false}
         extra={
+          fiancaResolent ? (
+            <div className="mt-3">
+              <label htmlFor="motiu-retencio" className="mb-1 block text-xs text-slate-500">Motiu (opcional)</label>
+              <Input
+                id="motiu-retencio"
+                placeholder="Desperfecte, neteja extra…"
+                value={motiuRetencio}
+                onChange={(e) => setMotiuRetencio(e.target.value)}
+              />
+            </div>
+          ) : (
           <div className="mt-3 grid grid-cols-2 gap-2">
             <div>
               <label htmlFor="res-data" className="mb-1 block text-xs text-slate-500">
@@ -490,11 +504,16 @@ export function PagamentsPanel({
               </div>
             )}
           </div>
+          )
         }
         onConfirm={() => {
           const r = resolent;
           setResolent(null);
           if (!r) return;
+          if (fiancaResolent) {
+            void desaResolucio(r.id, { estat: r.estat, motiu: motiuRetencio.trim() || undefined });
+            return;
+          }
           void desaResolucio(r.id, {
             estat: r.estat,
             dataResolucio: resData || undefined,
@@ -651,13 +670,17 @@ export function PagamentsPanel({
                   </span>
                   <div className="ml-auto flex shrink-0 items-center justify-end gap-1.5">
                     <EtiquetaFacturaDiposit f={f} />
-                    {/* Dipòsit i fiança: Tornar i Retenir a la vista. */}
-                    <Button type="button" size="sm" variant="outline" onClick={() => resoldreFianca(f.id, 'TORNAT')}>
-                      <Undo2 className="h-4 w-4" /> Tornar
-                    </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => resoldreFianca(f.id, 'RETINGUT')}>
-                      Retenir
-                    </Button>
+                    {/* Dipòsit: Tornar i Retenir a la vista (la fiança, com sempre, dins del llapis). */}
+                    {tipusDeFianca(f) === 'DIPOSIT' && (
+                      <>
+                        <Button type="button" size="sm" variant="outline" onClick={() => resoldreFianca(f.id, 'TORNAT')}>
+                          <Undo2 className="h-4 w-4" /> Tornar
+                        </Button>
+                        <Button type="button" size="sm" variant="outline" onClick={() => resoldreFianca(f.id, 'RETINGUT')}>
+                          Retenir
+                        </Button>
+                      </>
+                    )}
                     {/* Amb factura no s'edita ni s'elimina (com un pagament ja facturat). */}
                     {!f.facturaEsDiposit && (
                       <>
@@ -722,7 +745,9 @@ export function PagamentsPanel({
               <span className="flex items-center gap-2">
                 <TipusPill tipus={tipusDeFianca(f)} />
                 {formatEur(f.import)}
-                {f.estat !== 'EN_CUSTODIA' ? ` · ${resumResolucio(f)}` : ''}
+                {f.estat !== 'EN_CUSTODIA'
+                  ? ` · ${tipusDeFianca(f) === 'DIPOSIT' ? resumResolucio(f) : FIANCA_ESTAT_LABEL[f.estat]}`
+                  : ''}
                 {f.notes ? ` · ${f.notes}` : ''} · {METODE_COBRAMENT_LABELS[f.metode]} ·{' '}
                 {formatDate(f.data)}
               </span>
@@ -760,9 +785,11 @@ export function PagamentsPanel({
                       <TipusPill tipus={tipusDeFianca(f)} />
                       {formatEur(f.import)}{f.notes ? ` · ${f.notes}` : ''} · {METODE_COBRAMENT_LABELS[f.metode]} · {formatDate(f.data)}
                     </span>
-                    <span className="text-xs text-slate-400">
-                      {resumResolucio(f)}{f.motiu ? ` · ${f.motiu}` : ''}
-                    </span>
+                    {tipusDeFianca(f) === 'DIPOSIT' && (
+                      <span className="text-xs text-slate-400">
+                        {resumResolucio(f)}{f.motiu ? ` · ${f.motiu}` : ''}
+                      </span>
+                    )}
                   </span>
                   <div className="flex flex-wrap items-center justify-end gap-1.5">
                     <EtiquetaFacturaDiposit f={f} />
