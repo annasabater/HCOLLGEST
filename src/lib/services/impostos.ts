@@ -155,8 +155,13 @@ async function totalsTrimestre(any: number, t: number): Promise<{ totals: Totals
   const mesos = [1, 2, 3].map((m) => `${any}-${String((t - 1) * 3 + m).padStart(2, '0')}`);
   const nomines = await prisma.nomina.findMany({ where: { periode: { in: mesos } }, select: { total: true } });
 
-  // Dipòsits i fiances retinguts: ingrés sense IVA del trimestre en què es retenen.
-  const retinguts = (await getDipositsTrimestre(any, t)).totals.retinguts;
+  // Dipòsits retinguts: ingrés sense IVA del trimestre en què es retenen.
+  // Les fiances retingudes NO sumen al 130.
+  const retinguts = round2(
+    (await getDipositsTrimestre(any, t)).retinguts
+      .filter((d) => d.tipus === 'DIPOSIT')
+      .reduce((a, d) => a + d.retingut, 0),
+  );
 
   const ambIva = gastos.filter((g) => g.ivaPercent > 0);
   const totals: TotalsTrimestre = {

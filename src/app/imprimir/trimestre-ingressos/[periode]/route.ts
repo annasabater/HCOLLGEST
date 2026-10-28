@@ -261,6 +261,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   const dip = await getDipositsTrimestre(year, trimestre);
   const METODE_ES: Record<string, string> = { EFECTIU: 'efectivo', TARGETA: 'tarjeta', TRANSFERENCIA: 'transferencia', BIZUM: 'Bizum', ALTRES: 'otros' };
   const tipusEs = (d: FilaDiposit) => (d.tipus === 'DIPOSIT' ? 'Depósito' : 'Fianza');
+  // Solo los depósitos retenidos son ingreso; las fianzas retenidas no.
+  const retingutsIngres = dip.retinguts.filter((d) => d.tipus === 'DIPOSIT').reduce((a, d) => a + d.retingut, 0);
   const fmtD = (d: Date | null) => (d ? fmtData(d.toISOString()) : '');
   const taulaDip = (
     titol: string,
@@ -299,17 +301,17 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     <div class="period">${esc(etiqueta)}</div>
     <div class="doc-title">Depósitos y fianzas en custodia</div>
     <p class="nota-dip">Dinero de clientes en custodia: no es ingreso mientras se guarda. Si se devuelve, nunca es ingreso;
-      si se retiene, es ingreso <strong>sin IVA</strong> del trimestre en que se retiene.</p>
+      si se retiene un depósito, es ingreso <strong>sin IVA</strong> del trimestre en que se retiene (las fianzas retenidas no).</p>
     ${taulaDip('Pendientes de trimestres anteriores', dip.anteriors, (d) => d.import, (d) => `Recibido el ${fmtD(d.data)}`, dip.totals.anteriors)}
     ${taulaDip('Recibidos este trimestre', dip.rebuts, (d) => d.import, () => '', dip.totals.rebuts)}
     ${taulaDip('Devueltos este trimestre (no son ingreso)', dip.tornats, (d) => d.tornat, notaResolucio, dip.totals.tornats, '−')}
-    ${taulaDip('Retenidos este trimestre (ingreso sin IVA)', dip.retinguts, (d) => d.retingut, (d) => [notaResolucio(d), d.motiu].filter(Boolean).join(' · '), dip.totals.retinguts)}
+    ${taulaDip('Retenidos este trimestre', dip.retinguts, (d) => d.retingut, (d) => [notaResolucio(d), d.motiu].filter(Boolean).join(' · '), dip.totals.retinguts)}
     ${taulaDip('Pendientes al cierre (pasan al trimestre siguiente)', dip.pendents, (d) => d.import, (d) => `Recibido el ${fmtD(d.data)}`, dip.totals.pendents)}
     <div class="resum">
       <div class="resum-row"><span>Pendiente al inicio</span><span>${num(dip.totals.anteriors)} €</span></div>
       <div class="resum-row"><span>+ Recibido</span><span>${num(dip.totals.rebuts)} €</span></div>
       <div class="resum-row"><span>− Devuelto</span><span>${num(dip.totals.tornats)} €</span></div>
-      <div class="resum-row"><span>− Retenido (ingreso sin IVA)</span><span>${num(dip.totals.retinguts)} €</span></div>
+      <div class="resum-row"><span>− Retenido</span><span>${num(dip.totals.retinguts)} €</span></div>
       <div class="resum-row grand"><span>Pendiente al cierre</span><span>${num(dip.totals.pendents)} €</span></div>
     </div>
   </div>`;
@@ -527,7 +529,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       <div class="resum-row"><span>IVA repercutido (10%)</span><span id="r-iva">0,00 €</span></div>
       <div class="resum-row grand"><span>Total ingresos</span><span id="r-total">0,00 €</span></div>
       <div class="resum-row" id="r-dip-row"><span>Depósitos (no computan como ingreso)</span><span id="r-dip">0,00 €</span></div>
-      ${dip.totals.retinguts ? `<div class="resum-row"><span>Depósitos retenidos (ingreso sin IVA)</span><span>${num(dip.totals.retinguts)} €</span></div>` : ''}
+      ${retingutsIngres ? `<div class="resum-row"><span>Depósitos retenidos (ingreso sin IVA)</span><span>${num(retingutsIngres)} €</span></div>` : ''}
     </div>
   </div>
 ${dipositsHtml}
