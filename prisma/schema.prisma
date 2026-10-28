@@ -949,6 +949,10 @@ model Diposit {
   notes         String?
   observacions  String?
   dataResolucio DateTime?       @map("data_resolucio") // quan es torna o es retén
+  // Com s'ha tornat (efectiu, transferència…). Només TORNAT o la part tornada d'un RETINGUT.
+  metodeResolucio MetodeCobrament? @map("metode_resolucio")
+  // RETINGUT en part: el que es queda (ingrés sense IVA); la resta es torna. Null = tot.
+  importRetingut  Decimal?         @map("import_retingut") @db.Decimal(10, 2)
 
   // Mateix desglossament per període que Cobrament (§ CobramentPeriode), per
   // si la fiança retinguda ha de comptar com a ingrés repartit en diversos mesos.

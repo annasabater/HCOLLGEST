@@ -608,10 +608,11 @@ export async function addDiposit(
   return diposit;
 }
 
-/** Text de la línia del document de dipòsit. */
-function descripcioDiposit(notes: string | null): string {
+/** Text de la línia del document de dipòsit (o de fiança). */
+function descripcioDiposit(notes: string | null, esDiposit = true): string {
   const n = (notes ?? '').trim();
-  return n ? `Dipòsit en custòdia · ${n}` : 'Dipòsit en custòdia';
+  const nom = esDiposit ? 'Dipòsit en custòdia' : 'Fiança en custòdia';
+  return n ? `${nom} · ${n}` : nom;
 }
 
 /**
@@ -663,10 +664,11 @@ export async function creaDocumentDiposit(
       estat: 'COBRADA',
       tipusDocument: 'FACTURA_SIMPLIFICADA',
       esDiposit: true,
-      linies: { create: [{ concepte: 'EXTRA', descripcio: descripcioDiposit(d.notes), import: d.import }] },
+      linies: { create: [{ concepte: 'EXTRA', descripcio: descripcioDiposit(d.notes, d.esDiposit), import: d.import }] },
     },
   });
-  await tx.diposit.update({ where: { id: dipositId }, data: { facturaId: factura.id, esDiposit: true } });
+  // Una fiança amb document continua sent fiança (no es converteix en dipòsit).
+  await tx.diposit.update({ where: { id: dipositId }, data: { facturaId: factura.id } });
   await audit(
     {
       usuariId: actor?.id ?? null,
@@ -695,7 +697,7 @@ export async function sincronitzaDocumentDiposit(tx: Prisma.TransactionClient, d
   await tx.factura.update({
     where: { id: d.factura.id },
     data: {
-      linies: { create: [{ concepte: 'EXTRA', descripcio: descripcioDiposit(d.notes), import: d.import }] },
+      linies: { create: [{ concepte: 'EXTRA', descripcio: descripcioDiposit(d.notes, d.esDiposit), import: d.import }] },
     },
   });
 }

@@ -216,6 +216,11 @@ export const DocumentDipositSchema = z.object({
 export const DipositResolSchema = z.object({
   estat: z.enum(['TORNAT', 'RETINGUT', 'EN_CUSTODIA']),
   motiu: optStr,
+  // Data de la devolució / retenció (per defecte avui) i com s'ha tornat.
+  dataResolucio: z.coerce.date().optional(),
+  metodeResolucio: z.enum(metodeCobramentValues).optional(),
+  // Retenció parcial: el que es queda (la resta es torna). Buit = tot.
+  importRetingut: z.coerce.number().positive("L'import retingut ha de ser positiu").optional(),
 });
 
 export const DipositEditSchema = z.object({

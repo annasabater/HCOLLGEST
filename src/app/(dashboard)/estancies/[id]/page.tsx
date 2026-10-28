@@ -524,6 +524,9 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   facturaNumero: d.factura?.numero ?? null,
                   facturaEsDiposit: d.factura?.esDiposit ?? false,
                   esDiposit: d.esDiposit,
+                  dataResolucio: d.dataResolucio?.toISOString() ?? null,
+                  metodeResolucio: d.metodeResolucio,
+                  importRetingut: d.importRetingut != null ? Number(d.importRetingut) : null,
                   periodes: d.periodes.map((p) => ({
                     dataInici: p.dataInici.toISOString(),
                     dataFi: p.dataFi.toISOString(),

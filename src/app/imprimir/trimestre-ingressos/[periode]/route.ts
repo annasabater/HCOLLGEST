@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { carregaEdicions, edicionsBootstrap, EDICIONS_SCRIPT, type EdicioDades } from '@/lib/edicions';
 import { TAULES_CLIENT_SCRIPT } from '@/lib/pdf/taules-script';
-import { getLlibreIngressos, getGastosSoportats, getFiancesSoportades, getLibroGastos, rangTrimestre, COLUMNES_GASTO, COLUMNA_GASTO_LABELS, type FilaIngres, type FilaGasto, type FilaLibroGasto } from '@/lib/services/llibre-iva';
+import { getLlibreIngressos, getGastosSoportats, getFiancesSoportades, getLibroGastos, getDipositsTrimestre, rangTrimestre, COLUMNES_GASTO, COLUMNA_GASTO_LABELS, type FilaIngres, type FilaGasto, type FilaLibroGasto, type FilaDiposit } from '@/lib/services/llibre-iva';
 
 export const dynamic = 'force-dynamic';
 
@@ -256,6 +256,64 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       <td class="c-del"><button class="del" type="button" title="Eliminar fila">×</button></td>
     </tr>`;
 
+  // ── Depósitos y fianzas: dinero en custodia, NO facturas ─────────────────
+  // Siempre calculado de los depósitos (no se guarda con el libro editado).
+  const dip = await getDipositsTrimestre(year, trimestre);
+  const METODE_ES: Record<string, string> = { EFECTIU: 'efectivo', TARGETA: 'tarjeta', TRANSFERENCIA: 'transferencia', BIZUM: 'Bizum', ALTRES: 'otros' };
+  const tipusEs = (d: FilaDiposit) => (d.tipus === 'DIPOSIT' ? 'Depósito' : 'Fianza');
+  const fmtD = (d: Date | null) => (d ? fmtData(d.toISOString()) : '');
+  const taulaDip = (
+    titol: string,
+    files: FilaDiposit[],
+    importDe: (d: FilaDiposit) => number,
+    nota: (d: FilaDiposit) => string,
+    total: number,
+    signe = '',
+  ) => `
+    <div class="sec">${esc(titol)}</div>
+    <table class="dip">
+      <colgroup><col style="width:90px"><col style="width:80px"><col style="width:120px"><col><col style="width:110px"><col style="width:300px"></colgroup>
+      <thead><tr><th>Fecha</th><th>Tipo</th><th>Documento</th><th>Cliente</th><th class="n">Importe</th><th>Detalle</th></tr></thead>
+      <tbody>${
+        files.length
+          ? files.map((d) => `<tr><td class="ro">${fmtD(d.data)}</td><td class="ro">${tipusEs(d)}</td><td class="ro">${esc(d.document)}</td><td class="roC">${esc(d.client)}</td><td class="roN">${signe}${num(importDe(d))}</td><td class="ro">${esc(nota(d))}</td></tr>`).join('')
+          : '<tr><td colspan="6" class="buit">Ninguno</td></tr>'
+      }</tbody>
+      <tfoot><tr><td colspan="4" class="lab">Total</td><td class="roN">${signe}${num(total)}</td><td></td></tr></tfoot>
+    </table>`;
+  const notaResolucio = (d: FilaDiposit) => {
+    if (d.estat === 'EN_CUSTODIA' || !d.dataResolucio) return '';
+    const quan = fmtD(d.dataResolucio);
+    const com = d.metodeResolucio ? `, ${METODE_ES[d.metodeResolucio] ?? d.metodeResolucio}` : '';
+    if (d.estat === 'TORNAT') return `Devuelto el ${quan}${com}`;
+    return d.tornat > 0 ? `Retenido el ${quan} (devueltos ${num(d.tornat)} €${com})` : `Retenido el ${quan}`;
+  };
+  const dipositsHtml =
+    dip.anteriors.length + dip.rebuts.length === 0
+      ? ''
+      : `
+  <div class="sheet">
+    <div class="brand">HOSTAL COLL</div>
+    <div class="brand-sub">Casa de Hostes · Calella</div>
+    <div class="rule"></div>
+    <div class="period">${esc(etiqueta)}</div>
+    <div class="doc-title">Depósitos y fianzas en custodia</div>
+    <p class="nota-dip">Dinero de clientes en custodia: no es ingreso mientras se guarda. Si se devuelve, nunca es ingreso;
+      si se retiene, es ingreso <strong>sin IVA</strong> del trimestre en que se retiene.</p>
+    ${taulaDip('Pendientes de trimestres anteriores', dip.anteriors, (d) => d.import, (d) => `Recibido el ${fmtD(d.data)}`, dip.totals.anteriors)}
+    ${taulaDip('Recibidos este trimestre', dip.rebuts, (d) => d.import, () => '', dip.totals.rebuts)}
+    ${taulaDip('Devueltos este trimestre (no son ingreso)', dip.tornats, (d) => d.tornat, notaResolucio, dip.totals.tornats, '−')}
+    ${taulaDip('Retenidos este trimestre (ingreso sin IVA)', dip.retinguts, (d) => d.retingut, (d) => [notaResolucio(d), d.motiu].filter(Boolean).join(' · '), dip.totals.retinguts)}
+    ${taulaDip('Pendientes al cierre (pasan al trimestre siguiente)', dip.pendents, (d) => d.import, (d) => `Recibido el ${fmtD(d.data)}`, dip.totals.pendents)}
+    <div class="resum">
+      <div class="resum-row"><span>Pendiente al inicio</span><span>${num(dip.totals.anteriors)} €</span></div>
+      <div class="resum-row"><span>+ Recibido</span><span>${num(dip.totals.rebuts)} €</span></div>
+      <div class="resum-row"><span>− Devuelto</span><span>${num(dip.totals.tornats)} €</span></div>
+      <div class="resum-row"><span>− Retenido (ingreso sin IVA)</span><span>${num(dip.totals.retinguts)} €</span></div>
+      <div class="resum-row grand"><span>Pendiente al cierre</span><span>${num(dip.totals.pendents)} €</span></div>
+    </div>
+  </div>`;
+
   const html = `<!doctype html>
 <html lang="ca">
 <head>
@@ -328,6 +386,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   .resum-row{ display:flex; justify-content:space-between; padding:7px 12px; }
   .resum-row.grand{ background:var(--accent-soft); border-top:2px solid var(--accent); border-radius:4px; font-family:Georgia,serif; font-size:14px; color:var(--ink); }
   .note{ font-size:10px; color:var(--muted); margin-top:14px; font-style:italic; line-height:1.5; }
+  /* Depósitos y fianzas: tablas de solo lectura (salen de los depósitos). */
+  table.dip{ table-layout:fixed; margin-bottom:6px; }
+  table.dip td{ padding:5px 6px; }
+  table.dip tfoot td{ padding-top:6px; }
+  .nota-dip{ font-size:11px; color:var(--muted); margin:0 0 6px; line-height:1.5; }
   .add{ margin-top:10px; }
   .add button{ font:inherit; font-size:12px; color:var(--accent); background:#fff; border:1px dashed var(--accent); border-radius:8px; padding:6px 12px; cursor:pointer; }
   /* Columna NIF / NIE: només quan hi ha alguna factura completa. */
@@ -464,8 +527,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       <div class="resum-row"><span>IVA repercutido (10%)</span><span id="r-iva">0,00 €</span></div>
       <div class="resum-row grand"><span>Total ingresos</span><span id="r-total">0,00 €</span></div>
       <div class="resum-row" id="r-dip-row"><span>Depósitos (no computan como ingreso)</span><span id="r-dip">0,00 €</span></div>
+      ${dip.totals.retinguts ? `<div class="resum-row"><span>Depósitos retenidos (ingreso sin IVA)</span><span>${num(dip.totals.retinguts)} €</span></div>` : ''}
     </div>
   </div>
+${dipositsHtml}
 
   <!-- ── Facturas recibidas - soportadas (EDITABLE) ──────────────────── -->
   <div class="sheet">

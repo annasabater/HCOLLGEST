@@ -4,6 +4,7 @@
  * beneficio, ocupación) + alertas de facturas pendientes y activos.
  */
 import 'server-only';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../db';
 import { computeActiuInfo } from '../actiu-alerts';
 import { habitacioLlibre } from '../habitacio-llibre';
@@ -99,6 +100,18 @@ async function cobramentsEfectius(start: Date, end: Date, opts?: FinanceOpts): P
     .filter((c) => c.import !== 0);
 }
 
+/**
+ * Suma del que l'hostal s'ha quedat dels dipòsits RETINGUTS que compleixen `where`
+ * (en una retenció parcial, només la part retinguda). Mateixa forma que un aggregate.
+ */
+async function sumaRetinguts(where: Prisma.DipositWhereInput): Promise<{ _sum: { import: number } }> {
+  const rows = await prisma.diposit.findMany({
+    where: { ...where, estat: 'RETINGUT' },
+    select: { import: true, importRetingut: true },
+  });
+  return { _sum: { import: rows.reduce((a, d) => a + Number(d.importRetingut ?? d.import), 0) } };
+}
+
 /** Igual que `cobramentsEfectius`, però per als dipòsits RETINGUTS (que compten com a ingrés). */
 async function dipositsRetingutsEfectius(start: Date, end: Date, opts?: FinanceOpts): Promise<EfectiuRow[]> {
   const rows = await prisma.diposit.findMany({
@@ -115,14 +128,15 @@ async function dipositsRetingutsEfectius(start: Date, end: Date, opts?: FinanceO
         },
       ],
     },
-    select: { import: true, metode: true, data: true, periodes: { select: { dataInici: true, dataFi: true, import: true } }, estancia: titularSelDash },
+    select: { import: true, importRetingut: true, metode: true, data: true, periodes: { select: { dataInici: true, dataFi: true, import: true } }, estancia: titularSelDash },
   });
   return rows
     .map((d) => ({
+      // Retenció parcial: només és ingrés la part que es queda (la resta es torna).
       import:
         d.periodes.length > 0
           ? d.periodes.filter((p) => p.dataInici <= end && p.dataFi >= start).reduce((a, p) => a + Number(p.import), 0)
-          : Number(d.import),
+          : Number(d.importRetingut ?? d.import),
       metode: d.metode,
       data: d.data,
       estancia: d.estancia,
@@ -252,14 +266,10 @@ export async function getResum(opts?: FinanceOpts) {
       _sum: { import: true },
       where: { estat: 'EN_CUSTODIA', estancia: { deletedAt: null } },
     }),
-    prisma.diposit.aggregate({
-      _sum: { import: true },
-      where: {
-        estat: 'RETINGUT',
-        dataResolucio: { gte: monthStart, lte: monthEnd },
-        estancia: { deletedAt: null },
-        ...metodeFiltre(opts),
-      },
+    sumaRetinguts({
+      dataResolucio: { gte: monthStart, lte: monthEnd },
+      estancia: { deletedAt: null },
+      ...metodeFiltre(opts),
     }),
     // Serveis/manteniments amb propera visita o renovació dins els pròxims 30 dies.
     prisma.serveiRecurrent.findMany({
@@ -910,19 +920,20 @@ export async function getBalancSituacio(start: Date, end: Date, opts?: { inclour
       where: { deletedAt: null, estat: 'PENDENT', data: periode },
     }),
     prisma.factura.count({ where: { deletedAt: null, estat: 'PENDENT', data: periode } }),
-    // Fiances rebudes DINS del període i encara no resoltes a final del període.
+    // Fiances encara en custòdia a final del període, rebudes quan sigui (també
+    // les de trimestres anteriors que encara no s'han tornat ni retingut).
     prisma.diposit.aggregate({
       _sum: { import: true },
       where: {
-        data: periode,
-        OR: [{ dataResolucio: null }, { dataResolucio: { gt: end } }],
+        data: { lte: end },
+        OR: [{ estat: 'EN_CUSTODIA' }, { dataResolucio: { gt: end } }],
         estancia: { deletedAt: null },
       },
     }),
     prisma.diposit.count({
       where: {
-        data: periode,
-        OR: [{ dataResolucio: null }, { dataResolucio: { gt: end } }],
+        data: { lte: end },
+        OR: [{ estat: 'EN_CUSTODIA' }, { dataResolucio: { gt: end } }],
         estancia: { deletedAt: null },
       },
     }),
@@ -942,10 +953,7 @@ export async function getBalancSituacio(start: Date, end: Date, opts?: { inclour
       where: { data: periode },
     }),
     // Dipòsits RETINGUTS dins del període: són ingrés (com al P&L).
-    prisma.diposit.aggregate({
-      _sum: { import: true },
-      where: { estat: 'RETINGUT', dataResolucio: periode, estancia: { deletedAt: null } },
-    }),
+    sumaRetinguts({ dataResolucio: periode, estancia: { deletedAt: null } }),
   ]);
 
   const immobilitzatBrut = r2(num(immobAgg, 'cost'));

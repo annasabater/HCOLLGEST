@@ -39,6 +39,7 @@ export async function GET(
       linies: true,
       cobraments: true,
       rectifica: { select: { numero: true, data: true } },
+      diposits: { select: { esDiposit: true }, take: 1 },
       estancia: {
         include: {
           habitacio: true,
@@ -57,6 +58,8 @@ export async function GET(
   // Si la fiança ja va inclosa a la base (fiancaInclosa), no la tornem a afegir
   // com a bloc de custòdia (evita duplicar-la).
   const esDiposit = factura.esDiposit;
+  // Document de custòdia d'una fiança (no d'un dipòsit): es diu «Fiança».
+  const nomDoc = factura.diposits[0]?.esDiposit === false ? 'Fiança' : 'Dipòsit';
   // Factura RECTIFICATIVA (abonament): total negatiu o enllaçada a l'original.
   const esRectificativa = !esDiposit && (factura.rectificaId != null || Number(factura.total) < 0);
   const rectificaRef = factura.rectifica
@@ -147,7 +150,7 @@ export async function GET(
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esDiposit ? 'Dipòsit' : esRectificativa ? 'Factura rectificativa' : 'Factura simplificada'} ${esc(factura.numero)} · Hostal Coll</title>
+<title>${esDiposit ? nomDoc : esRectificativa ? 'Factura rectificativa' : 'Factura simplificada'} ${esc(factura.numero)} · Hostal Coll</title>
 <style>
   :root{
     --ink:#2C1810;
@@ -287,7 +290,7 @@ export async function GET(
 <body>
 
 <div class="toolbar">
-  <div class="tb-brand">Hostal Coll<span class="tb-badge">${esDiposit ? 'Dipòsit' : esRectificativa ? 'Factura rectificativa' : ambCustodia ? 'Factura simple amb fiança' : 'Factura simple'}</span></div>
+  <div class="tb-brand">Hostal Coll<span class="tb-badge">${esDiposit ? nomDoc : esRectificativa ? 'Factura rectificativa' : ambCustodia ? 'Factura simple amb fiança' : 'Factura simple'}</span></div>
   <div class="tb-actions">
     <button id="addLine" class="btn ghost">+ Afegir línia</button>
     <button id="save" class="btn ghost" title="Desa tot el que hi ha escrit al document (queda guardat per sempre)">Desar canvis</button>
@@ -324,7 +327,7 @@ export async function GET(
       </div>
       <div class="meta">
         <div class="meta-title">Factura</div>
-        <div class="meta-badge">${esDiposit ? 'Simplificada · Dipòsit' : esRectificativa ? 'Rectificativa' : 'Simplificada'}</div>
+        <div class="meta-badge">${esDiposit ? `Simplificada · ${nomDoc}` : esRectificativa ? 'Rectificativa' : 'Simplificada'}</div>
         <div class="meta-row"><span class="k">Número</span><span class="v"><input id="numero" class="in" aria-label="Número" value="${numeroDisplay}" data-prefix="${numeroPrefix}"></span></div>
         <div class="meta-row"><span class="k">Data</span><span class="v"><input id="data" class="in" aria-label="Data" value="${fmtDate(factura.data)}" placeholder="dd/mm/aaaa"></span></div>
         ${esRectificativa ? `<div class="meta-row"><span class="k">Rectifica</span><span class="v"><input class="in" data-k="rectifica" aria-label="Factura rectificada" value="${esc(rectificaRef)}" placeholder="Nº · data"></span></div>` : ''}
@@ -353,8 +356,8 @@ export async function GET(
       ${esDiposit ? `
       <div class="sum-row"><span class="lab">Base imposable</span><span class="val">${money(0)}</span></div>
       <div class="sum-row"><span class="lab">IVA</span><span class="val">—</span></div>` : ''}
-      <div class="sum-row grand"><span class="lab">${esDiposit ? 'Total dipòsit' : 'Total'}</span><span class="val" id="total">${money(totalCobraments)}</span></div>
-      ${esDiposit ? '<div class="iva-note">Dipòsit, sense IVA.</div>' : ''}
+      <div class="sum-row grand"><span class="lab">${esDiposit ? `Total ${nomDoc.toLowerCase()}` : 'Total'}</span><span class="val" id="total">${money(totalCobraments)}</span></div>
+      ${esDiposit ? `<div class="iva-note">${nomDoc}, sense IVA.</div>` : ''}
     </div>
 
     <footer class="footer">
@@ -538,7 +541,7 @@ ${edicionsBootstrap('factura-simple', factura.id, edicions)}
   });
 
 </script>
-<script>window.__pdfRef = ${JSON.stringify(factura.id)}; window.__pdfTitle = ${JSON.stringify(`${esDiposit ? 'Dipòsit' : esRectificativa ? 'Factura rectificativa' : 'Factura'} ${factura.numero}`)};</script>
+<script>window.__pdfRef = ${JSON.stringify(factura.id)}; window.__pdfTitle = ${JSON.stringify(`${esDiposit ? nomDoc : esRectificativa ? 'Factura rectificativa' : 'Factura'} ${factura.numero}`)};</script>
 <script>${PDF_CLIENT_SCRIPT}</script>
 </body>
 </html>`;

@@ -14,6 +14,13 @@ import 'server-only';
 import { prisma } from '../db';
 import { periodeDelText } from '../periode-factura';
 import { liniesIva } from '../gasto-iva';
+import {
+  importRetingutDe,
+  importTornatDe,
+  movimentsPeriode,
+  type DipositBase,
+  type MovimentsPeriode,
+} from '../diposits-periode';
 
 export interface FilaIngres {
   data: string; // ISO
@@ -179,7 +186,7 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
       facturaFiscal: { select: { numero: true, clientNif: true } },
       rectifica: { select: { numero: true } },
       simplificades: { select: { id: true }, take: 1 },
-      diposits: { select: { import: true } },
+      diposits: { select: { import: true, esDiposit: true } },
       linies: { select: { import: true, descripcio: true, detall: true } },
       estancia: {
         select: {
@@ -244,7 +251,9 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
         // Si la simplificada té una fiscal vinculada, el seu número surt a la
         // columna "F." (la mateixa fila) i la fiscal no compta a part.
         numeroFiscal: esFiscal ? net(f.numero) : f.facturaFiscal ? net(f.facturaFiscal.numero) : '',
-        client: f.esDiposit ? `${nom} (DEPÓSITO)` : esAbono ? `${nom} (${etiquetaAbono})` : nom,
+        client: f.esDiposit
+          ? `${nom} (${f.diposits[0]?.esDiposit === false ? 'FIANZA' : 'DEPÓSITO'})`
+          : esAbono ? `${nom} (${etiquetaAbono})` : nom,
         periode,
         nif,
         rectificaNumero: f.rectifica?.numero ?? null,
@@ -283,6 +292,82 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
     totalIva: round2(files.reduce((a, f) => a + f.iva, 0)),
     totalTotal: round2(files.reduce((a, f) => a + f.total, 0)),
   };
+}
+
+// ─── Dipòsits i fiances del trimestre (diners en custòdia, NO factures) ───
+
+export interface FilaDiposit extends DipositBase {
+  id: string;
+  tipus: 'DIPOSIT' | 'FIANCA';
+  /** Document que l'identifica: el del dipòsit (26009.2) o, si no en té, el contracte. */
+  document: string;
+  client: string;
+  estanciaId: string;
+  metodeResolucio: string | null;
+  /** El que s'ha tornat / el que s'ha quedat (ingrés sense IVA). */
+  tornat: number;
+  retingut: number;
+  motiu: string | null;
+}
+
+export type DipositsTrimestre = MovimentsPeriode<FilaDiposit>;
+
+/**
+ * Dipòsits i fiances d'un trimestre: els pendents que venen d'abans, els rebuts,
+ * els tornats (no són ingrés), els retinguts (ingrés del trimestre, sense IVA) i
+ * els que queden pendents i passen al trimestre següent. Es calcula sempre del
+ * que diu cada dipòsit (no es desa amb el llibre editat).
+ */
+export async function getDipositsTrimestre(year: number, trimestre: number): Promise<DipositsTrimestre> {
+  const { start, end } = rangTrimestre(year, trimestre);
+  const ds = await prisma.diposit.findMany({
+    where: {
+      estancia: { deletedAt: null },
+      data: { lte: end },
+      // Els resolts abans del trimestre ja no hi pinten res.
+      OR: [{ estat: 'EN_CUSTODIA' }, { dataResolucio: null }, { dataResolucio: { gte: start } }],
+    },
+    orderBy: { data: 'asc' },
+    include: {
+      factura: { select: { numero: true, esDiposit: true, deletedAt: true } },
+      estancia: {
+        select: {
+          id: true,
+          numContracte: true,
+          viatgers: {
+            where: { esTitular: true },
+            take: 1,
+            select: { huesped: { select: { nom: true, cognom1: true, cognom2: true } } },
+          },
+        },
+      },
+    },
+  });
+  const files: FilaDiposit[] = ds.map((d) => {
+    const h = d.estancia.viatgers[0]?.huesped;
+    const base = {
+      estat: d.estat,
+      import: Number(d.import),
+      importRetingut: d.importRetingut != null ? Number(d.importRetingut) : null,
+    };
+    const doc = d.factura && !d.factura.deletedAt ? d.factura.numero.replace(/^\d{4}-/, '') : '';
+    return {
+      ...base,
+      id: d.id,
+      tipus: d.esDiposit ? 'DIPOSIT' : 'FIANCA',
+      document: doc || (d.estancia.numContracte ? `Contracte ${d.estancia.numContracte}` : ''),
+      client: h ? [h.nom, h.cognom1, h.cognom2].filter(Boolean).join(' ').toUpperCase() : '—',
+      estanciaId: d.estancia.id,
+      data: d.data,
+      // Resolts d'abans que es guardés la data: la de l'última modificació.
+      dataResolucio: d.estat === 'EN_CUSTODIA' ? null : (d.dataResolucio ?? d.updatedAt),
+      metodeResolucio: d.metodeResolucio,
+      tornat: importTornatDe(base),
+      retingut: importRetingutDe(base),
+      motiu: d.motiu,
+    };
+  });
+  return movimentsPeriode(files, start, end);
 }
 
 // ─── Libro de gastos (format de la gestoria: base per columna + IVA per tipus) ───

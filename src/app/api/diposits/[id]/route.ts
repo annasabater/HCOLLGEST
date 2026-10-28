@@ -17,7 +17,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     if (auth instanceof Response) return auth;
     const { id } = await ctx.params;
 
-    const exists = await prisma.diposit.findUnique({ where: { id }, select: { id: true, estat: true } });
+    const exists = await prisma.diposit.findUnique({ where: { id }, select: { id: true, estat: true, import: true, data: true } });
     if (!exists) return notFound();
 
     const body = await req.json().catch(() => null);
@@ -25,16 +25,33 @@ export async function PATCH(req: Request, ctx: Ctx) {
     // Canvi d'estat (tornar / retenir / tornar a custòdia).
     if (body && typeof body === 'object' && 'estat' in body && body.estat) {
       const data = DipositResolSchema.parse(body);
+      const enCustodia = data.estat === 'EN_CUSTODIA';
+      const dataResolucio = enCustodia ? null : (data.dataResolucio ?? new Date());
+      if (dataResolucio && dataResolucio < new Date(exists.data.toISOString().slice(0, 10))) {
+        throw new Error('Validación fallida: la data de devolució o retenció no pot ser anterior a la del dipòsit.');
+      }
+      // Retenció parcial: només si és menys que el dipòsit (igual = tot, null).
+      const retingut = data.estat === 'RETINGUT' && data.importRetingut != null ? data.importRetingut : null;
+      if (retingut != null && retingut > Number(exists.import)) {
+        throw new Error("Validación fallida: no es pot retenir més del que és el dipòsit.");
+      }
+      const parcial = retingut != null && retingut < Number(exists.import);
       const diposit = await prisma.diposit.update({
         where: { id },
         data: {
           estat: data.estat,
-          motiu: data.motiu ?? null,
-          // En custòdia no és una resolució: es buida la data de resolució.
-          dataResolucio: data.estat === 'EN_CUSTODIA' ? null : new Date(),
+          motiu: data.estat === 'RETINGUT' ? (data.motiu ?? null) : null,
+          // En custòdia no és una resolució: es buida tot el que és de la resolució.
+          dataResolucio,
+          metodeResolucio: data.estat === 'TORNAT' || parcial ? (data.metodeResolucio ?? null) : null,
+          importRetingut: parcial ? retingut : null,
         },
       });
-      await audit({ usuariId: auth.id, accio: 'MODIFICACIO', entitat: 'diposit', entitatId: id, detall: { estat: data.estat }, ip: clientIp(req) });
+      await audit({
+        usuariId: auth.id, accio: 'MODIFICACIO', entitat: 'diposit', entitatId: id,
+        detall: { estat: data.estat, dataResolucio, metodeResolucio: diposit.metodeResolucio, importRetingut: parcial ? retingut : null },
+        ip: clientIp(req),
+      });
       return ok({ diposit });
     }
 
