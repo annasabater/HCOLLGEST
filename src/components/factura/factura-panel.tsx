@@ -580,7 +580,7 @@ export function FacturaPanel({
               {f.esDevolucio ? (
                 <>
                   <span title="Import retornat a l'hoste (no és ingrés ni despesa)">{formatEur(f.importDiposit ?? 0)}</span>
-                  <Badge tone="retornat">Retornat a l'hoste</Badge>
+                  <Badge tone="retornat">{"Retornat a l'hoste"}</Badge>
                 </>
               ) : f.esDiposit ? (
                 <>
