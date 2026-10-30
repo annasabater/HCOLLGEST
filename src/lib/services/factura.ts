@@ -21,7 +21,7 @@ import {
   FacturaRectificativaSchema,
   FacturaFiscalDeSimplesSchema,
 } from '../validation/factura';
-import { CONCEPTE_LINIA_LABELS } from '../validation/enums';
+import { CONCEPTE_LINIA_LABELS, METODE_COBRAMENT_LABELS } from '../validation/enums';
 
 const ESTABLIMENT_ID = 'hostal-coll';
 
@@ -698,6 +698,92 @@ export async function sincronitzaDocumentDiposit(tx: Prisma.TransactionClient, d
       linies: { create: [{ concepte: 'EXTRA', descripcio: descripcioDiposit(d.notes), import: d.import }] },
     },
   });
+}
+
+/**
+ * Manté el DOCUMENT DE DEVOLUCIÓ d'un dipòsit d'acord amb el seu estat. Només
+ * per a dipòsits amb document propi (26009.2):
+ *  - TORNAT, o RETINGUT en part → hi ha d'haver un document amb el número següent
+ *    de l'estada (26009.5), una línia «Devolució del dipòsit 26009.2» amb l'import
+ *    tornat, la data de la devolució i com s'ha tornat. Base/IVA/total 0: no és
+ *    ingrés ni abonament.
+ *  - EN_CUSTODIA o RETINGUT del tot → no n'hi ha d'haver: s'esborra si existia.
+ */
+export async function sincronitzaDevolucioDiposit(
+  tx: Prisma.TransactionClient,
+  dipositId: string,
+  actor: { id: string } | null,
+  ip: string | null,
+): Promise<void> {
+  const d = await tx.diposit.findUniqueOrThrow({
+    where: { id: dipositId },
+    include: {
+      factura: { select: { numero: true, esDiposit: true, deletedAt: true } },
+      devolucio: { select: { id: true, numero: true, deletedAt: true, verifactu: { select: { id: true } } } },
+    },
+  });
+  const doc = d.factura && d.factura.esDiposit && !d.factura.deletedAt ? d.factura : null;
+  const retingut = d.importRetingut != null ? Number(d.importRetingut) : Number(d.import);
+  const tornat =
+    d.estat === 'TORNAT' ? Number(d.import) : d.estat === 'RETINGUT' ? Math.round((Number(d.import) - retingut) * 100) / 100 : 0;
+  const existent = d.devolucio && !d.devolucio.deletedAt ? d.devolucio : null;
+
+  if (!doc || tornat <= 0) {
+    if (d.devolucio) {
+      // Si té registre Veri*Factu no es pot esborrar: només es desvincula i es marca esborrat.
+      if (d.devolucio.verifactu) {
+        await tx.factura.update({ where: { id: d.devolucio.id }, data: { deletedAt: new Date(), dipositDevolucioId: null } });
+      } else {
+        await tx.factura.delete({ where: { id: d.devolucio.id } });
+      }
+      await audit(
+        { usuariId: actor?.id ?? null, accio: 'ELIMINACIO', entitat: 'factura', entitatId: d.devolucio.id, detall: { devolucioDiposit: dipositId, numero: d.devolucio.numero }, ip },
+        tx,
+      );
+    }
+    return;
+  }
+
+  const data = d.dataResolucio ?? new Date();
+  const linia = {
+    concepte: 'EXTRA' as const,
+    descripcio: `Devolució del dipòsit ${doc.numero.replace(/^\d{4}-/, '')}`,
+    detall: [
+      `Tornat el ${data.toLocaleDateString('ca-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}`,
+      d.metodeResolucio ? METODE_COBRAMENT_LABELS[d.metodeResolucio].toLowerCase() : null,
+    ].filter(Boolean).join(' · '),
+    import: tornat,
+  };
+
+  if (existent) {
+    await tx.liniaFactura.deleteMany({ where: { facturaId: existent.id } });
+    await tx.factura.update({ where: { id: existent.id }, data: { data, linies: { create: [linia] } } });
+    return;
+  }
+
+  // Un document esborrat (soft) que encara apunti a aquest dipòsit allibera l'enllaç.
+  if (d.devolucio) await tx.factura.update({ where: { id: d.devolucio.id }, data: { dipositDevolucioId: null } });
+  const numero =
+    (await proximNumeroFacturaContracte(tx, d.estanciaId)) || (await proximNumeroFactura(tx, data.getFullYear()));
+  const factura = await tx.factura.create({
+    data: {
+      estanciaId: d.estanciaId,
+      numero,
+      data,
+      base: 0,
+      iva: 0,
+      total: 0,
+      estat: 'COBRADA',
+      tipusDocument: 'FACTURA_SIMPLIFICADA',
+      esDiposit: true,
+      dipositDevolucioId: dipositId,
+      linies: { create: [linia] },
+    },
+  });
+  await audit(
+    { usuariId: actor?.id ?? null, accio: 'CREACIO', entitat: 'factura', entitatId: factura.id, detall: { numero, devolucioDiposit: dipositId, import: tornat }, ip },
+    tx,
+  );
 }
 
 /**

@@ -4,7 +4,7 @@ import { ROLES_WRITE } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
 import { handleApiError, notFound, ok } from '@/lib/http';
 import { DipositResolSchema, DipositEditSchema } from '@/lib/validation/factura';
-import { sincronitzaDocumentDiposit } from '@/lib/services/factura';
+import { sincronitzaDevolucioDiposit, sincronitzaDocumentDiposit } from '@/lib/services/factura';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -36,16 +36,21 @@ export async function PATCH(req: Request, ctx: Ctx) {
         throw new Error("Validación fallida: no es pot retenir més del que és el dipòsit.");
       }
       const parcial = retingut != null && retingut < Number(exists.import);
-      const diposit = await prisma.diposit.update({
-        where: { id },
-        data: {
-          estat: data.estat,
-          motiu: data.estat === 'RETINGUT' ? (data.motiu ?? null) : null,
-          // En custòdia no és una resolució: es buida tot el que és de la resolució.
-          dataResolucio,
-          metodeResolucio: data.estat === 'TORNAT' || parcial ? (data.metodeResolucio ?? null) : null,
-          importRetingut: parcial ? retingut : null,
-        },
+      const diposit = await prisma.$transaction(async (tx) => {
+        const d = await tx.diposit.update({
+          where: { id },
+          data: {
+            estat: data.estat,
+            motiu: data.estat === 'RETINGUT' ? (data.motiu ?? null) : null,
+            // En custòdia no és una resolució: es buida tot el que és de la resolució.
+            dataResolucio,
+            metodeResolucio: data.estat === 'TORNAT' || parcial ? (data.metodeResolucio ?? null) : null,
+            importRetingut: parcial ? retingut : null,
+          },
+        });
+        // Dipòsit amb document: tornar-lo (o la part tornada) crea la «Devolució del dipòsit».
+        await sincronitzaDevolucioDiposit(tx, id, auth, clientIp(req));
+        return d;
       });
       await audit({
         usuariId: auth.id, accio: 'MODIFICACIO', entitat: 'diposit', entitatId: id,
@@ -70,6 +75,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
       });
       // El document de dipòsit (si en té) reflecteix sempre l'import i l'etiqueta.
       await sincronitzaDocumentDiposit(tx, id);
+      // I la devolució, si ja s'ha tornat (p. ex. si es corregeix l'import).
+      await sincronitzaDevolucioDiposit(tx, id, auth, clientIp(req));
       return d;
     });
     await audit({ usuariId: auth.id, accio: 'MODIFICACIO', entitat: 'diposit', entitatId: id, detall: { camps: Object.keys(data) }, ip: clientIp(req) });
@@ -89,13 +96,20 @@ export async function DELETE(req: Request, ctx: Ctx) {
 
     const exists = await prisma.diposit.findUnique({
       where: { id },
-      select: { id: true, factura: { select: { id: true, esDiposit: true, verifactu: { select: { id: true } } } } },
+      select: {
+        id: true,
+        factura: { select: { id: true, esDiposit: true, verifactu: { select: { id: true } } } },
+        devolucio: { select: { id: true, verifactu: { select: { id: true } } } },
+      },
     });
     if (!exists) return notFound();
     const doc = exists.factura?.esDiposit && !exists.factura.verifactu ? exists.factura.id : null;
+    // La devolució també: sense el dipòsit no té sentit.
+    const devolucio = exists.devolucio && !exists.devolucio.verifactu ? exists.devolucio.id : null;
     await prisma.$transaction([
       prisma.diposit.delete({ where: { id } }),
       ...(doc ? [prisma.factura.delete({ where: { id: doc } })] : []),
+      ...(devolucio ? [prisma.factura.delete({ where: { id: devolucio } })] : []),
     ]);
     await audit({ usuariId: auth.id, accio: 'ELIMINACIO', entitat: 'diposit', entitatId: id, ip: clientIp(req) });
     return ok({ ok: true });

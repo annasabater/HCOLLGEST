@@ -212,7 +212,7 @@ export async function buildFacturesPdfs(
             kv: [
               ['Base imposable', eur(0)],
               ['IVA', '-'],
-              ['Total dipòsit (no és ingrés)', eur(f.linies.reduce((a, l) => a + Number(l.import), 0))],
+              [f.dipositDevolucioId ? 'Total retornat (no és ingrés)' : 'Total dipòsit (no és ingrés)', eur(f.linies.reduce((a, l) => a + Number(l.import), 0))],
             ],
           }
         : {

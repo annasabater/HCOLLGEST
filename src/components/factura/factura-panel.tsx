@@ -39,6 +39,8 @@ interface FacturaLite {
   fiscalNum?: string;
   /** Document de dipòsit (no és ingrés): import i estat del dipòsit vinculat. */
   esDiposit?: boolean;
+  /** Document de devolució d'un dipòsit (26009.5): també sense IVA, no és ingrés. */
+  esDevolucio?: boolean;
   importDiposit?: number;
   estatDiposit?: 'EN_CUSTODIA' | 'TORNAT' | 'RETINGUT';
   dipositId?: string;
@@ -508,9 +510,13 @@ export function FacturaPanel({
               {f.esDiposit && (
                 <span
                   className="shrink-0 rounded-full border border-teal-300 bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-800"
-                  title="Document de dipòsit: sense IVA, no és un ingrés"
+                  title={
+                    f.esDevolucio
+                      ? 'Devolució de dipòsit: sense IVA, no és ingrés ni abonament'
+                      : 'Document de dipòsit: sense IVA, no és un ingrés'
+                  }
                 >
-                  Dipòsit
+                  {f.esDevolucio ? 'Devolució' : 'Dipòsit'}
                 </span>
               )}
               {f.contracte && (
@@ -525,7 +531,12 @@ export function FacturaPanel({
               )}
             </a>
             <div className="flex items-center gap-2">
-              {f.esDiposit ? (
+              {f.esDevolucio ? (
+                <>
+                  <span title="Import retornat a l'hoste (no és ingrés ni despesa)">{formatEur(f.importDiposit ?? 0)}</span>
+                  <Badge tone="neutral">Retornat</Badge>
+                </>
+              ) : f.esDiposit ? (
                 <>
                   <span title="Import del dipòsit (no compta com a ingrés)">{formatEur(f.importDiposit ?? 0)}</span>
                   {f.dipositId ? (

@@ -64,6 +64,8 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
 
   // Document de dipòsit: el total comptable és 0; l'import és el del dipòsit.
   const esDiposit = factura.esDiposit;
+  // Devolució d'un dipòsit (26009.5): també sense IVA; no és ingrés ni abonament.
+  const esDevolucio = esDiposit && factura.dipositDevolucioId != null;
   const importDiposit = factura.diposits.length > 0
     ? factura.diposits.reduce((a, d) => a + Number(d.import), 0)
     : factura.linies.reduce((a, l) => a + Number(l.import), 0);
@@ -101,7 +103,7 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
               <CardBody className="space-y-3">
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                    <ShieldCheck className="h-3.5 w-3.5" /> Document de dipòsit
+                    <ShieldCheck className="h-3.5 w-3.5" /> {esDevolucio ? 'Devolució de dipòsit' : 'Document de dipòsit'}
                   </span>
                   <span className="text-sm text-slate-500">Factura simplificada sense IVA · no és un ingrés</span>
                 </div>
@@ -159,11 +161,11 @@ export default async function FacturaDetailPage({ params }: { params: Promise<{ 
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium uppercase tracking-wide text-slate-400">Dipòsit</span>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
-                    <ShieldCheck className="h-3.5 w-3.5" /> {ESTAT_DIPOSIT[estatDiposit] ?? 'En custòdia'}
+                    <ShieldCheck className="h-3.5 w-3.5" /> {esDevolucio ? 'Retornat' : (ESTAT_DIPOSIT[estatDiposit] ?? 'En custòdia')}
                   </span>
                 </div>
                 <div className="flex items-center justify-between border-t border-slate-100 pt-3">
-                  <span className="text-sm text-slate-500">Total dipòsit</span>
+                  <span className="text-sm text-slate-500">{esDevolucio ? 'Total retornat' : 'Total dipòsit'}</span>
                   <span className="text-xl font-semibold text-slate-900">{formatEur(importDiposit)}</span>
                 </div>
                 <p className="text-xs text-slate-500">Base 0,00 € · sense IVA. No compta com a ingrés.</p>

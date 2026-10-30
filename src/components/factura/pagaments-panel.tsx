@@ -451,7 +451,9 @@ export function PagamentsPanel({
             ? "L'import retingut passa a comptar com a ingrés."
             : resolent?.estat === 'RETINGUT'
               ? "El que et quedes passa a ser ingrés (sense IVA) del trimestre d'aquesta data."
-              : 'Surt de la custòdia i es retorna a l\'hoste. No és ingrés.'
+              : `Surt de la custòdia i es retorna a l'hoste. No és ingrés.${
+                  fResolent?.facturaEsDiposit ? ' Es crearà el document «Devolució del dipòsit» amb el número següent.' : ''
+                }`
         }
         confirmLabel={resolent?.estat === 'RETINGUT' ? 'Retenir' : 'Tornar'}
         danger={false}

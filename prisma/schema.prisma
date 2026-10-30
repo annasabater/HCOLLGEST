@@ -740,6 +740,14 @@ model Factura {
   // (Diposit.facturaId) i la línia.
   esDiposit Boolean @default(false) @map("es_diposit")
 
+  // Document de DEVOLUCIÓ d'un dipòsit (també esDiposit = true, base/IVA/total 0):
+  // es crea sol en tornar el dipòsit (o la part tornada d'una retenció), amb el
+  // número següent de l'estada i el text «Devolució del dipòsit 26009.2». No és
+  // un abonament ni una rectificativa: només deixa constància que els diners en
+  // custòdia han tornat a l'hoste. Es desfà si el dipòsit torna a custòdia.
+  dipositDevolucioId String?  @unique @map("diposit_devolucio_id")
+  dipositDevolucio   Diposit? @relation("DevolucioDiposit", fields: [dipositDevolucioId], references: [id], onDelete: SetNull)
+
   // Enllaç d'una factura SIMPLIFICADA a la factura FISCAL que la cobreix (quan
   // l'hoste demana factura fiscal). Al Llibre d'IVA la simplificada mostra el
   // número de la fiscal a la columna "N° Factura F." i la fiscal NO surt com a
@@ -770,7 +778,7 @@ model Factura {
 
   linies     LiniaFactura[]
   cobraments Cobrament[]
-  diposits   Diposit[]
+  diposits   Diposit[]          @relation("DocumentDiposit")
   verifactu  RegistreVerifactu?
 
   createdAt DateTime  @default(now()) @map("created_at")
@@ -937,7 +945,9 @@ model Diposit {
   estanciaId    String          @map("estancia_id")
   estancia      Estancia        @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
   facturaId     String?         @map("factura_id")
-  factura       Factura?        @relation(fields: [facturaId], references: [id], onDelete: SetNull)
+  factura       Factura?        @relation("DocumentDiposit", fields: [facturaId], references: [id], onDelete: SetNull)
+  // Document de devolució (26009.5) quan es torna, tot o en part.
+  devolucio     Factura?        @relation("DevolucioDiposit")
   import        Decimal         @db.Decimal(10, 2)
   data          DateTime
   metode        MetodeCobrament

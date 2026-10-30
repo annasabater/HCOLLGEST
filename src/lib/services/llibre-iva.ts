@@ -223,11 +223,14 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
       const fiancaDins = !f.esDiposit && f.fiancaInclosa
         ? round2(f.diposits.reduce((a, x) => a + Number(x.import), 0))
         : 0;
-      const diposit = f.esDiposit
-        ? round2(
-            (f.diposits.length > 0 ? f.diposits : f.linies).reduce((a, x) => a + Number(x.import), 0),
-          )
-        : fiancaDins;
+      // La devolució d'un dipòsit hi resta (els diners surten de la custòdia).
+      const diposit = f.dipositDevolucioId
+        ? -round2(f.linies.reduce((a, x) => a + Number(x.import), 0))
+        : f.esDiposit
+          ? round2(
+              (f.diposits.length > 0 ? f.diposits : f.linies).reduce((a, x) => a + Number(x.import), 0),
+            )
+          : fiancaDins;
       const { base, iva, ivaPercent } = f.esDiposit
         ? { base: 0, iva: 0, ivaPercent: 0 }
         : desglossaIva(round2(total - fiancaDins), round2(Number(f.base) - fiancaDins), Number(f.iva));
@@ -251,7 +254,7 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
         // Si la simplificada té una fiscal vinculada, el seu número surt a la
         // columna "F." (la mateixa fila) i la fiscal no compta a part.
         numeroFiscal: esFiscal ? net(f.numero) : f.facturaFiscal ? net(f.facturaFiscal.numero) : '',
-        client: f.esDiposit ? `${nom} (DEPÓSITO)` : esAbono ? `${nom} (${etiquetaAbono})` : nom,
+        client: f.esDiposit ? `${nom} (${f.dipositDevolucioId ? 'DEVOLUCIÓN DEPÓSITO' : 'DEPÓSITO'})` : esAbono ? `${nom} (${etiquetaAbono})` : nom,
         periode,
         nif,
         rectificaNumero: f.rectifica?.numero ?? null,

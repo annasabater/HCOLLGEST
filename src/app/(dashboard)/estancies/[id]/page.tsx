@@ -115,6 +115,8 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
     select: {
       id: true, numero: true, data: true, total: true, estat: true, tipusDocument: true, estanciaId: true,
       esDiposit: true,
+      dipositDevolucioId: true,
+      linies: { select: { import: true } },
       diposits: { select: { id: true, import: true, estat: true } },
       facturaFiscal: { select: { numero: true } },
       estancia: { select: { numContracte: true } },
@@ -596,7 +598,11 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   esAltra: f.estanciaId !== estancia.id,
                   fiscalNum: f.facturaFiscal?.numero,
                   esDiposit: f.esDiposit,
-                  importDiposit: f.diposits.reduce((a, d) => a + Number(d.import), 0),
+                  esDevolucio: f.dipositDevolucioId != null,
+                  // La devolució no té dipòsit vinculat: l'import és el de la seva línia.
+                  importDiposit: f.dipositDevolucioId
+                    ? f.linies.reduce((a, l) => a + Number(l.import), 0)
+                    : f.diposits.reduce((a, d) => a + Number(d.import), 0),
                   estatDiposit: f.diposits[0]?.estat,
                   dipositId: f.diposits[0]?.id,
                 }))}
