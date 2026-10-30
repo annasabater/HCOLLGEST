@@ -7,7 +7,7 @@ import { NavegadorPeriode } from '@/components/ui/navegador-periode';
 import { getJSON } from '@/lib/api';
 import { toISODate } from '@/lib/dates';
 import { rangPeriode, type EstatPeriode } from '@/lib/periode';
-import { formatEur } from '@/lib/utils';
+import { Eur } from '@/components/finances/amounts-visibility';
 
 interface Desat { periode: string; etiqueta: string; totalTotal: number; updatedAt: string }
 
@@ -61,7 +61,7 @@ export function TrimestreIvaCard() {
                 title={`Desat el ${new Date(d.updatedAt).toLocaleDateString('ca-ES')}`}
               >
                 <span className="font-medium text-slate-700">{d.etiqueta}</span>
-                <span className="text-slate-400">{formatEur(d.totalTotal)}</span>
+                <Eur value={d.totalTotal} className="text-slate-400" />
               </a>
             ))}
           </div>
