@@ -41,6 +41,8 @@ interface FacturaLite {
   esDiposit?: boolean;
   /** Document de devolució d'un dipòsit (26009.5): també sense IVA, no és ingrés. */
   esDevolucio?: boolean;
+  /** Si és una devolució: el dipòsit que torna. */
+  devolucioDipositId?: string;
   importDiposit?: number;
   estatDiposit?: 'EN_CUSTODIA' | 'TORNAT' | 'RETINGUT';
   dipositId?: string;
@@ -152,6 +154,8 @@ export function FacturaPanel({
   const [tornImport, setTornImport] = useState('');
   const [tornMetode, setTornMetode] = useState('EFECTIU');
   const [tornMotiu, setTornMotiu] = useState('');
+  // Tornar a custòdia un dipòsit ja tornat/retingut (amb el número de la devolució que s'esborra).
+  const [desfent, setDesfent] = useState<{ id: string; devolucio: string | null } | null>(null);
   const [rectError, setRectError] = useState<string | null>(null);
 
   // Devolucions detectades (cobraments negatius ENCARA sense factura): habiliten
@@ -458,7 +462,8 @@ export function FacturaPanel({
       setTornMotiu('');
       return;
     }
-    await desaDiposit(dipositId, { estat: 'EN_CUSTODIA' });
+    // Tornar a custòdia esborra la devolució: es demana confirmació abans.
+    setDesfent({ id: dipositId, devolucio: factures.find((x) => x.devolucioDipositId === dipositId)?.numero ?? null });
   }
 
   async function desaDiposit(dipositId: string, body: Record<string, unknown>) {
@@ -707,6 +712,22 @@ export function FacturaPanel({
           if (id) void eliminarFactura(id);
         }}
         onCancel={() => setAEliminar(null)}
+      />
+      <ConfirmDialog
+        open={desfent !== null}
+        title="Segur que vols tornar el dipòsit a custòdia?"
+        message={
+          desfent?.devolucio
+            ? `Hi ha la factura simplificada de devolució ${desfent.devolucio.replace(/^\d{4}-/, '')}. S'esborrarà i el seu número quedarà lliure.`
+            : 'El dipòsit tornarà a constar com a diners en custòdia.'
+        }
+        confirmLabel="Tornar a custòdia"
+        onConfirm={() => {
+          const d = desfent;
+          setDesfent(null);
+          if (d) void desaDiposit(d.id, { estat: 'EN_CUSTODIA' });
+        }}
+        onCancel={() => setDesfent(null)}
       />
       <ConfirmDialog
         open={tornant !== null}

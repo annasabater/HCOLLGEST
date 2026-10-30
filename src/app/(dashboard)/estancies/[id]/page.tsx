@@ -599,6 +599,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   fiscalNum: f.facturaFiscal?.numero,
                   esDiposit: f.esDiposit,
                   esDevolucio: f.dipositDevolucioId != null,
+                  devolucioDipositId: f.dipositDevolucioId ?? undefined,
                   // La devolució no té dipòsit vinculat: l'import és el de la seva línia.
                   importDiposit: f.dipositDevolucioId
                     ? f.linies.reduce((a, l) => a + Number(l.import), 0)

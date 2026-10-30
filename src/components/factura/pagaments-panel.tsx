@@ -142,6 +142,7 @@ export function PagamentsPanel({
   const [resMetode, setResMetode] = useState('EFECTIU');
   const [resImport, setResImport] = useState('');
   const [motiuRetencio, setMotiuRetencio] = useState('');
+  const [desfentId, setDesfentId] = useState<string | null>(null);
   const [importVal, setImport] = useState('');
   const [metode, setMetode] = useState('EFECTIU');
   const [dataCobrament, setDataCobrament] = useState(() => new Date().toISOString().slice(0, 10));
@@ -366,6 +367,11 @@ export function PagamentsPanel({
   function resoldreFianca(id: string, estat: 'TORNAT' | 'RETINGUT' | 'EN_CUSTODIA') {
     const f = fiances.find((x) => x.id === id);
     const esFianca = !!f && tipusDeFianca(f) === 'FIANCA';
+    // Dipòsit amb document: tornar-lo a custòdia esborra la devolució → es confirma abans.
+    if (estat === 'EN_CUSTODIA' && f && !esFianca && f.facturaEsDiposit) {
+      setDesfentId(id);
+      return;
+    }
     if (estat === 'EN_CUSTODIA' || (esFianca && estat === 'TORNAT')) {
       void desaResolucio(id, { estat });
       return;
@@ -436,6 +442,18 @@ export function PagamentsPanel({
           else void eliminarPagament(a.id);
         }}
         onCancel={() => setAEliminar(null)}
+      />
+      <ConfirmDialog
+        open={desfentId !== null}
+        title="Segur que vols tornar el dipòsit a custòdia?"
+        message="Si hi ha la factura simplificada de devolució, s'esborrarà i el seu número quedarà lliure."
+        confirmLabel="Tornar a custòdia"
+        onConfirm={() => {
+          const id = desfentId;
+          setDesfentId(null);
+          if (id) void desaResolucio(id, { estat: 'EN_CUSTODIA' });
+        }}
+        onCancel={() => setDesfentId(null)}
       />
       <ConfirmDialog
         open={resolent !== null}
