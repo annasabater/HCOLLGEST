@@ -12,6 +12,7 @@ import { EnviarCorreuButton } from '@/components/justificants/enviar-correu-butt
 import { FitxaExpandible } from '@/components/justificants/fitxa-expandible';
 import { formatDate } from '@/lib/utils';
 import { estatFacturaLabel } from '@/lib/factura-display';
+import { Badge, toneEstatDiposit, toneEstatFactura } from '@/components/ui/badge';
 import type { Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
@@ -157,15 +158,15 @@ export default async function FacturesPage({
                     )}
                     {f.esDiposit && (
                       <span
-                        className="ml-1 inline-flex items-center rounded-full bg-teal-50 px-1.5 py-0.5 text-[10px] font-medium text-teal-700 ring-1 ring-teal-200"
+                        className={`ml-1 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ${f.dipositDevolucioId ? 'bg-sky-50 text-sky-700 ring-sky-200' : 'bg-teal-50 text-teal-700 ring-teal-200'}`}
                         title="Document de dipòsit: sense IVA, no és un ingrés"
                       >
-                        {f.dipositDevolucioId ? 'Devolució de dipòsit' : 'Dipòsit'}
+                        {f.dipositDevolucioId ? 'Devolució dipòsit' : 'Dipòsit'}
                       </span>
                     )}
                     {Number(f.total) < 0 && (
                       <span className="ml-1 inline-flex items-center rounded-full bg-rose-50 px-1.5 py-0.5 text-[10px] font-medium text-rose-700 ring-1 ring-rose-200">
-                        Devolució
+                        Rectificativa
                       </span>
                     )}
                   </Td>
@@ -201,11 +202,11 @@ export default async function FacturesPage({
                   </Td>
                   <Td>
                     {f.esDiposit ? (
-                      <span className="text-sm text-amber-700">
+                      <Badge tone={f.dipositDevolucioId ? 'retornat' : toneEstatDiposit(f.diposits[0]?.estat)}>
                         {f.dipositDevolucioId ? "Retornat a l'hoste" : f.diposits[0]?.estat === 'TORNAT' ? 'Dipòsit tornat' : f.diposits[0]?.estat === 'RETINGUT' ? 'Dipòsit retingut' : 'En custòdia'}
-                      </span>
+                      </Badge>
                     ) : restringit ? (
-                      <span>{estatFacturaLabel(f.estat, Number(f.total))}</span>
+                      <Badge tone={toneEstatFactura(f.estat, Number(f.total))}>{estatFacturaLabel(f.estat, Number(f.total))}</Badge>
                     ) : (
                       <EstatFacturaToggle id={f.id} estat={f.estat} total={Number(f.total)} />
                     )}

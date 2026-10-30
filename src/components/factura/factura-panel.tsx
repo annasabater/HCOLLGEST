@@ -6,7 +6,7 @@ import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { Receipt, ShieldCheck, ShieldOff, Pencil, Trash2, Undo2, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { Badge, toneEstatDiposit, toneEstatFactura } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { formatEur, formatDate } from '@/lib/utils';
 import { METODE_COBRAMENT_LABELS, metodeCobramentValues } from '@/lib/validation/enums';
@@ -555,7 +555,7 @@ export function FacturaPanel({
               )}
               {f.esDiposit && (
                 <span
-                  className="shrink-0 rounded-full border border-teal-300 bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-800"
+                  className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${f.esDevolucio ? 'border-sky-300 bg-sky-50 text-sky-800' : 'border-teal-300 bg-teal-50 text-teal-800'}`}
                   title={
                     f.esDevolucio
                       ? 'Devolució de dipòsit: sense IVA, no és ingrés ni abonament'
@@ -580,7 +580,7 @@ export function FacturaPanel({
               {f.esDevolucio ? (
                 <>
                   <span title="Import retornat a l'hoste (no és ingrés ni despesa)">{formatEur(f.importDiposit ?? 0)}</span>
-                  <Badge tone="neutral">Retornat</Badge>
+                  <Badge tone="retornat">Retornat a l'hoste</Badge>
                 </>
               ) : f.esDiposit ? (
                 <>
@@ -592,12 +592,12 @@ export function FacturaPanel({
                       title={(f.estatDiposit ?? 'EN_CUSTODIA') === 'EN_CUSTODIA' ? 'Marcar com a tornat' : 'Tornar a custòdia (desfer)'}
                       className="cursor-pointer"
                     >
-                      <Badge tone={f.estatDiposit === 'RETINGUT' ? 'success' : f.estatDiposit === 'TORNAT' ? 'neutral' : 'warning'}>
+                      <Badge tone={toneEstatDiposit(f.estatDiposit)}>
                         {ESTAT_DIPOSIT_LABEL[f.estatDiposit ?? 'EN_CUSTODIA']}
                       </Badge>
                     </button>
                   ) : (
-                    <Badge tone={f.estatDiposit === 'RETINGUT' ? 'success' : f.estatDiposit === 'TORNAT' ? 'neutral' : 'warning'}>
+                    <Badge tone={toneEstatDiposit(f.estatDiposit)}>
                       {ESTAT_DIPOSIT_LABEL[f.estatDiposit ?? 'EN_CUSTODIA']}
                     </Badge>
                   )}
@@ -611,7 +611,7 @@ export function FacturaPanel({
                     title="Canviar entre Cobrada i Pendent"
                     className="cursor-pointer"
                   >
-                    <Badge tone={f.estat === 'COBRADA' ? 'success' : 'warning'}>
+                    <Badge tone={toneEstatFactura(f.estat, Number(f.total))}>
                       {estatFacturaLabel(f.estat, Number(f.total))}
                     </Badge>
                   </button>

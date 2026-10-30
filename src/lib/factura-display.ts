@@ -15,8 +15,8 @@ export function tipusDocumentLabel(tipusDocument: string, total: number): string
   return TIPUS_DOCUMENT_BASE[tipusDocument] ?? tipusDocument;
 }
 
-/** "Cobrada"/"Pendent", o "Devolta" quan la factura és una devolució (total negatiu) ja liquidada. */
+/** "Cobrada"/"Pendent", o "Retornada" quan la factura és una devolució (total negatiu) ja liquidada. */
 export function estatFacturaLabel(estat: 'PENDENT' | 'COBRADA', total: number): string {
   if (estat !== 'COBRADA') return 'Pendent';
-  return total < 0 ? 'Devolta' : 'Cobrada';
+  return total < 0 ? 'Retornada' : 'Cobrada';
 }
