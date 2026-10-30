@@ -9,7 +9,7 @@ import { Input, Select } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { formatEur, formatDate } from '@/lib/utils';
-import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
+import { METODE_COBRAMENT_LABELS, metodeCobramentValues } from '@/lib/validation/enums';
 import { tipusDocumentLabel, estatFacturaLabel } from '@/lib/factura-display';
 
 function tipusHabitacio(nom: string | null | undefined): string {
@@ -146,6 +146,12 @@ export function FacturaPanel({
   const [rectMotiu, setRectMotiu] = useState('reducción de estancia');
   const [selDevolucions, setSelDevolucions] = useState<Set<string>>(new Set());
   const [rectBusy, setRectBusy] = useState(false);
+  // Tornar un dipòsit des de la seva etiqueta: data, quant es torna, com i (si en part) el motiu.
+  const [tornant, setTornant] = useState<{ id: string; import: number } | null>(null);
+  const [tornData, setTornData] = useState('');
+  const [tornImport, setTornImport] = useState('');
+  const [tornMetode, setTornMetode] = useState('EFECTIU');
+  const [tornMotiu, setTornMotiu] = useState('');
   const [rectError, setRectError] = useState<string | null>(null);
 
   // Devolucions detectades (cobraments negatius ENCARA sense factura): habiliten
@@ -441,16 +447,51 @@ export function FacturaPanel({
     }
   }
 
-  // Dipòsit: En custòdia ↔ Tornat; un de resolt (Tornat o Retingut) torna a custòdia.
-  // Així un «Tornat» marcat per error es desfà amb un altre clic.
-  async function toggleEstatDiposit(dipositId: string, actual: 'EN_CUSTODIA' | 'TORNAT' | 'RETINGUT') {
-    const nou = actual === 'EN_CUSTODIA' ? 'TORNAT' : 'EN_CUSTODIA';
+  // Dipòsit en custòdia → obre el diàleg de devolució (data, import, com es torna).
+  // Un de resolt (Tornat o Retingut) torna a custòdia amb un clic (desfà l'error).
+  async function toggleEstatDiposit(dipositId: string, actual: 'EN_CUSTODIA' | 'TORNAT' | 'RETINGUT', importDiposit: number) {
+    if (actual === 'EN_CUSTODIA') {
+      setTornant({ id: dipositId, import: importDiposit });
+      setTornData(new Date().toISOString().slice(0, 10));
+      setTornImport(String(importDiposit));
+      setTornMetode(fiances.find((x) => x.id === dipositId)?.metode ?? 'EFECTIU');
+      setTornMotiu('');
+      return;
+    }
+    await desaDiposit(dipositId, { estat: 'EN_CUSTODIA' });
+  }
+
+  async function desaDiposit(dipositId: string, body: Record<string, unknown>) {
     try {
-      await patchJSON(`/api/diposits/${dipositId}`, { estat: nou });
+      await patchJSON(`/api/diposits/${dipositId}`, body);
       router.refresh();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "No s'ha pogut canviar l'estat del dipòsit");
+      alert(
+        err instanceof ApiError ? err.message.replace(/^Validación fallida:\s*/, '') : "No s'ha pogut canviar l'estat del dipòsit",
+      );
     }
+  }
+
+  // Tornar: si es torna menys del que és el dipòsit, la resta queda retinguda.
+  const tornQuant = Number(tornImport.replace(',', '.'));
+  const tornParcial = !!tornant && tornImport !== '' && tornQuant < tornant.import;
+  function confirmaTornar() {
+    const t = tornant;
+    setTornant(null);
+    if (!t) return;
+    const quant = Math.max(0, Math.min(tornQuant || 0, t.import));
+    void desaDiposit(
+      t.id,
+      quant >= t.import
+        ? { estat: 'TORNAT', dataResolucio: tornData || undefined, metodeResolucio: tornMetode }
+        : {
+            estat: 'RETINGUT',
+            dataResolucio: tornData || undefined,
+            importRetingut: Math.round((t.import - quant) * 100) / 100,
+            metodeResolucio: quant > 0 ? tornMetode : undefined,
+            motiu: tornMotiu.trim() || undefined,
+          },
+    );
   }
 
   async function obrirEdicio(f: FacturaLite) {
@@ -542,7 +583,7 @@ export function FacturaPanel({
                   {f.dipositId ? (
                     <button
                       type="button"
-                      onClick={() => toggleEstatDiposit(f.dipositId!, f.estatDiposit ?? 'EN_CUSTODIA')}
+                      onClick={() => toggleEstatDiposit(f.dipositId!, f.estatDiposit ?? 'EN_CUSTODIA', f.importDiposit ?? 0)}
                       title={(f.estatDiposit ?? 'EN_CUSTODIA') === 'EN_CUSTODIA' ? 'Marcar com a tornat' : 'Tornar a custòdia (desfer)'}
                       className="cursor-pointer"
                     >
@@ -666,6 +707,52 @@ export function FacturaPanel({
           if (id) void eliminarFactura(id);
         }}
         onCancel={() => setAEliminar(null)}
+      />
+      <ConfirmDialog
+        open={tornant !== null}
+        title={`Tornar el dipòsit${tornant ? ` de ${formatEur(tornant.import)}` : ''}?`}
+        message={
+          tornParcial
+            ? `Tornes ${formatEur(Math.max(0, tornQuant || 0))} i et quedes ${formatEur((tornant?.import ?? 0) - Math.max(0, tornQuant || 0))} (ingrés sense IVA). Es crearà el document «Devolució del dipòsit» amb el que tornes.`
+            : "Surt de la custòdia i es retorna a l'hoste. No és ingrés. Es crearà el document «Devolució del dipòsit» amb el número següent."
+        }
+        confirmLabel="Tornar"
+        danger={false}
+        extra={
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <div>
+              <label htmlFor="torn-data" className="mb-1 block text-xs text-slate-500">Data de la devolució</label>
+              <Input id="torn-data" type="date" value={tornData} onChange={(e) => setTornData(e.target.value)} />
+            </div>
+            <div>
+              <label htmlFor="torn-import" className="mb-1 block text-xs text-slate-500">Import que tornes</label>
+              <Input id="torn-import" type="number" step="0.01" min="0" value={tornImport} onChange={(e) => setTornImport(e.target.value)} />
+            </div>
+            {!(tornParcial && (tornQuant || 0) <= 0) && (
+              <div>
+                <label htmlFor="torn-metode" className="mb-1 block text-xs text-slate-500">Com el tornes</label>
+                <Select id="torn-metode" value={tornMetode} onChange={(e) => setTornMetode(e.target.value)}>
+                  {metodeCobramentValues.map((m) => (
+                    <option key={m} value={m}>{METODE_COBRAMENT_LABELS[m]}</option>
+                  ))}
+                </Select>
+              </div>
+            )}
+            {tornParcial && (
+              <div className="col-span-2">
+                <label htmlFor="torn-motiu" className="mb-1 block text-xs text-slate-500">Motiu del que et quedes (opcional)</label>
+                <Input
+                  id="torn-motiu"
+                  placeholder="Desperfecte, neteja extra…"
+                  value={tornMotiu}
+                  onChange={(e) => setTornMotiu(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+        }
+        onConfirm={confirmaTornar}
+        onCancel={() => setTornant(null)}
       />
       {propies.length === 0 && altres.length === 0 && !open && (
         <p className="text-sm text-slate-400 italic">Sense factures.</p>
