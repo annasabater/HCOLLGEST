@@ -752,7 +752,8 @@ export async function sincronitzaDevolucioDiposit(
       `Tornat el ${data.toLocaleDateString('ca-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}`,
       d.metodeResolucio ? METODE_COBRAMENT_LABELS[d.metodeResolucio].toLowerCase() : null,
     ].filter(Boolean).join(' · '),
-    import: tornat,
+    // En negatiu: són diners que surten de la custòdia cap a l'hoste.
+    import: -tornat,
   };
 
   if (existent) {

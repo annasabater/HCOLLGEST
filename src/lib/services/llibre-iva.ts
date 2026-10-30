@@ -225,7 +225,7 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
         : 0;
       // La devolució d'un dipòsit hi resta (els diners surten de la custòdia).
       const diposit = f.dipositDevolucioId
-        ? -round2(f.linies.reduce((a, x) => a + Number(x.import), 0))
+        ? -Math.abs(round2(f.linies.reduce((a, x) => a + Number(x.import), 0)))
         : f.esDiposit
           ? round2(
               (f.diposits.length > 0 ? f.diposits : f.linies).reduce((a, x) => a + Number(x.import), 0),
