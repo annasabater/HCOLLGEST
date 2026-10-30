@@ -7,6 +7,7 @@ import 'server-only';
 import type { EstatEstancia, Prisma } from '@prisma/client';
 import { prisma } from '../db';
 import { audit } from '../audit';
+import { numeroContinuacio } from './numero-contracte';
 import { isMenor } from '../dates';
 import type { RegistreParsed } from '../validation/registre';
 
@@ -326,6 +327,9 @@ export async function ampliarEstancia(
     reaprofitarFirmes?: boolean;
     dataSignatura?: Date | null;
     llocSignatura?: string | null;
+    /** Número de contracte triat per a la nova estada ('' = sense número). Si no
+     *  s'indica, la continuació de l'arrel (26009_1) o buit si l'arrel no en té. */
+    numContracte?: string;
   },
   actor: { id: string } | null,
   ip: string | null,
@@ -341,30 +345,13 @@ export async function ampliarEstancia(
       // Habitació de l'ampliació: la indicada o, per defecte, la de l'estada.
       const habId = dates.habitacioId !== undefined ? dates.habitacioId : root.habitacioId;
 
-      // Si l'estada arrel encara NO té número de contracte (esborrany), l'ampliació
-      // tampoc en té: deixar-lo en blanc és vàlid (l'índex únic exclou els buits) i
-      // evita que dues estades-esborrany diferents generin el MATEIX sufix "_1" i
-      // xoquin entre elles. L'usuari sempre pot posar-ne un a mà després editant-la.
-      let numContracte = '';
-      if (root.numContracte.trim()) {
-        // Numeració de l'ampliació sense forats: agafa el número lliure més baix
-        // (_1, _2, _3…) entre les ampliacions VIVES. Si se n'ha esborrat alguna, el
-        // seu número torna a quedar disponible i no salta ni deixa forat. S'usa "_"
-        // (no ".") per distingir el CONTRACTE de les FACTURES (que sí usen ".").
-        const germanes = await tx.estancia.findMany({
-          where: { estanciaOrigenId: rootId, deletedAt: null },
-          select: { numContracte: true },
-        });
-        const usats = new Set(
-          germanes
-            .map((g) => g.numContracte.match(/_(\d+)$/)?.[1])
-            .filter((s): s is string => s != null)
-            .map(Number),
-        );
-        let seq = 1;
-        while (usats.has(seq)) seq += 1;
-        numContracte = `${root.numContracte}_${seq}`;
-      }
+      // Número de la nova estada: el que s'ha triat al formulari o, per defecte, la
+      // continuació de l'arrel (26009_1). Si l'arrel encara no té número, l'ampliació
+      // tampoc (deixar-lo en blanc és vàlid: l'índex únic exclou els buits).
+      const numContracte =
+        dates.numContracte !== undefined
+          ? dates.numContracte.trim()
+          : ((await numeroContinuacio(rootId, root.numContracte, tx)) ?? '');
 
       const nova = await tx.estancia.create({
         data: {

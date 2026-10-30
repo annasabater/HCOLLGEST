@@ -244,6 +244,9 @@ export const AmpliacioSchema = z
     reaprofitarFirmes: z.boolean().optional(),
     dataSignatura: optDate, // "Localitat i data" de la signatura (per defecte, avui)
     llocSignatura: optStr,
+    // Número de contracte de la nova estada ('' = sense número). Sense el camp,
+    // continuació de l'estada arrel (26009_1).
+    numContracte: z.string().trim().max(40).optional(),
   })
   .superRefine((d, ctx) => {
     if (d.dataSortida <= d.dataEntrada) {
