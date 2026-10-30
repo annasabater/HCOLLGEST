@@ -22,6 +22,7 @@ import {
   FacturaFiscalDeSimplesSchema,
 } from '../validation/factura';
 import { CONCEPTE_LINIA_LABELS, METODE_COBRAMENT_LABELS } from '../validation/enums';
+import { tramPerData } from '../tram-per-data';
 
 const ESTABLIMENT_ID = 'hostal-coll';
 
@@ -700,6 +701,17 @@ export async function sincronitzaDocumentDiposit(tx: Prisma.TransactionClient, d
   });
 }
 
+/** Estada (tram) del grup de `estanciaId` on cau `data`; si no n'hi ha cap, la mateixa. */
+async function estanciaDelTram(tx: Prisma.TransactionClient, estanciaId: string, data: Date): Promise<string> {
+  const est = await tx.estancia.findUnique({ where: { id: estanciaId }, select: { estanciaOrigenId: true } });
+  const rootId = est?.estanciaOrigenId ?? estanciaId;
+  const trams = await tx.estancia.findMany({
+    where: { deletedAt: null, OR: [{ id: rootId }, { estanciaOrigenId: rootId }] },
+    select: { id: true, dataEntrada: true, dataSortida: true },
+  });
+  return tramPerData(trams, data)?.id ?? estanciaId;
+}
+
 /**
  * Manté el DOCUMENT DE DEVOLUCIÓ d'un dipòsit d'acord amb el seu estat. Només
  * per a dipòsits amb document propi (26009.2):
@@ -756,9 +768,16 @@ export async function sincronitzaDevolucioDiposit(
     import: -tornat,
   };
 
+  // La devolució va al tram de l'estada on cau la data de la devolució (no al del
+  // dipòsit): si es torna durant una ampliació, surt a la Facturació d'aquell tram.
+  const estanciaDevolucio = await estanciaDelTram(tx, d.estanciaId, data);
+
   if (existent) {
     await tx.liniaFactura.deleteMany({ where: { facturaId: existent.id } });
-    await tx.factura.update({ where: { id: existent.id }, data: { data, linies: { create: [linia] } } });
+    await tx.factura.update({
+      where: { id: existent.id },
+      data: { data, estanciaId: estanciaDevolucio, linies: { create: [linia] } },
+    });
     return;
   }
 
@@ -768,7 +787,7 @@ export async function sincronitzaDevolucioDiposit(
     (await proximNumeroFacturaContracte(tx, d.estanciaId)) || (await proximNumeroFactura(tx, data.getFullYear()));
   const factura = await tx.factura.create({
     data: {
-      estanciaId: d.estanciaId,
+      estanciaId: estanciaDevolucio,
       numero,
       data,
       base: 0,
