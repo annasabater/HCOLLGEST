@@ -247,8 +247,8 @@ export async function buildFacturaPdf(factura: FacturaAmb, establiment: Establim
   drawRight(page, money(factura.esDiposit ? importDiposit : Number(factura.total)), right - 16, y - 14, 17, font, INK);
   y -= 48;
 
-  if (factura.esDiposit) {
-    drawRight(page, factura.dipositDevolucioId ? 'Devolució de dipòsit, sense IVA. No és ingrés.' : 'Dipòsit, sense IVA.', right, y, 9, font, MUTED);
+  if (factura.esDiposit && !factura.dipositDevolucioId) {
+    drawRight(page, 'Dipòsit, sense IVA.', right, y, 9, font, MUTED);
     y -= 16;
   }
 
