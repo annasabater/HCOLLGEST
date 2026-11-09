@@ -807,11 +807,19 @@ function GraciesCard() {
   const [scheduling, setScheduling] = useState<Record<string, boolean>>({});
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [errs, setErrs] = useState<Record<string, string>>({});
+  // Idioma per estada: per defecte el de l'estada (o català), però es pot canviar abans d'enviar.
+  const [langs, setLangs] = useState<Record<string, Lang>>({});
 
   useEffect(() => {
     setEnlacRessenya(lsGet('enlac_ressenya', 'https://g.page/r/CRX-Sb9SNVzJEBM/review'));
     getJSON<{ estancies: Estancia[] }>('/api/estancies').then((r) => setEstancies(r.estancies));
   }, []);
+
+  function langFor(e: Estancia): Lang {
+    const triat = langs[e.id];
+    if (triat) return triat;
+    return e.idioma && (['ca', 'es', 'en', 'fr'] as string[]).includes(e.idioma) ? (e.idioma as Lang) : 'ca';
+  }
 
   function setLink(v: string) {
     setEnlacRessenya(v);
@@ -829,8 +837,7 @@ function GraciesCard() {
     const titular = e.viatgers.find((v) => v.esTitular) ?? e.viatgers[0];
     const email = titular?.huesped.email;
     if (!email) { setErrs((p) => ({ ...p, [e.id]: 'Sense correu' })); return; }
-    const lang: Lang = (e.idioma && (['ca', 'es', 'en', 'fr'] as string[]).includes(e.idioma))
-      ? (e.idioma as Lang) : 'ca';
+    const lang = langFor(e);
     const d = addDays(new Date(e.dataSortida), 1);
     d.setHours(12, 0, 0, 0);
     setScheduling((p) => ({ ...p, [e.id]: true }));
@@ -864,8 +871,7 @@ function GraciesCard() {
               const titular = e.viatgers.find((v) => v.esTitular) ?? e.viatgers[0];
               const email = titular?.huesped.email;
               const phone = titular?.huesped.telefon;
-              const lang: Lang = (e.idioma && (['ca', 'es', 'en', 'fr'] as string[]).includes(e.idioma))
-                ? (e.idioma as Lang) : 'ca';
+              const lang = langFor(e);
               const waMsg = fillTemplate(PLANTILLA_GRACIES[lang], {
                 nom: titular?.huesped.nom ?? '',
                 enllac: enlacRessenya,
@@ -881,7 +887,12 @@ function GraciesCard() {
                       Sortida {formatDate(e.dataSortida)} · {email ?? <span className="text-red-400">sense correu</span>}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <LangSelect
+                      value={lang}
+                      onChange={(l) => setLangs({ ...langs, [e.id]: l })}
+                      className="w-32"
+                    />
                     <Button
                       type="button"
                       size="sm"
