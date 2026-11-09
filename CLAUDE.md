@@ -162,7 +162,13 @@ Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
   (que es mantenen, traduïdes; decisió de l'Anna). No hi entris les 13 estàtiques a gestio: sortirien duplicades.
   En donar-ne d'alta una es tradueix sola a es/ca/en/fr (`services/traduccio-ressenya.ts`, Claude amb
   sortida JSON; `claude-opus-5-5` amb recanvi a `claude-sonnet-4-6`) i la web la mostra en l'idioma triat.
-  Botó «Tradueix» per reintentar (`POST /api/ressenyes/:id/tradueix`). La clau del `.env` local no és vàlida. Fase 1: alta manual. PENDENT: sincronització amb la Business
+  Botó «Tradueix» per reintentar (`POST /api/ressenyes/:id/tradueix`). La clau del `.env` local no és vàlida.
+  Les 13 de la web ja són a gestio (font WEB, `scripts/importa-ressenyes-web.ts`); la web mostra NOMÉS les de
+  gestio (l'HTML és reserva). **Sincronització nocturna** (`/api/cron/ressenyes-google`, 03:00 UTC):
+  Business Profile API amb OAuth propi (`/api/ressenyes/google/connect`, scope business.manage, token xifrat a
+  `Establiment.googleBusinessTokenEnc`). Les noves entren PENDENT i traduïdes (mai es publiquen soles: decisió
+  de l'Anna); s'aparellen amb les WEB per autor+estrelles; actualitza nota/total. PENDENT: aprovació de Google.
+  Pop-up al panell (`components/dashboard/ressenya-popup.tsx`) per ressenyes noves i valoracions no llegides. Fase 1: alta manual. PENDENT: sincronització amb la Business
   Profile API (cal aprovació de Google).
 - **Ficha PDF firmable**: `GET /api/estancies/:id/fitxa-pdf` genera el model "Registre de persones
   allotjades" (pdf-lib) amb les dades dels viatgers i la **signatura capturada incrustada** (o una

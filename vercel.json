@@ -33,6 +33,10 @@
       "schedule": "0 5 * * *"
     },
     {
+      "path": "/api/cron/ressenyes-google",
+      "schedule": "0 3 * * *"
+    },
+    {
       "path": "/api/cron/boe-formularis",
       "schedule": "30 7 * * 1"
     }

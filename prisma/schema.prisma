@@ -304,6 +304,13 @@ model Establiment {
   googleNota  Decimal? @map("google_nota") @db.Decimal(2, 1)
   googleTotal Int?     @map("google_total")
   googleUrl   String?  @map("google_url")
+  // Sincronització nocturna de ressenyes (Google Business Profile API): refresh
+  // token XIFRAT (scope business.manage), fitxa triada (accounts/X/locations/Y)
+  // i resultat de l'última sincronització.
+  googleBusinessTokenEnc String?   @map("google_business_token_enc")
+  googleBusinessLocation String?   @map("google_business_location")
+  ressenyesSyncAt        DateTime? @map("ressenyes_sync_at")
+  ressenyesSyncError     String?   @map("ressenyes_sync_error")
 
   estancies Estancia[]
 
