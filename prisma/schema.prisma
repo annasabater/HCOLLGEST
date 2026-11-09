@@ -299,6 +299,12 @@ model Establiment {
   // /config). null = les normes per defecte de src/lib/pdf/reglament.ts.
   normesReglament Json? @map("normes_reglament")
 
+  // Ressenyes de Google: resum REAL de la fitxa (nota mitjana i total) i enllaç.
+  // La web els mostra sempre al costat de la selecció (transparència, Omnibus).
+  googleNota  Decimal? @map("google_nota") @db.Decimal(2, 1)
+  googleTotal Int?     @map("google_total")
+  googleUrl   String?  @map("google_url")
+
   estancies Estancia[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -1468,6 +1474,37 @@ model Valoracio {
   @@index([vista])
   @@index([createdAt])
   @@map("valoracio")
+}
+
+enum EstatRessenya {
+  PENDENT // nova: encara no s'ha decidit si surt a la web
+  PUBLICADA // surt a hostalcoll.com
+  AMAGADA // no surt a la web (segueix a Google)
+}
+
+// Ressenya PÚBLICA de Google (no confondre amb `Valoracio`, que és privada).
+// Es modera a /ressenyes i les PUBLICADES surten a hostalcoll.com via
+// GET /api/public/ressenyes. El text no s'edita mai (és la ressenya original).
+model Ressenya {
+  id           String        @id @default(cuid())
+  font         String        @default("MANUAL") // MANUAL | GOOGLE (sincronització, fase 2)
+  googleId     String?       @unique @map("google_id")
+  autor        String
+  puntuacio    Int // 1..5
+  text         String?       @db.Text
+  idioma       String? // ca / es / en / fr / de / it ...
+  dataRessenya DateTime      @map("data_ressenya")
+  resposta     String?       @db.Text // resposta de l'hostal a Google (si n'hi ha)
+  estat        EstatRessenya @default(PENDENT)
+  destacada    Boolean       @default(false)
+  ordre        Int           @default(0) // ordre entre les publicades (menor = abans)
+  publicadaAt  DateTime?     @map("publicada_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([estat])
+  @@map("ressenya")
 }
 
 // Emails programats per enviar-se en un moment futur (gràcies/ressenya, benvinguda).

@@ -21,6 +21,7 @@ import {
  Landmark,
   Calculator,
   LifeBuoy,
+  Star,
 } from 'lucide-react';
 import type { Role } from '@prisma/client';
 import { cn } from '@/lib/utils';
@@ -56,6 +57,7 @@ const GROUPS: NavGroup[] = [
     title: 'Gestió',
     items: [
       { href: '/plantilles', label: 'Plantilles', icon: MessageCircle },
+      { href: '/ressenyes', label: 'Ressenyes Google', icon: Star, hideRestringit: true },
       { href: '/personal', label: 'Treballadors', icon: UserCog, roles: ['ADMIN'], hideRestringit: true },
       { href: '/balanc', label: 'Balanç', icon: PiggyBank, roles: ['ADMIN'] },
       { href: '/impostos', label: 'Impostos', icon: Calculator, roles: ['ADMIN'] },

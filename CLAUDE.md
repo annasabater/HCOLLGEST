@@ -154,6 +154,12 @@ Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
   **zona MRZ** del DNI/NIE (TD1) y pasaporte (TD3) con validación de dígitos de control, y autorrellena
   el formulario maestro (nom, cognoms, document, naixement, sexe, nacionalitat). Núcleo en
   `src/lib/ocr/mrz.ts` (puro, testeado con vectores ICAO); UI en `src/components/ocr/document-scanner.tsx`.
+- **Ressenyes de Google** (`/ressenyes`, model `Ressenya`; ≠ `Valoracio`, que és privada): entren
+  PENDENT i es publiquen/amaguen/destaquen/ordenen per a hostalcoll.com via
+  `GET /api/public/ressenyes` (CORS hostalcoll.com). El text **no s'edita mai**, i la web ha de mostrar
+  sempre la nota real + total + enllaç de Google (`Establiment.google*`) — transparència (Omnibus).
+  Fase 1: alta manual. PENDENT: sincronització amb la Business Profile API (cal aprovació de Google)
+  i la secció a la web.
 - **Ficha PDF firmable**: `GET /api/estancies/:id/fitxa-pdf` genera el model "Registre de persones
   allotjades" (pdf-lib) amb les dades dels viatgers i la **signatura capturada incrustada** (o una
   línia per signar a mà). Botó "Fitxa PDF" al detall de l'estada. Generador a `src/lib/pdf/fitxa.ts`.
