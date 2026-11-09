@@ -158,8 +158,9 @@ Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
   PENDENT i es publiquen/amaguen/destaquen/ordenen per a hostalcoll.com via
   `GET /api/public/ressenyes` (CORS hostalcoll.com). El text **no s'edita mai**, i la web ha de mostrar
   sempre la nota real + total + enllaç de Google (`Establiment.google*`) — transparència (Omnibus).
-  Fase 1: alta manual. PENDENT: sincronització amb la Business Profile API (cal aprovació de Google)
-  i la secció a la web.
+  La web (`../hostalcoll/index.html`, `loadGestioReviews`) les carrega i substitueix les estàtiques
+  només si n'hi ha cap de publicada. Fase 1: alta manual. PENDENT: sincronització amb la Business
+  Profile API (cal aprovació de Google).
 - **Ficha PDF firmable**: `GET /api/estancies/:id/fitxa-pdf` genera el model "Registre de persones
   allotjades" (pdf-lib) amb les dades dels viatgers i la **signatura capturada incrustada** (o una
   línia per signar a mà). Botó "Fitxa PDF" al detall de l'estada. Generador a `src/lib/pdf/fitxa.ts`.
