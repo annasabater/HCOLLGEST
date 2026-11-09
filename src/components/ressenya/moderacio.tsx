@@ -4,7 +4,14 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowDown, ArrowUp, ExternalLink, Plus, Star, Trash2 } from 'lucide-react';
 import { ApiError, delJSON, patchJSON, postJSON, putJSON } from '@/lib/api';
-import { estrelles, ordenaPublicades, textCurt } from '@/lib/ressenyes';
+import {
+  estrelles,
+  IDIOMES_WEB,
+  ordenaPublicades,
+  textCurt,
+  type IdiomaWeb,
+  type Traduccions,
+} from '@/lib/ressenyes';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,7 +33,10 @@ export interface RessenyaVista {
   estat: Estat;
   destacada: boolean;
   ordre: number;
+  traduccions: Traduccions | null;
 }
+
+const IDIOMA_WEB_LABEL: Record<IdiomaWeb, string> = { es: 'Castellà', ca: 'Català', en: 'Anglès', fr: 'Francès' };
 
 interface GoogleResum {
   nota: number | null;
@@ -281,6 +291,54 @@ export function ModeracioRessenyes({
                     ) : (
                       <p className="text-sm italic text-slate-400">Només puntuació, sense text.</p>
                     )}
+
+                    {r.text &&
+                      (r.traduccions ? (
+                        <details className="group rounded-lg border border-slate-100 px-3 py-2 text-sm">
+                          <summary className="cursor-pointer select-none text-xs font-semibold text-slate-600">
+                            Traduccions per a la web · ES · CA · EN · FR
+                          </summary>
+                          <dl className="mt-2 space-y-2">
+                            {IDIOMES_WEB.map((l) => (
+                              <div key={l}>
+                                <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                                  {IDIOMA_WEB_LABEL[l]}
+                                  {r.idioma === l && ' · original'}
+                                </dt>
+                                <dd lang={l} className="whitespace-pre-line text-slate-700">
+                                  {r.traduccions?.[l]}
+                                </dd>
+                              </div>
+                            ))}
+                          </dl>
+                          {canWrite && (
+                            <button
+                              type="button"
+                              disabled={ocupat}
+                              onClick={() => void accio(r.id, () => postJSON(`/api/ressenyes/${r.id}/tradueix`, {}))}
+                              className="mt-2 text-xs font-semibold text-brand-700 hover:underline disabled:opacity-50"
+                            >
+                              {ocupat ? 'Traduint…' : 'Torna a traduir'}
+                            </button>
+                          )}
+                        </details>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                          <span>
+                            Sense traduir: a la web sortirà en l’idioma original en tots els idiomes.
+                          </span>
+                          {canWrite && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={ocupat}
+                              onClick={() => void accio(r.id, () => postJSON(`/api/ressenyes/${r.id}/tradueix`, {}))}
+                            >
+                              {ocupat ? 'Traduint…' : 'Tradueix'}
+                            </Button>
+                          )}
+                        </div>
+                      ))}
 
                     {r.resposta && (
                       <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
@@ -539,6 +597,7 @@ function NovaRessenya({ onDesat, onCancel }: { onDesat: () => void; onCancel: ()
         <CardTitle>Nova ressenya de Google</CardTitle>
         <p className="mt-1 text-xs text-slate-500">
           Copia-la tal com surt a Google, sense canviar res: entra com a pendent i després decideixes si es publica.
+          En desar-la es tradueix sola a castellà, català, anglès i francès per a la web.
         </p>
       </CardHeader>
       <CardBody>
@@ -589,7 +648,7 @@ function NovaRessenya({ onDesat, onCancel }: { onDesat: () => void; onCancel: ()
           {error && <p className="text-sm font-medium text-red-600 sm:col-span-2">{error}</p>}
           <div className="flex gap-2 sm:col-span-2">
             <Button type="submit" disabled={busy}>
-              Desa com a pendent
+              {busy ? 'Desant i traduint…' : 'Desa com a pendent'}
             </Button>
             <Button type="button" variant="ghost" onClick={onCancel}>
               Cancel·la

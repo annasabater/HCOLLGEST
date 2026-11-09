@@ -5,6 +5,24 @@
  * i, en empat, la més recent.
  */
 
+/** Idiomes de hostalcoll.com (els mateixos que el selector de la web). */
+export const IDIOMES_WEB = ['es', 'ca', 'en', 'fr'] as const;
+export type IdiomaWeb = (typeof IDIOMES_WEB)[number];
+export type Traduccions = Record<IdiomaWeb, string>;
+
+/** Llegeix el camp JSON `traduccions`; null si falta o està incomplet. */
+export function parseTraduccions(v: unknown): Traduccions | null {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+  const o = v as Record<string, unknown>;
+  const out: Partial<Traduccions> = {};
+  for (const l of IDIOMES_WEB) {
+    const t = o[l];
+    if (typeof t !== 'string' || !t.trim()) return null;
+    out[l] = t;
+  }
+  return out as Traduccions;
+}
+
 export interface RessenyaOrdenable {
   id: string;
   destacada: boolean;

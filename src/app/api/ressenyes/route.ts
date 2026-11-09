@@ -4,6 +4,9 @@ import { ROLES_WRITE } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
 import { created, handleApiError, readJson } from '@/lib/http';
 import { RessenyaCreateSchema } from '@/lib/validation/ressenya';
+import { traduirRessenya } from '@/lib/services/traduccio-ressenya';
+
+export const maxDuration = 60; // la traducció amb Claude pot trigar uns segons
 
 // POST /api/ressenyes — alta manual d'una ressenya copiada de Google (entra PENDENT).
 export async function POST(req: Request) {
@@ -32,7 +35,11 @@ export async function POST(req: Request) {
       detall: { autor: ressenya.autor, puntuacio: ressenya.puntuacio },
       ip: clientIp(req),
     });
-    return created(ressenya);
+
+    // Traduccions als idiomes de la web. Si falla, la ressenya queda desada igual
+    // i es pot reintentar des de /ressenyes («Tradueix»).
+    const traduida = await traduirRessenya(ressenya.id);
+    return created({ ...ressenya, traduida });
   } catch (err) {
     return handleApiError(err);
   }

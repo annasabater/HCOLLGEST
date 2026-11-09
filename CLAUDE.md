@@ -159,7 +159,10 @@ Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
   `GET /api/public/ressenyes` (CORS hostalcoll.com). El text **no s'edita mai**, i la web ha de mostrar
   sempre la nota real + total + enllaç de Google (`Establiment.google*`) — transparència (Omnibus).
   La web (`../hostalcoll/index.html`, `loadGestioReviews`) les afegeix DAVANT de les 13 estàtiques
-  (que es mantenen, traduïdes; decisió de l'Anna). No hi entris les 13 estàtiques a gestio: sortirien duplicades. Fase 1: alta manual. PENDENT: sincronització amb la Business
+  (que es mantenen, traduïdes; decisió de l'Anna). No hi entris les 13 estàtiques a gestio: sortirien duplicades.
+  En donar-ne d'alta una es tradueix sola a es/ca/en/fr (`services/traduccio-ressenya.ts`, Claude amb
+  sortida JSON; `claude-opus-5-5` amb recanvi a `claude-sonnet-4-6`) i la web la mostra en l'idioma triat.
+  Botó «Tradueix» per reintentar (`POST /api/ressenyes/:id/tradueix`). La clau del `.env` local no és vàlida. Fase 1: alta manual. PENDENT: sincronització amb la Business
   Profile API (cal aprovació de Google).
 - **Ficha PDF firmable**: `GET /api/estancies/:id/fitxa-pdf` genera el model "Registre de persones
   allotjades" (pdf-lib) amb les dades dels viatgers i la **signatura capturada incrustada** (o una

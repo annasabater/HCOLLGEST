@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
 import { PageHeader } from '@/components/ui/page-header';
+import { parseTraduccions } from '@/lib/ressenyes';
 import { ModeracioRessenyes, type RessenyaVista } from '@/components/ressenya/moderacio';
 
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,7 @@ export default async function RessenyesPage() {
     estat: r.estat,
     destacada: r.destacada,
     ordre: r.ordre,
+    traduccions: parseTraduccions(r.traduccions),
   }));
 
   return (

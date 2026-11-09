@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { estrelles, mouOrdre, ordenaPublicades, textCurt } from './ressenyes';
+import { estrelles, mouOrdre, ordenaPublicades, parseTraduccions, textCurt } from './ressenyes';
+
+describe('parseTraduccions', () => {
+  it('accepta només si hi són els 4 idiomes amb text', () => {
+    const ok = { es: 'Hola', ca: 'Hola', en: 'Hi', fr: 'Salut' };
+    expect(parseTraduccions(ok)).toEqual(ok);
+    expect(parseTraduccions({ ...ok, fr: '' })).toBeNull();
+    expect(parseTraduccions({ es: 'Hola' })).toBeNull();
+    expect(parseTraduccions(null)).toBeNull();
+    expect(parseTraduccions(['es'])).toBeNull();
+  });
+});
 
 const r = (id: string, ordre: number, destacada = false, dia = 1) => ({
   id,

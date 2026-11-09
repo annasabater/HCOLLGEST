@@ -6,7 +6,7 @@
 import 'server-only';
 import type { EstatRessenya } from '@prisma/client';
 import { prisma } from '@/lib/db';
-import { mouOrdre, ordenaPublicades, type Direccio } from '@/lib/ressenyes';
+import { mouOrdre, ordenaPublicades, parseTraduccions, type Direccio, type Traduccions } from '@/lib/ressenyes';
 
 /** Canvia l'estat. En publicar, la ressenya va al final de la llista (no destacades). */
 export async function canviaEstat(id: string, estat: EstatRessenya) {
@@ -55,6 +55,8 @@ export interface RessenyaPublica {
   data: string; // ISO yyyy-mm-dd
   resposta: string | null;
   destacada: boolean;
+  /** Text per idioma de la web; null si encara no s'ha traduït (la web mostra l'original). */
+  traduccions: Traduccions | null;
 }
 
 export interface RessenyesPubliques {
@@ -82,6 +84,7 @@ export async function ressenyesPubliques(): Promise<RessenyesPubliques> {
       data: r.dataRessenya.toISOString().slice(0, 10),
       resposta: r.resposta,
       destacada: r.destacada,
+      traduccions: parseTraduccions(r.traduccions),
     })),
   };
 }
