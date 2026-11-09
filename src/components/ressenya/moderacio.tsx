@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowDown, ArrowUp, ExternalLink, Plus, Star, Trash2 } from 'lucide-react';
 import { ApiError, delJSON, patchJSON, postJSON, putJSON } from '@/lib/api';
 import {
+  dataRessenyaText,
   estrelles,
   IDIOMES_WEB,
   ordenaPublicades,
@@ -17,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { Input, Select, Textarea } from '@/components/ui/input';
-import { cn, formatDate } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 type Estat = 'PENDENT' | 'PUBLICADA' | 'AMAGADA';
 
@@ -29,6 +30,7 @@ export interface RessenyaVista {
   text: string | null;
   idioma: string | null;
   dataRessenya: string;
+  dataPrecisio: string;
   resposta: string | null;
   estat: Estat;
   destacada: boolean;
@@ -269,7 +271,12 @@ export function ModeracioRessenyes({
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold text-slate-900">{r.autor}</p>
                         <p className="text-xs text-slate-500">
-                          {formatDate(r.dataRessenya)} · {r.font === 'GOOGLE' ? 'Google' : 'Google (afegida a mà)'}
+                          {dataRessenyaText(r.dataRessenya, r.dataPrecisio)} ·{' '}
+                          {r.font === 'GOOGLE'
+                            ? 'Google'
+                            : r.font === 'WEB'
+                              ? 'Google (importada de la web)'
+                              : 'Google (afegida a mà)'}
                           {r.idioma && ` · ${IDIOMA_LABEL[r.idioma] ?? r.idioma}`}
                         </p>
                       </div>

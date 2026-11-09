@@ -23,6 +23,7 @@ export default async function RessenyesPage() {
     text: r.text,
     idioma: r.idioma,
     dataRessenya: r.dataRessenya.toISOString(),
+    dataPrecisio: r.dataPrecisio,
     resposta: r.resposta,
     estat: r.estat,
     destacada: r.destacada,

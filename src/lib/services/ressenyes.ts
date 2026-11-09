@@ -53,6 +53,7 @@ export interface RessenyaPublica {
   text: string | null;
   idioma: string | null;
   data: string; // ISO yyyy-mm-dd
+  dataPrecisio: string; // DIA | MES | ANY (la web no mostra dia/mes si no se saben)
   resposta: string | null;
   destacada: boolean;
   /** Text per idioma de la web; null si encara no s'ha traduït (la web mostra l'original). */
@@ -82,6 +83,7 @@ export async function ressenyesPubliques(): Promise<RessenyesPubliques> {
       text: r.text,
       idioma: r.idioma,
       data: r.dataRessenya.toISOString().slice(0, 10),
+      dataPrecisio: r.dataPrecisio,
       resposta: r.resposta,
       destacada: r.destacada,
       traduccions: parseTraduccions(r.traduccions),

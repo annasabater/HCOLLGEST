@@ -1487,13 +1487,16 @@ enum EstatRessenya {
 // GET /api/public/ressenyes. El text no s'edita mai (és la ressenya original).
 model Ressenya {
   id           String        @id @default(cuid())
-  font         String        @default("MANUAL") // MANUAL | GOOGLE (sincronització, fase 2)
+  font         String        @default("MANUAL") // MANUAL | WEB (les 13 importades de la web) | GOOGLE (sincronització, fase 2)
   googleId     String?       @unique @map("google_id")
   autor        String
   puntuacio    Int // 1..5
   text         String?       @db.Text
   idioma       String? // ca / es / en / fr / de / it ...
   dataRessenya DateTime      @map("data_ressenya")
+  // DIA | MES | ANY: de les importades de la web només se'n sap el mes o l'any,
+  // i així no s'hi mostra un dia/mes inventat.
+  dataPrecisio String        @default("DIA") @map("data_precisio")
   resposta     String?       @db.Text // resposta de l'hostal a Google (si n'hi ha)
   // Traduccions als idiomes de la web { es, ca, en, fr } (automàtiques, Claude).
   // El text original no es toca mai; a l'idioma original s'hi mostra l'original.

@@ -73,6 +73,24 @@ export function textCurt(text: string | null | undefined, max = 140): string {
   return `${(espai > max * 0.6 ? tall.slice(0, espai) : tall).trimEnd()}…`;
 }
 
+export type PrecisioData = 'DIA' | 'MES' | 'ANY';
+
+/** Data de la ressenya segons el que se'n sap: «12/05/2026», «maig de 2026» o «2025». */
+export function dataRessenyaText(iso: string | Date, precisio: string): string {
+  const d = typeof iso === 'string' ? new Date(iso) : iso;
+  if (Number.isNaN(d.getTime())) return '—';
+  if (precisio === 'ANY') return String(d.getUTCFullYear());
+  if (precisio === 'MES') {
+    return new Intl.DateTimeFormat('ca-ES', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(d);
+  }
+  return new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(d);
+}
+
 /** Estrelles plenes + buides (p. ex. 4 → ★★★★☆). */
 export function estrelles(n: number): string {
   const v = Math.max(0, Math.min(5, Math.round(n)));

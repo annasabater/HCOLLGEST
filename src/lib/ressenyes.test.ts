@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { estrelles, mouOrdre, ordenaPublicades, parseTraduccions, textCurt } from './ressenyes';
+import {
+  dataRessenyaText,
+  estrelles,
+  mouOrdre,
+  ordenaPublicades,
+  parseTraduccions,
+  textCurt,
+} from './ressenyes';
 
 describe('parseTraduccions', () => {
   it('accepta només si hi són els 4 idiomes amb text', () => {
@@ -57,6 +64,14 @@ describe('textCurt', () => {
   it('deixa igual un text curt i talla per paraula un de llarg', () => {
     expect(textCurt('  Molt   bé ')).toBe('Molt bé');
     expect(textCurt('una dues tres quatre cinc', 15)).toBe('una dues tres…');
+  });
+});
+
+describe('dataRessenyaText', () => {
+  it('no inventa dia ni mes si no se saben', () => {
+    expect(dataRessenyaText('2025-01-01T00:00:00Z', 'ANY')).toBe('2025');
+    expect(dataRessenyaText('2026-05-01T00:00:00Z', 'MES')).toMatch(/maig.*2026/);
+    expect(dataRessenyaText('2026-05-12T00:00:00Z', 'DIA')).toBe('12/05/2026');
   });
 });
 

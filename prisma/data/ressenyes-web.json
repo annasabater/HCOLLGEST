@@ -1,0 +1,210 @@
+[
+  {
+    "googleId": "web-r1",
+    "ordre": 0,
+    "autor": "Melisa Rovai",
+    "puntuacio": 5,
+    "idioma": "es",
+    "data": "2026-05-01",
+    "dataPrecisio": "MES",
+    "text": "Excelente hostal, muy cómoda y muy bien equipada la habitación, reciben mascotas, el lugar es súper tranquilo y bien situado, súper cálida la atención, excelente servicio de limpieza. Sin duda una bella experiencia.",
+    "traduccions": {
+      "es": "Excelente hostal, muy cómoda y muy bien equipada la habitación, reciben mascotas, el lugar es súper tranquilo y bien situado, súper cálida la atención, excelente servicio de limpieza. Sin duda una bella experiencia.",
+      "ca": "Excel·lent hostal, molt còmoda i molt ben equipada l'habitació, accepten mascotes, el lloc és súper tranquil i ben situat, súper càlida l'atenció, excel·lent servei de neteja. Sens dubte una bella experiència.",
+      "en": "Excellent hostal, very comfortable and well-equipped room, they accept pets, the place is super quiet and well located, the service is incredibly warm, excellent cleaning. Undoubtedly a beautiful experience.",
+      "fr": "Excellent hostal, chambre très confortable et bien équipée, ils acceptent les animaux, l'endroit est super calme et bien situé, l'accueil est très chaleureux, excellent service de nettoyage. Une belle expérience sans aucun doute."
+    }
+  },
+  {
+    "googleId": "web-r2",
+    "ordre": 1,
+    "autor": "Cristo Fontecilla",
+    "puntuacio": 5,
+    "idioma": "es",
+    "data": "2026-02-01",
+    "dataPrecisio": "MES",
+    "text": "Un hostal pequeño y acogedor en una calle tranquila pero justo en el centro del pueblo. Y Elizabeth, la gerente, es súper amable.",
+    "traduccions": {
+      "es": "Un hostal pequeño y acogedor en una calle tranquila pero justo en el centro del pueblo. Y Elizabeth, la gerente, es súper amable.",
+      "ca": "Un hostal petit i acollidor en un carrer tranquil però just al centre del poble. I l'Elizabeth, la gerent, és súper amable.",
+      "en": "A small and cosy hostal on a quiet street right in the centre of town. And Elizabeth, the manager, is incredibly friendly.",
+      "fr": "Un petit hostal chaleureux dans une rue calme mais en plein centre du village. Et Elizabeth, la gérante, est très aimable."
+    }
+  },
+  {
+    "googleId": "web-r3",
+    "ordre": 2,
+    "autor": "Cristian Zabala Torres",
+    "puntuacio": 5,
+    "idioma": "es",
+    "data": "2025-06-01",
+    "dataPrecisio": "MES",
+    "text": "He estado un mes alojado aquí y la verdad que he estado muy a gusto. Me han permitido compartir habitación con mi perrita. Es un hostal muy tranquilo y limpio. ¡Repetiría sin dudarlo!",
+    "traduccions": {
+      "es": "He estado un mes alojado aquí y la verdad que he estado muy a gusto. Me han permitido compartir habitación con mi perrita. Es un hostal muy tranquilo y limpio. ¡Repetiría sin dudarlo!",
+      "ca": "He estat un mes allotjat aquí i la veritat és que he estat molt a gust. M'han permès compartir habitació amb la meva gosseta. És un hostal molt tranquil i net. Repetiria sense dubtar-ho!",
+      "en": "I stayed here for a month and I was really comfortable. They let me share the room with my little dog. It's a very quiet and clean hostal. I'd come back without hesitation!",
+      "fr": "J'ai séjourné ici pendant un mois et j'ai vraiment été à l'aise. Ils m'ont laissé partager la chambre avec ma petite chienne. C'est un hostal très calme et propre. Je reviendrais sans hésiter !"
+    }
+  },
+  {
+    "googleId": "web-r4",
+    "ordre": 3,
+    "autor": "Gabriela Libertad",
+    "puntuacio": 5,
+    "idioma": "es",
+    "data": "2025-01-01",
+    "dataPrecisio": "ANY",
+    "text": "Estancia muy agradable y tranquila, el hostal es muy limpio. Fuimos en familia y estuvo todo muy bien. Atiende la propietaria, que es muy amable y cálida.",
+    "traduccions": {
+      "es": "Estancia muy agradable y tranquila, el hostal es muy limpio. Fuimos en familia y estuvo todo muy bien. Atiende la propietaria, que es muy amable y cálida.",
+      "ca": "Estada molt agradable i tranquil·la, l'hostal és molt net. Vam anar en família i tot va anar molt bé. Atén la propietària, que és molt amable i càlida.",
+      "en": "Very pleasant and quiet stay, the hostal is very clean. We went as a family and everything was wonderful. The owner looks after you and she is very warm and friendly.",
+      "fr": "Séjour très agréable et calme, l'hostal est très propre. Nous y sommes allés en famille et tout s'est très bien passé. C'est la propriétaire qui s'en occupe et elle est très aimable et chaleureuse."
+    }
+  },
+  {
+    "googleId": "web-r5",
+    "ordre": 4,
+    "autor": "Andrea Barragán Soberón",
+    "puntuacio": 5,
+    "idioma": "es",
+    "data": "2025-01-01",
+    "dataPrecisio": "ANY",
+    "text": "Tuve una estancia espectacular. Atendida por su propietaria, ocupándose de todos los detalles. Volvería con seguridad. Excelente.",
+    "traduccions": {
+      "es": "Tuve una estancia espectacular. Atendida por su propietaria, ocupándose de todos los detalles. Volvería con seguridad. Excelente.",
+      "ca": "Vaig tenir una estada espectacular. Atesa per la propietària, que es va ocupar de tots els detalls. Hi tornaria sense dubtar. Excel·lent.",
+      "en": "I had a spectacular stay. Looked after by the owner, who took care of every detail. I would definitely come back. Excellent.",
+      "fr": "J'ai eu un séjour spectaculaire. Prise en charge par la propriétaire, qui s'est occupée de tous les détails. Je reviendrais sans aucun doute. Excellent."
+    }
+  },
+  {
+    "googleId": "web-r6",
+    "ordre": 5,
+    "autor": "Moira Ansoain",
+    "puntuacio": 5,
+    "idioma": "es",
+    "data": "2025-01-01",
+    "dataPrecisio": "ANY",
+    "text": "Muy buen trato. Tranquilo y limpio, un lugar recomendado para los que quieran pasar unos bonitos días en Calella. ¡Y está permitido llevar animales! Me encanta.",
+    "traduccions": {
+      "es": "Muy buen trato. Tranquilo y limpio, un lugar recomendado para los que quieran pasar unos bonitos días en Calella. ¡Y está permitido llevar animales! Me encanta.",
+      "ca": "Molt bon tracte. Tranquil i net, un lloc recomanat per als qui vulguin passar uns dies bonics a Calella. I s'hi accepten animals! M'encanta.",
+      "en": "Very good service. Quiet and clean, a great place for those who want to spend a few lovely days in Calella. And pets are welcome! Love it.",
+      "fr": "Très bon accueil. Calme et propre, un endroit idéal pour ceux qui veulent passer de belles journées à Calella. Et les animaux sont acceptés ! J'adore."
+    }
+  },
+  {
+    "googleId": "web-r7",
+    "ordre": 6,
+    "autor": "Nabel",
+    "puntuacio": 5,
+    "idioma": "es",
+    "data": "2024-01-01",
+    "dataPrecisio": "ANY",
+    "text": "Si buscas paz, calma y tranquilidad sin duda este es el lugar. ¡Limpio y acogedor! Pasamos aquí un mes increíble. La playa y los comercios de Calella a dos pasos. Sin duda Elisabeth es increíble, siempre atenta para que uno se sienta como en casa. ¡Repetiremos seguro!",
+    "traduccions": {
+      "es": "Si buscas paz, calma y tranquilidad sin duda este es el lugar. ¡Limpio y acogedor! Pasamos aquí un mes increíble. La playa y los comercios de Calella a dos pasos. Sin duda Elisabeth es increíble, siempre atenta para que uno se sienta como en casa. ¡Repetiremos seguro!",
+      "ca": "Si busques pau, calma i tranquil·litat, sens dubte aquest és el lloc. Net i acollidor! Hem passat aquí un mes increïble. La platja i els comerços de Calella a dos passos. Sens dubte l'Elisabeth és increïble, sempre atenta perquè et sentis com a casa. Repetirem segur!",
+      "en": "If you're looking for peace, calm and tranquillity, this is undoubtedly the place. Clean and welcoming! We spent an incredible month here. The beach and shops of Calella just steps away. Elisabeth is amazing, always attentive so you feel at home. We'll definitely be back!",
+      "fr": "Si vous cherchez la paix, le calme et la tranquillité, c'est sans aucun doute l'endroit idéal. Propre et accueillant ! Nous y avons passé un mois incroyable. La plage et les commerces de Calella à deux pas. Elisabeth est incroyable, toujours attentive pour que l'on se sente chez soi. Nous reviendrons c'est certain !"
+    }
+  },
+  {
+    "googleId": "web-r8",
+    "ordre": 7,
+    "autor": "Alfre Figueroa",
+    "puntuacio": 5,
+    "idioma": "es",
+    "data": "2024-01-01",
+    "dataPrecisio": "ANY",
+    "text": "Hostal muy tranquilo al lado de la playa. Las habitaciones son acogedoras e ideales si quieres tu espacio con comodidades. La propietaria es muy simpática y dispuesta a ayudar.",
+    "traduccions": {
+      "es": "Hostal muy tranquilo al lado de la playa. Las habitaciones son acogedoras e ideales si quieres tu espacio con comodidades. La propietaria es muy simpática y dispuesta a ayudar.",
+      "ca": "Hostal molt tranquil al costat de la platja. Les habitacions són acollidores i ideals si vols el teu espai amb comoditats. La propietària és molt simpàtica i sempre disposada a ajudar.",
+      "en": "Very quiet hostal next to the beach. The rooms are cosy and ideal if you want your own space with all comforts. The owner is very friendly and always ready to help.",
+      "fr": "Hostal très calme à côté de la plage. Les chambres sont accueillantes et idéales si vous voulez votre propre espace avec tout le confort. La propriétaire est très sympathique et toujours prête à aider."
+    }
+  },
+  {
+    "googleId": "web-r9",
+    "ordre": 8,
+    "autor": "Marcela Alzate Rivera",
+    "puntuacio": 5,
+    "idioma": "es",
+    "data": "2024-01-01",
+    "dataPrecisio": "ANY",
+    "text": "Muy amables, hacen muy bien la limpieza, se encuentra cerca del centro histórico de Calella. Muy buena experiencia, lo recomiendo 100%.",
+    "traduccions": {
+      "es": "Muy amables, hacen muy bien la limpieza, se encuentra cerca del centro histórico de Calella. Muy buena experiencia, lo recomiendo 100%.",
+      "ca": "Molt amables, fan molt bé la neteja, es troba a prop del centre històric de Calella. Molt bona experiència, ho recomano al 100%.",
+      "en": "Very friendly, they do an excellent job with the cleaning, and it's close to the historic centre of Calella. A great experience, I recommend it 100%.",
+      "fr": "Très aimables, le nettoyage est excellent et l'établissement est proche du centre historique de Calella. Très bonne expérience, je le recommande à 100%."
+    }
+  },
+  {
+    "googleId": "web-r10",
+    "ordre": 9,
+    "autor": "Patricia Santa Cruz",
+    "puntuacio": 5,
+    "idioma": "es",
+    "data": "2024-01-01",
+    "dataPrecisio": "ANY",
+    "text": "Una estancia encantadora en un hostal maravilloso. Recientemente mi madre se ha alojado en este acogedor hostal y no puedo estar más agradecida por el trato recibido.",
+    "traduccions": {
+      "es": "Una estancia encantadora en un hostal maravilloso. Recientemente mi madre se ha alojado en este acogedor hostal y no puedo estar más agradecida por el trato recibido.",
+      "ca": "Una estada encantadora en un hostal meravellós. Recentment la meva mare s'ha allotjat en aquest acollidor hostal i no podria estar-ne més agraïda pel tracte rebut.",
+      "en": "A delightful stay at a wonderful hostal. My mother recently stayed at this cosy hostal and I couldn't be more grateful for the way she was looked after.",
+      "fr": "Un séjour charmant dans un hostal merveilleux. Ma mère a récemment séjourné dans cet hostal chaleureux et je ne peux qu'être reconnaissante pour l'accueil reçu."
+    }
+  },
+  {
+    "googleId": "web-r11",
+    "ordre": 10,
+    "autor": "Mihai A.",
+    "puntuacio": 5,
+    "idioma": "es",
+    "data": "2023-01-01",
+    "dataPrecisio": "ANY",
+    "text": "Pasamos un mes en este acogedor hostal y realmente nos sentimos como si estuviéramos alojados con una gran familia en vez de los típicos hoteles impersonales. Elisabet es la mejor anfitriona de todas, siempre atenta.",
+    "traduccions": {
+      "es": "Pasamos un mes en este acogedor hostal y realmente nos sentimos como si estuviéramos alojados con una gran familia en vez de los típicos hoteles impersonales. Elisabet es la mejor anfitriona de todas, siempre atenta.",
+      "ca": "Hem passat un mes en aquest acollidor hostal i realment ens hem sentit com si estiguéssim allotjats amb una gran família en lloc dels típics hotels impersonals. L'Elisabet és la millor amfitriona de totes, sempre atenta.",
+      "en": "We spent a month at this cosy hostal and truly felt as if we were staying with a big family rather than in a typical impersonal hotel. Elisabet is the best host of all, always attentive.",
+      "fr": "Nous avons passé un mois dans cet hostal accueillant et nous nous sommes vraiment sentis comme si nous séjournions avec une grande famille plutôt que dans les hôtels impersonnels habituels. Elisabet est la meilleure hôtesse de toutes, toujours attentive."
+    }
+  },
+  {
+    "googleId": "web-r12",
+    "ordre": 11,
+    "autor": "Karen Arbiza Yu",
+    "puntuacio": 5,
+    "idioma": "es",
+    "data": "2023-01-01",
+    "dataPrecisio": "ANY",
+    "text": "Excelente atención de Elizabeth. Un lugar muy limpio y acogedor. Estuvimos un mes y nos encantó. Está muy bien situado. ¡Seguro volveremos!",
+    "traduccions": {
+      "es": "Excelente atención de Elizabeth. Un lugar muy limpio y acogedor. Estuvimos un mes y nos encantó. Está muy bien situado. ¡Seguro volveremos!",
+      "ca": "Excel·lent atenció de l'Elizabeth. Un lloc molt net i acollidor. Vam estar un mes i ens va encantar. Està molt ben situat. Segur que hi tornarem!",
+      "en": "Excellent service from Elizabeth. A very clean and welcoming place. We stayed for a month and loved it. Perfectly located. We'll definitely be back!",
+      "fr": "Excellent accueil d'Elizabeth. Un endroit très propre et accueillant. Nous y avons séjourné un mois et nous avons adoré. Très bien situé. Nous reviendrons c'est sûr !"
+    }
+  },
+  {
+    "googleId": "web-r13",
+    "ordre": 12,
+    "autor": "Alex Rosain",
+    "puntuacio": 5,
+    "idioma": "es",
+    "data": "2022-01-01",
+    "dataPrecisio": "ANY",
+    "text": "Hostal familiar, cómodo, limpio, tranquilo y con un trato excelente por parte de los propietarios, que te ayudan en todo para que puedas disfrutar al máximo de tu estancia en Calella.",
+    "traduccions": {
+      "es": "Hostal familiar, cómodo, limpio, tranquilo y con un trato excelente por parte de los propietarios, que te ayudan en todo para que puedas disfrutar al máximo de tu estancia en Calella.",
+      "ca": "Hostal familiar, còmode, net, tranquil i amb un tracte excel·lent per part dels propietaris, que t'ajuden en tot perquè puguis gaudir al màxim de la teva estada a Calella.",
+      "en": "Family hostal, comfortable, clean, quiet and with excellent service from the owners, who help you with everything so you can make the most of your stay in Calella.",
+      "fr": "Hostal familial, confortable, propre, calme et avec un excellent accueil de la part des propriétaires, qui vous aident en tout pour que vous puissiez profiter au maximum de votre séjour à Calella."
+    }
+  }
+]
