@@ -57,7 +57,6 @@ const GROUPS: NavGroup[] = [
     title: 'Gestió',
     items: [
       { href: '/plantilles', label: 'Plantilles', icon: MessageCircle },
-      { href: '/ressenyes', label: 'Ressenyes Google', icon: Star, hideRestringit: true },
       { href: '/personal', label: 'Treballadors', icon: UserCog, roles: ['ADMIN'], hideRestringit: true },
       { href: '/balanc', label: 'Balanç', icon: PiggyBank, roles: ['ADMIN'] },
       { href: '/impostos', label: 'Impostos', icon: Calculator, roles: ['ADMIN'] },
@@ -68,6 +67,7 @@ const GROUPS: NavGroup[] = [
       { href: '/taxa-turistica', label: 'Taxa turística', icon: Landmark, hideRestringit: true },
       { href: '/serveis', label: 'Proveïdors i serveis', icon: Truck },
       { href: '/justificants', label: 'Justificants', icon: FileCheck },
+      { href: '/ressenyes', label: 'Ressenyes Google', icon: Star, hideRestringit: true },
     ],
   },
   {

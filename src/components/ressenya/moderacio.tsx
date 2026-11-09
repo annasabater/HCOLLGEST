@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowDown, ArrowUp, ExternalLink, Plus, Star, Trash2 } from 'lucide-react';
-import { ApiError, delJSON, patchJSON, postJSON, putJSON } from '@/lib/api';
+import { ApiError, delJSON, patchJSON, postJSON } from '@/lib/api';
 import {
   dataRessenyaText,
   estrelles,
@@ -78,7 +78,6 @@ export function ModeracioRessenyes({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [nova, setNova] = useState(false);
-  const [editGoogle, setEditGoogle] = useState(false);
 
   const counts = useMemo(() => {
     const c: Record<Estat, number> = { PENDENT: 0, PUBLICADA: 0, AMAGADA: 0 };
@@ -133,18 +132,7 @@ export function ModeracioRessenyes({
       <section aria-label="Resum" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Card>
           <CardBody className="space-y-1">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Nota a Google</span>
-              {canWrite && (
-                <button
-                  type="button"
-                  onClick={() => setEditGoogle((v) => !v)}
-                  className="text-xs font-semibold text-brand-700 hover:underline"
-                >
-                  {editGoogle ? 'Tanca' : 'Edita'}
-                </button>
-              )}
-            </div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Nota a Google</span>
             {google.nota != null ? (
               <p className="font-serif text-4xl font-semibold leading-none text-slate-900">
                 {google.nota.toLocaleString('ca-ES', { minimumFractionDigits: 1 })}{' '}
@@ -162,23 +150,6 @@ export function ModeracioRessenyes({
         <Stat label="A la web" valor={counts.PUBLICADA} nota="publicades" className="text-green-700" />
         <Stat label="Amagades" valor={counts.AMAGADA} nota="no surten a la web" className="text-slate-500" />
       </section>
-
-      {editGoogle && canWrite && (
-        <GoogleForm
-          inicial={google}
-          onDesat={() => {
-            setEditGoogle(false);
-            router.refresh();
-          }}
-        />
-      )}
-
-      {google.nota == null && !editGoogle && (
-        <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Posa la <strong>nota real de Google</strong>, el total de ressenyes i l’enllaç a la fitxa (botó «Edita»). La
-          web els mostra al costat de la selecció perquè quedi clar que és una tria i no totes les ressenyes.
-        </div>
-      )}
 
       {dolentesPendents > 0 && (
         <div
@@ -494,13 +465,6 @@ export function ModeracioRessenyes({
               )}
             </CardBody>
           </Card>
-          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
-            <p className="font-semibold">Transparència (llei de consumidors)</p>
-            <p className="mt-1 text-xs leading-relaxed">
-              La web sempre ensenya la <strong>nota real de Google</strong> i l’enllaç a totes les ressenyes. El text
-              no es pot editar: només tries quines surten i en quin ordre.
-            </p>
-          </div>
         </aside>
       </div>
     </div>
@@ -514,61 +478,6 @@ function Stat({ label, valor, nota, className }: { label: string; valor: number;
         <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</span>
         <p className={cn('font-serif text-4xl font-semibold leading-none', className)}>{valor}</p>
         <p className="text-xs text-slate-500">{nota}</p>
-      </CardBody>
-    </Card>
-  );
-}
-
-function GoogleForm({ inicial, onDesat }: { inicial: GoogleResum; onDesat: () => void }) {
-  const [nota, setNota] = useState(inicial.nota != null ? String(inicial.nota).replace('.', ',') : '');
-  const [total, setTotal] = useState(inicial.total != null ? String(inicial.total) : '');
-  const [url, setUrl] = useState(inicial.url ?? '');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function desa(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      await putJSON('/api/ressenyes/google', { googleNota: nota, googleTotal: total, googleUrl: url });
-      onDesat();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No s’ha pogut desar.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Card>
-      <CardBody>
-        <form onSubmit={desa} className="grid gap-4 sm:grid-cols-[120px_140px_1fr_auto] sm:items-end">
-          <Field label="Nota mitjana" htmlFor="g-nota" hint="p. ex. 4,6">
-            <Input id="g-nota" inputMode="decimal" value={nota} onChange={(e) => setNota(e.target.value)} />
-          </Field>
-          <Field label="Total ressenyes" htmlFor="g-total">
-            <Input
-              id="g-total"
-              inputMode="numeric"
-              value={total}
-              onChange={(e) => setTotal(e.target.value)}
-            />
-          </Field>
-          <Field label="Enllaç a la fitxa de Google" htmlFor="g-url" hint="L’enllaç «Compartir» del perfil">
-            <Input
-              id="g-url"
-              type="url"
-              placeholder="https://g.page/…"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-            />
-          </Field>
-          <Button type="submit" disabled={busy} className="sm:mb-5">
-            Desa
-          </Button>
-          {error && <p className="text-sm font-medium text-red-600 sm:col-span-4">{error}</p>}
-        </form>
       </CardBody>
     </Card>
   );
