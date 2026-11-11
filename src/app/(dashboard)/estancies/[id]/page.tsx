@@ -28,6 +28,7 @@ import { ConvertirAEnCurs } from '@/components/estancia/convertir-a-en-curs';
 import { EmailsPanel } from '@/components/estancia/emails-panel';
 import { FacturaPanel } from '@/components/factura/factura-panel';
 import { PagamentsPanel } from '@/components/factura/pagaments-panel';
+import { ocupaMesDunMes } from '@/lib/repartiment';
 import { PagamentsPrevistos } from '@/components/estancia/pagaments-previstos';
 import { formatDate, cn } from '@/lib/utils';
 import { toISODate, ageAt } from '@/lib/dates';
@@ -495,6 +496,11 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             >
               <PagamentsPanel
                 estanciaId={estancia.id}
+                multiMes={
+                  !!estancia.dataEntrada &&
+                  !!estancia.dataSortida &&
+                  ocupaMesDunMes(estancia.dataEntrada.toISOString(), estancia.dataSortida.toISOString())
+                }
                 numContracte={estancia.numContracte?.toString() ?? null}
                 facturesActuals={estancia.factures.map((f) => ({ id: f.id, numero: f.numero }))}
                 pagaments={estancia.cobraments.map((c) => ({

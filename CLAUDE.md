@@ -170,6 +170,12 @@ Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
   de l'Anna); s'aparellen amb les WEB per autor+estrelles; actualitza nota/total. PENDENT: aprovació de Google.
   Pop-up al panell (`components/dashboard/ressenya-popup.tsx`) per ressenyes noves i valoracions no llegides. Fase 1: alta manual. PENDENT: sincronització amb la Business
   Profile API (cal aprovació de Google).
+- **Repartir per mesos un pagament ja fet** (sense tocar la factura): botó «Repartir per mesos» a cada
+  pagament de l'estada (`components/factura/repartir-pagament.tsx`, `PUT/GET /api/cobraments/:id/periodes`) i
+  pàgina `/balanc/repartir` (avís al Balanç) amb els pagaments d'estades de >1 mes sense repartir i
+  «Reparteix-ne N automàticament» (`services/repartiment-cobraments.ts`). Automàtic només si l'estada té un
+  sol pagament o ≤31 nits (cada pròrroga és una estada); si no, a mà. Canviar l'import d'un pagament en
+  treu el repartiment. Només afecta Balanç/tauler; el llibre d'IVA va per la data de la factura.
 - **Ficha PDF firmable**: `GET /api/estancies/:id/fitxa-pdf` genera el model "Registre de persones
   allotjades" (pdf-lib) amb les dades dels viatgers i la **signatura capturada incrustada** (o una
   línia per signar a mà). Botó "Fitxa PDF" al detall de l'estada. Generador a `src/lib/pdf/fitxa.ts`.

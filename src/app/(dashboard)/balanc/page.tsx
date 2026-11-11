@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import { FinancesNav } from '@/components/balanc/finances-nav';
 import { CascadaCaixa, COLORS_BALANC, MostraRatllada } from '@/components/balanc/cascada-caixa';
 import { MesosFiancesChart } from '@/components/balanc/mesos-fiances-chart';
+import { AvisPerRepartir } from '@/components/balanc/per-repartir';
 import { NavegadorPeriode } from '@/components/ui/navegador-periode';
 import { Eur, HideAmountsButton, HideAmountsOnMount } from '@/components/finances/amounts-visibility';
 import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
@@ -808,6 +809,9 @@ export default function BalancPage() {
       />
 
       <FinancesNav />
+
+      {/* Pagaments d'estades de més d'un mes comptats sencers en un sol mes. */}
+      {!restringit && <AvisPerRepartir />}
 
       {veureSituacio ? (
         <div className="space-y-6">

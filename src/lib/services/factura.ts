@@ -447,6 +447,12 @@ export async function editCobrament(
 
     const cobrament = await tx.cobrament.update({ where: { id: cobramentId }, data });
 
+    // Si canvia l'import, el repartiment per mesos que tenia ja no quadra: es treu
+    // (torna a comptar sencer el dia del cobrament i surt a «Pagaments per repartir»).
+    if (input.import !== undefined && Number(cobrament.import) !== Number(existing.import)) {
+      await tx.cobramentPeriode.deleteMany({ where: { cobramentId } });
+    }
+
     const estat = existing.facturaId
       ? await recomputaEstatFactura(tx, existing.facturaId)
       : null;

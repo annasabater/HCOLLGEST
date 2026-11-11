@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { formatEur, formatDate } from '@/lib/utils';
+import { RepartirPagament } from './repartir-pagament';
 import {
   optionsFrom,
   metodeCobramentValues,
@@ -119,12 +120,15 @@ export function PagamentsPanel({
   fiances,
   numContracte,
   facturesActuals,
+  multiMes = false,
 }: {
   estanciaId: string;
   pagaments: Pagament[];
   fiances: Fianca[];
   numContracte?: string | null;
   facturesActuals?: { id: string; numero: string }[];
+  /** L'estada ocupa més d'un mes natural: avisa dels pagaments sense repartir. */
+  multiMes?: boolean;
 }) {
   const router = useRouter();
 
@@ -620,9 +624,7 @@ export function PagamentsPanel({
                 {p.observacions && (
                   <p className="mt-1 text-xs italic text-slate-500">📝 {p.observacions}</p>
                 )}
-                {periodesResum(p.periodes) && (
-                  <p className="mt-0.5 text-xs text-slate-400">{periodesResum(p.periodes)}</p>
-                )}
+                <RepartirPagament cobramentId={p.id} importTotal={p.import} periodes={p.periodes} multiMes={multiMes} />
               </div>
             )
           )}
@@ -755,6 +757,7 @@ export function PagamentsPanel({
               {p.observacions && (
                 <p className="mt-0.5 text-xs italic text-slate-400">📝 {p.observacions}</p>
               )}
+              <RepartirPagament cobramentId={p.id} importTotal={p.import} periodes={p.periodes} multiMes={multiMes} />
             </div>
           ))}
           {fiancesFacturades.map((f) => (
