@@ -128,17 +128,19 @@ export function ModeracioRessenyes({
   return (
     <div className="space-y-6">
       {/* Resum */}
-      <section aria-label="Resum" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section aria-label="Resum" className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
         <Card>
-          <CardBody className="space-y-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Nota a Google</span>
+          <CardBody className="space-y-1 px-4 py-3 sm:px-5 sm:py-4">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 sm:text-xs">
+              Nota a Google
+            </span>
             {google.nota != null ? (
-              <p className="font-serif text-4xl font-semibold leading-none text-slate-900">
+              <p className="font-serif text-3xl font-semibold leading-none text-slate-900 sm:text-4xl">
                 {google.nota.toLocaleString('ca-ES', { minimumFractionDigits: 1 })}{' '}
-                <span className="text-3xl text-amber-600">★</span>
+                <span className="text-2xl text-amber-600 sm:text-3xl">★</span>
               </p>
             ) : (
-              <p className="font-serif text-4xl font-semibold leading-none text-slate-300">—</p>
+              <p className="font-serif text-3xl font-semibold leading-none text-slate-300 sm:text-4xl">—</p>
             )}
             <p className="text-xs text-slate-500">
               {google.total != null ? `${google.total} ressenyes en total` : 'Sense configurar'}
@@ -150,6 +152,16 @@ export function ModeracioRessenyes({
         <Stat label="Amagades" valor={counts.AMAGADA} nota="no surten a la web" className="text-slate-500" />
       </section>
 
+      {/* Al mòbil la vista prèvia no hi cap: enllaç directe a la secció de la web. */}
+      <a
+        href="https://hostalcoll.com/#resenas"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-brand-700 lg:hidden"
+      >
+        Veure com queden a hostalcoll.com <ExternalLink className="h-4 w-4" />
+      </a>
+
       {error && (
         <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           {error}
@@ -160,7 +172,12 @@ export function ModeracioRessenyes({
         {/* Llista */}
         <section aria-label="Llista de ressenyes" className="min-w-0 flex-[999_1_520px] space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div role="tablist" aria-label="Filtre per estat" className="flex flex-wrap gap-2">
+            {/* Al mòbil, una sola fila que es pot lliscar. */}
+            <div
+              role="tablist"
+              aria-label="Filtre per estat"
+              className="-mx-4 flex w-[calc(100%+2rem)] gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:w-auto sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
+            >
               {TABS.map((t) => (
                 <button
                   key={t.key}
@@ -169,7 +186,7 @@ export function ModeracioRessenyes({
                   aria-selected={filtre === t.key}
                   onClick={() => setFiltre(t.key)}
                   className={cn(
-                    'h-9 rounded-full border px-4 text-sm font-medium transition-colors',
+                    'h-10 shrink-0 whitespace-nowrap rounded-full border px-4 text-sm font-medium transition-colors sm:h-9',
                     filtre === t.key
                       ? 'border-brand-700 bg-brand-700 text-white'
                       : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
@@ -180,7 +197,12 @@ export function ModeracioRessenyes({
               ))}
             </div>
             {canWrite && (
-              <Button variant="outline" size="sm" onClick={() => setNova((v) => !v)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setNova((v) => !v)}
+                className="h-10 w-full sm:h-8 sm:w-auto"
+              >
                 <Plus className="h-4 w-4" /> Afegeix ressenya
               </Button>
             )}
@@ -209,17 +231,29 @@ export function ModeracioRessenyes({
               const ocupat = busy === r.id;
               return (
                 <Card key={r.id}>
-                  <CardBody className="space-y-3">
-                    <div className="flex flex-wrap items-center gap-3">
+                  <CardBody className="space-y-3 px-4 sm:px-5">
+                    <div className="flex items-start gap-3">
                       <div
                         aria-hidden="true"
-                        className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-50 font-semibold text-brand-700"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 font-semibold text-brand-700 sm:h-10 sm:w-10"
                       >
                         {r.autor.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-slate-900">{r.autor}</p>
-                        <p className="text-xs text-slate-500">
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                          <p className="min-w-0 break-words font-semibold text-slate-900">{r.autor}</p>
+                          <div className="flex items-center gap-2">
+                            <span
+                              role="img"
+                              aria-label={`${r.puntuacio} de 5 estrelles`}
+                              className="text-base tracking-wider text-amber-600 sm:text-lg"
+                            >
+                              {estrelles(r.puntuacio)}
+                            </span>
+                            <Badge tone={ESTAT_BADGE[r.estat].tone}>{ESTAT_BADGE[r.estat].text}</Badge>
+                          </div>
+                        </div>
+                        <p className="mt-0.5 text-xs text-slate-500">
                           {dataRessenyaText(r.dataRessenya, r.dataPrecisio)} ·{' '}
                           {r.font === 'GOOGLE'
                             ? 'Google'
@@ -227,19 +261,9 @@ export function ModeracioRessenyes({
                               ? 'Google (importada de la web)'
                               : 'Google (afegida a mà)'}
                           {r.idioma && ` · ${IDIOMA_LABEL[r.idioma] ?? r.idioma}`}
+                          {r.estat === 'PUBLICADA' && posPub >= 0 && ` · #${posPub + 1} a la web`}
                         </p>
                       </div>
-                      <span
-                        role="img"
-                        aria-label={`${r.puntuacio} de 5 estrelles`}
-                        className="text-lg tracking-wider text-amber-600"
-                      >
-                        {estrelles(r.puntuacio)}
-                      </span>
-                      <Badge tone={ESTAT_BADGE[r.estat].tone}>{ESTAT_BADGE[r.estat].text}</Badge>
-                      {r.estat === 'PUBLICADA' && posPub >= 0 && (
-                        <span className="text-xs text-slate-500">#{posPub + 1} a la web</span>
-                      )}
                     </div>
 
                     {r.text ? (
@@ -303,7 +327,7 @@ export function ModeracioRessenyes({
                     )}
 
                     {canWrite && (
-                      <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+                      <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 [&>button]:h-10 [&>button]:flex-1 sm:[&>button]:h-8 sm:[&>button]:flex-none">
                         {r.estat === 'PENDENT' && (
                           <>
                             <Button size="sm" disabled={ocupat} onClick={() => patch(r.id, { estat: 'PUBLICADA' })}>
@@ -352,7 +376,7 @@ export function ModeracioRessenyes({
                             Publica a la web
                           </Button>
                         )}
-                        <span className="flex-1" />
+                        <span className="hidden flex-1 sm:block" />
                         {r.font === 'MANUAL' && (
                           <button
                             type="button"
@@ -361,7 +385,7 @@ export function ModeracioRessenyes({
                               if (!confirm('Eliminar aquesta ressenya afegida a mà? No es pot desfer.')) return;
                               void accio(r.id, () => delJSON(`/api/ressenyes/${r.id}`));
                             }}
-                            className="rounded p-2 text-slate-400 transition-colors hover:text-red-600 disabled:opacity-50"
+                            className="!flex-none rounded p-2.5 text-slate-400 transition-colors hover:text-red-600 disabled:opacity-50 sm:p-2"
                             aria-label="Eliminar ressenya"
                             title="Eliminar (només les afegides a mà)"
                           >
@@ -378,7 +402,7 @@ export function ModeracioRessenyes({
         </section>
 
         {/* Vista prèvia */}
-        <aside aria-label="Vista prèvia a la web" className="min-w-0 flex-[1_1_300px] space-y-4">
+        <aside aria-label="Vista prèvia a la web" className="hidden min-w-0 flex-[1_1_300px] space-y-4 lg:block">
           <Card>
             <CardHeader className="flex items-baseline justify-between gap-2">
               <CardTitle>Així surt a la web</CardTitle>
@@ -432,9 +456,9 @@ export function ModeracioRessenyes({
 function Stat({ label, valor, nota, className }: { label: string; valor: number; nota: string; className?: string }) {
   return (
     <Card>
-      <CardBody className="space-y-1">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</span>
-        <p className={cn('font-serif text-4xl font-semibold leading-none', className)}>{valor}</p>
+      <CardBody className="space-y-1 px-4 py-3 sm:px-5 sm:py-4">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 sm:text-xs">{label}</span>
+        <p className={cn('font-serif text-3xl font-semibold leading-none sm:text-4xl', className)}>{valor}</p>
         <p className="text-xs text-slate-500">{nota}</p>
       </CardBody>
     </Card>
@@ -479,7 +503,8 @@ function NovaRessenya({ onDesat, onCancel }: { onDesat: () => void; onCancel: ()
           <Field label="Autor (com surt a Google)" htmlFor="r-autor" required>
             <Input id="r-autor" required maxLength={80} value={autor} onChange={(e) => setAutor(e.target.value)} />
           </Field>
-          <div className="grid grid-cols-3 gap-3">
+          {/* Mòbil: estrelles + idioma en una fila i la data a sota; ordinador: les tres en fila. */}
+          <div className="grid grid-flow-row-dense grid-cols-2 gap-3 sm:grid-cols-3">
             <Field label="Estrelles" htmlFor="r-punts" required>
               <Select id="r-punts" value={puntuacio} onChange={(e) => setPuntuacio(e.target.value)}>
                 {[5, 4, 3, 2, 1].map((n) => (
@@ -489,7 +514,7 @@ function NovaRessenya({ onDesat, onCancel }: { onDesat: () => void; onCancel: ()
                 ))}
               </Select>
             </Field>
-            <Field label="Data" htmlFor="r-data" required>
+            <Field label="Data" htmlFor="r-data" required className="col-span-2 sm:col-span-1">
               <Input id="r-data" type="date" required value={data} onChange={(e) => setData(e.target.value)} />
             </Field>
             <Field label="Idioma" htmlFor="r-idioma">
@@ -520,7 +545,7 @@ function NovaRessenya({ onDesat, onCancel }: { onDesat: () => void; onCancel: ()
             />
           </Field>
           {error && <p className="text-sm font-medium text-red-600 sm:col-span-2">{error}</p>}
-          <div className="flex gap-2 sm:col-span-2">
+          <div className="flex gap-2 sm:col-span-2 [&>button]:h-10 [&>button]:flex-1 sm:[&>button]:flex-none">
             <Button type="submit" disabled={busy}>
               {busy ? 'Desant i traduint…' : 'Desa com a pendent'}
             </Button>
