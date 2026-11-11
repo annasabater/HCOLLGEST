@@ -1,5 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { nitsPerMes, ocupaMesDunMes, resumNitsPerMes } from './repartiment';
+import { efecteAlBalanc, nitsPerMes, ocupaMesDunMes, resumNitsPerMes } from './repartiment';
+
+describe('efecteAlBalanc', () => {
+  it('treu del mes del cobrament i ho posa a cada mes de l’estada', () => {
+    const e = efecteAlBalanc([
+      {
+        data: '2026-10-28',
+        import: 1000,
+        proposta: [
+          { dataInici: '2026-10-25', import: 225.81 },
+          { dataInici: '2026-11-01', import: 774.19 },
+        ],
+      },
+    ]);
+    expect(e).toEqual([
+      { mes: '2026-10', ara: 1000, despres: 225.81 },
+      { mes: '2026-11', ara: 0, despres: 774.19 },
+    ]);
+  });
+  it('amaga els mesos que no canvien', () => {
+    const e = efecteAlBalanc([
+      { data: '2026-10-01', import: 100, proposta: [{ dataInici: '2026-10-01', import: 100 }] },
+    ]);
+    expect(e).toEqual([]);
+  });
+});
 
 describe('nitsPerMes', () => {
   it('compta les nits de cada mes (la sortida no és nit)', () => {

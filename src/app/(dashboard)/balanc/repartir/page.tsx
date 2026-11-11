@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 export default async function RepartirPage() {
   const user = await getSessionUser();
   if (!user || !hasRole(user.role, ROLES_WRITE)) redirect('/balanc');
-  const llista = await pagamentsPerRepartir();
+  const llista = await pagamentsPerRepartir({ ambProposta: true });
 
   return (
     <>

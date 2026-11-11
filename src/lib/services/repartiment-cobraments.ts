@@ -90,6 +90,8 @@ export interface PagamentPerRepartir {
   /** Es pot repartir automàticament amb seguretat (un sol pagament o estada d'un mes). */
   automatic: boolean;
   pagamentsEstada: number;
+  /** Repartiment que es farà (només si s'ha demanat la proposta). Null si no se'n pot fer. */
+  proposta?: { dataInici: string; dataFi: string; nits: number; import: number }[] | null;
 }
 
 /**
@@ -97,7 +99,9 @@ export interface PagamentPerRepartir {
  * mes natural. Si l'estada té més d'un pagament (p. ex. un per mes), no és
  * automàtic: repartir cadascun entre tots els mesos seria incorrecte.
  */
-export async function pagamentsPerRepartir(): Promise<PagamentPerRepartir[]> {
+export async function pagamentsPerRepartir(
+  opts: { ambProposta?: boolean } = {},
+): Promise<PagamentPerRepartir[]> {
   const cobs = await prisma.cobrament.findMany({
     where: {
       import: { gt: 0 },
@@ -155,6 +159,16 @@ export async function pagamentsPerRepartir(): Promise<PagamentPerRepartir[]> {
       automatic: n === 1 || nits <= NITS_MAX_AUTOMATIC,
       pagamentsEstada: n,
     });
+  }
+
+  // Vista prèvia: el mateix repartiment que es desarà (calculadora + nits de cada mes).
+  if (opts.ambProposta) {
+    for (const p of out) {
+      const prop = await proposaPeriodesPerMes(p.estanciaId, p.import);
+      p.proposta = prop.ok && prop.periodes.length >= 2
+        ? prop.periodes.map((x) => ({ dataInici: x.dataInici, dataFi: x.dataFi, nits: x.nits, import: x.import }))
+        : null;
+    }
   }
   return out;
 }

@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CalendarRange, Check, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody } from '@/components/ui/card';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { ApiError, getJSON, postJSON, putJSON } from '@/lib/api';
+import { efecteAlBalanc, type EfecteMes } from '@/lib/repartiment';
 import { formatDate, formatEur } from '@/lib/utils';
 import type { PagamentPerRepartir } from '@/lib/services/repartiment-cobraments';
 
@@ -23,19 +25,24 @@ export function PerRepartirLlista({ inicial }: { inicial: PagamentPerRepartir[] 
 
   useEffect(() => setLlista(inicial), [inicial]);
 
+  const [confirmant, setConfirmant] = useState(false);
+
   const pendents = llista.filter((p) => !fets.has(p.id));
-  const automatics = pendents.filter((p) => p.automatic);
+  const automatics = pendents.filter((p) => p.automatic && p.proposta);
   const total = pendents.reduce((a, p) => a + p.import, 0);
+  // Vista prèvia: com canvia cada mes del Balanç si es reparteixen els automàtics.
+  const efecte = useMemo(
+    () => efecteAlBalanc(automatics.map((p) => ({ data: p.data, import: p.import, proposta: p.proposta ?? [] }))),
+    [automatics],
+  );
 
   async function reparteix(p: PagamentPerRepartir) {
+    if (!p.proposta) return;
     setBusy(p.id);
     setMsg(null);
     try {
-      const prop = await getJSON<{ ok: boolean; error?: string; periodes: { dataInici: string; dataFi: string; import: number }[] }>(
-        `/api/cobraments/${p.id}/periodes`,
-      );
-      if (!prop.ok || prop.periodes.length < 2) throw new Error(prop.error ?? 'No s’ha pogut proposar');
-      await putJSON(`/api/cobraments/${p.id}/periodes`, { periodes: prop.periodes });
+      // Es desa exactament el repartiment que es veu a la pantalla.
+      await putJSON(`/api/cobraments/${p.id}/periodes`, { periodes: p.proposta });
       setFets((s) => new Set(s).add(p.id));
     } catch (e) {
       setMsg({ ok: false, text: `${p.titular}: ${e instanceof ApiError || e instanceof Error ? e.message : 'error'}` });
@@ -83,12 +90,45 @@ export function PerRepartirLlista({ inicial }: { inicial: PagamentPerRepartir[] 
           · {formatEur(total)} comptats sencers en un sol mes
         </span>
         {automatics.length > 0 && (
-          <Button onClick={reparteixTots} disabled={busy !== null} className="w-full sm:w-auto">
+          <Button onClick={() => setConfirmant(true)} disabled={busy !== null} className="w-full sm:w-auto">
             <CalendarRange className="h-4 w-4" />
             {busy === 'TOTS' ? 'Repartint…' : `Reparteix-ne ${automatics.length} automàticament`}
           </Button>
         )}
       </div>
+
+      {/* Vista prèvia: res no canvia fins que es confirma. */}
+      {efecte.length > 0 && (
+        <Card>
+          <CardBody className="space-y-2 px-4 sm:px-5">
+            <p className="text-sm font-semibold text-slate-800">
+              Com quedarà el Balanç si reparteixes els {automatics.length} automàtics
+            </p>
+            <p className="text-xs text-slate-500">
+              Vista prèvia: encara no s’ha canviat res. Només compten aquests pagaments; la resta del mes no es toca.
+            </p>
+            <EfecteTaula efecte={efecte} />
+          </CardBody>
+        </Card>
+      )}
+
+      <ConfirmDialog
+        open={confirmant}
+        danger={false}
+        title={`Repartir ${automatics.length} pagaments per mesos`}
+        message="Cada pagament comptarà al Balanç repartit entre els mesos de la seva estada, tal com es veu a la llista. Les factures no canvien i es pot desfer pagament per pagament («Canviar» → «Treure el repartiment»)."
+        confirmLabel="Sí, reparteix-los"
+        extra={
+          <div className="mt-4">
+            <EfecteTaula efecte={efecte} />
+          </div>
+        }
+        onCancel={() => setConfirmant(false)}
+        onConfirm={() => {
+          setConfirmant(false);
+          void reparteixTots();
+        }}
+      />
 
       {msg && (
         <p
@@ -121,15 +161,23 @@ export function PerRepartirLlista({ inicial }: { inicial: PagamentPerRepartir[] 
                 <div className="min-w-[9rem]">
                   <p className="font-semibold text-slate-900">{formatEur(p.import)}</p>
                   <p className="text-xs text-amber-700">
-                    cobrat el {formatDate(p.data)} · tot al {mesNom(p.data)}
+                    cobrat el {formatDate(p.data)} · ara tot al {mesNom(p.data)}
                   </p>
                 </div>
+                {p.proposta && !fet && (
+                  <div className="basis-full rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                    <span className="font-semibold text-slate-700">Quedarà: </span>
+                    {p.proposta
+                      .map((x) => `${mesNom(x.dataInici)} ${formatEur(x.import)} (${x.nits} ${x.nits === 1 ? 'nit' : 'nits'})`)
+                      .join(' · ')}
+                  </div>
+                )}
                 <div className="ml-auto flex w-full items-center justify-end gap-2 sm:w-auto">
                   {fet ? (
                     <span className="inline-flex items-center gap-1 text-sm font-semibold text-green-700">
                       <Check className="h-4 w-4" /> Repartit
                     </span>
-                  ) : p.automatic ? (
+                  ) : p.automatic && p.proposta ? (
                     <Button
                       size="sm"
                       variant="outline"
@@ -140,8 +188,10 @@ export function PerRepartirLlista({ inicial }: { inicial: PagamentPerRepartir[] 
                       {busy === p.id ? 'Repartint…' : 'Repartir'}
                     </Button>
                   ) : (
-                    <span className="text-xs text-slate-500" title="L’estada té més d’un pagament: cal decidir a mà a quins mesos va cadascun">
-                      {p.pagamentsEstada} pagaments a l’estada · revisa’l a mà
+                    <span className="text-xs text-slate-500" title="Cal decidir a mà a quins mesos va (botó «Repartir per mesos» a l’estada)">
+                      {p.automatic
+                        ? 'No s’ha pogut proposar · fes-ho des de l’estada'
+                        : `${p.pagamentsEstada} pagaments a l’estada · revisa’l a mà`}
                     </span>
                   )}
                   <Link
@@ -156,6 +206,44 @@ export function PerRepartirLlista({ inicial }: { inicial: PagamentPerRepartir[] 
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/** Taula «Mes · Ara · Quedarà» de la vista prèvia. */
+function EfecteTaula({ efecte }: { efecte: EfecteMes[] }) {
+  const nomMes = (mes: string) =>
+    new Intl.DateTimeFormat('ca-ES', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
+      new Date(`${mes}-01T00:00:00Z`),
+    );
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[18rem] text-sm">
+        <thead>
+          <tr className="text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            <th className="py-1 pr-3 font-bold">Mes</th>
+            <th className="py-1 pr-3 text-right font-bold">Ara</th>
+            <th className="py-1 pr-3 text-right font-bold">Quedarà</th>
+            <th className="py-1 text-right font-bold">Canvi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {efecte.map((e) => {
+            const dif = Math.round((e.despres - e.ara) * 100) / 100;
+            return (
+              <tr key={e.mes} className="border-t border-slate-100">
+                <td className="py-1.5 pr-3 capitalize text-slate-800">{nomMes(e.mes)}</td>
+                <td className="py-1.5 pr-3 text-right tabular-nums text-slate-600">{formatEur(e.ara)}</td>
+                <td className="py-1.5 pr-3 text-right font-semibold tabular-nums text-slate-900">{formatEur(e.despres)}</td>
+                <td className={`py-1.5 text-right font-semibold tabular-nums ${dif > 0 ? 'text-green-700' : 'text-red-700'}`}>
+                  {dif > 0 ? '+' : '−'}
+                  {formatEur(Math.abs(dif))}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

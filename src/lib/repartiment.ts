@@ -36,3 +36,30 @@ export function resumNitsPerMes(entradaISO: string, sortidaISO: string): string 
 
 /** Mes natural d'una data ISO ("2026-10-28" → "2026-10"). */
 export const mesDe = (iso: string) => iso.slice(0, 7);
+
+export interface EfecteMes {
+  mes: string; // "2026-10"
+  ara: number; // el que aquests pagaments sumen ara en aquest mes
+  despres: number; // el que hi sumaran un cop repartits
+}
+
+/**
+ * Com canvia el Balanç, mes a mes, si es reparteixen aquests pagaments: ara cada
+ * un compta sencer al mes del cobrament; després, cada part al seu mes.
+ * Només inclou els mesos on canvia alguna cosa.
+ */
+export function efecteAlBalanc(
+  pagaments: { data: string; import: number; proposta: { dataInici: string; import: number }[] }[],
+): EfecteMes[] {
+  const m = new Map<string, EfecteMes>();
+  const get = (mes: string) => m.get(mes) ?? m.set(mes, { mes, ara: 0, despres: 0 }).get(mes)!;
+  for (const p of pagaments) {
+    get(mesDe(p.data)).ara += p.import;
+    for (const x of p.proposta) get(mesDe(x.dataInici)).despres += x.import;
+  }
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  return [...m.values()]
+    .map((e) => ({ mes: e.mes, ara: r2(e.ara), despres: r2(e.despres) }))
+    .filter((e) => Math.abs(e.ara - e.despres) >= 0.01)
+    .sort((a, b) => a.mes.localeCompare(b.mes));
+}
