@@ -166,7 +166,11 @@ export function PerRepartirLlista({ inicial }: { inicial: PagamentPerRepartir[] 
                 </div>
                 {p.proposta && !fet && (
                   <div className="basis-full rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                    <span className="font-semibold text-slate-700">Quedarà: </span>
+                    <span className="font-semibold text-slate-700">
+                      {p.automatic
+                        ? 'Quedarà: '
+                        : `Només si aquest pagament fos de tota l’estada (n’hi ha ${p.pagamentsEstada}; potser cadascun és d’un mes): `}
+                    </span>
                     {p.proposta
                       .map((x) => `${mesNom(x.dataInici)} ${formatEur(x.import)} (${x.nits} ${x.nits === 1 ? 'nit' : 'nits'})`)
                       .join(' · ')}
