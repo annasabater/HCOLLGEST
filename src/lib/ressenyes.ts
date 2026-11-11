@@ -1,8 +1,8 @@
 /**
  * Ressenyes de Google publicades a hostalcoll.com — lògica pura (testejada).
  *
- * Ordre a la web: primer les DESTACADES, després per `ordre` (menor = abans)
- * i, en empat, la més recent.
+ * Ordre a la web: primer les DESTACADES i després de la MÉS NOVA a la més antiga
+ * (decisió de l'Anna: sense ordre manual).
  */
 
 /** Idiomes de hostalcoll.com (els mateixos que el selector de la web). */
@@ -26,42 +26,15 @@ export function parseTraduccions(v: unknown): Traduccions | null {
 export interface RessenyaOrdenable {
   id: string;
   destacada: boolean;
-  ordre: number;
   dataRessenya: Date;
 }
 
+/** Destacades primer; després de la més nova a la més antiga. */
 export function ordenaPublicades<T extends RessenyaOrdenable>(llista: T[]): T[] {
   return [...llista].sort(
     (a, b) =>
-      Number(b.destacada) - Number(a.destacada) ||
-      a.ordre - b.ordre ||
-      b.dataRessenya.getTime() - a.dataRessenya.getTime(),
+      Number(b.destacada) - Number(a.destacada) || b.dataRessenya.getTime() - a.dataRessenya.getTime(),
   );
-}
-
-export type Direccio = 'AMUNT' | 'AVALL';
-
-/**
- * Mou una ressenya una posició amunt/avall DINS del seu grup (destacades o no:
- * una destacada sempre va davant, així que no té sentit creuar-les).
- * Retorna el nou `ordre` per a cada id (0..n-1 sobre la llista sencera) o
- * `null` si no es pot moure (ja és a l'extrem del grup o no hi és).
- */
-export function mouOrdre<T extends RessenyaOrdenable>(
-  llista: T[],
-  id: string,
-  dir: Direccio,
-): Map<string, number> | null {
-  const ord = ordenaPublicades(llista);
-  const i = ord.findIndex((r) => r.id === id);
-  if (i < 0) return null;
-  const j = dir === 'AMUNT' ? i - 1 : i + 1;
-  const a = ord[i];
-  const b = ord[j];
-  if (!a || !b || a.destacada !== b.destacada) return null;
-  ord[i] = b;
-  ord[j] = a;
-  return new Map(ord.map((r, k) => [r.id, k]));
 }
 
 /** Escurça el text per a la vista prèvia, sense tallar paraules si es pot. */

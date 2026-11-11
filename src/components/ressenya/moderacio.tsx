@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowDown, ArrowUp, ExternalLink, Plus, Star, Trash2 } from 'lucide-react';
+import { ExternalLink, Plus, Star, Trash2 } from 'lucide-react';
 import { ApiError, delJSON, patchJSON, postJSON } from '@/lib/api';
 import {
   dataRessenyaText,
@@ -206,8 +206,6 @@ export function ModeracioRessenyes({
           ) : (
             visibles.map((r) => {
               const posPub = publicades.findIndex((p) => p.id === r.id);
-              const grup = publicades.filter((p) => p.destacada === r.destacada);
-              const posGrup = grup.findIndex((p) => p.id === r.id);
               const ocupat = busy === r.id;
               return (
                 <Card key={r.id}>
@@ -333,26 +331,6 @@ export function ModeracioRessenyes({
                             >
                               <Star className={cn('h-4 w-4', r.destacada && 'fill-amber-500 text-amber-500')} />
                               {r.destacada ? 'Destacada' : 'Destaca'}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={ocupat || posGrup <= 0}
-                              onClick={() => patch(r.id, { moure: 'AMUNT' })}
-                              aria-label="Puja una posició"
-                              title="Puja una posició"
-                            >
-                              <ArrowUp className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={ocupat || posGrup < 0 || posGrup >= grup.length - 1}
-                              onClick={() => patch(r.id, { moure: 'AVALL' })}
-                              aria-label="Baixa una posició"
-                              title="Baixa una posició"
-                            >
-                              <ArrowDown className="h-4 w-4" />
                             </Button>
                             <Button
                               size="sm"

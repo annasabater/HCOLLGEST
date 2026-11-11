@@ -19,11 +19,10 @@ export const RessenyaCreateSchema = z.object({
 });
 export type RessenyaCreateInput = z.infer<typeof RessenyaCreateSchema>;
 
-/** Moderació: estat, destacada o moure-la. El text no es pot modificar. */
+/** Moderació: estat o destacada. El text no es pot modificar. */
 export const RessenyaPatchSchema = z.union([
   z.object({ estat: z.enum(['PENDENT', 'PUBLICADA', 'AMAGADA']) }),
   z.object({ destacada: z.boolean() }),
-  z.object({ moure: z.enum(['AMUNT', 'AVALL']) }),
 ]);
 export type RessenyaPatchInput = z.infer<typeof RessenyaPatchSchema>;
 

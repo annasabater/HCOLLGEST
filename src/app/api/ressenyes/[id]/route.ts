@@ -4,11 +4,11 @@ import { ROLES_WRITE } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
 import { badRequest, conflict, handleApiError, ok, readJson } from '@/lib/http';
 import { RessenyaPatchSchema } from '@/lib/validation/ressenya';
-import { canviaEstat, mouRessenya } from '@/lib/services/ressenyes';
+import { canviaEstat } from '@/lib/services/ressenyes';
 
 type Ctx = { params: Promise<{ id: string }> };
 
-// PATCH /api/ressenyes/:id — { estat } | { destacada } | { moure: AMUNT|AVALL }
+// PATCH /api/ressenyes/:id — { estat } | { destacada }
 export async function PATCH(req: Request, ctx: Ctx) {
   try {
     const auth = await authorize(ROLES_WRITE);
@@ -18,15 +18,12 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
     if ('estat' in body) {
       await canviaEstat(id, body.estat);
-    } else if ('destacada' in body) {
+    } else {
       const r = await prisma.ressenya.findUniqueOrThrow({ where: { id } });
       if (body.destacada && r.estat !== 'PUBLICADA') {
         return badRequest('Només es pot destacar una ressenya publicada a la web.');
       }
       await prisma.ressenya.update({ where: { id }, data: { destacada: body.destacada } });
-    } else {
-      const moguda = await mouRessenya(id, body.moure);
-      if (!moguda) return ok({ ok: true, moguda: false });
     }
 
     await audit({

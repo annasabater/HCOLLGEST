@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   dataRessenyaText,
   estrelles,
-  mouOrdre,
   ordenaPublicades,
   parseTraduccions,
   textCurt,
@@ -19,44 +18,20 @@ describe('parseTraduccions', () => {
   });
 });
 
-const r = (id: string, ordre: number, destacada = false, dia = 1) => ({
+const r = (id: string, dia: number, destacada = false) => ({
   id,
-  ordre,
   destacada,
   dataRessenya: new Date(2026, 9, dia),
 });
 
 describe('ordenaPublicades', () => {
-  it('destacades primer, després per ordre i, en empat, la més recent', () => {
-    const out = ordenaPublicades([r('a', 1), r('b', 0), r('c', 5, true), r('d', 0, false, 9)]);
-    expect(out.map((x) => x.id)).toEqual(['c', 'd', 'b', 'a']);
+  it('de la més nova a la més antiga', () => {
+    const out = ordenaPublicades([r('a', 3), r('b', 20), r('c', 9)]);
+    expect(out.map((x) => x.id)).toEqual(['b', 'c', 'a']);
   });
-});
-
-describe('mouOrdre', () => {
-  const llista = [r('x', 0, true), r('a', 0), r('b', 1), r('c', 2)];
-
-  it('puja una posició i renumera tota la llista', () => {
-    const m = mouOrdre(llista, 'c', 'AMUNT');
-    expect(m && [...m.entries()]).toEqual([
-      ['x', 0],
-      ['a', 1],
-      ['c', 2],
-      ['b', 3],
-    ]);
-  });
-
-  it('baixa una posició', () => {
-    const m = mouOrdre(llista, 'a', 'AVALL');
-    expect(m?.get('b')).toBe(1);
-    expect(m?.get('a')).toBe(2);
-  });
-
-  it('no creua destacades i no destacades, ni surt dels extrems', () => {
-    expect(mouOrdre(llista, 'a', 'AMUNT')).toBeNull();
-    expect(mouOrdre(llista, 'x', 'AVALL')).toBeNull();
-    expect(mouOrdre(llista, 'c', 'AVALL')).toBeNull();
-    expect(mouOrdre(llista, 'zz', 'AMUNT')).toBeNull();
+  it('les destacades van davant encara que siguin més antigues', () => {
+    const out = ordenaPublicades([r('a', 3), r('vella', 1, true), r('b', 20)]);
+    expect(out.map((x) => x.id)).toEqual(['vella', 'b', 'a']);
   });
 });
 
