@@ -102,7 +102,6 @@ export function ModeracioRessenyes({
       : filtre === 'PUBLICADA'
         ? publicades.map((p) => ressenyes.find((r) => r.id === p.id)!)
         : ressenyes.filter((r) => r.estat === filtre);
-  const dolentesPendents = ressenyes.filter((r) => r.estat === 'PENDENT' && r.puntuacio <= 2).length;
 
   async function accio(id: string, fn: () => Promise<unknown>) {
     setBusy(id);
@@ -150,25 +149,6 @@ export function ModeracioRessenyes({
         <Stat label="A la web" valor={counts.PUBLICADA} nota="publicades" className="text-green-700" />
         <Stat label="Amagades" valor={counts.AMAGADA} nota="no surten a la web" className="text-slate-500" />
       </section>
-
-      {dolentesPendents > 0 && (
-        <div
-          role="status"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
-        >
-          <span>
-            <strong>
-              {dolentesPendents === 1
-                ? '1 ressenya de 1–2 ★ pendent.'
-                : `${dolentesPendents} ressenyes de 1–2 ★ pendents.`}
-            </strong>{' '}
-            Contestar-la a Google ràpid i amb educació ajuda, encara que no la publiquis a la web.
-          </span>
-          <Button size="sm" variant="outline" onClick={() => setFiltre('PENDENT')}>
-            Veure-les
-          </Button>
-        </div>
-      )}
 
       {error && (
         <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
