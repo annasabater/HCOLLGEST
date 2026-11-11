@@ -82,6 +82,13 @@ export function PerRepartirLlista({ inicial }: { inicial: PagamentPerRepartir[] 
 
   return (
     <div className="space-y-4">
+      {automatics.length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+          <strong className="text-slate-800">No n’hi ha cap per repartir automàticament.</strong> Els de sota són estades
+          llargues amb més d’un pagament: no cal fer-hi res, només si vols que cada part compti al seu mes (des de
+          «Estada» → «Repartir per mesos»).
+        </div>
+      ) : (
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
         <span>
           <strong>
@@ -96,6 +103,7 @@ export function PerRepartirLlista({ inicial }: { inicial: PagamentPerRepartir[] 
           </Button>
         )}
       </div>
+      )}
 
       {/* Vista prèvia: res no canvia fins que es confirma. */}
       {efecte.length > 0 && (
@@ -258,7 +266,9 @@ export function AvisPerRepartir() {
   useEffect(() => {
     let cancel = false;
     getJSON<PagamentPerRepartir[]>('/api/cobraments/per-repartir')
-      .then((r) => !cancel && setN(r.length))
+      // Només els que es poden repartir sense dubte: els «a mà» (estades llargues amb
+      // diversos pagaments) no avisen, ho decideix la propietària quan vulgui.
+      .then((r) => !cancel && setN(r.filter((p) => p.automatic).length))
       .catch(() => undefined);
     return () => {
       cancel = true;
