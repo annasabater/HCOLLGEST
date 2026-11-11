@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aparellaAmbWeb, normalitzaNom, puntuacioGoogle, textOriginal } from './google-ressenyes';
+import { aparellaAmbWeb, nomsEquivalents, normalitzaNom, puntuacioGoogle, textOriginal } from './google-ressenyes';
 
 describe('puntuacioGoogle', () => {
   it('converteix l’enum de Google', () => {
@@ -31,6 +31,19 @@ describe('aparellaAmbWeb', () => {
     expect(normalitzaNom('Andrea BARRAGAN soberón')).toBe('andrea barragan soberon');
     expect(aparellaAmbWeb('andrea barragan soberon', 5, web)?.id).toBe('1');
     expect(aparellaAmbWeb('Mihai A', 5, web)?.id).toBe('2');
+  });
+  it('reconeix noms que Google escriu diferent (casos reals)', () => {
+    const w = [
+      { id: 'c', autor: 'Cristo Fontecilla', puntuacio: 5 },
+      { id: 'p', autor: 'Patricia Santa Cruz', puntuacio: 5 },
+    ];
+    expect(aparellaAmbWeb('GuitarOnTop / Cristo Fontecilla', 5, w)?.id).toBe('c');
+    expect(aparellaAmbWeb('Patricia Santa Crruz', 5, w)?.id).toBe('p');
+  });
+  it('no aparella noms curts semblants ni una sola paraula continguda', () => {
+    expect(nomsEquivalents('nabel', 'nabil')).toBe(false);
+    expect(nomsEquivalents('marta', 'marta ribera lopez')).toBe(false);
+    expect(nomsEquivalents('karen arbiza yu', 'karen arbiza')).toBe(true);
   });
   it('no aparella si canvien les estrelles o el nom', () => {
     expect(aparellaAmbWeb('Mihai A.', 4, web)).toBeNull();

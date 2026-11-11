@@ -68,5 +68,36 @@ export function aparellaAmbWeb(
 ): CandidataWeb | null {
   const n = normalitzaNom(autor);
   if (!n) return null;
-  return candidates.find((c) => c.puntuacio === puntuacio && normalitzaNom(c.autor) === n) ?? null;
+  const mateixes = candidates.filter((c) => c.puntuacio === puntuacio);
+  return (
+    mateixes.find((c) => normalitzaNom(c.autor) === n) ??
+    mateixes.find((c) => nomsEquivalents(normalitzaNom(c.autor), n)) ??
+    null
+  );
+}
+
+/**
+ * Noms que són la mateixa persona encara que Google els escrigui diferent:
+ *  - un conté l'altre sencer, si té almenys dues paraules
+ *    ("GuitarOnTop / Cristo Fontecilla" ↔ "Cristo Fontecilla");
+ *  - una errata de 1–2 lletres en noms llargs ("Santa Crruz" ↔ "Santa Cruz").
+ */
+export function nomsEquivalents(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  const [curt, llarg] = a.length <= b.length ? [a, b] : [b, a];
+  if (curt.split(' ').length >= 2 && ` ${llarg} `.includes(` ${curt} `)) return true;
+  return curt.length >= 10 && distancia(a, b) <= 2;
+}
+
+/** Distància de Levenshtein (nombre mínim de lletres a canviar). */
+function distancia(a: string, b: string): number {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(prev[j]! + 1, cur[j - 1]! + 1, prev[j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[b.length]!;
 }
