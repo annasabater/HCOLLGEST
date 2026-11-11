@@ -71,10 +71,10 @@ export function GoogleConnexio({ estat, isAdmin, canWrite }: { estat: EstatConne
 
   return (
     <Card>
-      <CardBody className="flex flex-wrap items-center gap-3">
+      <CardBody className="flex flex-wrap items-center gap-3 px-4 sm:px-5">
         <span
           aria-hidden="true"
-          className={`h-2.5 w-2.5 rounded-full ${
+          className={`mt-1.5 h-2.5 w-2.5 shrink-0 self-start rounded-full sm:mt-0 sm:self-center ${
             estat.connectat && estat.fitxa && !estat.syncError
               ? 'bg-green-500'
               : estat.connectat
@@ -109,22 +109,25 @@ export function GoogleConnexio({ estat, isAdmin, canWrite }: { estat: EstatConne
             <p className="mt-1 text-xs font-medium text-slate-700">{msg}</p>
           )}
         </div>
-        {estat.connectat && canWrite && (
-          <Button variant="outline" size="sm" onClick={sincronitza} disabled={busy}>
-            <RefreshCw className={`h-4 w-4 ${busy ? 'animate-spin' : ''}`} />
-            {busy ? 'Revisant…' : 'Revisa ara'}
-          </Button>
-        )}
-        {isAdmin && (
-          <Button
-            variant={estat.connectat ? 'ghost' : 'primary'}
-            size="sm"
-            // Navegació completa: el servidor redirigeix al consentiment de Google.
-            onClick={() => window.location.assign('/api/ressenyes/google/connect')}
-          >
-            {estat.connectat ? 'Torna a connectar' : 'Connecta amb Google'}
-          </Button>
-        )}
+        {/* Mòbil: botons a sota, a tot l'ample i grans; ordinador: al costat del text. */}
+        <div className="flex w-full gap-2 sm:w-auto [&>button]:h-10 [&>button]:flex-1 sm:[&>button]:h-8 sm:[&>button]:flex-none">
+          {estat.connectat && canWrite && (
+            <Button variant="outline" size="sm" onClick={sincronitza} disabled={busy}>
+              <RefreshCw className={`h-4 w-4 ${busy ? 'animate-spin' : ''}`} />
+              {busy ? 'Revisant…' : 'Revisa ara'}
+            </Button>
+          )}
+          {isAdmin && (
+            <Button
+              variant={estat.connectat ? 'ghost' : 'primary'}
+              size="sm"
+              // Navegació completa: el servidor redirigeix al consentiment de Google.
+              onClick={() => window.location.assign('/api/ressenyes/google/connect')}
+            >
+              {estat.connectat ? 'Torna a connectar' : 'Connecta amb Google'}
+            </Button>
+          )}
+        </div>
       </CardBody>
     </Card>
   );
