@@ -22,6 +22,7 @@ import {
   Calculator,
   LifeBuoy,
   Star,
+  Bell,
 } from 'lucide-react';
 import type { Role } from '@prisma/client';
 import { cn } from '@/lib/utils';
@@ -68,6 +69,7 @@ const GROUPS: NavGroup[] = [
       { href: '/serveis', label: 'Proveïdors i serveis', icon: Truck },
       { href: '/justificants', label: 'Justificants', icon: FileCheck },
       { href: '/ressenyes', label: 'Ressenyes Google', icon: Star, hideRestringit: true },
+      { href: '/recordatoris', label: 'Recordatoris', icon: Bell, hideRestringit: true },
     ],
   },
   {

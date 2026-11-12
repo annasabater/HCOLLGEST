@@ -176,6 +176,13 @@ Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
   «Reparteix-ne N automàticament» (`services/repartiment-cobraments.ts`). Automàtic només si l'estada té un
   sol pagament o ≤31 nits (cada pròrroga és una estada); si no, a mà. Canviar l'import d'un pagament en
   treu el repartiment. Només afecta Balanç/tauler; el llibre d'IVA va per la data de la factura.
+- **Recordatoris + WhatsApp** (`/recordatoris`, model `Recordatori`; ≠ `Avis`, que és la llista de no admissió):
+  data, «es repeteix» (un cop / cada N setmanes-mesos-anys), dies d'avís. Surten al tauler des del primer avís
+  fins a «Fet» (si es repeteix, es crea el següent) o «Recorda-m'ho en 3 dies». Lògica pura i testejada a
+  `src/lib/recordatoris.ts`. **Resum del matí per WhatsApp** (`/api/cron/whatsapp-diari`, 08:00 UTC, un cop al
+  dia): recordatoris del dia + sortides avui/demà + cobraments a punt (com el pop-up) + opinions noves. Envia
+  amb **CallMeBot** (`src/lib/whatsapp.ts`; només a un mateix; clau xifrada a `Establiment.whatsappApiKeyEnc`,
+  mai als logs), configurat a /config → WhatsApp.
 - **Ficha PDF firmable**: `GET /api/estancies/:id/fitxa-pdf` genera el model "Registre de persones
   allotjades" (pdf-lib) amb les dades dels viatgers i la **signatura capturada incrustada** (o una
   línia per signar a mà). Botó "Fitxa PDF" al detall de l'estada. Generador a `src/lib/pdf/fitxa.ts`.

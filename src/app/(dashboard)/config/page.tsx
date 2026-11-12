@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { Download, ShieldCheck, BookOpen, Mail, CloudUpload, Shirt } from 'lucide-react';
+import { Download, ShieldCheck, BookOpen, Mail, CloudUpload, Shirt, MessageCircle } from 'lucide-react';
+import { WhatsappConfig } from '@/components/config/whatsapp-config';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { PageHeader } from '@/components/ui/page-header';
@@ -44,6 +45,13 @@ export default async function ConfigPage({
       <PageHeader title="Configuració" subtitle="Establiment, Mossos, facturació i RGPD" />
 
       <ConfigForm />
+
+      <CollapsibleCard
+        title="WhatsApp (resum del matí)"
+        icon={<MessageCircle className="h-4 w-4 text-brand-600" />}
+      >
+        <WhatsappConfig />
+      </CollapsibleCard>
 
       <CollapsibleCard
         title="Còpia automàtica a Google Drive"

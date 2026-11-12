@@ -3,8 +3,13 @@ import Link from 'next/link';
 import {
   AlertTriangle, LogIn, LogOut,
   Wrench, CalendarClock, ShieldAlert,
-  Sparkles, TrendingUp, ChevronRight,
+  Sparkles, TrendingUp, ChevronRight, Bell,
 } from 'lucide-react';
+import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
+import { esNomesLectura } from '@/lib/auth/restriccions';
+import { recordatorisAra } from '@/lib/services/recordatoris';
+import { diaMadrid } from '@/lib/recordatoris';
+import { RecordatoriTarja } from '@/components/recordatori/tarja';
 import { getResum } from '@/lib/services/dashboard';
 import { fitxesDadesPendents } from '@/lib/services/fitxes-pendents';
 import { isFormatConfirmat } from '@/lib/mossos/fitxer';
@@ -52,6 +57,8 @@ export default async function DashboardPage() {
   const fitxesPendents = await fitxesDadesPendents();
   const prorrogues = await getProrrogues();
   const isAdmin = user?.role === 'ADMIN';
+  const canWrite = user ? hasRole(user.role, ROLES_WRITE) : false;
+  const recordatoris = esNomesLectura(user) ? [] : await recordatorisAra();
 
   type ColorKey = keyof typeof colorMap;
 
@@ -141,6 +148,23 @@ export default async function DashboardPage() {
         </div>
         <GlobalSearch />
       </div>
+
+      {/* Recordatoris propis que toquen ara (assegurança, revisions…) */}
+      {recordatoris.length > 0 && (
+        <section aria-label="Recordatoris" className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 font-semibold text-amber-900">
+              <Bell className="h-5 w-5" /> Recordatoris que toquen ara
+            </h2>
+            <Link href="/recordatoris" className="text-sm font-semibold text-amber-900 underline underline-offset-2">
+              Tots els recordatoris
+            </Link>
+          </div>
+          {recordatoris.map((r) => (
+            <RecordatoriTarja key={r.id} r={r} avui={diaMadrid()} canWrite={canWrite} />
+          ))}
+        </section>
+      )}
 
       <CalculadoraPreu potFerPressupost={isAdmin} />
 

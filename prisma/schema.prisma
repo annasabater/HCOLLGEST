@@ -312,6 +312,14 @@ model Establiment {
   ressenyesSyncAt        DateTime? @map("ressenyes_sync_at")
   ressenyesSyncError     String?   @map("ressenyes_sync_error")
 
+  // Resum diari per WhatsApp (CallMeBot: només envia a un mateix). La clau va
+  // XIFRADA. Últim dia enviat (dedup del cron) i últim error.
+  whatsappTelefon   String?   @map("whatsapp_telefon")
+  whatsappApiKeyEnc String?   @map("whatsapp_api_key_enc")
+  whatsappActiu     Boolean   @default(false) @map("whatsapp_actiu")
+  whatsappResumDia  String?   @map("whatsapp_resum_dia") // YYYY-MM-DD (Madrid)
+  whatsappError     String?   @map("whatsapp_error")
+
   estancies Estancia[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -1518,6 +1526,31 @@ model Ressenya {
 
   @@index([estat])
   @@map("ressenya")
+}
+
+// Avís/recordatori propi (assegurança, revisions, contractes…). Surt al tauler
+// des del primer "dies abans" fins que es marca Fet, i al resum de WhatsApp els
+// dies d'avís. Si es repeteix, en marcar-lo Fet es crea el següent.
+model Recordatori {
+  id               String    @id @default(cuid())
+  titol            String
+  notes            String?   @db.Text
+  tipus            String    @default("ALTRES") // ASSEGURANCA | REVISIO | CONTRACTE | IMPOSTOS | ALTRES
+  data             DateTime  @db.Date // quan venç / quan és
+  repeticioCada    Int?      @map("repeticio_cada") // null = un sol cop
+  repeticioUnitat  String?   @map("repeticio_unitat") // SETMANES | MESOS | ANYS
+  diesAbans        Int[]     @default([]) @map("dies_abans") // p. ex. [30, 7]
+  whatsapp         Boolean   @default(true)
+  ajornatFins      DateTime? @map("ajornat_fins") @db.Date // "recorda-m'ho en X dies"
+  ajornaments      Int       @default(0)
+  fetAt            DateTime? @map("fet_at")
+  deletedAt        DateTime? @map("deleted_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([data])
+  @@index([fetAt])
+  @@map("recordatori")
 }
 
 // Emails programats per enviar-se en un moment futur (gràcies/ressenya, benvinguda).
