@@ -112,7 +112,7 @@ export function RecordatoriFormulari({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-3">
-          <h2 id="rec-form-titol" className="font-serif text-3xl font-semibold text-brand-700">
+          <h2 id="rec-form-titol" className="font-serif text-2xl font-semibold text-slate-900">
             {inicial ? 'Editar recordatori' : 'Nou recordatori'}
           </h2>
           <button type="button" onClick={onTanca} aria-label="Tancar" className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">

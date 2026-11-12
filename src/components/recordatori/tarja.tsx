@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Check, Clock, MessageCircle } from 'lucide-react';
 import { ApiError, patchJSON } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import {
   diesEntre,
   textQuan,
@@ -68,7 +69,7 @@ export function RecordatoriTarja({
   }
 
   return (
-    <article className="flex flex-wrap items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_8px_28px_rgba(60,30,20,0.07)] sm:gap-5 sm:p-5">
+    <article className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:gap-5">
       <DataTile data={r.data} vencut={vencut} />
       <div className="min-w-0 flex-[1_1_16rem] space-y-1.5">
         <div className="flex flex-wrap gap-1.5">
@@ -100,22 +101,12 @@ export function RecordatoriTarja({
       </div>
       {canWrite && (
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => accio('FET')}
-            disabled={busy !== null}
-            className="inline-flex h-11 items-center gap-1.5 rounded-full bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-60"
-          >
+          <Button onClick={() => accio('FET')} disabled={busy !== null} className="bg-emerald-700 hover:bg-emerald-800">
             <Check className="h-4 w-4" /> {busy === 'FET' ? 'Desant…' : 'Fet'}
-          </button>
-          <button
-            type="button"
-            onClick={() => accio('AJORNA')}
-            disabled={busy !== null}
-            className="inline-flex h-11 items-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 text-sm font-bold text-stone-700 hover:bg-stone-50 disabled:opacity-60"
-          >
+          </Button>
+          <Button variant="outline" onClick={() => accio('AJORNA')} disabled={busy !== null}>
             <Clock className="h-4 w-4" /> {busy === 'AJORNA' ? 'Desant…' : 'Recorda-m’ho en 3 dies'}
-          </button>
+          </Button>
         </div>
       )}
     </article>

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Bell, CalendarDays, MessageCircle, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { ApiError, delJSON, patchJSON } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import { cn } from '@/lib/utils';
 import { dataCurta, textDiesAbans, textRepeticio } from '@/lib/recordatoris';
 import type { RecordatoriVista } from '@/lib/services/recordatoris';
@@ -96,35 +98,29 @@ export function RecordatorisLlista({
   );
 
   return (
-    <div className="space-y-7">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-1.5">
-          <h1 className="font-serif text-4xl font-semibold text-brand-700 sm:text-5xl">Recordatoris</h1>
-          <p className="max-w-xl text-sm text-slate-600">
-            El que no se t’ha de passar: assegurances, revisions, contractes. Surt al tauler i t’arriba al WhatsApp.
-          </p>
-        </div>
-        {canWrite && (
-          <button
-            type="button"
-            onClick={() => setForm({ obert: true, r: null })}
-            className="inline-flex h-12 items-center gap-2 rounded-full bg-brand-700 px-5 text-sm font-bold text-white shadow-[0_6px_18px_rgba(122,31,43,0.25)] hover:bg-brand-800"
-          >
-            <Plus className="h-4 w-4" /> Nou recordatori
-          </button>
-        )}
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Recordatoris"
+        subtitle="El que no se t’ha de passar: assegurances, revisions, contractes. Surt al tauler i t’arriba al WhatsApp."
+        actions={
+          canWrite ? (
+            <Button onClick={() => setForm({ obert: true, r: null })}>
+              <Plus className="h-4 w-4" /> Nou recordatori
+            </Button>
+          ) : null
+        }
+      />
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm">
+      <div className="-mt-3 grid gap-3 sm:grid-cols-3">
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4">
           <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-800"><Bell className="h-5 w-5" /></span>
           <span><span className="block text-2xl font-extrabold leading-tight">{ara.length}</span><span className="text-sm text-slate-600">toquen ara</span></span>
         </div>
-        <div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm">
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4">
           <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-700"><CalendarDays className="h-5 w-5" /></span>
           <span><span className="block text-2xl font-extrabold leading-tight">{properament.length}</span><span className="text-sm text-slate-600">programats</span></span>
         </div>
-        <div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm">
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4">
           <span className={cn('flex h-11 w-11 items-center justify-center rounded-xl', whatsappActiu ? 'bg-emerald-50 text-emerald-800' : 'bg-stone-100 text-stone-500')}>
             <MessageCircle className="h-5 w-5" />
           </span>
@@ -141,14 +137,14 @@ export function RecordatorisLlista({
 
       {ara.length > 0 && (
         <section aria-label="Ara toca" className="space-y-3">
-          <h2 className="font-serif text-3xl font-semibold text-slate-900">Ara toca</h2>
+          <h2 className="font-serif text-xl font-semibold text-slate-900">Ara toca</h2>
           {ara.map((r) => <RecordatoriTarja key={r.id} r={r} avui={avui} canWrite={canWrite} />)}
         </section>
       )}
 
-      <section className="rounded-3xl bg-white px-5 pb-2 pt-5 shadow-sm sm:px-7">
+      <section className="rounded-xl border border-slate-200 bg-white px-5 pb-2 pt-4">
         <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
-          <h2 className="font-serif text-3xl font-semibold text-slate-900">{vista === 'pendents' ? 'Properament' : 'Fets'}</h2>
+          <h2 className="font-serif text-xl font-semibold text-slate-900">{vista === 'pendents' ? 'Properament' : 'Fets'}</h2>
           <div role="tablist" aria-label="Quins recordatoris" className="flex gap-1 rounded-full bg-stone-100 p-1">
             {(['pendents', 'fets'] as const).map((v) => (
               <button
