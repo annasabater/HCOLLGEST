@@ -15,6 +15,25 @@ export function normalitzaTelefon(tel: string): string | null {
   return /^\d{10,15}$/.test(d) ? d : null;
 }
 
+/** Un número que rep WhatsApps (cadascun amb la seva clau de CallMeBot, xifrada). */
+export interface Destinatari {
+  telefon: string;
+  apikeyEnc: string | null;
+  actiu: boolean;
+}
+
+/** Llegeix `Establiment.whatsappDestinataris` (JSON) amb tolerància. */
+export function parseDestinataris(raw: unknown): Destinatari[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((x) => {
+    if (!x || typeof x !== 'object') return [];
+    const o = x as Record<string, unknown>;
+    const tel = typeof o.telefon === 'string' ? normalitzaTelefon(o.telefon) : null;
+    if (!tel) return [];
+    return [{ telefon: tel, apikeyEnc: typeof o.apikeyEnc === 'string' ? o.apikeyEnc : null, actiu: o.actiu === true }];
+  });
+}
+
 /** Envia el text. Llança un Error amb un missatge entenedor (sense la clau) si falla. */
 export async function enviaWhatsapp(telefon: string, apikey: string, text: string): Promise<void> {
   const tel = normalitzaTelefon(telefon);

@@ -312,8 +312,11 @@ model Establiment {
   ressenyesSyncAt        DateTime? @map("ressenyes_sync_at")
   ressenyesSyncError     String?   @map("ressenyes_sync_error")
 
-  // Resum diari per WhatsApp (CallMeBot: només envia a un mateix). La clau va
-  // XIFRADA. Últim dia enviat (dedup del cron) i últim error.
+  // Resum diari per WhatsApp (CallMeBot: cada número l'activa ell mateix i té la
+  // seva clau). `whatsappDestinataris` = [{ telefon, apikeyEnc (XIFRADA), actiu }].
+  // `whatsappActiu` = algun destinatari rep el resum. Últim dia enviat i últim error.
+  // (whatsappTelefon/whatsappApiKeyEnc: primera versió, ja no s'usen.)
+  whatsappDestinataris Json?   @map("whatsapp_destinataris")
   whatsappTelefon   String?   @map("whatsapp_telefon")
   whatsappApiKeyEnc String?   @map("whatsapp_api_key_enc")
   whatsappActiu     Boolean   @default(false) @map("whatsapp_actiu")

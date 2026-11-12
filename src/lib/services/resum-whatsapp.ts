@@ -6,7 +6,7 @@
 import 'server-only';
 import { prisma } from '../db';
 import { decryptString } from '../crypto';
-import { enviaWhatsapp } from '../whatsapp';
+import { enviaWhatsapp, normalitzaTelefon, parseDestinataris, type Destinatari } from '../whatsapp';
 import {
   diaMadrid,
   horaMadrid,
@@ -96,10 +96,31 @@ export async function construeixResum(dia: string): Promise<ResumDiari> {
 
 async function credencials() {
   const est = await prisma.establiment.findFirst({
-    select: { id: true, whatsappActiu: true, whatsappTelefon: true, whatsappApiKeyEnc: true, whatsappResumDia: true },
+    select: { id: true, whatsappActiu: true, whatsappDestinataris: true, whatsappResumDia: true },
   });
   if (!est) throw new Error('No hi ha establiment configurat.');
-  return est;
+  return { ...est, destinataris: parseDestinataris(est.whatsappDestinataris) };
+}
+
+const finalTel = (tel: string) => `…${tel.slice(-3)}`;
+
+/** Envia el mateix text a cada destinatari actiu; retorna quants han rebut. Errors junts. */
+async function enviaATots(dest: Destinatari[], text: string): Promise<{ ok: number; errors: string[] }> {
+  let ok = 0;
+  const errors: string[] = [];
+  for (const d of dest) {
+    if (!d.apikeyEnc) {
+      errors.push(`${finalTel(d.telefon)}: falta la clau`);
+      continue;
+    }
+    try {
+      await enviaWhatsapp(d.telefon, decryptString(d.apikeyEnc), text);
+      ok++;
+    } catch (err) {
+      errors.push(`${finalTel(d.telefon)}: ${err instanceof Error ? err.message : 'error'}`);
+    }
+  }
+  return { ok, errors };
 }
 
 export type ResultatResum = { enviat: boolean; motiu?: string; elements?: number };
@@ -112,7 +133,8 @@ export async function enviaResumDiari({ forcar = false }: { forcar?: boolean } =
   const now = new Date();
   const dia = diaMadrid(now);
   const est = await credencials();
-  if (!est.whatsappActiu || !est.whatsappTelefon || !est.whatsappApiKeyEnc) return { enviat: false, motiu: 'WhatsApp no configurat' };
+  const actius = est.destinataris.filter((d) => d.actiu);
+  if (actius.length === 0) return { enviat: false, motiu: 'Cap número té el resum activat' };
   if (!forcar && horaMadrid(now) < HORA_RESUM) return { enviat: false, motiu: 'Encara no són les 9' };
   if (!forcar && est.whatsappResumDia === dia) return { enviat: false, motiu: 'Ja enviat avui' };
 
@@ -122,31 +144,24 @@ export async function enviaResumDiari({ forcar = false }: { forcar?: boolean } =
     await prisma.establiment.update({ where: { id: est.id }, data: { whatsappResumDia: dia, whatsappError: null } });
     return { enviat: false, motiu: 'Avui no hi ha res a dir', elements: 0 };
   }
-  try {
-    await enviaWhatsapp(est.whatsappTelefon, decryptString(est.whatsappApiKeyEnc), textResum(resum, urlBase()));
-    await prisma.establiment.update({ where: { id: est.id }, data: { whatsappResumDia: dia, whatsappError: null } });
-    return { enviat: true, elements };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Error enviant el WhatsApp';
-    await prisma.establiment.update({ where: { id: est.id }, data: { whatsappError: msg } });
-    throw new Error(msg);
-  }
+  const { ok, errors } = await enviaATots(actius, textResum(resum, urlBase()));
+  const error = errors.length ? errors.join(' · ') : null;
+  // Si n'ha arribat almenys un, el dia queda fet (no es reenvia als que ja l'han rebut).
+  await prisma.establiment.update({
+    where: { id: est.id },
+    data: { whatsappError: error, ...(ok > 0 ? { whatsappResumDia: dia } : {}) },
+  });
+  if (ok === 0) throw new Error(error ?? 'No s’ha pogut enviar');
+  return { enviat: true, elements, ...(error ? { motiu: `Error en algun número: ${error}` } : {}) };
 }
 
-/** Missatge de prova des de Configuració. */
-export async function enviaProvaWhatsapp(): Promise<void> {
+/** Missatge de prova a un número concret des de Configuració. */
+export async function enviaProvaWhatsapp(telefon: string): Promise<void> {
   const est = await credencials();
-  if (!est.whatsappTelefon || !est.whatsappApiKeyEnc) throw new Error('Falta el número o la clau de CallMeBot.');
-  try {
-    await enviaWhatsapp(
-      est.whatsappTelefon,
-      decryptString(est.whatsappApiKeyEnc),
-      '*Hostal Coll*\nProva feta: a partir d’ara t’arribaran aquí els avisos del matí.',
-    );
-    await prisma.establiment.update({ where: { id: est.id }, data: { whatsappError: null } });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Error enviant el WhatsApp';
-    await prisma.establiment.update({ where: { id: est.id }, data: { whatsappError: msg } });
-    throw new Error(msg);
-  }
+  const tel = normalitzaTelefon(telefon);
+  const d = est.destinataris.find((x) => x.telefon === tel);
+  if (!d?.apikeyEnc) throw new Error('Desa primer aquest número amb la seva clau de CallMeBot.');
+  const { errors } = await enviaATots([d], '*Hostal Coll*\nProva feta: a partir d’ara t’arribaran aquí els avisos del matí.');
+  await prisma.establiment.update({ where: { id: est.id }, data: { whatsappError: errors[0] ?? null } });
+  if (errors.length) throw new Error(errors[0]);
 }

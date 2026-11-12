@@ -27,8 +27,16 @@ export const RecordatoriAccioSchema = z.discriminatedUnion('accio', [
 ]);
 
 export const WhatsappConfigSchema = z.object({
-  telefon: z.string().trim().max(30).nullish(),
-  /** Buit = no canviar la clau desada. */
-  apikey: z.string().trim().max(100).nullish(),
-  actiu: z.boolean(),
+  destinataris: z
+    .array(
+      z.object({
+        telefon: z.string().trim().min(1, 'Falta el número').max(30),
+        /** Buit = mantenir la clau desada d'aquest número. */
+        apikey: z.string().trim().max(100).nullish(),
+        actiu: z.boolean(),
+      }),
+    )
+    .max(5),
 });
+
+export const WhatsappProvaSchema = z.object({ telefon: z.string().trim().min(1).max(30) });
