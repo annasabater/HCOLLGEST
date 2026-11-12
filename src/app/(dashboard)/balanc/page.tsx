@@ -626,7 +626,7 @@ const CRITERIS: { c: Criteri; label: string; explica: React.ReactNode }[] = [
   },
   {
     c: 'caixa',
-    label: 'Balanç de caixa',
+    label: 'Balanç fiscal',
     explica: (
       <>
         Cada pagament compta sencer el dia que entra, sense repartir res. Diu <em>quants diners han entrat de veritat</em>{' '}
@@ -801,7 +801,7 @@ export default function BalancPage() {
     }
     if (!dades) return;
     const rows: (string | number)[][] = [
-      [`${criteri === 'caixa' ? 'Balanç de caixa' : 'Balanç per dies'} ${etiquetaPeriode} (${dataCurta(desde)} – ${dataCurta(fins)})`, ''],
+      [`${criteri === 'caixa' ? 'Balanç fiscal' : 'Balanç per dies'} ${etiquetaPeriode} (${dataCurta(desde)} – ${dataCurta(fins)})`, ''],
       ['Concepte', 'Import'],
       ['Ingressos', dades.ingressos.toFixed(2)],
       ['Despeses (personal inclòs)', despesesTotals.toFixed(2)],
@@ -835,7 +835,7 @@ export default function BalancPage() {
           ...(restringit ? [] : [s.retencions.toFixed(2), s.despesesFianca.toFixed(2)]),
         ]);
     }
-    downloadCSV(`balanc-${criteri}-${desde}_${fins}.csv`, rows);
+    downloadCSV(`balanc-${criteri === 'caixa' ? 'fiscal' : 'per-dies'}-${desde}_${fins}.csv`, rows);
   }
 
   return (
@@ -876,7 +876,7 @@ export default function BalancPage() {
       <FinancesNav />
 
       {/* Pagaments d'estades de més d'un mes comptats sencers en un sol mes. */}
-      {/* Només afecta el Balanç per dies: el de caixa no reparteix mai. */}
+      {/* Només afecta el Balanç per dies: el fiscal no reparteix mai. */}
       {!restringit && criteri === 'dies' && <AvisPerRepartir />}
 
       {veureSituacio ? (
