@@ -22,7 +22,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
   // Instal·lable al mòbil (pantalla d'inici): cal per a les notificacions a l'iPhone.
   manifest: '/manifest.webmanifest',
-  icons: { icon: '/icon-192.png', apple: '/apple-touch-icon.png' },
+  icons: {
+    icon: [
+      { url: '/favicon-48.png', sizes: '48x48', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
   appleWebApp: { capable: true, title: 'Hostal Coll', statusBarStyle: 'default' },
 };
 
