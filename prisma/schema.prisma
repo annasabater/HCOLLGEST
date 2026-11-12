@@ -1556,6 +1556,27 @@ model Recordatori {
   @@map("recordatori")
 }
 
+// Moviment de caixa/banc entrat A MÀ al registre de Deure i Haver (/balanc/deure-haver).
+// La resta de moviments surten sols dels cobraments, dipòsits i despeses.
+//   SALDO_INICIAL → diners que hi havia al començar `data` (arqueig)
+//   TRASPAS       → de `compte` a l'altre (caixa → banc o al revés)
+//   ENTRADA / SORTIDA → qualsevol altre moviment que no surti de la resta de l'app
+model MovimentTresoreria {
+  id         String    @id @default(cuid())
+  compte     String // BANC | CAIXA (al traspàs, d'on surten els diners)
+  tipus      String // SALDO_INICIAL | TRASPAS | ENTRADA | SORTIDA
+  data       DateTime  @db.Date
+  import     Decimal   @db.Decimal(10, 2)
+  concepte   String
+  referencia String?
+  deletedAt  DateTime? @map("deleted_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  @@index([data])
+  @@map("moviment_tresoreria")
+}
+
 // Emails programats per enviar-se en un moment futur (gràcies/ressenya, benvinguda).
 model EmailProgramat {
   id             String    @id @default(cuid())

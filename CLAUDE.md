@@ -183,6 +183,11 @@ Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
   dia): recordatoris del dia + sortides avui/demà + cobraments a punt (com el pop-up) + opinions noves. Envia
   amb **CallMeBot** (`src/lib/whatsapp.ts`; només a un mateix; clau xifrada a `Establiment.whatsappApiKeyEnc`,
   mai als logs), configurat a /config → WhatsApp.
+- **Deure i Haver** (`/balanc/deure-haver`): registre de la CAIXA i del BANC (Deure = entra, Haver = surt,
+  saldo fila a fila). Surt sol dels cobraments, dipòsits (rebuts i tornats) i despeses per forma de pagament
+  (efectiu → caixa; targeta/transferència/Bizum → banc; «Altres» no hi entra i s'avisa). A mà (`MovimentTresoreria`):
+  saldo inicial/arqueig, traspassos caixa↔banc i altres entrades/sortides (p. ex. personal, que no porta forma de
+  pagament). Càlcul pur a `src/lib/tresoreria.ts` (testejat), servei `services/tresoreria.ts`, API `/api/tresoreria`.
 - **Ficha PDF firmable**: `GET /api/estancies/:id/fitxa-pdf` genera el model "Registre de persones
   allotjades" (pdf-lib) amb les dades dels viatgers i la **signatura capturada incrustada** (o una
   línia per signar a mà). Botó "Fitxa PDF" al detall de l'estada. Generador a `src/lib/pdf/fitxa.ts`.
