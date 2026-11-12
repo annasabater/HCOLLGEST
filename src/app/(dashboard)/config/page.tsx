@@ -1,6 +1,8 @@
 import Link from 'next/link';
-import { Download, ShieldCheck, BookOpen, Mail, CloudUpload, Shirt, MessageCircle } from 'lucide-react';
+import { Download, ShieldCheck, BookOpen, Mail, CloudUpload, Shirt, MessageCircle, Smartphone, CalendarDays } from 'lucide-react';
 import { WhatsappConfig } from '@/components/config/whatsapp-config';
+import { NotificacionsConfig } from '@/components/config/notificacions-config';
+import { CalendariConfig } from '@/components/config/calendari-config';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { PageHeader } from '@/components/ui/page-header';
@@ -23,7 +25,7 @@ const DRIVE_MSG: Record<string, { tone: 'ok' | 'err'; text: string }> = {
 export default async function ConfigPage({
   searchParams,
 }: {
-  searchParams: Promise<{ drive?: string }>;
+  searchParams: Promise<{ drive?: string; calendari?: string }>;
 }) {
   const user = await getSessionUser();
   if (user?.role !== 'ADMIN') {
@@ -45,6 +47,21 @@ export default async function ConfigPage({
       <PageHeader title="Configuració" subtitle="Establiment, Mossos, facturació i RGPD" />
 
       <ConfigForm />
+
+      <CollapsibleCard
+        title="Notificacions al mòbil"
+        icon={<Smartphone className="h-4 w-4 text-brand-600" />}
+      >
+        <NotificacionsConfig />
+      </CollapsibleCard>
+
+      <CollapsibleCard
+        title="Google Calendar (recordatoris)"
+        icon={<CalendarDays className="h-4 w-4 text-brand-600" />}
+        defaultOpen={!!sp.calendari}
+      >
+        <CalendariConfig retorn={sp.calendari} />
+      </CollapsibleCard>
 
       <CollapsibleCard
         title="WhatsApp (resum del matí)"

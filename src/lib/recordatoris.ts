@@ -156,6 +156,20 @@ export const resumBuit = (r: ResumDiari) =>
 const eur = (n: number) =>
   `${n.toLocaleString('es-ES', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })} €`;
 
+/** Notificació curta del resum: títol i 4 línies com a molt. */
+export function notificacioResum(r: ResumDiari): { title: string; body: string } {
+  const n = r.recordatoris.length + r.cobraments.length + r.sortides.length + r.opinions.length;
+  const quan = (d: string) => textQuan(diesEntre(r.dia, d));
+  const linies = [
+    ...r.sortides.map((s) => `Sortida: ${s.titular}${s.habitacio ? ` (hab. ${s.habitacio})` : ''} ${quan(s.data)}`),
+    ...r.cobraments.map((c) => `Cobrament: ${c.titular} · ${eur(c.import)} ${quan(c.data)}`),
+    ...r.recordatoris.map((x) => `Recordatori: ${x.titol} (${quan(x.data)})`),
+    ...r.opinions.map((o) => `Opinió nova: ${o.autor} · ${o.puntuacio}/5`),
+  ];
+  const body = linies.length > 4 ? [...linies.slice(0, 3), `i ${linies.length - 3} més…`] : linies;
+  return { title: `Bon dia: ${n === 1 ? '1 cosa' : `${n} coses`} per avui`, body: body.join('\n') };
+}
+
 /** Missatge de WhatsApp (format de WhatsApp: *negreta*). */
 export function textResum(r: ResumDiari, urlBase: string): string {
   const l: string[] = [`*Hostal Coll · ${dataCurta(r.dia)}*`];

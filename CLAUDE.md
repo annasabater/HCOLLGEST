@@ -181,8 +181,15 @@ Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
   fins a «Fet» (si es repeteix, es crea el següent) o «Recorda-m'ho en 3 dies». Lògica pura i testejada a
   `src/lib/recordatoris.ts`. **Resum del matí per WhatsApp** (`/api/cron/whatsapp-diari`, 08:00 UTC, un cop al
   dia): recordatoris del dia + sortides avui/demà + cobraments a punt (com el pop-up) + opinions noves. Envia
-  amb **CallMeBot** (`src/lib/whatsapp.ts`; només a un mateix; clau xifrada a `Establiment.whatsappApiKeyEnc`,
-  mai als logs), configurat a /config → WhatsApp.
+  amb **CallMeBot** (`src/lib/whatsapp.ts`; un o més números, cadascun amb la seva clau xifrada a
+  `Establiment.whatsappDestinataris`, mai als logs), configurat a /config → WhatsApp (bot sovint «ple»).
+  **Notificacions push** (Web Push, `src/lib/push.ts`, `public/sw.js`, model `PushSubscripcio`, claus VAPID a
+  Vercel): el mateix resum del matí + avís al moment de ressenyes/valoracions noves. S'activen des de cada mòbil
+  a /config (iPhone: abans «Afegir a la pantalla d'inici»; `manifest.webmanifest`). **Google Calendar**
+  (`src/lib/google-calendar.ts`, scope `calendar.app.created`: només el calendari «Hostal Coll · Recordatoris»
+  que crea l'app): cada recordatori pendent és un esdeveniment a les 9:00 amb els avisos (màx. 28 dies abans);
+  Fet/esborrat el treu. L'OAuth torna per `/api/ressenyes/google/callback` amb `state=hcoll-calendari` (adreça
+  ja registrada a Google Cloud). Cal la «Google Calendar API» activada al projecte.
 - **Deure i Haver** (`/balanc/deure-haver`): registre de la CAIXA i del BANC (Deure = entra, Haver = surt,
   saldo fila a fila). Surt sol dels cobraments, dipòsits (rebuts i tornats) i despeses per forma de pagament
   (efectiu → caixa; targeta/transferència/Bizum → banc; «Altres» no hi entra i s'avisa). A mà (`MovimentTresoreria`):

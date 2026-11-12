@@ -13,6 +13,7 @@ export const RecordatoriSchema = z
     repeticioUnitat: z.enum(UNITATS_REPETICIO).nullish(),
     diesAbans: z.array(z.number().int().min(0).max(365)).max(8).default([7]),
     whatsapp: z.boolean().default(true),
+    calendari: z.boolean().default(true),
   })
   .refine((v) => !v.repeticioCada === !v.repeticioUnitat, {
     message: 'Indica cada quant es repeteix (número i mesos/anys)',

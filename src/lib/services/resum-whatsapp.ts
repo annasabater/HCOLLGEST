@@ -7,9 +7,11 @@ import 'server-only';
 import { prisma } from '../db';
 import { decryptString } from '../crypto';
 import { enviaWhatsapp, normalitzaTelefon, parseDestinataris, type Destinatari } from '../whatsapp';
+import { enviaPush, pushConfigurat } from '../push';
 import {
   diaMadrid,
   horaMadrid,
+  notificacioResum,
   resumBuit,
   sumaDies,
   textResum,
@@ -134,7 +136,8 @@ export async function enviaResumDiari({ forcar = false }: { forcar?: boolean } =
   const dia = diaMadrid(now);
   const est = await credencials();
   const actius = est.destinataris.filter((d) => d.actiu);
-  if (actius.length === 0) return { enviat: false, motiu: 'Cap número té el resum activat' };
+  const mobils = pushConfigurat() ? await prisma.pushSubscripcio.count({ where: { resumMati: true } }) : 0;
+  if (actius.length === 0 && mobils === 0) return { enviat: false, motiu: 'Cap mòbil ni número té el resum activat' };
   if (!forcar && horaMadrid(now) < HORA_RESUM) return { enviat: false, motiu: 'Encara no són les 9' };
   if (!forcar && est.whatsappResumDia === dia) return { enviat: false, motiu: 'Ja enviat avui' };
 
@@ -144,15 +147,23 @@ export async function enviaResumDiari({ forcar = false }: { forcar?: boolean } =
     await prisma.establiment.update({ where: { id: est.id }, data: { whatsappResumDia: dia, whatsappError: null } });
     return { enviat: false, motiu: 'Avui no hi ha res a dir', elements: 0 };
   }
-  const { ok, errors } = await enviaATots(actius, textResum(resum, urlBase()));
+
+  // Notificació al mòbil (push) i WhatsApp: cada canal pel seu compte.
+  let okPush = 0;
+  if (mobils > 0) {
+    const n = notificacioResum(resum);
+    okPush = (await enviaPush({ resumMati: true }, { ...n, url: '/', tag: `resum-${dia}` })).ok;
+  }
+  const { ok: okWa, errors } = actius.length ? await enviaATots(actius, textResum(resum, urlBase())) : { ok: 0, errors: [] };
   const error = errors.length ? errors.join(' · ') : null;
   // Si n'ha arribat almenys un, el dia queda fet (no es reenvia als que ja l'han rebut).
+  const ok = okPush + okWa;
   await prisma.establiment.update({
     where: { id: est.id },
     data: { whatsappError: error, ...(ok > 0 ? { whatsappResumDia: dia } : {}) },
   });
-  if (ok === 0) throw new Error(error ?? 'No s’ha pogut enviar');
-  return { enviat: true, elements, ...(error ? { motiu: `Error en algun número: ${error}` } : {}) };
+  if (ok === 0) throw new Error(error ?? 'No ha arribat a cap mòbil');
+  return { enviat: true, elements, ...(error ? { motiu: `Error en algun número de WhatsApp: ${error}` } : {}) };
 }
 
 /** Missatge de prova a un número concret des de Configuració. */

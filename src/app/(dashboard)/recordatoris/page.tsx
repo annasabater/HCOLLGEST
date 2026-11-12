@@ -7,10 +7,11 @@ import { RecordatorisLlista } from '@/components/recordatori/llista';
 export const dynamic = 'force-dynamic';
 
 export default async function RecordatorisPage() {
-  const [user, dades, est] = await Promise.all([
+  const [user, dades, est, mobils] = await Promise.all([
     getSessionUser(),
     llistaRecordatoris(),
-    prisma.establiment.findFirst({ select: { whatsappActiu: true } }),
+    prisma.establiment.findFirst({ select: { whatsappActiu: true, googleCalendarTokenEnc: true, googleCalendarId: true } }),
+    prisma.pushSubscripcio.count({ where: { resumMati: true } }),
   ]);
   return (
     <RecordatorisLlista
@@ -18,7 +19,8 @@ export default async function RecordatorisPage() {
       pendents={dades.pendents}
       fets={dades.fets}
       canWrite={user ? hasRole(user.role, ROLES_WRITE) : false}
-      whatsappActiu={!!est?.whatsappActiu}
+      mobilActiu={mobils > 0 || !!est?.whatsappActiu}
+      calendariConnectat={!!(est?.googleCalendarTokenEnc && est.googleCalendarId)}
     />
   );
 }

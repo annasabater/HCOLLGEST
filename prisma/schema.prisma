@@ -252,29 +252,29 @@ model Establiment {
   // s'usa `nom`. El `cif` és l'identificador policial/Mossos, NO el de facturació:
   // per a factures s'usa `facturaTitular`/`facturaNif` (persona física titular de
   // l'activitat), que pot ser diferent del CIF de l'establiment.
-  raoSocial      String? @map("rao_social")
-  adreca         String?
-  codiPostal     String? @map("codi_postal")
-  poblacio       String?
-  telefon        String?
-  iban           String?
-  descriptor     String? // subtítol del membret (p. ex. "Pensió · Calella")
-  facturaTitular String? @map("factura_titular") // p. ex. "Elisabeth Nualart Coll"
-  facturaNif     String? @map("factura_nif") // NIF de facturació (pot diferir del `cif` de Mossos)
+  raoSocial           String?   @map("rao_social")
+  adreca              String?
+  codiPostal          String?   @map("codi_postal")
+  poblacio            String?
+  telefon             String?
+  iban                String?
+  descriptor          String? // subtítol del membret (p. ex. "Pensió · Calella")
+  facturaTitular      String?   @map("factura_titular") // p. ex. "Elisabeth Nualart Coll"
+  facturaNif          String?   @map("factura_nif") // NIF de facturació (pot diferir del `cif` de Mossos)
   // Referència cadastral del local llogat (model 180: resum anual de retencions del lloguer).
-  referenciaCadastral String? @map("referencia_cadastral")
+  referenciaCadastral String?   @map("referencia_cadastral")
   // Presentació directa a l'AEAT (PresBasicaDos): certificat de la titular en
   // .p12, XIFRAT (AES-256-GCM) i protegit a més amb la seva contrasenya, que
   // NO es desa mai (s'escriu a cada presentació). Dades del certificat per mostrar-les.
-  aeatCertificat     String?   @map("aeat_certificat")
-  aeatCertNif        String?   @map("aeat_cert_nif")
-  aeatCertNom        String?   @map("aeat_cert_nom")
-  aeatCertCaduca     DateTime? @map("aeat_cert_caduca")
+  aeatCertificat      String?   @map("aeat_certificat")
+  aeatCertNif         String?   @map("aeat_cert_nif")
+  aeatCertNom         String?   @map("aeat_cert_nom")
+  aeatCertCaduca      DateTime? @map("aeat_cert_caduca")
   // Contrasenya del certificat XIFRADA (AES-256-GCM), només si la titular vol
   // que es recordi (així no l'ha d'escriure a cada presentació).
-  aeatCertContrasenya String?  @map("aeat_cert_contrasenya")
+  aeatCertContrasenya String?   @map("aeat_cert_contrasenya")
   // "proves" (prewww1.aeat.es, laborables 8–15 h) o "produccio".
-  aeatEntorn         String    @default("proves") @map("aeat_entorn")
+  aeatEntorn          String    @default("proves") @map("aeat_entorn")
 
   // Google Drive — token de refresc (xifrat) per a l'export mensual automàtic,
   // i l'id de la carpeta arrel on es desa l'estructura d'arxiu.
@@ -301,9 +301,9 @@ model Establiment {
 
   // Ressenyes de Google: resum REAL de la fitxa (nota mitjana i total) i enllaç.
   // La web els mostra sempre al costat de la selecció (transparència, Omnibus).
-  googleNota  Decimal? @map("google_nota") @db.Decimal(2, 1)
-  googleTotal Int?     @map("google_total")
-  googleUrl   String?  @map("google_url")
+  googleNota             Decimal?  @map("google_nota") @db.Decimal(2, 1)
+  googleTotal            Int?      @map("google_total")
+  googleUrl              String?   @map("google_url")
   // Sincronització nocturna de ressenyes (Google Business Profile API): refresh
   // token XIFRAT (scope business.manage), fitxa triada (accounts/X/locations/Y)
   // i resultat de l'última sincronització.
@@ -316,12 +316,18 @@ model Establiment {
   // seva clau). `whatsappDestinataris` = [{ telefon, apikeyEnc (XIFRADA), actiu }].
   // `whatsappActiu` = algun destinatari rep el resum. Últim dia enviat i últim error.
   // (whatsappTelefon/whatsappApiKeyEnc: primera versió, ja no s'usen.)
-  whatsappDestinataris Json?   @map("whatsapp_destinataris")
-  whatsappTelefon   String?   @map("whatsapp_telefon")
-  whatsappApiKeyEnc String?   @map("whatsapp_api_key_enc")
-  whatsappActiu     Boolean   @default(false) @map("whatsapp_actiu")
-  whatsappResumDia  String?   @map("whatsapp_resum_dia") // YYYY-MM-DD (Madrid)
-  whatsappError     String?   @map("whatsapp_error")
+  whatsappDestinataris   Json?   @map("whatsapp_destinataris")
+  // Google Calendar dels recordatoris: refresh token XIFRAT (scope
+  // calendar.app.created: només veu el calendari que crea l'app), id d'aquest
+  // calendari («Hostal Coll · Recordatoris») i últim error de sincronització.
+  googleCalendarTokenEnc String? @map("google_calendar_token_enc")
+  googleCalendarId       String? @map("google_calendar_id")
+  calendariSyncError     String? @map("calendari_sync_error")
+  whatsappTelefon        String? @map("whatsapp_telefon")
+  whatsappApiKeyEnc      String? @map("whatsapp_api_key_enc")
+  whatsappActiu          Boolean @default(false) @map("whatsapp_actiu")
+  whatsappResumDia       String? @map("whatsapp_resum_dia") // YYYY-MM-DD (Madrid)
+  whatsappError          String? @map("whatsapp_error")
 
   estancies Estancia[]
 
@@ -965,24 +971,24 @@ model CobramentPeriode {
 
 // Dipòsit/fiança de garantia d'una estada. NO és ingrés mentre està en custòdia.
 model Diposit {
-  id            String          @id @default(cuid())
-  estanciaId    String          @map("estancia_id")
-  estancia      Estancia        @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
-  facturaId     String?         @map("factura_id")
-  factura       Factura?        @relation("DocumentDiposit", fields: [facturaId], references: [id], onDelete: SetNull)
+  id              String           @id @default(cuid())
+  estanciaId      String           @map("estancia_id")
+  estancia        Estancia         @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+  facturaId       String?          @map("factura_id")
+  factura         Factura?         @relation("DocumentDiposit", fields: [facturaId], references: [id], onDelete: SetNull)
   // Document de devolució (26009.5) quan es torna, tot o en part.
-  devolucio     Factura?        @relation("DevolucioDiposit")
-  import        Decimal         @db.Decimal(10, 2)
-  data          DateTime
-  metode        MetodeCobrament
-  estat         EstatDiposit    @default(EN_CUSTODIA)
+  devolucio       Factura?         @relation("DevolucioDiposit")
+  import          Decimal          @db.Decimal(10, 2)
+  data            DateTime
+  metode          MetodeCobrament
+  estat           EstatDiposit     @default(EN_CUSTODIA)
   // Dipòsit (no una fiança qualsevol): es pot documentar amb una «Factura de
   // dipòsit» (factura simplificada sense IVA) que es crea a mà des de Facturació.
-  esDiposit     Boolean         @default(false) @map("es_diposit")
-  motiu         String? // motiu de la retenció (desperfecte…)
-  notes         String?
-  observacions  String?
-  dataResolucio DateTime?       @map("data_resolucio") // quan es torna o es retén
+  esDiposit       Boolean          @default(false) @map("es_diposit")
+  motiu           String? // motiu de la retenció (desperfecte…)
+  notes           String?
+  observacions    String?
+  dataResolucio   DateTime?        @map("data_resolucio") // quan es torna o es retén
   // Com s'ha tornat (efectiu, transferència…). Només TORNAT o la part tornada d'un RETINGUT.
   metodeResolucio MetodeCobrament? @map("metode_resolucio")
   // RETINGUT en part: el que es queda (ingrés sense IVA); la resta es torna. Null = tot.
@@ -1399,7 +1405,7 @@ model TarifaTipus {
 // Historial de la matriu de tarifes: cada desat amb canvis guarda una instantània
 // sencera (vigent des de `createdAt`), per veure i recuperar els preus anteriors.
 model TarifaTipusVersio {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   files     Json // files de la matriu (sense ids), com les retorna /api/tarifes-tipus
   usuariId  String?   @map("usuari_id")
   createdAt DateTime  @default(now()) @map("created_at") // vigent des d'aquí
@@ -1535,25 +1541,44 @@ model Ressenya {
 // des del primer "dies abans" fins que es marca Fet, i al resum de WhatsApp els
 // dies d'avís. Si es repeteix, en marcar-lo Fet es crea el següent.
 model Recordatori {
-  id               String    @id @default(cuid())
-  titol            String
-  notes            String?   @db.Text
-  tipus            String    @default("ALTRES") // ASSEGURANCA | REVISIO | CONTRACTE | IMPOSTOS | ALTRES
-  data             DateTime  @db.Date // quan venç / quan és
-  repeticioCada    Int?      @map("repeticio_cada") // null = un sol cop
-  repeticioUnitat  String?   @map("repeticio_unitat") // SETMANES | MESOS | ANYS
-  diesAbans        Int[]     @default([]) @map("dies_abans") // p. ex. [30, 7]
-  whatsapp         Boolean   @default(true)
-  ajornatFins      DateTime? @map("ajornat_fins") @db.Date // "recorda-m'ho en X dies"
-  ajornaments      Int       @default(0)
-  fetAt            DateTime? @map("fet_at")
-  deletedAt        DateTime? @map("deleted_at")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
+  id              String    @id @default(cuid())
+  titol           String
+  notes           String?   @db.Text
+  tipus           String    @default("ALTRES") // ASSEGURANCA | REVISIO | CONTRACTE | IMPOSTOS | ALTRES
+  data            DateTime  @db.Date // quan venç / quan és
+  repeticioCada   Int?      @map("repeticio_cada") // null = un sol cop
+  repeticioUnitat String?   @map("repeticio_unitat") // SETMANES | MESOS | ANYS
+  diesAbans       Int[]     @default([]) @map("dies_abans") // p. ex. [30, 7]
+  whatsapp        Boolean   @default(true) // al resum del matí (notificació al mòbil i/o WhatsApp)
+  calendari       Boolean   @default(true) // es posa al Google Calendar (si està connectat)
+  googleEventId   String?   @map("google_event_id")
+  ajornatFins     DateTime? @map("ajornat_fins") @db.Date // "recorda-m'ho en X dies"
+  ajornaments     Int       @default(0)
+  fetAt           DateTime? @map("fet_at")
+  deletedAt       DateTime? @map("deleted_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   @@index([data])
   @@index([fetAt])
   @@map("recordatori")
+}
+
+// Mòbil/navegador que rep notificacions push (Web Push, VAPID). Es dona de
+// baixa sol quan el navegador diu que la subscripció ja no val (404/410).
+model PushSubscripcio {
+  id          String   @id @default(cuid())
+  endpoint    String   @unique @db.Text
+  p256dh      String
+  auth        String
+  nom         String // "Android", "iPhone"… (de l'user agent)
+  usuariId    String?  @map("usuari_id")
+  resumMati   Boolean  @default(true) @map("resum_mati")
+  alMoment    Boolean  @default(true) @map("al_moment") // ressenyes/valoracions noves
+  darrerError String?  @map("darrer_error")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("push_subscripcio")
 }
 
 // Moviment de caixa/banc entrat A MÀ al registre de Deure i Haver (/balanc/deure-haver).
@@ -1633,17 +1658,17 @@ model EdicioDocument {
 // trimestres següents en llegeixen els imports reals (casella 05 del 130, quotes a
 // compensar del 303), encara que el gestio d'avui calculi un cèntim diferent.
 model DeclaracioFiscal {
-  id           String   @id @default(cuid())
-  model        String // "303" | "130" | "115" | "390" | "180"
-  any          Int
-  periode      Int // 1–4 = trimestre; 0 = anual
-  caselles     Json // { "01": 12880.94, ... }
-  justificant  String? // núm. de justificant de l'AEAT
-  presentadaEl DateTime @map("presentada_el")
-  usuariId     String?  @map("usuari_id")
+  id             String   @id @default(cuid())
+  model          String // "303" | "130" | "115" | "390" | "180"
+  any            Int
+  periode        Int // 1–4 = trimestre; 0 = anual
+  caselles       Json // { "01": 12880.94, ... }
+  justificant    String? // núm. de justificant de l'AEAT
+  presentadaEl   DateTime @map("presentada_el")
+  usuariId       String?  @map("usuari_id")
   // Presentades des de l'app (PresBasicaDos): codi segur de verificació i PDF del justificant.
   csv            String?
-  justificantPdf String? @map("justificant_pdf")
+  justificantPdf String?  @map("justificant_pdf")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

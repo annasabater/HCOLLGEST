@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, CalendarDays, MessageCircle, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { Bell, CalendarDays, Pencil, Plus, RotateCcw, Smartphone, Trash2 } from 'lucide-react';
 import { ApiError, delJSON, patchJSON } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -18,13 +18,15 @@ export function RecordatorisLlista({
   pendents,
   fets,
   canWrite,
-  whatsappActiu,
+  mobilActiu,
+  calendariConnectat,
 }: {
   avui: string;
   pendents: RecordatoriVista[];
   fets: RecordatoriVista[];
   canWrite: boolean;
-  whatsappActiu: boolean;
+  mobilActiu: boolean;
+  calendariConnectat: boolean;
 }) {
   const router = useRouter();
   const [vista, setVista] = useState<'pendents' | 'fets'>('pendents');
@@ -71,13 +73,21 @@ export function RecordatorisLlista({
           {r.notes ? ` · ${r.notes}` : ''}
         </p>
       </div>
-      {r.whatsapp ? (
-        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800">
-          <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
-        </span>
-      ) : (
-        <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-stone-600">Només tauler</span>
-      )}
+      <span className="flex flex-wrap gap-1">
+        {r.whatsapp && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800">
+            <Smartphone className="h-3.5 w-3.5" /> Mòbil
+          </span>
+        )}
+        {r.calendari && calendariConnectat && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-800">
+            <CalendarDays className="h-3.5 w-3.5" /> Calendar
+          </span>
+        )}
+        {!r.whatsapp && !(r.calendari && calendariConnectat) && (
+          <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-stone-600">Només tauler</span>
+        )}
+      </span>
       {canWrite && (
         <div className="flex gap-1">
           {fet ? (
@@ -121,14 +131,16 @@ export function RecordatorisLlista({
           <span><span className="block text-2xl font-extrabold leading-tight">{properament.length}</span><span className="text-sm text-slate-600">programats</span></span>
         </div>
         <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4">
-          <span className={cn('flex h-11 w-11 items-center justify-center rounded-xl', whatsappActiu ? 'bg-emerald-50 text-emerald-800' : 'bg-stone-100 text-stone-500')}>
-            <MessageCircle className="h-5 w-5" />
+          <span className={cn('flex h-11 w-11 items-center justify-center rounded-xl', mobilActiu ? 'bg-emerald-50 text-emerald-800' : 'bg-stone-100 text-stone-500')}>
+            <Smartphone className="h-5 w-5" />
           </span>
           <span>
-            <span className={cn('block font-bold', whatsappActiu ? 'text-emerald-800' : 'text-stone-700')}>
-              {whatsappActiu ? 'WhatsApp connectat' : 'WhatsApp no connectat'}
+            <span className={cn('block font-bold', mobilActiu ? 'text-emerald-800' : 'text-stone-700')}>
+              {mobilActiu ? 'Avisos al mòbil actius' : 'Avisos al mòbil per activar'}
             </span>
-            <span className="text-sm text-slate-600">{whatsappActiu ? 'resum cada matí' : 'es connecta a Configuració'}</span>
+            <span className="text-sm text-slate-600">
+              {calendariConnectat ? 'i al Google Calendar' : 'es configura a Configuració'}
+            </span>
           </span>
         </div>
       </div>
@@ -187,7 +199,8 @@ export function RecordatorisLlista({
       {form.obert && (
         <RecordatoriFormulari
           inicial={form.r}
-          whatsappActiu={whatsappActiu}
+          mobilActiu={mobilActiu}
+          calendariConnectat={calendariConnectat}
           onTanca={() => setForm({ obert: false, r: null })}
           onDesat={() => {
             setForm({ obert: false, r: null });

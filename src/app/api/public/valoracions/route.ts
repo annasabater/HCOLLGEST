@@ -7,6 +7,7 @@
 import { prisma } from '@/lib/db';
 import { ValoracioCreateSchema } from '@/lib/validation/valoracio';
 import { handleApiError } from '@/lib/http';
+import { avisAlMoment } from '@/lib/push';
 import { NextResponse } from 'next/server';
 
 const ALLOW_ORIGIN = 'https://hostalcoll.com';
@@ -38,6 +39,16 @@ export async function POST(req: Request) {
         idioma: data.idioma ?? null,
         estanciaId: data.estanciaId ?? null,
       },
+    });
+    // Avís al mòbil (com el pop-up del panell). Mai fa fallar la valoració de l'hoste.
+    await avisAlMoment({
+      title: `Valoració nova · ${valoracio.puntuacio}/5`,
+      body: [valoracio.nom || (valoracio.habitacio ? `Hoste de l’habitació ${valoracio.habitacio}` : 'Un hoste'), valoracio.comentari]
+        .filter(Boolean)
+        .join(': ')
+        .slice(0, 160),
+      url: '/valoracions',
+      tag: `valoracio-${valoracio.id}`,
     });
     return withCors(NextResponse.json({ ok: true, id: valoracio.id }, { status: 201 }));
   } catch (err) {

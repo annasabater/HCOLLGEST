@@ -3,6 +3,7 @@ import {
   diaMadrid,
   diesEntre,
   horaMadrid,
+  notificacioResum,
   primerAvis,
   resumBuit,
   seguentData,
@@ -122,5 +123,24 @@ describe('textos', () => {
     expect(t).not.toContain('Opinions');
     expect(t.endsWith('https://gestio.hostalcoll.com/recordatoris')).toBe(true);
     expect(resumBuit({ ...res, recordatoris: [], cobraments: [], sortides: [] })).toBe(true);
+  });
+  it('notificació curta', () => {
+    const n = notificacioResum({
+      dia: '2026-12-08',
+      recordatoris: [{ titol: 'Assegurança', data: '2026-12-15', notes: null }],
+      cobraments: [{ titular: 'Cesar', import: 450, data: '2026-12-09', concepte: null }],
+      sortides: [{ titular: 'Nina', habitacio: '4', data: '2026-12-08' }],
+      opinions: [
+        { autor: 'A', puntuacio: 5, tipus: 'GOOGLE' },
+        { autor: 'B', puntuacio: 4, tipus: 'VALORACIO' },
+      ],
+    });
+    expect(n.title).toBe('Bon dia: 5 coses per avui');
+    expect(n.body.split('\n')).toEqual([
+      'Sortida: Nina (hab. 4) avui',
+      'Cobrament: Cesar · 450 € demà',
+      'Recordatori: Assegurança (d’aquí a 7 dies)',
+      'i 2 més…',
+    ]);
   });
 });

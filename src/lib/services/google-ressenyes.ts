@@ -17,6 +17,7 @@ import { getAccessToken } from '@/lib/drive';
 import { llistaRessenyes, trobaUbicacio } from '@/lib/google-business';
 import { aparellaAmbWeb, puntuacioGoogle, textOriginal } from '@/lib/google-ressenyes';
 import { traduirRessenya } from './traduccio-ressenya';
+import { avisAlMoment } from '@/lib/push';
 
 export interface ResultatSync {
   llegides: number;
@@ -137,6 +138,16 @@ export async function sincronitzaRessenyesGoogle(): Promise<ResultatSync> {
         ressenyesSyncError: null,
       },
     });
+
+    // Avís al mòbil de les noves (com el pop-up del panell).
+    if (res.noves > 0) {
+      await avisAlMoment({
+        title: res.noves === 1 ? 'Ressenya nova de Google' : `${res.noves} ressenyes noves de Google`,
+        body: 'Toca per decidir si surten a la web.',
+        url: '/ressenyes',
+        tag: 'ressenyes',
+      });
+    }
 
     // Traduccions, amb límit de temps.
     const inici = Date.now();

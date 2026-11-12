@@ -20,6 +20,10 @@ export const metadata: Metadata = {
   title: 'Hostal Coll — Gestió',
   description: 'PMS + ERP del Hostal Coll: registre de viatgers, CRM, facturació i gestió.',
   robots: { index: false, follow: false },
+  // Instal·lable al mòbil (pantalla d'inici): cal per a les notificacions a l'iPhone.
+  manifest: '/manifest.webmanifest',
+  icons: { icon: '/icon-192.png', apple: '/apple-touch-icon.png' },
+  appleWebApp: { capable: true, title: 'Hostal Coll', statusBarStyle: 'default' },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

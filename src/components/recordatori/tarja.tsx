@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Clock, MessageCircle } from 'lucide-react';
+import { Check, Clock, Smartphone } from 'lucide-react';
 import { ApiError, patchJSON } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -91,7 +91,7 @@ export function RecordatoriTarja({
           )}
           {r.whatsapp && (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
-              <MessageCircle className="h-3 w-3" /> WhatsApp
+              <Smartphone className="h-3 w-3" /> Mòbil
             </span>
           )}
         </div>

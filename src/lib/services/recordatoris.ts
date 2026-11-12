@@ -8,6 +8,7 @@ import { prisma } from '../db';
 import { audit } from '../audit';
 import { diaMadrid, seguentData, sumaDies, tocaAra, type UnitatRepeticio } from '../recordatoris';
 import { RecordatoriAccioSchema, RecordatoriSchema } from '../validation/recordatori';
+import { sincronitzaRecordatoris } from './calendari-recordatoris';
 
 type Actor = { id: string } | null;
 
@@ -24,6 +25,7 @@ export interface RecordatoriVista {
   repeticioUnitat: string | null;
   diesAbans: number[];
   whatsapp: boolean;
+  calendari: boolean;
   ajornatFins: string | null;
   ajornaments: number;
   fetAt: string | null;
@@ -41,6 +43,7 @@ export function vista(r: Recordatori, avui = diaMadrid()): RecordatoriVista {
     repeticioUnitat: r.repeticioUnitat,
     diesAbans: r.diesAbans,
     whatsapp: r.whatsapp,
+    calendari: r.calendari,
     ajornatFins: r.ajornatFins ? deData(r.ajornatFins) : null,
     ajornaments: r.ajornaments,
     fetAt: r.fetAt ? r.fetAt.toISOString() : null,
@@ -80,6 +83,7 @@ function dades(raw: unknown) {
     repeticioUnitat: v.repeticioUnitat ?? null,
     diesAbans: [...new Set(v.diesAbans)].sort((a, b) => b - a),
     whatsapp: v.whatsapp,
+    calendari: v.calendari,
   };
 }
 
@@ -87,6 +91,7 @@ export async function creaRecordatori(raw: unknown, actor: Actor, ip: string | n
   const d = dades(raw);
   const r = await prisma.recordatori.create({ data: d });
   await audit({ usuariId: actor?.id ?? null, accio: 'CREACIO', entitat: 'recordatori', entitatId: r.id, detall: { titol: r.titol, data: deData(r.data) }, ip });
+  await sincronitzaRecordatoris([r.id]);
   return vista(r);
 }
 
@@ -99,12 +104,14 @@ export async function editaRecordatori(id: string, raw: unknown, actor: Actor, i
     data: { ...d, ...(deData(abans.data) !== deData(d.data) ? { ajornatFins: null } : {}) },
   });
   await audit({ usuariId: actor?.id ?? null, accio: 'MODIFICACIO', entitat: 'recordatori', entitatId: id, detall: { titol: r.titol, data: deData(r.data) }, ip });
+  await sincronitzaRecordatoris([id]);
   return vista(r);
 }
 
 export async function eliminaRecordatori(id: string, actor: Actor, ip: string | null) {
   const r = await prisma.recordatori.update({ where: { id }, data: { deletedAt: new Date() } });
   await audit({ usuariId: actor?.id ?? null, accio: 'ELIMINACIO', entitat: 'recordatori', entitatId: id, detall: { titol: r.titol }, ip });
+  await sincronitzaRecordatoris([id]);
 }
 
 /** Fet / Recorda-m'ho en X dies / Desfer el «Fet». */
@@ -123,14 +130,16 @@ export async function accioRecordatori(id: string, raw: unknown, actor: Actor, i
   if (a.accio === 'DESFES') {
     await prisma.recordatori.update({ where: { id }, data: { fetAt: null } });
     await audit({ usuariId: actor?.id ?? null, accio: 'MODIFICACIO', entitat: 'recordatori', entitatId: id, detall: { desfetFet: true }, ip });
+    await sincronitzaRecordatoris([id]);
     return { ok: true };
   }
 
   // FET: tanca aquest i, si es repeteix, programa el següent (una sola vegada).
-  return prisma.$transaction(async (tx) => {
-    if (r.fetAt) return { ok: true, seguent: null };
+  const res = await prisma.$transaction(async (tx) => {
+    if (r.fetAt) return { ok: true, seguent: null, nouId: null as string | null };
     await tx.recordatori.update({ where: { id }, data: { fetAt: new Date() } });
     let seguent: string | null = null;
+    let nouId: string | null = null;
     if (r.repeticioCada && r.repeticioUnitat) {
       // La següent data ha de ser futura (si s'ha marcat tard, salta períodes).
       let d = seguentData(deData(r.data), r.repeticioCada, r.repeticioUnitat as UnitatRepeticio);
@@ -145,12 +154,17 @@ export async function accioRecordatori(id: string, raw: unknown, actor: Actor, i
           repeticioUnitat: r.repeticioUnitat,
           diesAbans: r.diesAbans,
           whatsapp: r.whatsapp,
+          calendari: r.calendari,
         },
       });
       seguent = d;
+      nouId = nou.id;
       await audit({ usuariId: actor?.id ?? null, accio: 'CREACIO', entitat: 'recordatori', entitatId: nou.id, detall: { repeticioDe: id, data: d }, ip }, tx);
     }
     await audit({ usuariId: actor?.id ?? null, accio: 'MODIFICACIO', entitat: 'recordatori', entitatId: id, detall: { fet: true, seguent }, ip }, tx);
-    return { ok: true, seguent };
+    return { ok: true, seguent, nouId };
   });
+  // Al calendari: treu el fet i posa el següent.
+  await sincronitzaRecordatoris(res.nouId ? [id, res.nouId] : [id]);
+  return { ok: true, seguent: res.seguent };
 }

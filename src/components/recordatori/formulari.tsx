@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MessageCircle, X } from 'lucide-react';
+import { CalendarDays, Smartphone, X } from 'lucide-react';
 import { ApiError, postJSON, putJSON } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -43,12 +43,14 @@ const pill = (actiu: boolean) =>
 
 export function RecordatoriFormulari({
   inicial,
-  whatsappActiu,
+  mobilActiu,
+  calendariConnectat,
   onTanca,
   onDesat,
 }: {
   inicial: RecordatoriVista | null;
-  whatsappActiu: boolean;
+  mobilActiu: boolean;
+  calendariConnectat: boolean;
   onTanca: () => void;
   onDesat: () => void;
 }) {
@@ -63,6 +65,7 @@ export function RecordatoriFormulari({
   const [dies, setDies] = useState<number[]>(inicial?.diesAbans ?? [30, 7]);
   const [altres, setAltres] = useState('');
   const [whatsapp, setWhatsapp] = useState(inicial?.whatsapp ?? true);
+  const [calendari, setCalendari] = useState(inicial?.calendari ?? true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -90,6 +93,7 @@ export function RecordatoriFormulari({
       repeticioUnitat: rep === 'CAP' ? null : rep === 'PERSONALITZAT' ? unitat : p.unitat,
       diesAbans: dies,
       whatsapp,
+      calendari,
     };
     try {
       if (inicial) await putJSON(`/api/recordatoris/${inicial.id}`, body);
@@ -233,20 +237,38 @@ export function RecordatoriFormulari({
           )}
         </div>
 
-        <label className="flex cursor-pointer items-center gap-3 rounded-2xl bg-emerald-50 p-4">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-700 text-white">
-            <MessageCircle className="h-5 w-5" />
-          </span>
-          <span className="flex-1">
-            <span className="block text-sm font-bold text-emerald-900">Envia-m’ho també per WhatsApp</span>
-            <span className="block text-xs text-emerald-800">
-              {whatsappActiu
-                ? `Al resum del matí${diesAvis.length ? `: ${diesAvis.filter((d) => d >= avui).map((d) => dataCurta(d).slice(0, 5)).join(', ')}` : ''}`
-                : 'El WhatsApp encara no està connectat (Configuració → WhatsApp). De moment sortirà només al tauler.'}
+        <div className="space-y-2">
+          <span className="text-sm font-bold text-slate-800">On t’ho he de recordar?</span>
+          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-700 text-white">
+              <Smartphone className="h-5 w-5" />
             </span>
-          </span>
-          <input type="checkbox" checked={whatsapp} onChange={(e) => setWhatsapp(e.target.checked)} className="h-6 w-6 accent-emerald-700" />
-        </label>
+            <span className="flex-1">
+              <span className="block text-sm font-bold text-slate-900">Notificació al mòbil</span>
+              <span className="block text-xs text-slate-600">
+                {mobilActiu
+                  ? `Al resum del matí${diesAvis.length ? `: ${diesAvis.filter((d) => d >= avui).map((d) => dataCurta(d).slice(0, 5)).join(', ')}` : ''}`
+                  : 'Encara no hi ha cap mòbil activat (Configuració → Notificacions al mòbil).'}
+              </span>
+            </span>
+            <input type="checkbox" checked={whatsapp} onChange={(e) => setWhatsapp(e.target.checked)} className="h-6 w-6 accent-brand-700" />
+          </label>
+          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-700 text-white">
+              <CalendarDays className="h-5 w-5" />
+            </span>
+            <span className="flex-1">
+              <span className="block text-sm font-bold text-slate-900">Al Google Calendar</span>
+              <span className="block text-xs text-slate-600">
+                {calendariConnectat
+                  ? `Esdeveniment el ${dataCurta(data).slice(0, 5)} a les 9:00, amb els avisos dels dies triats`
+                  : 'Google Calendar encara no està connectat (Configuració → Google Calendar).'}
+              </span>
+            </span>
+            <input type="checkbox" checked={calendari} onChange={(e) => setCalendari(e.target.checked)} className="h-6 w-6 accent-blue-700" />
+          </label>
+          <p className="text-xs text-slate-500">Al tauler surt sempre, des del primer dia d’avís fins que el marquis «Fet».</p>
+        </div>
 
         {err && <p className="text-sm text-red-600">{err}</p>}
 
