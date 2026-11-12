@@ -23,6 +23,7 @@ import {
 } from '../validation/factura';
 import { CONCEPTE_LINIA_LABELS, METODE_COBRAMENT_LABELS } from '../validation/enums';
 import { tramPerData } from '../tram-per-data';
+import { repartimentAutomaticNou } from './repartiment-cobraments';
 
 const ESTABLIMENT_ID = 'hostal-coll';
 
@@ -230,7 +231,7 @@ export async function addCobrament(
 ) {
   const input = CobramentCreateSchema.parse(raw);
 
-  return prisma.$transaction(async (tx) => {
+  const res = await prisma.$transaction(async (tx) => {
     const factura = await tx.factura.findUniqueOrThrow({
       where: { id: facturaId },
       include: { cobraments: true },
@@ -272,6 +273,9 @@ export async function addCobrament(
 
     return { cobrament, estat: cobrada ? 'COBRADA' : 'PENDENT' };
   });
+  // Balanç per dies: si l'estada passa d'un mes a l'altre, es reparteix sol.
+  if (Number(res.cobrament.import) > 0) await repartimentAutomaticNou(res.cobrament.id, actor, ip);
+  return res;
 }
 
 /**
@@ -569,6 +573,8 @@ export async function addPagamentEstada(
     detall: { estanciaId, import: input.import, metode: input.metode, aCompte: !input.facturaId, facturaId: input.facturaId ?? null },
     ip,
   });
+  // Sense repartiment a mà: el Balanç per dies el reparteix sol si cal.
+  if (!input.periodes?.length && input.import > 0) await repartimentAutomaticNou(cobrament.id, actor, ip);
   return cobrament;
 }
 

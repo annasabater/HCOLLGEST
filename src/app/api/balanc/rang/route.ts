@@ -1,7 +1,7 @@
 import { authorize } from '@/lib/auth/guard';
 import { ROLES_ADMIN } from '@/lib/auth/rbac';
 import { badRequest, ok } from '@/lib/http';
-import { getBalancDetall } from '@/lib/services/dashboard';
+import { getBalancDetall, parseCriteri } from '@/lib/services/dashboard';
 import { teVistaRestringida } from '@/lib/auth/restriccions';
 
 // GET /api/balanc/rang?desde=YYYY-MM[-DD]&fins=YYYY-MM[-DD]
@@ -29,7 +29,7 @@ export async function GET(req: Request) {
     mes: `${fmt(md)} … ${fmt(mf)}`,
     desde: p.get('desde'),
     fins: p.get('fins'),
-    ...(await getBalancDetall(start, end, { excloureMetodeAltres: teVistaRestringida(auth) })),
+    ...(await getBalancDetall(start, end, { excloureMetodeAltres: teVistaRestringida(auth), criteri: parseCriteri(p.get('criteri')) })),
   });
 }
 

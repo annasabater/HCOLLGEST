@@ -173,6 +173,58 @@ export async function pagamentsPerRepartir(
   return out;
 }
 
+/**
+ * En registrar un pagament nou d'allotjament d'una estada que passa d'un mes a
+ * l'altre, el reparteix sol per nits (Balanç per dies). El Balanç de caixa no en
+ * depèn. Regles:
+ * - estada d'un mes com a molt (≤31 nits): sempre es reparteix;
+ * - estada més llarga: només si el pagament cobreix tota l'estada (≥95% del que
+ *   diu la calculadora). Si no, és un pagament d'un mes i es queda al mes que es
+ *   cobra (que és el que cobreix).
+ * Mai fa fallar el registre del pagament: si no pot, el deixa sense repartir.
+ */
+export async function repartimentAutomaticNou(
+  cobramentId: string,
+  actor: { id: string } | null,
+  ip: string | null,
+): Promise<boolean> {
+  try {
+    const c = await prisma.cobrament.findUnique({
+      where: { id: cobramentId },
+      select: {
+        import: true,
+        concepte: true,
+        estanciaId: true,
+        _count: { select: { periodes: true } },
+        estancia: { select: { dataEntrada: true, dataSortida: true } },
+      },
+    });
+    if (!c || c._count.periodes > 0 || c.concepte !== 'ALLOTJAMENT') return false;
+    const total = r2(Number(c.import));
+    if (total <= 0 || !c.estancia.dataEntrada || !c.estancia.dataSortida) return false;
+    const entrada = iso(c.estancia.dataEntrada);
+    const sortida = iso(c.estancia.dataSortida);
+    if (!ocupaMesDunMes(entrada, sortida)) return false;
+
+    const prop = await proposaPeriodesPerMes(c.estanciaId, total);
+    if (!prop.ok || prop.periodes.length < 2) return false;
+    const nits = nitsPerMes(entrada, sortida).reduce((a, m) => a + m.nits, 0);
+    const cobreixTot = prop.calculadoraTotal > 0 && total >= prop.calculadoraTotal * 0.95;
+    if (nits > NITS_MAX_AUTOMATIC && !cobreixTot) return false;
+
+    await desaRepartiment(
+      cobramentId,
+      { periodes: prop.periodes.map((x) => ({ dataInici: x.dataInici, dataFi: x.dataFi, import: x.import })) },
+      actor,
+      ip,
+    );
+    return true;
+  } catch (err) {
+    console.error('[repartiment automàtic]', err instanceof Error ? err.message : err);
+    return false;
+  }
+}
+
 /** Reparteix tots els que es poden fer automàticament (estades d'un sol pagament). */
 export async function repartirTotsAutomatics(actor: { id: string } | null, ip: string | null) {
   const llista = (await pagamentsPerRepartir()).filter((p) => p.automatic);

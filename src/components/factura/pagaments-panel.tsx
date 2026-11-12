@@ -907,7 +907,9 @@ export function PagamentsPanel({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <label className="flex items-center gap-2 text-xs text-slate-600">
               <input type="checkbox" checked={desglossar} onChange={(e) => { setDesglossar(e.target.checked); if (e.target.checked && periodes.length === 0) afegirPeriode(); }} />
-              Repartir per període d&apos;estada (perquè a comptabilitat compti cada mes per separat)
+              {tipus === 'FIANCA'
+                ? <>Repartir per període d&apos;estada (perquè a comptabilitat compti cada mes per separat)</>
+                : <>Repartir a mà per mesos (si no ho marques, el Balanç per dies el reparteix sol per nits)</>}
             </label>
             <Button type="button" size="sm" variant="outline" onClick={proposarPerMesos} disabled={proposant || !importVal}>
               <CalendarRange className="h-4 w-4" /> {proposant ? 'Calculant…' : 'Proposar per mesos'}

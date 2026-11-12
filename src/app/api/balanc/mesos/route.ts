@@ -1,7 +1,7 @@
 import { authorize } from '@/lib/auth/guard';
 import { ROLES_ADMIN } from '@/lib/auth/rbac';
 import { badRequest, ok } from '@/lib/http';
-import { getBalanc } from '@/lib/services/dashboard';
+import { getBalanc, parseCriteri } from '@/lib/services/dashboard';
 import { teVistaRestringida } from '@/lib/auth/restriccions';
 
 // GET /api/balanc/mesos?desde=YYYY-MM&fins=YYYY-MM
@@ -20,7 +20,7 @@ export async function GET(req: Request) {
   const nMesos = (end.y - start.y) * 12 + (end.m - start.m) + 1;
   if (nMesos < 1 || nMesos > 24) return badRequest('Rang fora de límits (1–24 mesos)');
 
-  const opts = { excloureMetodeAltres: teVistaRestringida(auth) };
+  const opts = { excloureMetodeAltres: teVistaRestringida(auth), criteri: parseCriteri(p.get('criteri')) };
   const mesos = [];
   for (let i = 0; i < nMesos; i++) {
     const y = start.y + Math.floor((start.m + i) / 12);

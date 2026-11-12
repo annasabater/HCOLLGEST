@@ -17,7 +17,18 @@ export interface FinanceOpts {
    * (cobraments i dipòsits retinguts). Per a comptes amb vista restringida.
    */
   excloureMetodeAltres?: boolean;
+  /**
+   * Com es compten els ingressos al Balanç:
+   * - `dies` (per defecte): Balanç per dies — els pagaments repartits per mesos
+   *   (CobramentPeriode) compten a cada mes segons el repartiment.
+   * - `caixa`: Balanç de caixa — cada pagament compta sencer el dia que entra,
+   *   s'ignora qualsevol repartiment.
+   */
+  criteri?: CriteriBalanc;
 }
+
+export type CriteriBalanc = 'dies' | 'caixa';
+export const parseCriteri = (v: string | null | undefined): CriteriBalanc => (v === 'caixa' ? 'caixa' : 'dies');
 
 /** Filtre Prisma de mètode segons les opcions (buit si no s'exclou res). */
 function metodeFiltre(opts?: FinanceOpts): { metode?: { not: 'ALTRES' } } {
@@ -70,6 +81,21 @@ const titularSelDash = {
  * dia en què es va cobrar.
  */
 async function cobramentsEfectius(start: Date, end: Date, opts?: FinanceOpts): Promise<EfectiuRow[]> {
+  if (opts?.criteri === 'caixa') {
+    // Balanç de caixa: el dia que entren els diners, sense repartir.
+    const rows = await prisma.cobrament.findMany({
+      where: {
+        estancia: { deletedAt: null },
+        OR: [{ facturaId: null }, { factura: { deletedAt: null } }],
+        ...metodeFiltre(opts),
+        data: { gte: start, lte: end },
+      },
+      select: { import: true, metode: true, concepte: true, data: true, estancia: titularSelDash },
+    });
+    return rows
+      .map((c) => ({ concepte: c.concepte, import: Number(c.import), metode: c.metode, data: c.data, estancia: c.estancia }))
+      .filter((c) => c.import !== 0);
+  }
   const rows = await prisma.cobrament.findMany({
     where: {
       estancia: { deletedAt: null },
@@ -114,6 +140,20 @@ async function sumaRetinguts(where: Prisma.DipositWhereInput): Promise<{ _sum: {
 
 /** Igual que `cobramentsEfectius`, però per als dipòsits RETINGUTS (que compten com a ingrés). */
 async function dipositsRetingutsEfectius(start: Date, end: Date, opts?: FinanceOpts): Promise<EfectiuRow[]> {
+  if (opts?.criteri === 'caixa') {
+    const rows = await prisma.diposit.findMany({
+      where: {
+        estat: 'RETINGUT',
+        estancia: { deletedAt: null },
+        ...metodeFiltre(opts),
+        dataResolucio: { gte: start, lte: end },
+      },
+      select: { import: true, importRetingut: true, metode: true, data: true, estancia: titularSelDash },
+    });
+    return rows
+      .map((d) => ({ import: Number(d.importRetingut ?? d.import), metode: d.metode, data: d.data, estancia: d.estancia }))
+      .filter((d) => d.import !== 0);
+  }
   const rows = await prisma.diposit.findMany({
     where: {
       estat: 'RETINGUT',

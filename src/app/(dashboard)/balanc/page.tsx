@@ -609,6 +609,59 @@ function SituacioView({ data }: { data: BalancSituacio }) {
   );
 }
 
+// ─── Per dies / de caixa ─────────────────────────────────────────────────────
+
+type Criteri = 'dies' | 'caixa';
+const CLAU_CRITERI = 'balanc-criteri';
+const CRITERIS: { c: Criteri; label: string; explica: React.ReactNode }[] = [
+  {
+    c: 'dies',
+    label: 'Balanç per dies',
+    explica: (
+      <>
+        Cada pagament es reparteix entre els mesos segons les nits que el client dorm a cada mes. Diu{' '}
+        <em>quant ha rendit cada mes</em>.
+      </>
+    ),
+  },
+  {
+    c: 'caixa',
+    label: 'Balanç de caixa',
+    explica: (
+      <>
+        Cada pagament compta sencer el dia que entra, sense repartir res. Diu <em>quants diners han entrat de veritat</em>{' '}
+        cada mes (com el banc i la caixa).
+      </>
+    ),
+  },
+];
+
+function SelectorCriteri({ criteri, onChange }: { criteri: Criteri; onChange: (c: Criteri) => void }) {
+  const actual = CRITERIS.find((x) => x.c === criteri)!;
+  return (
+    <div className="space-y-2">
+      <div role="tablist" aria-label="Vista del balanç" className="inline-flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1">
+        {CRITERIS.map(({ c, label }) => (
+          <button
+            key={c}
+            type="button"
+            role="tab"
+            aria-selected={criteri === c}
+            onClick={() => onChange(c)}
+            className={cn(
+              'rounded-lg px-4 py-2 text-sm font-semibold transition-colors',
+              criteri === c ? 'bg-brand-700 text-white shadow-sm' : 'text-slate-600 hover:bg-white/70 hover:text-slate-900',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <p className="text-sm text-slate-600">{actual.explica} El total d&apos;un període llarg és el mateix a les dues vistes: només canvia a quin mes cau cada ingrés.</p>
+    </div>
+  );
+}
+
 // ─── Pàgina ──────────────────────────────────────────────────────────────────
 
 /** Mesos (YYYY-MM) de la sèrie del gràfic segons el període triat. */
@@ -639,27 +692,39 @@ export default function BalancPage() {
   const [serie, setSerie] = useState<SerieMes[] | null>(null);
   const [breakdown, setBreakdown] = useState<Desglos | null>(null);
 
+  // Balanç per dies (repartit per nits) o de caixa (el dia que entren els diners).
+  const [criteri, setCriteriState] = useState<Criteri>('dies');
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(CLAU_CRITERI) === 'caixa') setCriteriState('caixa');
+    } catch { /* sense localStorage: per dies */ }
+  }, []);
+  const setCriteri = (c: Criteri) => {
+    setCriteriState(c);
+    try { localStorage.setItem(CLAU_CRITERI, c); } catch { /* res */ }
+  };
+
   useEffect(() => {
     let cancel = false;
     setDades(null);
-    getJSON<Balanc>(`/api/balanc/rang?desde=${desde}&fins=${fins}`).then((r) => { if (!cancel) setDades(r); });
+    getJSON<Balanc>(`/api/balanc/rang?desde=${desde}&fins=${fins}&criteri=${criteri}`).then((r) => { if (!cancel) setDades(r); });
     if (comp) {
-      getJSON<Balanc>(`/api/balanc/rang?desde=${comp.desde}&fins=${comp.fins}`)
+      getJSON<Balanc>(`/api/balanc/rang?desde=${comp.desde}&fins=${comp.fins}&criteri=${criteri}`)
         .then((r) => { if (!cancel) setAnterior(r); })
         .catch(() => { if (!cancel) setAnterior(null); });
     } else setAnterior(null);
     return () => { cancel = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [desde, fins, comp?.desde, comp?.fins]);
+  }, [desde, fins, comp?.desde, comp?.fins, criteri]);
 
   const sr = rangSerie(estat, desde, fins);
   useEffect(() => {
     let cancel = false;
-    getJSON<{ mesos: SerieMes[] }>(`/api/balanc/mesos?desde=${sr.desde}&fins=${sr.fins}`)
+    getJSON<{ mesos: SerieMes[] }>(`/api/balanc/mesos?desde=${sr.desde}&fins=${sr.fins}&criteri=${criteri}`)
       .then((r) => { if (!cancel) setSerie(r.mesos); })
       .catch(() => { if (!cancel) setSerie(null); });
     return () => { cancel = true; };
-  }, [sr.desde, sr.fins]);
+  }, [sr.desde, sr.fins, criteri]);
 
 
   // ── Situació (amagada; es manté per si es torna a activar) ──
@@ -736,7 +801,7 @@ export default function BalancPage() {
     }
     if (!dades) return;
     const rows: (string | number)[][] = [
-      [`Balanç ${etiquetaPeriode} (${dataCurta(desde)} – ${dataCurta(fins)})`, ''],
+      [`${criteri === 'caixa' ? 'Balanç de caixa' : 'Balanç per dies'} ${etiquetaPeriode} (${dataCurta(desde)} – ${dataCurta(fins)})`, ''],
       ['Concepte', 'Import'],
       ['Ingressos', dades.ingressos.toFixed(2)],
       ['Despeses (personal inclòs)', despesesTotals.toFixed(2)],
@@ -770,7 +835,7 @@ export default function BalancPage() {
           ...(restringit ? [] : [s.retencions.toFixed(2), s.despesesFianca.toFixed(2)]),
         ]);
     }
-    downloadCSV(`balanc-${desde}_${fins}.csv`, rows);
+    downloadCSV(`balanc-${criteri}-${desde}_${fins}.csv`, rows);
   }
 
   return (
@@ -811,7 +876,8 @@ export default function BalancPage() {
       <FinancesNav />
 
       {/* Pagaments d'estades de més d'un mes comptats sencers en un sol mes. */}
-      {!restringit && <AvisPerRepartir />}
+      {/* Només afecta el Balanç per dies: el de caixa no reparteix mai. */}
+      {!restringit && criteri === 'dies' && <AvisPerRepartir />}
 
       {veureSituacio ? (
         <div className="space-y-6">
@@ -850,6 +916,7 @@ export default function BalancPage() {
         </div>
       ) : (
         <div className="space-y-6">
+          <SelectorCriteri criteri={criteri} onChange={setCriteri} />
           <NavegadorPeriode estat={estat} onChange={setEstat} avui={avui} extra={<HideAmountsButton />} />
 
           {dades ? (
