@@ -171,7 +171,7 @@ export async function enviaResumDiari({ forcar = false }: { forcar?: boolean } =
 }
 
 /**
- * Recordatoris amb hora pròpia: l'invoca un cron cada 10 minuts. Avisa (mòbil i
+ * Recordatoris amb hora pròpia: l’invoca un cron cada 5 minuts. Avisa (mòbil i
  * WhatsApp) els que toquen avui i ja n'és l'hora; un sol cop per dia i recordatori.
  */
 export async function enviaRecordatorisAHora(now: Date = new Date()): Promise<{ avisats: number }> {

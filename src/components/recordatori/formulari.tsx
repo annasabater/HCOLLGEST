@@ -9,7 +9,6 @@ import {
   dataCurta,
   diaMadrid,
   DIES_ABANS_PROPOSATS,
-  HORES_RECORDATORI,
   seguentData,
   sumaDies,
   textHora,
@@ -174,18 +173,18 @@ export function RecordatoriFormulari({
                 {h.replace(/^0/, '')}
               </button>
             ))}
-            <select
-              id="rec-hora"
-              aria-label="Una altra hora"
-              value={hora}
-              onChange={(e) => setHora(e.target.value)}
-              className="h-11 rounded-full border border-slate-300 bg-white px-3 text-sm font-semibold"
-            >
-              <option value="">Una altra hora…</option>
-              {HORES_RECORDATORI.map((h) => (
-                <option key={h} value={h}>{h.replace(/^0/, '')}</option>
-              ))}
-            </select>
+            <span className="inline-flex items-center gap-2 text-sm text-slate-600">
+              o a les
+              <Input
+                id="rec-hora"
+                type="time"
+                step={60}
+                aria-label="Una altra hora (hores i minuts)"
+                value={hora}
+                onChange={(e) => setHora(e.target.value.slice(0, 5))}
+                className="h-11 w-32 rounded-full text-center text-base font-bold"
+              />
+            </span>
           </div>
           <p className="text-xs text-slate-500">
             {hora

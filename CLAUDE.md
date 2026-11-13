@@ -181,7 +181,7 @@ Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
   fins a «Fet» (si es repeteix, es crea el següent) o «Recorda-m'ho en 3 dies». Lògica pura i testejada a
   `src/lib/recordatoris.ts`. **Hora pròpia** opcional (`Recordatori.hora` «HH:MM»): si en té, NO va al resum
   del matí sinó que avisa (push + WhatsApp) a aquella hora els dies d'avís, un cop per dia (`avisatDia`), i el
-  Calendar posa l'esdeveniment a aquella hora. Com que Vercel Hobby només fa un cron al dia, el crida cada 10 min
+  Calendar posa l'esdeveniment a aquella hora. Com que Vercel Hobby només fa un cron al dia, el crida cada 5 min
   un GitHub Action (`.github/workflows/recordatoris-hora.yml` → `/api/cron/recordatoris-hora`, secret
   `CRON_HORA_SECRET` a GitHub i a Vercel). GitHub atura els workflows programats després de 60 dies sense
   activitat al repo. **Resum del matí per WhatsApp** (`/api/cron/whatsapp-diari`, 08:00 UTC, un cop al
