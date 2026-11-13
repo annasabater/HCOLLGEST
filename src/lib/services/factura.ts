@@ -65,8 +65,10 @@ export async function proximNumeroFacturaContracte(
     where: { id: estanciaId },
     select: { numContracte: true, origen: { select: { numContracte: true } } },
   });
-  // Arrel del grup: si és una ampliació, el número de contracte de l'origen.
-  const base = ((est?.origen?.numContracte ?? est?.numContracte) ?? '').trim();
+  // Arrel del grup: si és una ampliació, el número de contracte de l'origen; si
+  // l'origen no en té (buit), el de la mateixa estada. (Amb `??` un origen amb
+  // número buit "" deixava la base buida i la factura sortia «2026-NNNNN».)
+  const base = (est?.origen?.numContracte?.trim() || est?.numContracte?.trim() || '');
   if (!base) return '';
   const existents = await client.factura.findMany({
     where: { OR: [{ numero: base }, { numero: { startsWith: `${base}.` } }] },
