@@ -1,12 +1,12 @@
-# Recordatoris amb hora pròpia: Vercel Hobby només permet un cron al dia, així
-# que aquest workflow crida l'endpoint cada 5 minuts (el mínim de GitHub). GitHub
-# pot endarrerir-lo uns minuts. Secret necessari al repositori: CRON_HORA_SECRET
-# (el mateix que a Vercel).
+# Recordatoris amb hora pròpia: Vercel Hobby només permet un cron al dia.
+# Qui crida l'endpoint cada 5 minuts és SUPABASE (pg_cron + pg_net, job
+# «recordatoris-hora», clau a Vault «cron_hora_secret»), perquè el `schedule` de
+# GitHub no arrencava i s'endarreria. Aquest workflow queda NOMÉS per engegar-lo a
+# mà (Actions → Run workflow). No hi tornis a posar `schedule`: si dos criden alhora,
+# el mateix avís podria sortir dues vegades. Secret: CRON_HORA_SECRET (el mateix que a Vercel).
 name: Recordatoris a l'hora
 
 on:
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 permissions: {}

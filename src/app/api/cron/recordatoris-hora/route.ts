@@ -6,8 +6,9 @@ export const maxDuration = 60;
 /**
  * GET /api/cron/recordatoris-hora — avisa dels recordatoris amb hora pròpia quan
  * n'és l'hora. Vercel Hobby només permet un cron al dia, així que el crida cada
- * 5 minuts un GitHub Action (`.github/workflows/recordatoris-hora.yml`) amb
- * `Authorization: Bearer CRON_HORA_SECRET` (o CRON_SECRET).
+ * 5 minuts SUPABASE (pg_cron job «recordatoris-hora» + pg_net, clau a Vault
+ * «cron_hora_secret») amb `Authorization: Bearer CRON_HORA_SECRET` (o CRON_SECRET).
+ * El workflow `.github/workflows/recordatoris-hora.yml` queda només per engegar-lo a mà.
  */
 export async function GET(req: Request) {
   try {

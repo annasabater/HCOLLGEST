@@ -182,9 +182,10 @@ Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
   `src/lib/recordatoris.ts`. **Hora pròpia** opcional (`Recordatori.hora` «HH:MM»): si en té, NO va al resum
   del matí sinó que avisa (push + WhatsApp) a aquella hora els dies d'avís, un cop per dia (`avisatDia`), i el
   Calendar posa l'esdeveniment a aquella hora. Com que Vercel Hobby només fa un cron al dia, el crida cada 5 min
-  un GitHub Action (`.github/workflows/recordatoris-hora.yml` → `/api/cron/recordatoris-hora`, secret
-  `CRON_HORA_SECRET` a GitHub i a Vercel). GitHub atura els workflows programats després de 60 dies sense
-  activitat al repo. **Resum del matí per WhatsApp** (`/api/cron/whatsapp-diari`, 08:00 UTC, un cop al
+  **Supabase** (`pg_cron` job `recordatoris-hora` + `pg_net` → `/api/cron/recordatoris-hora`; la clau és a Vault
+  `cron_hora_secret` i ha de coincidir amb `CRON_HORA_SECRET` de Vercel i GitHub: si es canvia, als tres llocs).
+  Configurat a mà a la BD de producció (no és cap migració Prisma). El GitHub Action queda només manual (el
+  `schedule` de GitHub no arrencava; no el tornis a posar o els avisos podrien sortir dos cops). **Resum del matí per WhatsApp** (`/api/cron/whatsapp-diari`, 08:00 UTC, un cop al
   dia): recordatoris del dia + sortides avui/demà + cobraments a punt (com el pop-up) + opinions noves. Envia
   amb **CallMeBot** (`src/lib/whatsapp.ts`; un o més números, cadascun amb la seva clau xifrada a
   `Establiment.whatsappDestinataris`, mai als logs), configurat a /config → WhatsApp (bot sovint «ple»).
