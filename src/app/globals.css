@@ -41,6 +41,24 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* iPhone (Safari iOS): els camps de data/hora tenen una amplada mínima pròpia i
+   ignoren el `width: 100%`, així que surten fora de la targeta. Sense l'aparença
+   nativa respecten l'amplada; el text queda a l'esquerra com la resta de camps. */
+input[type='date'],
+input[type='time'],
+input[type='datetime-local'],
+input[type='month'] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+input::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+}
+
 /* Selecció granate (com a la web). */
 ::selection {
   background: #7a1f2b;
