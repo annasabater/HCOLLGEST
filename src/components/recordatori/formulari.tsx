@@ -30,7 +30,8 @@ const REPETICIONS: { r: Repeticio; label: string; cada?: number; unitat?: Unitat
 ];
 
 function repeticioDe(v: RecordatoriVista | null): Repeticio {
-  if (!v?.repeticioCada || !v.repeticioUnitat) return v ? 'CAP' : 'ANY';
+  // Un recordatori nou comença com «Un sol cop» (decisió de l'Anna).
+  if (!v?.repeticioCada || !v.repeticioUnitat) return 'CAP';
   const p = REPETICIONS.find((x) => x.cada === v.repeticioCada && x.unitat === v.repeticioUnitat);
   return p?.r ?? 'PERSONALITZAT';
 }
@@ -60,7 +61,8 @@ export function RecordatoriFormulari({
   const [titol, setTitol] = useState(inicial?.titol ?? '');
   const [notes, setNotes] = useState(inicial?.notes ?? '');
   const [tipus, setTipus] = useState<TipusRecordatori>((inicial?.tipus as TipusRecordatori) ?? 'ASSEGURANCA');
-  const [data, setData] = useState(inicial?.data ?? seguentData(avui, 1, 'ANYS'));
+  // Un recordatori nou comença amb la data d'avui.
+  const [data, setData] = useState(inicial?.data ?? avui);
   const [hora, setHora] = useState<string>(inicial?.hora ?? '');
   const [rep, setRep] = useState<Repeticio>(repeticioDe(inicial));
   const [cada, setCada] = useState(String(inicial?.repeticioCada ?? 2));
