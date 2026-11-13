@@ -50,13 +50,16 @@ input[type='datetime-local'],
 input[type='month'] {
   -webkit-appearance: none;
   appearance: none;
-  display: block;
+  /* flex + center: sense l'aparença nativa, Safari deixa la data enganxada a dalt. */
+  display: flex;
+  align-items: center;
   min-width: 0;
   max-width: 100%;
 }
 input::-webkit-date-and-time-value {
   text-align: left;
   margin: 0;
+  line-height: 1.5;
 }
 
 /* Selecció granate (com a la web). */
