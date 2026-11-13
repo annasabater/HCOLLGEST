@@ -223,7 +223,7 @@ export async function enviaRecordatorisAHora(now: Date = new Date()): Promise<{ 
       ok += res.ok;
       errorsTots.push(...res.errors);
     }
-    // Marcat com a avisat encara que no hi hagi cap mòbil (si no, ho reintentaria cada 10 min).
+    // Marcat com a avisat encara que no hi hagi cap mòbil (si no, ho reintentaria cada 5 min).
     await prisma.recordatori.update({ where: { id: r.id }, data: { avisatDia: dia } });
     if (ok > 0) avisats++;
   }
