@@ -35,6 +35,23 @@ export function horaMadrid(now: Date = new Date()): number {
   return Number(h);
 }
 
+/** Hora i minuts a Madrid, «HH:MM». */
+export function horaMinutMadrid(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now);
+}
+
+/** Hores que es proposen al formulari (cada mitja hora, de 7:00 a 23:30). */
+export const HORES_RECORDATORI: string[] = Array.from({ length: 34 }, (_, i) => {
+  const m = 7 * 60 + i * 30;
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${m % 60 === 0 ? '00' : '30'}`;
+});
+
+/** «20:00» → «a les 20:00» (o «a la 1:00»). */
+export function textHora(hora: string): string {
+  const h = String(Number(hora.slice(0, 2)));
+  return `${h === '1' ? 'a la' : 'a les'} ${h}:${hora.slice(3, 5)}`;
+}
+
 const utc = (iso: string) => Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)));
 const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
@@ -110,6 +127,26 @@ export function tocaWhatsapp(r: RecordatoriDates, avui: string): boolean {
 }
 
 /** "avui", "demà", "d'aquí a 7 dies", "ahir", "fa 3 dies". */
+/**
+ * Recordatori amb hora pròpia: s'avisa el dia que toca (els mateixos dies que el
+ * resum del matí) quan arriba l'hora, un sol cop per dia. Sense hora → va al resum.
+ */
+export function tocaAvisAHora(
+  r: RecordatoriDates & { hora: string | null; avisatDia: string | null },
+  avui: string,
+  araHM: string,
+): boolean {
+  if (!r.hora || r.avisatDia === avui || araHM < r.hora) return false;
+  return tocaWhatsapp(r, avui);
+}
+
+/** Notificació d'un recordatori a la seva hora. */
+export function notificacioRecordatori(r: { titol: string; data: string; notes: string | null }, avui: string): { title: string; body: string } {
+  const dies = diesEntre(avui, r.data);
+  const quan = dies === 0 ? 'És avui' : dies > 0 ? `És ${textQuan(dies)} (${dataCurta(r.data)})` : `Va vèncer ${textQuan(dies)}`;
+  return { title: `Recordatori: ${r.titol}`, body: [quan, r.notes].filter(Boolean).join('\n') };
+}
+
 export function textQuan(dies: number): string {
   if (dies === 0) return 'avui';
   if (dies === 1) return 'demà';

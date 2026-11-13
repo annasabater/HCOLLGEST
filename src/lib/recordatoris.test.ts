@@ -3,7 +3,12 @@ import {
   diaMadrid,
   diesEntre,
   horaMadrid,
+  horaMinutMadrid,
+  HORES_RECORDATORI,
+  notificacioRecordatori,
   notificacioResum,
+  textHora,
+  tocaAvisAHora,
   primerAvis,
   resumBuit,
   seguentData,
@@ -23,6 +28,34 @@ const r = (p: Partial<RecordatoriDates> = {}): RecordatoriDates => ({
   ajornatFins: null,
   fet: false,
   ...p,
+});
+
+describe('hora pròpia', () => {
+  const h = (p: Partial<RecordatoriDates & { hora: string | null; avisatDia: string | null }> = {}) => ({
+    ...r(),
+    hora: '20:00' as string | null,
+    avisatDia: null as string | null,
+    ...p,
+  });
+  it('hora de Madrid amb minuts', () => {
+    expect(horaMinutMadrid(new Date('2026-12-01T19:05:00Z'))).toBe('20:05');
+    expect(horaMinutMadrid(new Date('2026-07-01T18:30:00Z'))).toBe('20:30');
+  });
+  it('avisa el dia que toca a partir de l’hora, un sol cop', () => {
+    expect(tocaAvisAHora(h(), '2026-12-08', '19:50')).toBe(false);
+    expect(tocaAvisAHora(h(), '2026-12-08', '20:00')).toBe(true);
+    expect(tocaAvisAHora(h(), '2026-12-08', '22:10')).toBe(true);
+    expect(tocaAvisAHora(h({ avisatDia: '2026-12-08' }), '2026-12-08', '22:10')).toBe(false);
+    expect(tocaAvisAHora(h(), '2026-12-09', '20:00')).toBe(false); // no és dia d'avís
+    expect(tocaAvisAHora(h({ hora: null }), '2026-12-08', '20:00')).toBe(false); // va al resum
+  });
+  it('hores i text', () => {
+    expect(HORES_RECORDATORI[0]).toBe('07:00');
+    expect(HORES_RECORDATORI.at(-1)).toBe('23:30');
+    expect(textHora('20:00')).toBe('a les 20:00');
+    expect(textHora('09:30')).toBe('a les 9:30');
+    expect(notificacioRecordatori({ titol: 'Assegurança', data: '2026-12-15', notes: null }, '2026-12-15').body).toBe('És avui');
+  });
 });
 
 describe('dates', () => {

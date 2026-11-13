@@ -43,7 +43,7 @@ async function sincronitzaUn(con: Con, id: string): Promise<void> {
   ]
     .filter(Boolean)
     .join('\n\n');
-  const eventId = await desaEvent(con.token, con.calId, r.googleEventId, { titol: r.titol, descripcio, dia, diesAbans: r.diesAbans });
+  const eventId = await desaEvent(con.token, con.calId, r.googleEventId, { titol: r.titol, descripcio, dia, hora: r.hora, diesAbans: r.diesAbans });
   if (eventId !== r.googleEventId) await prisma.recordatori.update({ where: { id }, data: { googleEventId: eventId } });
 }
 

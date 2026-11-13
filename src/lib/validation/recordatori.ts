@@ -9,6 +9,8 @@ export const RecordatoriSchema = z
     notes: z.string().trim().max(2000).nullish(),
     tipus: z.enum(TIPUS_RECORDATORI).default('ALTRES'),
     data: dia,
+    /** «HH:MM»; buit = al resum del matí. */
+    hora: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Hora no vàlida').nullish(),
     repeticioCada: z.number().int().min(1).max(120).nullish(),
     repeticioUnitat: z.enum(UNITATS_REPETICIO).nullish(),
     diesAbans: z.array(z.number().int().min(0).max(365)).max(8).default([7]),

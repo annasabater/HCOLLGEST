@@ -8,7 +8,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { cn } from '@/lib/utils';
-import { dataCurta, textDiesAbans, textRepeticio } from '@/lib/recordatoris';
+import { dataCurta, textDiesAbans, textHora, textRepeticio } from '@/lib/recordatoris';
 import type { RecordatoriVista } from '@/lib/services/recordatoris';
 import { DataTile, RecordatoriTarja } from './tarja';
 import { RecordatoriFormulari } from './formulari';
@@ -69,7 +69,7 @@ export function RecordatorisLlista({
       <div className="min-w-0 flex-[1_1_14rem]">
         <p className={cn('font-bold text-slate-900', fet && 'text-slate-500 line-through decoration-slate-300')}>{r.titol}</p>
         <p className="text-sm text-slate-600">
-          {fet && r.fetAt ? `Fet el ${dataCurta(r.fetAt.slice(0, 10))}` : `Avisa ${textDiesAbans(r.diesAbans)}`} · {textRepeticio(r.repeticioCada, r.repeticioUnitat).toLowerCase()}
+          {fet && r.fetAt ? `Fet el ${dataCurta(r.fetAt.slice(0, 10))}` : `Avisa ${textDiesAbans(r.diesAbans)}${r.hora ? ` ${textHora(r.hora)}` : ''}`} ·{textRepeticio(r.repeticioCada, r.repeticioUnitat).toLowerCase()}
           {r.notes ? ` · ${r.notes}` : ''}
         </p>
       </div>

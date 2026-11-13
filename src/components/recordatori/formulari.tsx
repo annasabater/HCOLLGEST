@@ -9,8 +9,10 @@ import {
   dataCurta,
   diaMadrid,
   DIES_ABANS_PROPOSATS,
+  HORES_RECORDATORI,
   seguentData,
   sumaDies,
+  textHora,
   TIPUS_RECORDATORI,
   TIPUS_RECORDATORI_LABELS,
   type TipusRecordatori,
@@ -59,6 +61,7 @@ export function RecordatoriFormulari({
   const [notes, setNotes] = useState(inicial?.notes ?? '');
   const [tipus, setTipus] = useState<TipusRecordatori>((inicial?.tipus as TipusRecordatori) ?? 'ASSEGURANCA');
   const [data, setData] = useState(inicial?.data ?? seguentData(avui, 1, 'ANYS'));
+  const [hora, setHora] = useState<string>(inicial?.hora ?? '');
   const [rep, setRep] = useState<Repeticio>(repeticioDe(inicial));
   const [cada, setCada] = useState(String(inicial?.repeticioCada ?? 2));
   const [unitat, setUnitat] = useState<UnitatRepeticio>((inicial?.repeticioUnitat as UnitatRepeticio) ?? 'ANYS');
@@ -89,6 +92,7 @@ export function RecordatoriFormulari({
       notes: notes || null,
       tipus,
       data,
+      hora: hora || null,
       repeticioCada: rep === 'CAP' ? null : rep === 'PERSONALITZAT' ? Number(cada) : p.cada,
       repeticioUnitat: rep === 'CAP' ? null : rep === 'PERSONALITZAT' ? unitat : p.unitat,
       diesAbans: dies,
@@ -155,6 +159,37 @@ export function RecordatoriFormulari({
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="rec-hora" className="text-sm font-bold text-slate-800">A quina hora t’aviso?</label>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" aria-pressed={hora === ''} onClick={() => setHora('')} className={pill(hora === '')}>
+              Amb el resum del matí
+            </button>
+            {['08:00', '14:00', '20:00', '21:00'].map((h) => (
+              <button key={h} type="button" aria-pressed={hora === h} onClick={() => setHora(h)} className={pill(hora === h)}>
+                {h.replace(/^0/, '')}
+              </button>
+            ))}
+            <select
+              id="rec-hora"
+              aria-label="Una altra hora"
+              value={hora}
+              onChange={(e) => setHora(e.target.value)}
+              className="h-11 rounded-full border border-slate-300 bg-white px-3 text-sm font-semibold"
+            >
+              <option value="">Una altra hora…</option>
+              {HORES_RECORDATORI.map((h) => (
+                <option key={h} value={h}>{h.replace(/^0/, '')}</option>
+              ))}
+            </select>
+          </div>
+          <p className="text-xs text-slate-500">
+            {hora
+              ? `Els dies d’avís t’arribarà ${textHora(hora)} (pot arribar uns minuts més tard).`
+              : 'Els dies d’avís sortirà al resum de cada matí, cap a les 9.'}
+          </p>
         </div>
 
         <div className="space-y-3 rounded-2xl bg-stone-50 p-4">
@@ -247,7 +282,7 @@ export function RecordatoriFormulari({
               <span className="block text-sm font-bold text-slate-900">Notificació al mòbil</span>
               <span className="block text-xs text-slate-600">
                 {mobilActiu
-                  ? `Al resum del matí${diesAvis.length ? `: ${diesAvis.filter((d) => d >= avui).map((d) => dataCurta(d).slice(0, 5)).join(', ')}` : ''}`
+                  ? `${hora ? textHora(hora).replace(/^a/, 'A') : 'Al resum del matí'}${diesAvis.length ? `: ${diesAvis.filter((d) => d >= avui).map((d) => dataCurta(d).slice(0, 5)).join(', ')}` : ''}`
                   : 'Encara no hi ha cap mòbil activat (Configuració → Notificacions al mòbil).'}
               </span>
             </span>
@@ -261,7 +296,7 @@ export function RecordatoriFormulari({
               <span className="block text-sm font-bold text-slate-900">Al Google Calendar</span>
               <span className="block text-xs text-slate-600">
                 {calendariConnectat
-                  ? `Esdeveniment el ${dataCurta(data).slice(0, 5)} a les 9:00, amb els avisos dels dies triats`
+                  ? `Esdeveniment el ${dataCurta(data).slice(0, 5)} ${textHora(hora || '09:00')}, amb els avisos dels dies triats`
                   : 'Google Calendar encara no està connectat (Configuració → Google Calendar).'}
               </span>
             </span>

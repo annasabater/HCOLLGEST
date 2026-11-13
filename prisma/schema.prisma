@@ -1546,6 +1546,8 @@ model Recordatori {
   notes           String?   @db.Text
   tipus           String    @default("ALTRES") // ASSEGURANCA | REVISIO | CONTRACTE | IMPOSTOS | ALTRES
   data            DateTime  @db.Date // quan venç / quan és
+  hora            String? // «HH:MM» (Madrid): avisa a aquesta hora; null = al resum del matí
+  avisatDia       String?   @map("avisat_dia") // YYYY-MM-DD de l'últim avís a l'hora (un per dia)
   repeticioCada   Int?      @map("repeticio_cada") // null = un sol cop
   repeticioUnitat String?   @map("repeticio_unitat") // SETMANES | MESOS | ANYS
   diesAbans       Int[]     @default([]) @map("dies_abans") // p. ex. [30, 7]

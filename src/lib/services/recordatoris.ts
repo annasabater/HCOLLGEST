@@ -21,6 +21,7 @@ export interface RecordatoriVista {
   notes: string | null;
   tipus: string;
   data: string;
+  hora: string | null;
   repeticioCada: number | null;
   repeticioUnitat: string | null;
   diesAbans: number[];
@@ -39,6 +40,7 @@ export function vista(r: Recordatori, avui = diaMadrid()): RecordatoriVista {
     notes: r.notes,
     tipus: r.tipus,
     data: deData(r.data),
+    hora: r.hora,
     repeticioCada: r.repeticioCada,
     repeticioUnitat: r.repeticioUnitat,
     diesAbans: r.diesAbans,
@@ -79,6 +81,7 @@ function dades(raw: unknown) {
     notes: v.notes || null,
     tipus: v.tipus,
     data: aData(v.data),
+    hora: v.hora || null,
     repeticioCada: v.repeticioCada ?? null,
     repeticioUnitat: v.repeticioUnitat ?? null,
     diesAbans: [...new Set(v.diesAbans)].sort((a, b) => b - a),
@@ -98,10 +101,16 @@ export async function creaRecordatori(raw: unknown, actor: Actor, ip: string | n
 export async function editaRecordatori(id: string, raw: unknown, actor: Actor, ip: string | null) {
   const d = dades(raw);
   const abans = await prisma.recordatori.findFirstOrThrow({ where: { id, deletedAt: null } });
-  // Si canvia la data, l'ajornament d'abans ja no té sentit.
+  // Si canvia la data, l'ajornament d'abans ja no té sentit; si canvia l'hora o la
+  // data, torna a avisar avui encara que ja hagués avisat.
+  const canviaData = deData(abans.data) !== deData(d.data);
   const r = await prisma.recordatori.update({
     where: { id },
-    data: { ...d, ...(deData(abans.data) !== deData(d.data) ? { ajornatFins: null } : {}) },
+    data: {
+      ...d,
+      ...(canviaData ? { ajornatFins: null } : {}),
+      ...(canviaData || abans.hora !== d.hora ? { avisatDia: null } : {}),
+    },
   });
   await audit({ usuariId: actor?.id ?? null, accio: 'MODIFICACIO', entitat: 'recordatori', entitatId: id, detall: { titol: r.titol, data: deData(r.data) }, ip });
   await sincronitzaRecordatoris([id]);
@@ -150,6 +159,7 @@ export async function accioRecordatori(id: string, raw: unknown, actor: Actor, i
           notes: r.notes,
           tipus: r.tipus,
           data: aData(d),
+          hora: r.hora,
           repeticioCada: r.repeticioCada,
           repeticioUnitat: r.repeticioUnitat,
           diesAbans: r.diesAbans,

@@ -11,10 +11,13 @@ import { enviaPush, pushConfigurat } from '../push';
 import {
   diaMadrid,
   horaMadrid,
+  horaMinutMadrid,
+  notificacioRecordatori,
   notificacioResum,
   resumBuit,
   sumaDies,
   textResum,
+  tocaAvisAHora,
   tocaWhatsapp,
   type ResumDiari,
 } from '../recordatoris';
@@ -38,7 +41,8 @@ export async function construeixResum(dia: string): Promise<ResumDiari> {
   const ahir = new Date(Date.now() - 24 * 3_600_000);
   const [recs, cobs, sortides, ressenyes, valoracions] = await Promise.all([
     prisma.recordatori.findMany({
-      where: { deletedAt: null, fetAt: null, whatsapp: true, data: { lte: aData(sumaDies(dia, 366)) } },
+      // Els que tenen hora pròpia avisen a la seva hora, no al resum.
+      where: { deletedAt: null, fetAt: null, whatsapp: true, hora: null, data: { lte: aData(sumaDies(dia, 366)) } },
       orderBy: { data: 'asc' },
     }),
     // Igual que el pop-up: avui, demà i demà passat.
@@ -164,6 +168,69 @@ export async function enviaResumDiari({ forcar = false }: { forcar?: boolean } =
   });
   if (ok === 0) throw new Error(error ?? 'No ha arribat a cap mòbil');
   return { enviat: true, elements, ...(error ? { motiu: `Error en algun número de WhatsApp: ${error}` } : {}) };
+}
+
+/**
+ * Recordatoris amb hora pròpia: l'invoca un cron cada 10 minuts. Avisa (mòbil i
+ * WhatsApp) els que toquen avui i ja n'és l'hora; un sol cop per dia i recordatori.
+ */
+export async function enviaRecordatorisAHora(now: Date = new Date()): Promise<{ avisats: number }> {
+  const dia = diaMadrid(now);
+  const ara = horaMinutMadrid(now);
+  const recs = await prisma.recordatori.findMany({
+    where: {
+      deletedAt: null,
+      fetAt: null,
+      whatsapp: true,
+      hora: { not: null, lte: ara },
+      data: { lte: aData(sumaDies(dia, 366)) },
+      OR: [{ avisatDia: null }, { avisatDia: { not: dia } }],
+    },
+    orderBy: { data: 'asc' },
+    take: 50,
+  });
+  const toquen = recs.filter((r) =>
+    tocaAvisAHora(
+      {
+        data: deData(r.data),
+        diesAbans: r.diesAbans,
+        whatsapp: r.whatsapp,
+        ajornatFins: r.ajornatFins ? deData(r.ajornatFins) : null,
+        fet: false,
+        hora: r.hora,
+        avisatDia: r.avisatDia,
+      },
+      dia,
+      ara,
+    ),
+  );
+  if (toquen.length === 0) return { avisats: 0 };
+
+  const est = await credencials();
+  const actius = est.destinataris.filter((d) => d.actiu);
+  let avisats = 0;
+  const errorsTots: string[] = [];
+  for (const r of toquen) {
+    const n = notificacioRecordatori({ titol: r.titol, data: deData(r.data), notes: r.notes }, dia);
+    let ok = 0;
+    try {
+      ok += (await enviaPush({ resumMati: true },{ ...n, url: '/recordatoris', tag: `rec-${r.id}-${dia}` })).ok;
+    } catch (err) {
+      errorsTots.push(err instanceof Error ? err.message : 'push');
+    }
+    if (actius.length) {
+      const res = await enviaATots(actius, `*${n.title}*\n${n.body}\n\n${urlBase()}/recordatoris`);
+      ok += res.ok;
+      errorsTots.push(...res.errors);
+    }
+    // Marcat com a avisat encara que no hi hagi cap mòbil (si no, ho reintentaria cada 10 min).
+    await prisma.recordatori.update({ where: { id: r.id }, data: { avisatDia: dia } });
+    if (ok > 0) avisats++;
+  }
+  if (errorsTots.length) {
+    await prisma.establiment.update({ where: { id: est.id }, data: { whatsappError: [...new Set(errorsTots)].join(' · ') } });
+  }
+  return { avisats };
 }
 
 /** Missatge de prova a un número concret des de Configuració. */

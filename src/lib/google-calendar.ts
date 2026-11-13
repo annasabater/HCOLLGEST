@@ -72,21 +72,27 @@ export interface EventRecordatori {
   titol: string;
   descripcio: string;
   dia: string; // YYYY-MM-DD
+  hora?: string | null; // «HH:MM»; null = 9:00
   diesAbans: number[];
 }
 
 /**
- * Esdeveniment de 9:00 a 9:15 (hora de Madrid) el dia del recordatori, amb un
- * avís per a cada «dies abans» a la mateixa hora (0 = el mateix dia a les 9).
- * Google en permet 5 com a molt i fins a 4 setmanes abans.
+ * Esdeveniment de 15 minuts el dia del recordatori a la seva hora (9:00 si no en
+ * té, hora de Madrid), amb un avís per a cada «dies abans» a la mateixa hora
+ * (0 = el mateix dia). Google en permet 5 com a molt i fins a 4 setmanes abans.
  */
 export function cosEvent(e: EventRecordatori) {
   const minuts = [...new Set(e.diesAbans.map((d) => Math.min(d * 1440, MAX_MINUTS_AVIS)))].sort((a, b) => b - a).slice(0, 5);
+  const hora = e.hora ?? '09:00';
+  const h = Number(hora.slice(0, 2));
+  const m = Number(hora.slice(3, 5));
+  const fi = Math.min(h * 60 + m + 15, 23 * 60 + 59);
+  const hm = (t: number) => `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
   return {
     summary: e.titol,
     description: e.descripcio,
-    start: { dateTime: `${e.dia}T09:00:00`, timeZone: 'Europe/Madrid' },
-    end: { dateTime: `${e.dia}T09:15:00`, timeZone: 'Europe/Madrid' },
+    start: { dateTime: `${e.dia}T${hm(h * 60 + m)}:00`, timeZone: 'Europe/Madrid' },
+    end: { dateTime: `${e.dia}T${hm(fi)}:00`, timeZone: 'Europe/Madrid' },
     reminders: { useDefault: false, overrides: minuts.map((m) => ({ method: 'popup', minutes: m })) },
     transparency: 'transparent', // no marca l'hora com a ocupada
   };
