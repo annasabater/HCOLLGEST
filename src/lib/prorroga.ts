@@ -68,21 +68,27 @@ export const diesEntreDies = (a: string, b: string) => Math.round((utcDia(b) - u
 export const sumaDiesDia = (s: string, n: number) => new Date(utcDia(s) + n * DIA).toISOString().slice(0, 10);
 
 /** Dia en què es proposa preguntar si vol allargar (mai abans de l'entrada). */
-export function dataProposadaProrroga(entrada: string, sortida: string): string {
+/**
+ * `entrada` = primera entrada de la cadena (si ja ha allargat, compta tota
+ * l'estada per saber si és llarga); `noAbansDe` = inici del tram actual (no es
+ * proposa tornar a preguntar abans que comenci l'ampliació).
+ */
+export function dataProposadaProrroga(entrada: string, sortida: string, noAbansDe: string = entrada): string {
   const nits = diesEntreDies(entrada, sortida);
   const d = sumaDiesDia(sortida, -(nits >= MIN_NITS_PRORROGA ? DIES_AVIS_PRORROGA : DIES_AVIS_CURTA));
-  return d < entrada ? entrada : d;
+  const minim = noAbansDe > entrada ? noAbansDe : entrada;
+  return d < minim ? minim : d;
 }
 
 export type SituacioEstada = 'ALLARGA' | 'MARXA' | 'APLACAT' | 'ESPERANT' | 'TOCA' | 'PER_PREGUNTAR';
 
 export function situacioEstada(
-  e: { entrada: string; sortida: string; estat: EstatProrroga; aplacatFins: string | null; teAmpliacio: boolean },
+  e: { entrada: string; sortida: string; estat: EstatProrroga; aplacatFins: string | null; teAmpliacio: boolean; entradaTram?: string },
   avui: string,
 ): SituacioEstada {
   if (e.teAmpliacio || e.estat === 'SI') return 'ALLARGA';
   if (e.estat === 'NO') return 'MARXA';
   if (e.aplacatFins && e.aplacatFins > avui) return 'APLACAT';
   if (e.estat === 'PREGUNTAT') return 'ESPERANT';
-  return avui >= dataProposadaProrroga(e.entrada, e.sortida) ? 'TOCA' : 'PER_PREGUNTAR';
+  return avui >= dataProposadaProrroga(e.entrada, e.sortida, e.entradaTram) ? 'TOCA' : 'PER_PREGUNTAR';
 }

@@ -28,6 +28,7 @@ const PAS: Record<string, { t: string; dot: string }> = {
   SI: { t: 'Ha dit que sí: allarga', dot: 'bg-green-700' },
   NO: { t: 'Ha dit que no: marxa', dot: 'bg-red-700' },
   NOTA: { t: 'Nota', dot: 'bg-stone-400' },
+  AMPLIAT: { t: 'Ha allargat', dot: 'bg-violet-600' },
 };
 const pas = (tipus: string) => PAS[tipus] ?? { t: tipus, dot: 'bg-stone-400' };
 
@@ -69,6 +70,9 @@ function Pista({ e, avui }: { e: EstadaEnCurs; avui: string }) {
       )}
       <div className="absolute left-0 top-[3px] h-[19px] w-1 rounded bg-slate-800" />
       <div className="absolute right-0 top-[3px] h-[19px] w-1 rounded bg-slate-800" />
+      {e.ampliacions.map((d) => (
+        <div key={d} title={`Ampliació des del ${dc(d)}`} className="absolute top-[5px] h-[15px] w-1 -translate-x-1/2 rounded bg-violet-600" style={{ left: `${pos(d)}%` }} />
+      ))}
       <div className="absolute -bottom-0.5 -top-0.5 w-0.5 -translate-x-1/2 bg-brand-700" style={{ left: `${pos(avui)}%` }} />
       {e.events.map((x) => (
         <div
@@ -121,7 +125,7 @@ function Historial({ e, avui, onTreu, busy }: { e: EstadaEnCurs; avui: string; o
             </p>
             <p className={cn('flex items-start gap-1 font-semibold', i.futur ? 'text-slate-500' : 'text-slate-900')}>
               <span className="min-w-0 flex-1">{i.t}</span>
-              {i.event && (
+              {i.event && i.event.tipus !== 'AMPLIAT' && (
                 <button
                   type="button"
                   onClick={() => onTreu(i.event!)}
@@ -247,7 +251,14 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
               <span className="grid min-w-0 gap-1.5">
                 <span className="flex flex-wrap items-baseline gap-x-2.5">
                   <strong className="text-slate-900">{titular}</strong>
-                  <span className="text-xs tabular-nums text-slate-500">{dc(e.entrada)} → {dc(e.sortida)} · {e.nits} nits</span>
+                  <span className="text-xs tabular-nums text-slate-500">
+                    {dc(e.entrada)} → {dc(e.sortida)} · {e.nits} nits
+                    {e.ampliacions.length > 0 && (
+                      <span className="ml-1.5 rounded-full bg-violet-50 px-2 py-0.5 font-bold text-violet-800">
+                        {e.ampliacions.length === 1 ? 'ja ha allargat 1 cop' : `ja ha allargat ${e.ampliacions.length} cops`}
+                      </span>
+                    )}
+                  </span>
                 </span>
                 <Pista e={e} avui={avui} />
               </span>
@@ -358,10 +369,10 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
         );
       })}
       <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-stone-100 px-5 py-3 text-xs text-slate-500" aria-label="Llegenda">
-        {(['PREGUNTAT', 'RECORDATORI', 'APLACAT', 'SI', 'NO', 'NOTA'] as const).map((k) => (
+        {(['PREGUNTAT', 'RECORDATORI', 'APLACAT', 'SI', 'NO', 'NOTA', 'AMPLIAT'] as const).map((k) => (
           <span key={k} className="inline-flex items-center gap-1.5">
             <span className={cn('h-2.5 w-2.5 rounded-full', PAS[k]!.dot)} />
-            {{ PREGUNTAT: 'Preguntat', RECORDATORI: 'Recordatori enviat', APLACAT: 'Aplaçat', SI: 'Allarga', NO: 'Marxa', NOTA: 'Nota' }[k]}
+            {{ PREGUNTAT: 'Preguntat', RECORDATORI: 'Recordatori enviat', APLACAT: 'Aplaçat', SI: 'Allarga', NO: 'Marxa', NOTA: 'Nota', AMPLIAT: 'Ampliació feta' }[k]}
           </span>
         ))}
         <span className="inline-flex items-center gap-1.5">

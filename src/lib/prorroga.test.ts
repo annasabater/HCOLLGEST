@@ -51,6 +51,12 @@ describe('estades en curs', () => {
     expect(dataProposadaProrroga('2026-11-10', '2026-11-16')).toBe('2026-11-13');
     expect(dataProposadaProrroga('2026-11-14', '2026-11-16')).toBe('2026-11-14');
   });
+  it('si ja ha allargat: llarga per tota la cadena, però no abans que comenci l’ampliació', () => {
+    // 15/10 → 01/12 (ampliació des del 15/11): 18 dies abans seria el 13/11 → 15/11.
+    expect(dataProposadaProrroga('2026-10-15', '2026-12-01', '2026-11-15')).toBe('2026-11-15');
+    expect(dataProposadaProrroga('2026-10-14', '2026-12-14', '2026-11-14')).toBe('2026-11-26');
+    expect(situacioEstada({ entrada: '2026-10-15', sortida: '2026-12-01', estat: 'PER_PREGUNTAR', aplacatFins: null, teAmpliacio: false, entradaTram: '2026-11-15' }, '2026-11-13')).toBe('PER_PREGUNTAR');
+  });
   it('situació', () => {
     expect(situacioEstada(b, '2026-11-13')).toBe('PER_PREGUNTAR');
     expect(situacioEstada(b, '2026-11-14')).toBe('TOCA');

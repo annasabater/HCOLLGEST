@@ -199,7 +199,7 @@ Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
 - **Estades en curs** (Tauler, `components/dashboard/estades-en-curs.tsx`; substitueix l'antic quadre «Pròrrogues i
   sortides»): totes les estades que ja han entrat i no han sortit, amb una línia del temps de la pròrroga (model
   `ProrrogaEvent`: PREGUNTAT, NO_CONTESTA, RECORDATORI, APLACAT, SI, NO, NOTA). Es proposa preguntar 18 dies abans
-  (≥20 nits) o 3 (curtes), però es pot fer quan es vulgui. Lògica pura `situacioEstada`/`dataProposadaProrroga` a
+  (≥20 nits, comptant tota la cadena d’ampliacions) o 3 (curtes), però es pot fer quan es vulgui. Si ja ha allargat, surt l’última ampliació (encara que no hagi començat) amb la història de tota la cadena i un pas «Ha allargat». Lògica pura `situacioEstada`/`dataProposadaProrroga` a
   `src/lib/prorroga.ts`; API `POST/DELETE /api/estancies/:id/prorroga`.
 - **Deure i Haver** (`/balanc/deure-haver`): registre de la CAIXA i del BANC (Deure = entra, Haver = surt,
   saldo fila a fila). Surt sol dels cobraments, dipòsits (rebuts i tornats) i despeses per forma de pagament
