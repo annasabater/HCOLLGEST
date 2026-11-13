@@ -151,17 +151,17 @@ export default async function DashboardPage() {
 
       {/* Recordatoris propis que toquen ara (assegurança, revisions…) */}
       {recordatoris.length > 0 && (
-        <section aria-label="Recordatoris" className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 sm:p-5">
+        <section aria-label="Recordatoris" className="space-y-2 rounded-xl border border-amber-200 bg-amber-50/70 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="flex items-center gap-2 font-semibold text-amber-900">
-              <Bell className="h-5 w-5" /> Recordatoris que toquen ara
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-amber-900">
+              <Bell className="h-4 w-4" /> Recordatoris que toquen ara
             </h2>
-            <Link href="/recordatoris" className="text-sm font-semibold text-amber-900 underline underline-offset-2">
+            <Link href="/recordatoris" className="text-xs font-semibold text-amber-900 underline underline-offset-2">
               Tots els recordatoris
             </Link>
           </div>
           {recordatoris.map((r) => (
-            <RecordatoriTarja key={r.id} r={r} avui={diaMadrid()} canWrite={canWrite} />
+            <RecordatoriTarja key={r.id} r={r} avui={diaMadrid()} canWrite={canWrite} compacte />
           ))}
         </section>
       )}

@@ -43,11 +43,14 @@ export function RecordatoriTarja({
   avui,
   canWrite,
   onCanvi,
+  compacte,
 }: {
   r: RecordatoriVista;
   avui: string;
   canWrite: boolean;
   onCanvi?: () => void;
+  /** Una sola línia (per al tauler). */
+  compacte?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<'FET' | 'AJORNA' | null>(null);
@@ -67,6 +70,49 @@ export function RecordatoriTarja({
     } finally {
       setBusy(null);
     }
+  }
+
+  if (compacte) {
+    const dd = r.data.slice(8, 10);
+    const mes = MESOS[Number(r.data.slice(5, 7)) - 1];
+    return (
+      <article className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2">
+        <span
+          className={cn(
+            'shrink-0 rounded-md px-2 py-0.5 text-xs font-extrabold text-white',
+            vencut ? 'bg-red-700' : 'bg-amber-700',
+          )}
+        >
+          {dd} {mes}
+        </span>
+        <div className="flex min-w-0 flex-[1_1_14rem] flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="font-semibold text-slate-900">{r.titol}</span>
+          <span className={cn('text-xs font-bold', vencut ? 'text-red-800' : 'text-amber-900')}>
+            {dies === 0 ? 'Avui' : textQuan(dies).replace(/^./, (c) => c.toUpperCase())}
+          </span>
+          <span className="text-xs text-stone-500">
+            · {TIPUS_RECORDATORI_LABELS[r.tipus as TipusRecordatori] ?? r.tipus}
+          </span>
+          {r.whatsapp && r.hora && (
+            <span className="inline-flex items-center gap-0.5 text-xs text-emerald-800">
+              <Smartphone className="h-3 w-3" /> {textHora(r.hora)}
+            </span>
+          )}
+          {r.notes && <span className="w-full truncate text-xs text-slate-500">{r.notes}</span>}
+          {err && <span className="w-full text-xs text-red-600">{err}</span>}
+        </div>
+        {canWrite && (
+          <div className="flex gap-1.5">
+            <Button size="sm" onClick={() => accio('FET')} disabled={busy !== null} className="bg-emerald-700 hover:bg-emerald-800">
+              <Check className="h-4 w-4" /> {busy === 'FET' ? 'Desant…' : 'Fet'}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => accio('AJORNA')} disabled={busy !== null} title="Recorda-m’ho en 3 dies">
+              <Clock className="h-4 w-4" /> {busy === 'AJORNA' ? 'Desant…' : '+3 dies'}
+            </Button>
+          </div>
+        )}
+      </article>
+    );
   }
 
   return (
