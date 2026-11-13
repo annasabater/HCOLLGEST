@@ -188,7 +188,7 @@ export function RecordatoriFormulari({
           </div>
           <p className="text-xs text-slate-500">
             {hora
-              ? `Els dies d’avís t’arribarà ${textHora(hora)} (pot arribar uns minuts més tard).`
+              ? `Els dies d’avís t’arribarà ${textHora(hora)} (pot arribar fins a un minut més tard).`
               : 'Els dies d’avís sortirà al resum de cada matí, cap a les 9.'}
           </p>
         </div>

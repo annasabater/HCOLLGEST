@@ -171,7 +171,7 @@ export async function enviaResumDiari({ forcar = false }: { forcar?: boolean } =
 }
 
 /**
- * Recordatoris amb hora pròpia: l’invoca un cron cada 5 minuts. Avisa (mòbil i
+ * Recordatoris amb hora pròpia: l’invoca un cron cada minut. Avisa (mòbil i
  * WhatsApp) els que toquen avui i ja n'és l'hora; un sol cop per dia i recordatori.
  */
 export async function enviaRecordatorisAHora(now: Date = new Date()): Promise<{ avisats: number }> {
@@ -223,7 +223,7 @@ export async function enviaRecordatorisAHora(now: Date = new Date()): Promise<{ 
       ok += res.ok;
       errorsTots.push(...res.errors);
     }
-    // Marcat com a avisat encara que no hi hagi cap mòbil (si no, ho reintentaria cada 5 min).
+    // Marcat com a avisat encara que no hi hagi cap mòbil (si no, ho reintentaria cada minut).
     await prisma.recordatori.update({ where: { id: r.id }, data: { avisatDia: dia } });
     if (ok > 0) avisats++;
   }
