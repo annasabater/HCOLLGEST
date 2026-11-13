@@ -56,3 +56,33 @@ export function situacioProrroga(e: EstadaProrroga, avui: Date): 'avis' | 'aplac
   if (aplacat && diesEntre(avui, aplacat) > 0) return 'aplacada';
   return 'avis';
 }
+
+// ── Estades en curs (tauler): totes les estades, amb la data que es proposa per
+// preguntar i l'estat de cada una. Dates com a «YYYY-MM-DD» (dia de Madrid).
+
+/** Estades curtes: es proposa preguntar uns dies abans de la sortida. */
+export const DIES_AVIS_CURTA = 3;
+
+const utcDia = (s: string) => Date.UTC(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10)));
+export const diesEntreDies = (a: string, b: string) => Math.round((utcDia(b) - utcDia(a)) / DIA);
+export const sumaDiesDia = (s: string, n: number) => new Date(utcDia(s) + n * DIA).toISOString().slice(0, 10);
+
+/** Dia en què es proposa preguntar si vol allargar (mai abans de l'entrada). */
+export function dataProposadaProrroga(entrada: string, sortida: string): string {
+  const nits = diesEntreDies(entrada, sortida);
+  const d = sumaDiesDia(sortida, -(nits >= MIN_NITS_PRORROGA ? DIES_AVIS_PRORROGA : DIES_AVIS_CURTA));
+  return d < entrada ? entrada : d;
+}
+
+export type SituacioEstada = 'ALLARGA' | 'MARXA' | 'APLACAT' | 'ESPERANT' | 'TOCA' | 'PER_PREGUNTAR';
+
+export function situacioEstada(
+  e: { entrada: string; sortida: string; estat: EstatProrroga; aplacatFins: string | null; teAmpliacio: boolean },
+  avui: string,
+): SituacioEstada {
+  if (e.teAmpliacio || e.estat === 'SI') return 'ALLARGA';
+  if (e.estat === 'NO') return 'MARXA';
+  if (e.aplacatFins && e.aplacatFins > avui) return 'APLACAT';
+  if (e.estat === 'PREGUNTAT') return 'ESPERANT';
+  return avui >= dataProposadaProrroga(e.entrada, e.sortida) ? 'TOCA' : 'PER_PREGUNTAR';
+}

@@ -452,44 +452,46 @@ model Estancia {
   establimentId String      @map("establiment_id")
   establiment   Establiment @relation(fields: [establimentId], references: [id])
 
-  tipusRegistre       TipusRegistre @map("tipus_registre")
-  numContracte        String        @map("num_contracte")
-  anyContracte        Int           @map("any_contracte")
-  dataFormalitzacio   DateTime      @map("data_formalitzacio")
+  tipusRegistre       TipusRegistre   @map("tipus_registre")
+  numContracte        String          @map("num_contracte")
+  anyContracte        Int             @map("any_contracte")
+  dataFormalitzacio   DateTime        @map("data_formalitzacio")
   // Bugaderia d'aquesta estada: articles a netejar (manteniment/sortida), amb
   // quantitats. { manteniment: [{ article, qty }], sortida: [{ article, qty }] }.
   bugaderia           Json?
-  dataEntrada         DateTime?     @map("data_entrada")
-  dataSortida         DateTime?     @map("data_sortida")
+  dataEntrada         DateTime?       @map("data_entrada")
+  dataSortida         DateTime?       @map("data_sortida")
   // Sortida anticipada: marca que l'estada va finalitzar abans del previst i guarda
   // la sortida original per poder desfer-ho (tornar a allotjat) si va ser per error.
-  sortidaAnticipada   Boolean       @default(false) @map("sortida_anticipada")
-  dataSortidaPrevista DateTime?     @map("data_sortida_prevista")
-  numViatgers         Int           @map("num_viatgers")
-  tipusPagament       TipusPagament @map("tipus_pagament")
-  numHabitacions      Int?          @map("num_habitacions")
-  teInternet          Boolean?      @map("te_internet")
+  sortidaAnticipada   Boolean         @default(false) @map("sortida_anticipada")
+  dataSortidaPrevista DateTime?       @map("data_sortida_prevista")
+  numViatgers         Int             @map("num_viatgers")
+  tipusPagament       TipusPagament   @map("tipus_pagament")
+  numHabitacions      Int?            @map("num_habitacions")
+  teInternet          Boolean?        @map("te_internet")
   observacions        String?
-  idioma              String?       @default("ca") // ca / es / en / fr
-  estat               EstatEstancia @default(RESERVA)
+  idioma              String?         @default("ca") // ca / es / en / fr
+  estat               EstatEstancia   @default(RESERVA)
   // Registre desat amb dades incompletes (§2.3): editable, però no es pot pujar a
   // Mossos fins completar-lo. Es neteja automàticament quan el fitxer es genera bé.
-  esBorrany           Boolean       @default(false) @map("es_borrany")
+  esBorrany           Boolean         @default(false) @map("es_borrany")
   // Silencia l'avís de "dades pendents (*)" a Justificants per a aquesta estada.
-  avisDadesParat      Boolean       @default(false) @map("avis_dades_parat")
+  avisDadesParat      Boolean         @default(false) @map("avis_dades_parat")
   // Descarta l'avís del termini de Mossos (24 h) al tauler per a aquesta estada.
-  avisMossosParat     Boolean       @default(false) @map("avis_mossos_parat")
+  avisMossosParat     Boolean         @default(false) @map("avis_mossos_parat")
   // Benvinguda (WhatsApp) ja enviada/gestionada → treu l'avís del tauler.
-  benvingudaEnviada   Boolean       @default(false) @map("benvinguda_enviada")
+  benvingudaEnviada   Boolean         @default(false) @map("benvinguda_enviada")
   // Pròrroga (avís al tauler abans que s'acabi una estada llarga). Estat: null =
   // per preguntar, PREGUNTAT, SI, NO. Val per a la sortida `prorrogaSortida`: si
   // la data de sortida canvia, l'estat es torna a considerar buit.
-  prorrogaEstat       String?       @map("prorroga_estat")
-  prorrogaSortida     DateTime?     @map("prorroga_sortida")
-  prorrogaPreguntatAt DateTime?     @map("prorroga_preguntat_at")
-  prorrogaAplacatFins DateTime?     @map("prorroga_aplacat_fins")
+  prorrogaEstat       String?         @map("prorroga_estat")
+  prorrogaSortida     DateTime?       @map("prorroga_sortida")
+  prorrogaPreguntatAt DateTime?       @map("prorroga_preguntat_at")
+  prorrogaAplacatFins DateTime?       @map("prorroga_aplacat_fins")
   // Recordatori de sortida (el dia abans) enviat per a aquesta data de sortida.
-  recordatoriSortida  DateTime?     @map("recordatori_sortida")
+  recordatoriSortida  DateTime?       @map("recordatori_sortida")
+  // Història de la pròrroga (cada pas amb la seva data) per a la línia del temps.
+  prorrogaEvents      ProrrogaEvent[]
 
   // Habitació ACTUAL (la de l'últim tram). Si l'hoste ha canviat d'habitació a
   // mitja estada, els trams anteriors són a `canvisHabitacio`.
@@ -1677,4 +1679,19 @@ model DeclaracioFiscal {
 
   @@unique([model, any, periode])
   @@map("declaracio_fiscal")
+}
+
+// Un pas de la pròrroga/sortida d'una estada (línia del temps al tauler):
+// PREGUNTAT, NO_CONTESTA, RECORDATORI, APLACAT, SI, NO, NOTA.
+model ProrrogaEvent {
+  id         String   @id @default(cuid())
+  estanciaId String   @map("estancia_id")
+  estancia   Estancia @relation(fields: [estanciaId], references: [id], onDelete: Cascade)
+  tipus      String
+  detall     String?  @db.Text
+  usuariId   String?  @map("usuari_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([estanciaId, createdAt])
+  @@map("prorroga_event")
 }

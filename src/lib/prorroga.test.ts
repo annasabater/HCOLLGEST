@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { situacioProrroga, estatProrroga, diesEntre } from './prorroga';
+import { situacioProrroga, estatProrroga, diesEntre, dataProposadaProrroga, situacioEstada } from './prorroga';
 
 const d = (iso: string) => new Date(`${iso}T00:00:00`);
 const avui = d('2026-10-25');
@@ -41,5 +41,23 @@ describe('situacioProrroga', () => {
     const e = { ...base, prorrogaEstat: 'SI', prorrogaSortida: d('2026-11-05') };
     expect(estatProrroga(e)).toBe('PER_PREGUNTAR');
     expect(situacioProrroga(e, avui)).toBe('avis');
+  });
+});
+
+describe('estades en curs', () => {
+  const b = { entrada: '2026-11-02', sortida: '2026-12-02', estat: 'PER_PREGUNTAR' as const, aplacatFins: null, teAmpliacio: false };
+  it('data proposada: 18 dies abans si és llarga, 3 si és curta, mai abans de l’entrada', () => {
+    expect(dataProposadaProrroga('2026-11-02', '2026-12-02')).toBe('2026-11-14');
+    expect(dataProposadaProrroga('2026-11-10', '2026-11-16')).toBe('2026-11-13');
+    expect(dataProposadaProrroga('2026-11-14', '2026-11-16')).toBe('2026-11-14');
+  });
+  it('situació', () => {
+    expect(situacioEstada(b, '2026-11-13')).toBe('PER_PREGUNTAR');
+    expect(situacioEstada(b, '2026-11-14')).toBe('TOCA');
+    expect(situacioEstada({ ...b, estat: 'PREGUNTAT' }, '2026-11-14')).toBe('ESPERANT');
+    expect(situacioEstada({ ...b, estat: 'PREGUNTAT', aplacatFins: '2026-11-17' }, '2026-11-14')).toBe('APLACAT');
+    expect(situacioEstada({ ...b, estat: 'PREGUNTAT', aplacatFins: '2026-11-14' }, '2026-11-14')).toBe('ESPERANT');
+    expect(situacioEstada({ ...b, estat: 'NO' }, '2026-11-14')).toBe('MARXA');
+    expect(situacioEstada({ ...b, teAmpliacio: true }, '2026-11-14')).toBe('ALLARGA');
   });
 });

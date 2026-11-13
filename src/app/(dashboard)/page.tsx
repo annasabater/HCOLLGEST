@@ -18,8 +18,8 @@ import { teVistaRestringida } from '@/lib/auth/restriccions';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BenvingudesPendents } from '@/components/dashboard/benvingudes-pendents';
-import { ProrroguesPanel } from '@/components/dashboard/prorrogues-panel';
-import { getProrrogues } from '@/lib/services/prorrogues';
+import { EstadesEnCurs } from '@/components/dashboard/estades-en-curs';
+import { getEstadesEnCurs } from '@/lib/services/prorrogues';
 import { CalculadoraPreu } from '@/components/dashboard/calculadora-preu';
 import { GlobalSearch } from '@/components/layout/global-search';
 import { TargetaAvis, type AvisItem } from '@/components/dashboard/targeta-avis';
@@ -55,7 +55,7 @@ export default async function DashboardPage() {
   const user = await getSessionUser();
   const resum = await getResum({ excloureMetodeAltres: teVistaRestringida(user) });
   const fitxesPendents = await fitxesDadesPendents();
-  const prorrogues = await getProrrogues();
+  const estadesEnCurs = await getEstadesEnCurs();
   const isAdmin = user?.role === 'ADMIN';
   const canWrite = user ? hasRole(user.role, ROLES_WRITE) : false;
   const recordatoris = esNomesLectura(user) ? [] : await recordatorisAra();
@@ -174,7 +174,7 @@ export default async function DashboardPage() {
         tothom={resum.benvingudes.tothom}
       />
 
-      <ProrroguesPanel avisos={prorrogues.avisos} aplacades={prorrogues.aplacades} surtenDema={prorrogues.surtenDema} />
+      <EstadesEnCurs avui={estadesEnCurs.avui} estades={estadesEnCurs.estades} />
 
       {/* Sortides avui */}
       {resum.sortidesToday.length > 0 && (

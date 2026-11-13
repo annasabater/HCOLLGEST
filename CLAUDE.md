@@ -195,6 +195,11 @@ Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
   que crea l'app): cada recordatori pendent és un esdeveniment a les 9:00 amb els avisos (màx. 28 dies abans);
   Fet/esborrat el treu. L'OAuth torna per `/api/ressenyes/google/callback` amb `state=hcoll-calendari` (adreça
   ja registrada a Google Cloud). Cal la «Google Calendar API» activada al projecte.
+- **Estades en curs** (Tauler, `components/dashboard/estades-en-curs.tsx`; substitueix l'antic quadre «Pròrrogues i
+  sortides»): totes les estades que ja han entrat i no han sortit, amb una línia del temps de la pròrroga (model
+  `ProrrogaEvent`: PREGUNTAT, NO_CONTESTA, RECORDATORI, APLACAT, SI, NO, NOTA). Es proposa preguntar 18 dies abans
+  (≥20 nits) o 3 (curtes), però es pot fer quan es vulgui. Lògica pura `situacioEstada`/`dataProposadaProrroga` a
+  `src/lib/prorroga.ts`; API `POST/DELETE /api/estancies/:id/prorroga`.
 - **Deure i Haver** (`/balanc/deure-haver`): registre de la CAIXA i del BANC (Deure = entra, Haver = surt,
   saldo fila a fila). Surt sol dels cobraments, dipòsits (rebuts i tornats) i despeses per forma de pagament
   (efectiu → caixa; targeta/transferència/Bizum → banc; «Altres» no hi entra i s'avisa). A mà (`MovimentTresoreria`):
