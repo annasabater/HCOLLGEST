@@ -8,7 +8,12 @@ import { enviaPush } from '@/lib/push';
 
 type Ctx = { params: Promise<{ id: string }> };
 
-const PatchSchema = z.object({ resumMati: z.boolean().optional(), alMoment: z.boolean().optional() });
+const PatchSchema = z.object({
+  resumMati: z.boolean().optional(),
+  alMoment: z.boolean().optional(),
+  /** Nom per distingir-lo: p. ex. «iPhone · 612 345 678». */
+  nom: z.string().trim().min(1, 'Posa-hi un nom o un número').max(60).optional(),
+});
 
 // PATCH /api/push/:id — què rep aquest mòbil.
 export async function PATCH(req: Request, ctx: Ctx) {

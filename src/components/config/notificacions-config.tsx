@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { BellRing, Send, Trash2 } from 'lucide-react';
 import { ApiError, delJSON, getJSON, patchJSON, postJSON } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { formatDate } from '@/lib/utils';
 
 interface Dispositiu {
@@ -46,6 +47,8 @@ export function NotificacionsConfig() {
   const [sup, setSup] = useState<Suport>('ok');
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [telefon, setTelefon] = useState('');
+  const [noms, setNoms] = useState<Record<string, string>>({}); // noms que s'estan editant
 
   const carrega = useCallback(async () => {
     setEstat(await getJSON<Estat>('/api/push'));
@@ -89,9 +92,20 @@ export function NotificacionsConfig() {
       const sub =
         (await reg.pushManager.getSubscription()) ??
         (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: clauABytes(estat.clauPublica) }));
-      await postJSON('/api/push', sub.toJSON());
+      await postJSON('/api/push', { ...sub.toJSON(), telefon: telefon.trim() || null });
       setAquest(sub.endpoint);
       return 'Fet! Aquest dispositiu ja rep les notificacions. Prova-ho amb «Envia una prova».';
+    });
+
+  const reanomena = (d: Dispositiu) =>
+    fes(`nom:${d.id}`, async () => {
+      const nom = (noms[d.id] ?? d.nom).trim();
+      await patchJSON(`/api/push/${d.id}`, { nom });
+      setNoms((n) => {
+        const { [d.id]: _, ...resta } = n;
+        return resta;
+      });
+      return `Desat: «${nom}».`;
     });
 
   const canvia = (d: Dispositiu, p: Partial<Pick<Dispositiu, 'resumMati' | 'alMoment'>>) =>
@@ -141,8 +155,12 @@ export function NotificacionsConfig() {
       ) : sup === 'no' ? (
         <p className="rounded-lg bg-amber-50 p-3 text-amber-900">Aquest navegador no admet notificacions. Prova amb Chrome (Android) o Safari (iPhone).</p>
       ) : (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-orange-200 bg-orange-50 p-3">
-          <span className="flex-1">Aquest dispositiu encara no té les notificacions activades.</span>
+        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-orange-200 bg-orange-50 p-3">
+          <span className="w-full">Aquest dispositiu encara no té les notificacions activades.</span>
+          <label className="flex-[1_1_12rem] space-y-1">
+            <span className="text-xs font-semibold text-slate-600">Número d’aquest mòbil (per distingir-lo)</span>
+            <Input value={telefon} onChange={(e) => setTelefon(e.target.value)} placeholder="612 345 678" inputMode="tel" />
+          </label>
           <Button onClick={activa} disabled={busy !== null}>
             <BellRing className="h-4 w-4" /> {busy === 'activa' ? 'Activant…' : 'Activa-les en aquest mòbil'}
           </Button>
@@ -155,9 +173,23 @@ export function NotificacionsConfig() {
           {estat.dispositius.map((d) => (
             <div key={d.id} className="space-y-2 border-t border-slate-100 py-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="flex-1">
-                  <strong>{d.nom}</strong>
-                  {d.endpoint === aquest ? ' (aquest)' : ''} · des del {formatDate(d.createdAt)}
+                <span className="flex flex-[1_1_16rem] flex-wrap items-center gap-2">
+                  <Input
+                    aria-label="Nom o número d’aquest mòbil"
+                    value={noms[d.id] ?? d.nom}
+                    onChange={(e) => setNoms((n) => ({ ...n, [d.id]: e.target.value }))}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && noms[d.id] !== undefined) reanomena(d); }}
+                    placeholder="iPhone · 612 345 678"
+                    className="h-9 w-56 font-semibold"
+                  />
+                  {noms[d.id] !== undefined && noms[d.id] !== d.nom && (
+                    <Button size="sm" onClick={() => reanomena(d)} disabled={busy !== null || !noms[d.id]?.trim()}>
+                      {busy === `nom:${d.id}` ? 'Desant…' : 'Desa'}
+                    </Button>
+                  )}
+                  <span className="text-xs text-slate-500">
+                    {d.endpoint === aquest ? 'aquest · ' : ''}des del {formatDate(d.createdAt)}
+                  </span>
                 </span>
                 <Button variant="outline" size="sm" onClick={() => prova(d)} disabled={busy !== null}>
                   <Send className="h-3.5 w-3.5" /> {busy === `prova:${d.id}` ? 'Enviant…' : 'Envia una prova'}

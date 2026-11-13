@@ -40,12 +40,16 @@ export async function POST(req: Request) {
   try {
     const auth = await authorize(ROLES_WRITE);
     if (auth instanceof Response) return auth;
-    const s = SubscripcioSchema.parse(await readJson(req));
-    const nom = nomDispositiu(req.headers.get('user-agent'));
+    const body = await readJson(req);
+    const s = SubscripcioSchema.parse(body);
+    // El número (o un nom) serveix per distingir els mòbils a la llista.
+    const { telefon } = z.object({ telefon: z.string().trim().max(40).nullish() }).parse(body);
+    const tipus = nomDispositiu(req.headers.get('user-agent'));
+    const nom = telefon ? `${tipus} · ${telefon}` : tipus;
     const sub = await prisma.pushSubscripcio.upsert({
       where: { endpoint: s.endpoint },
       create: { endpoint: s.endpoint, p256dh: s.keys.p256dh, auth: s.keys.auth, nom, usuariId: auth.id },
-      update: { p256dh: s.keys.p256dh, auth: s.keys.auth, darrerError: null },
+      update: { p256dh: s.keys.p256dh, auth: s.keys.auth, darrerError: null, ...(telefon ? { nom } : {}) },
     });
     await audit({ usuariId: auth.id, accio: 'CREACIO', entitat: 'push_subscripcio', entitatId: sub.id, detall: { nom }, ip: clientIp(req) });
     return created({ id: sub.id });
