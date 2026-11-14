@@ -192,7 +192,7 @@ export function RecordatorisLlista({
           fets.map((r) => <Fila key={r.id} r={r} fet />)
         )}
         <p className="border-t border-stone-100 py-4 text-xs text-slate-500">
-          Quan marques «Fet» un recordatori que es repeteix, es programa sol el següent.
+          Els que es repeteixen es programen sols: passat el dia, surt el següent (no cal marcar «Fet»).
         </p>
       </section>
 

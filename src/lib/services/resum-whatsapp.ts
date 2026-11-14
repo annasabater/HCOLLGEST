@@ -21,6 +21,7 @@ import {
   tocaWhatsapp,
   type ResumDiari,
 } from '../recordatoris';
+import { avancaRepeticions } from './recordatoris';
 
 const HORA_RESUM = 9;
 const aData = (d: string) => new Date(`${d}T00:00:00Z`);
@@ -145,6 +146,7 @@ export async function enviaResumDiari({ forcar = false }: { forcar?: boolean } =
   if (!forcar && horaMadrid(now) < HORA_RESUM) return { enviat: false, motiu: 'Encara no són les 9' };
   if (!forcar && est.whatsappResumDia === dia) return { enviat: false, motiu: 'Ja enviat avui' };
 
+  await avancaRepeticions(dia);
   const resum = await construeixResum(dia);
   const elements = resum.recordatoris.length + resum.cobraments.length + resum.sortides.length + resum.opinions.length;
   if (resumBuit(resum)) {
@@ -177,6 +179,8 @@ export async function enviaResumDiari({ forcar = false }: { forcar?: boolean } =
 export async function enviaRecordatorisAHora(now: Date = new Date()): Promise<{ avisats: number }> {
   const dia = diaMadrid(now);
   const ara = horaMinutMadrid(now);
+  // Els que es repeteixen i ja han passat: es programa sol el següent.
+  await avancaRepeticions(dia);
   const recs = await prisma.recordatori.findMany({
     where: {
       deletedAt: null,

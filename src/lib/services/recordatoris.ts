@@ -53,9 +53,64 @@ export function vista(r: Recordatori, avui = diaMadrid()): RecordatoriVista {
   return { ...v, tocaAra: tocaAra({ ...v, fet: !!r.fetAt }, avui) };
 }
 
+/** Següent data d'una repetició, sempre posterior a `avui` (si fa temps, salta períodes). */
+function seguentFutura(data: string, cada: number, unitat: UnitatRepeticio, avui: string): string {
+  let d = seguentData(data, cada, unitat);
+  for (let i = 0; d <= avui && i < 500; i++) d = seguentData(d, cada, unitat);
+  return d;
+}
+
+/**
+ * Els que es repeteixen van sols: un cop passat el dia (i l'ajornament, si n'hi ha),
+ * es tanquen i es crea el següent, sense haver de marcar «Fet». Idempotent i segur
+ * si dues crides coincideixen (el tancament és condicional a `fetAt: null`).
+ */
+export async function avancaRepeticions(avui = diaMadrid()): Promise<number> {
+  const vencuts = await prisma.recordatori.findMany({
+    where: {
+      deletedAt: null,
+      fetAt: null,
+      repeticioCada: { not: null },
+      repeticioUnitat: { not: null },
+      data: { lt: aData(avui) },
+      OR: [{ ajornatFins: null }, { ajornatFins: { lt: aData(avui) } }],
+    },
+    take: 100,
+  });
+  const ids: string[] = [];
+  for (const r of vencuts) {
+    const nouId = await prisma.$transaction(async (tx) => {
+      const tancat = await tx.recordatori.updateMany({ where: { id: r.id, fetAt: null }, data: { fetAt: new Date() } });
+      if (tancat.count === 0) return null;
+      const d = seguentFutura(deData(r.data), r.repeticioCada!, r.repeticioUnitat as UnitatRepeticio, avui);
+      const nou = await tx.recordatori.create({
+        data: {
+          titol: r.titol,
+          notes: r.notes,
+          tipus: r.tipus,
+          data: aData(d),
+          hora: r.hora,
+          repeticioCada: r.repeticioCada,
+          repeticioUnitat: r.repeticioUnitat,
+          diesAbans: r.diesAbans,
+          whatsapp: r.whatsapp,
+          calendari: r.calendari,
+        },
+      });
+      await audit({ usuariId: null, accio: 'MODIFICACIO', entitat: 'recordatori', entitatId: r.id, detall: { fet: true, automatic: true, seguent: d } }, tx);
+      await audit({ usuariId: null, accio: 'CREACIO', entitat: 'recordatori', entitatId: nou.id, detall: { repeticioDe: r.id, data: d, automatic: true } }, tx);
+      return nou.id;
+    });
+    if (nouId) ids.push(r.id, nouId);
+  }
+  if (ids.length) await sincronitzaRecordatoris(ids);
+  return ids.length / 2;
+}
+
 /** Pendents (per data) i els últims fets. */
 export async function llistaRecordatoris() {
   const avui = diaMadrid();
+  await avancaRepeticions(avui);
   const [pendents, fets] = await Promise.all([
     prisma.recordatori.findMany({ where: { deletedAt: null, fetAt: null }, orderBy: { data: 'asc' }, take: 300 }),
     prisma.recordatori.findMany({ where: { deletedAt: null, fetAt: { not: null } }, orderBy: { fetAt: 'desc' }, take: 50 }),
@@ -66,6 +121,7 @@ export async function llistaRecordatoris() {
 /** Els que toquen ara (per al tauler). */
 export async function recordatorisAra(): Promise<RecordatoriVista[]> {
   const avui = diaMadrid();
+  await avancaRepeticions(avui);
   const rows = await prisma.recordatori.findMany({
     where: { deletedAt: null, fetAt: null, data: { lte: aData(sumaDies(avui, 366)) } },
     orderBy: { data: 'asc' },
@@ -151,8 +207,7 @@ export async function accioRecordatori(id: string, raw: unknown, actor: Actor, i
     let nouId: string | null = null;
     if (r.repeticioCada && r.repeticioUnitat) {
       // La següent data ha de ser futura (si s'ha marcat tard, salta períodes).
-      let d = seguentData(deData(r.data), r.repeticioCada, r.repeticioUnitat as UnitatRepeticio);
-      for (let i = 0; d <= avui && i < 500; i++) d = seguentData(d, r.repeticioCada, r.repeticioUnitat as UnitatRepeticio);
+      const d = seguentFutura(deData(r.data), r.repeticioCada, r.repeticioUnitat as UnitatRepeticio, avui);
       const nou = await tx.recordatori.create({
         data: {
           titol: r.titol,

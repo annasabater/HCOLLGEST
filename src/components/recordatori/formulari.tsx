@@ -220,7 +220,9 @@ export function RecordatoriFormulari({
             </div>
           )}
           {rep !== 'CAP' && (
-            <p className="text-xs text-slate-500">Quan el marquis «Fet», es programa sol el següent.</p>
+            <p className="text-xs text-slate-500">
+              En desar-lo ja queda tota la sèrie: passat el dia, es programa sol el següent (no cal marcar «Fet»).
+            </p>
           )}
         </div>
 
@@ -303,7 +305,11 @@ export function RecordatoriFormulari({
             </span>
             <input type="checkbox" checked={calendari} onChange={(e) => setCalendari(e.target.checked)} className="h-6 w-6 accent-blue-700" />
           </label>
-          <p className="text-xs text-slate-500">Al tauler surt sempre, des del primer dia d’avís fins que el marquis «Fet».</p>
+          <p className="text-xs text-slate-500">
+            {rep !== 'CAP'
+              ? 'Al tauler surt des del primer dia d’avís fins al mateix dia (o fins que el marquis «Fet»).'
+              : 'Al tauler surt sempre, des del primer dia d’avís fins que el marquis «Fet».'}
+          </p>
         </div>
 
         {err && <p className="text-sm text-red-600">{err}</p>}
