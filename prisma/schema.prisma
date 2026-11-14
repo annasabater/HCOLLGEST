@@ -490,6 +490,10 @@ model Estancia {
   prorrogaAplacatFins DateTime?       @map("prorroga_aplacat_fins")
   // Recordatori de sortida (el dia abans) enviat per a aquesta data de sortida.
   recordatoriSortida  DateTime?       @map("recordatori_sortida")
+  // Dies triats a mà a «Estades en curs» (si no, es proposen sols): quan
+  // preguntar si vol allargar i quan enviar el (següent) recordatori de sortida.
+  prorrogaPreguntarEl  DateTime?      @map("prorroga_preguntar_el")
+  recordatoriSortidaEl DateTime?      @map("recordatori_sortida_el")
   // Història de la pròrroga (cada pas amb la seva data) per a la línia del temps.
   prorrogaEvents      ProrrogaEvent[]
 

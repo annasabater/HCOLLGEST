@@ -83,12 +83,39 @@ export function dataProposadaProrroga(entrada: string, sortida: string, noAbansD
 export type SituacioEstada = 'ALLARGA' | 'MARXA' | 'APLACAT' | 'ESPERANT' | 'TOCA' | 'PER_PREGUNTAR';
 
 export function situacioEstada(
-  e: { entrada: string; sortida: string; estat: EstatProrroga; aplacatFins: string | null; teAmpliacio: boolean; entradaTram?: string },
+  e: {
+    entrada: string;
+    sortida: string;
+    estat: EstatProrroga;
+    aplacatFins: string | null;
+    teAmpliacio: boolean;
+    entradaTram?: string;
+    /** Dia triat a mà per preguntar (si no, el proposat). */
+    preguntarEl?: string | null;
+  },
   avui: string,
 ): SituacioEstada {
   if (e.teAmpliacio || e.estat === 'SI') return 'ALLARGA';
   if (e.estat === 'NO') return 'MARXA';
   if (e.aplacatFins && e.aplacatFins > avui) return 'APLACAT';
   if (e.estat === 'PREGUNTAT') return 'ESPERANT';
-  return avui >= dataProposadaProrroga(e.entrada, e.sortida, e.entradaTram) ? 'TOCA' : 'PER_PREGUNTAR';
+  const proposada = e.preguntarEl ?? dataProposadaProrroga(e.entrada, e.sortida, e.entradaTram);
+  return avui >= proposada ? 'TOCA' : 'PER_PREGUNTAR';
+}
+
+/**
+ * Recordatori de sortida: quin dia toca i si està pendent.
+ * - Per defecte, el dia abans de la sortida (o el dia triat a mà).
+ * - Si ja se n'ha enviat un, només n'hi ha un altre de pendent si s'ha triat un
+ *   dia posterior a l'últim enviament (p. ex. un 3 dies abans i un altre el dia abans).
+ */
+export function recordatoriSortida(
+  sortida: string,
+  triat: string | null,
+  ultimEnviat: string | null,
+): { dia: string; pendent: boolean; triat: boolean } {
+  const valid = triat && triat <= sortida ? triat : null;
+  const dia = valid ?? sumaDiesDia(sortida, -1);
+  const pendent = !ultimEnviat || (!!valid && valid > ultimEnviat);
+  return { dia, pendent, triat: !!valid };
 }

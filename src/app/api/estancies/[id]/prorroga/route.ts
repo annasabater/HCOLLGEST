@@ -3,18 +3,25 @@ import { prisma } from '@/lib/db';
 import { authorize, clientIp } from '@/lib/auth/guard';
 import { ROLES_WRITE } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
-import { handleApiError, notFound, ok } from '@/lib/http';
+import { badRequest, handleApiError, notFound, ok } from '@/lib/http';
 import { inicDia } from '@/lib/prorroga';
 
 type Ctx = { params: Promise<{ id: string }> };
 
 const detall = z.string().trim().max(300).nullish();
+const dia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data no vàlida');
+/** «YYYY-MM-DD» → migdia UTC (el dia no canvia amb l'hora de Madrid). */
+const aData = (d: string) => new Date(`${d}T12:00:00Z`);
 const Schema = z.discriminatedUnion('accio', [
   z.object({ accio: z.literal('PREGUNTAT'), detall }), // missatge «vol allargar?» enviat
   z.object({ accio: z.literal('SI'), detall }),
   z.object({ accio: z.literal('NO'), detall }), // ha dit que no o «no ha contestat» enviat
   z.object({ accio: z.literal('NO_CONTESTA'), detall }), // missatge «no contesta» enviat (= marxa)
-  z.object({ accio: z.literal('APLACA'), dies: z.coerce.number().int().min(1).max(60), detall }),
+  // Aplaça uns dies o fins a un dia concret.
+  z.object({ accio: z.literal('APLACA'), dies: z.coerce.number().int().min(1).max(60).optional(), fins: dia.optional(), detall }),
+  // Dia triat a mà (null = torna al proposat). No s'apunta a la línia del temps.
+  z.object({ accio: z.literal('DIA_PREGUNTAR'), dia: dia.nullable() }),
+  z.object({ accio: z.literal('DIA_RECORDATORI'), dia: dia.nullable() }),
   z.object({ accio: z.literal('MOSTRA') }), // treu l'aplaçament
   z.object({ accio: z.literal('RECORDATORI'), detall }), // recordatori de sortida enviat
   z.object({ accio: z.literal('NOTA'), detall: z.string().trim().min(1, 'Escriu la nota').max(300) }),
@@ -41,13 +48,31 @@ export async function POST(req: Request, ctx: Ctx) {
     const mateixa = e.prorrogaSortida?.getTime() === e.dataSortida.getTime();
     const base = { prorrogaSortida: e.dataSortida, prorrogaEstat: mateixa ? e.prorrogaEstat : null };
 
+    if (body.accio === 'APLACA' && !body.fins && !body.dies) {
+      return badRequest('Indica fins quan s’aplaça');
+    }
+    const sortidaDia = e.dataSortida.toISOString().slice(0, 10);
+    if ((body.accio === 'DIA_PREGUNTAR' || body.accio === 'DIA_RECORDATORI') && body.dia && body.dia > sortidaDia) {
+      return badRequest('Ha de ser abans de la sortida');
+    }
+
     const data =
       body.accio === 'NOTA'
         ? null
         : body.accio === 'RECORDATORI'
-          ? { recordatoriSortida: e.dataSortida }
+          ? // L'enviat ja no queda pendent; si en vols un altre, tries un dia nou.
+            { recordatoriSortida: e.dataSortida, recordatoriSortidaEl: null }
+          : body.accio === 'DIA_PREGUNTAR'
+            ? { prorrogaPreguntarEl: body.dia ? aData(body.dia) : null }
+            : body.accio === 'DIA_RECORDATORI'
+              ? { recordatoriSortidaEl: body.dia ? aData(body.dia) : null }
           : body.accio === 'APLACA'
-            ? { ...base, prorrogaAplacatFins: new Date(inicDia(now).getTime() + body.dies * 86_400_000) }
+            ? {
+                ...base,
+                prorrogaAplacatFins: body.fins
+                  ? aData(body.fins)
+                  : new Date(inicDia(now).getTime() + (body.dies ?? 3) * 86_400_000),
+              }
             : body.accio === 'MOSTRA'
               ? { ...base, prorrogaAplacatFins: null }
               : body.accio === 'PREGUNTAT'
@@ -57,7 +82,7 @@ export async function POST(req: Request, ctx: Ctx) {
     const tipus = body.accio === 'APLACA' ? 'APLACAT' : body.accio;
     await prisma.$transaction(async (tx) => {
       if (data) await tx.estancia.update({ where: { id }, data });
-      if (body.accio !== 'MOSTRA') {
+      if (body.accio !== 'MOSTRA' && body.accio !== 'DIA_PREGUNTAR' && body.accio !== 'DIA_RECORDATORI') {
         await tx.prorrogaEvent.create({
           data: { estanciaId: id, tipus, detall: body.detall || null, usuariId: auth.id },
         });

@@ -5,6 +5,7 @@ import {
   dataProposadaProrroga,
   diesEntreDies,
   estatProrroga,
+  recordatoriSortida,
   situacioEstada,
   type EstatProrroga,
   type SituacioEstada,
@@ -26,10 +27,17 @@ export interface EstadaEnCurs {
   nits: number;
   diesFalten: number;
   dataProposada: string;
+  /** El dia per preguntar l'ha triat la persona (no és el proposat). */
+  preguntarTriat: boolean;
   estat: EstatProrroga;
   situacio: SituacioEstada;
   aplacatFins: string | null; // YYYY-MM-DD
+  /** Ja se n'ha enviat almenys un per a aquesta sortida. */
   recordatoriEnviat: boolean;
+  /** Dia del (següent) recordatori de sortida i si està per enviar. */
+  recordatoriDia: string;
+  recordatoriPendent: boolean;
+  recordatoriTriat: boolean;
   idioma: string | null;
   numViatgers: number;
   viatgers: { nom: string; cognom1: string; telefon: string | null; esTitular: boolean; esMenor: boolean }[];
@@ -118,6 +126,18 @@ export async function getEstadesEnCurs(now = new Date()): Promise<{ avui: string
     const estat = estatProrroga(e);
     const mateixa = !!e.prorrogaSortida && diaMadrid(e.prorrogaSortida) === sortida;
     const aplacatFins = mateixa && e.prorrogaAplacatFins ? diaMadrid(e.prorrogaAplacatFins) : null;
+    // Dia triat a mà per preguntar (només si és dins d'aquest tram).
+    const preguntarTriat = e.prorrogaPreguntarEl ? diaMadrid(e.prorrogaPreguntarEl) : null;
+    const preguntarEl = preguntarTriat && preguntarTriat <= sortida && preguntarTriat >= entradaTram ? preguntarTriat : null;
+    // Recordatori de sortida: l'últim enviat per a aquesta sortida i el següent que toca.
+    const enviatPerAquesta = !!e.recordatoriSortida && diaMadrid(e.recordatoriSortida) === sortida;
+    const ultimRec = e.prorrogaEvents.filter((x) => x.tipus === 'RECORDATORI').at(-1);
+    const ultimEnviat = enviatPerAquesta ? (ultimRec ? diaMadrid(ultimRec.createdAt) : sortida) : null;
+    const rec = recordatoriSortida(
+      sortida,
+      e.recordatoriSortidaEl ? diaMadrid(e.recordatoriSortidaEl) : null,
+      ultimEnviat,
+    );
 
     // Història de tota la cadena + un pas «Ha allargat» per cada ampliació.
     const events: EventProrroga[] = [];
@@ -144,11 +164,15 @@ export async function getEstadesEnCurs(now = new Date()): Promise<{ avui: string
       nits: diesEntreDies(entrada, sortida),
       diesFalten: diesEntreDies(avui, sortida),
       // Llarga o curta segons tota l'estada; mai abans que comenci l'última ampliació.
-      dataProposada: dataProposadaProrroga(entrada, sortida, entradaTram),
+      dataProposada: preguntarEl ?? dataProposadaProrroga(entrada, sortida, entradaTram),
+      preguntarTriat: !!preguntarEl,
       estat,
-      situacio: situacioEstada({ entrada, sortida, estat, aplacatFins, teAmpliacio: false, entradaTram }, avui),
+      situacio: situacioEstada({ entrada, sortida, estat, aplacatFins, teAmpliacio: false, entradaTram, preguntarEl }, avui),
       aplacatFins,
-      recordatoriEnviat: !!e.recordatoriSortida && diaMadrid(e.recordatoriSortida) === sortida,
+      recordatoriEnviat: enviatPerAquesta,
+      recordatoriDia: rec.dia,
+      recordatoriPendent: rec.pendent,
+      recordatoriTriat: rec.triat,
       idioma: e.idioma,
       numViatgers: e.numViatgers,
       viatgers: e.viatgers

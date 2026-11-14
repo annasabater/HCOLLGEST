@@ -1,5 +1,24 @@
 import { describe, it, expect } from 'vitest';
-import { situacioProrroga, estatProrroga, diesEntre, dataProposadaProrroga, situacioEstada } from './prorroga';
+import { situacioProrroga, estatProrroga, diesEntre, dataProposadaProrroga, situacioEstada, recordatoriSortida } from './prorroga';
+
+describe('dies triats a mà', () => {
+  const b = { entrada: '2026-11-02', sortida: '2026-12-02', estat: 'PER_PREGUNTAR' as const, aplacatFins: null, teAmpliacio: false };
+  it('el dia per preguntar triat mana sobre el proposat', () => {
+    expect(situacioEstada(b, '2026-11-14')).toBe('TOCA');
+    expect(situacioEstada({ ...b, preguntarEl: '2026-11-20' }, '2026-11-14')).toBe('PER_PREGUNTAR');
+    expect(situacioEstada({ ...b, preguntarEl: '2026-11-10' }, '2026-11-10')).toBe('TOCA');
+  });
+  it('recordatori de sortida: per defecte el dia abans; un altre si es tria un dia posterior', () => {
+    expect(recordatoriSortida('2026-12-02', null, null)).toEqual({ dia: '2026-12-01', pendent: true, triat: false });
+    expect(recordatoriSortida('2026-12-02', '2026-11-28', null)).toEqual({ dia: '2026-11-28', pendent: true, triat: true });
+    // Enviat el 28: ja no en queda cap de pendent…
+    expect(recordatoriSortida('2026-12-02', '2026-11-28', '2026-11-28').pendent).toBe(false);
+    // …fins que se'n tria un altre per al dia abans.
+    expect(recordatoriSortida('2026-12-02', '2026-12-01', '2026-11-28')).toEqual({ dia: '2026-12-01', pendent: true, triat: true });
+    // Un dia triat després de la sortida no compta.
+    expect(recordatoriSortida('2026-12-02', '2026-12-05', null).dia).toBe('2026-12-01');
+  });
+});
 
 const d = (iso: string) => new Date(`${iso}T00:00:00`);
 const avui = d('2026-10-25');

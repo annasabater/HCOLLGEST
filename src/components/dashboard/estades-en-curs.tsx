@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BedDouble, ChevronDown, ChevronUp, ExternalLink, MessageCircle, X } from 'lucide-react';
+import { BedDouble, ChevronDown, ChevronUp, ExternalLink, MessageCircle, Pencil, Plus, X } from 'lucide-react';
 import { ApiError, delJSON, postJSON } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -124,19 +124,80 @@ interface Item {
   dot: string;
   futur?: boolean;
   event?: EventProrroga;
+  /** Es pot canviar el dia (preguntar / recordatori de sortida). */
+  edita?: QuinDia;
+  triat?: boolean;
+}
+
+type QuinDia = 'preguntar' | 'recordatori';
+
+/** Selector de dia en línia: «Desa», «Com abans» (si l'havies triat) i «Cancel·la». */
+function TriaDia({
+  inicial,
+  min,
+  max,
+  triat,
+  busy,
+  onDesa,
+  onTanca,
+  text = 'Desa',
+}: {
+  inicial: string;
+  min: string;
+  max: string;
+  triat?: boolean;
+  busy: boolean;
+  onDesa: (dia: string | null) => void;
+  onTanca: () => void;
+  text?: string;
+}) {
+  const [dia, setDia] = useState(inicial < min ? min : inicial > max ? max : inicial);
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+      <Input
+        type="date"
+        value={dia}
+        min={min}
+        max={max}
+        onChange={(ev) => setDia(ev.target.value)}
+        className="h-8 w-40"
+        aria-label="Dia"
+      />
+      <Button size="sm" disabled={busy || !dia} onClick={() => onDesa(dia)}>
+        {text}
+      </Button>
+      {triat && (
+        <Button size="sm" variant="ghost" disabled={busy} onClick={() => onDesa(null)}>
+          Com abans
+        </Button>
+      )}
+      <Button size="sm" variant="ghost" onClick={onTanca}>
+        Cancel·la
+      </Button>
+    </div>
+  );
 }
 
 function Historial({
   e,
   avui,
   onTreu,
+  onDia,
   busy,
 }: {
   e: EstadaEnCurs;
   avui: string;
   onTreu: (x: EventProrroga) => void;
+  onDia: (quin: QuinDia, dia: string | null) => Promise<boolean>;
   busy: boolean;
 }) {
+  const [editant, setEditant] = useState<QuinDia | null>(null);
+  const desa = async (quin: QuinDia, dia: string | null) => {
+    if (await onDia(quin, dia)) setEditant(null);
+  };
+  // Es pot triar des d'avui (o l'entrada del tram) fins a la sortida.
+  const minDia = avui;
+  const maxDia = e.sortida;
   const decidit = e.situacio === 'ALLARGA' || e.situacio === 'MARXA';
   const items: Item[] = [
     {
@@ -161,22 +222,32 @@ function Historial({
       dia: e.dataProposada,
       t:
         avui >= e.dataProposada
-          ? 'Et proposo preguntar-li ja'
-          : `Et proposaré preguntar-li el ${dc(e.dataProposada)}`,
+          ? e.preguntarTriat
+            ? 'Toca preguntar-li (dia triat)'
+            : 'Et proposo preguntar-li ja'
+          : e.preguntarTriat
+            ? `Preguntar-li el ${dc(e.dataProposada)} (dia triat)`
+            : `Et proposaré preguntar-li el ${dc(e.dataProposada)}`,
       m: 'Ho pots fer abans o després, quan vulguis',
       dot: 'bg-white ring-2 ring-amber-500',
       futur: true,
+      edita: 'preguntar',
+      triat: e.preguntarTriat,
     });
   }
-  if (!e.recordatoriEnviat && e.situacio !== 'ALLARGA') {
-    const dia = sumaDiesDia(e.sortida, -1) < avui ? avui : sumaDiesDia(e.sortida, -1);
+  if (e.recordatoriPendent && e.situacio !== 'ALLARGA') {
+    const dia = e.recordatoriDia < avui ? avui : e.recordatoriDia;
     items.push({
       key: 'recordatori',
       dia,
-      t: 'Recordatori de sortida',
-      m: 'El dia abans de marxar',
+      t: e.recordatoriEnviat ? 'Un altre recordatori de sortida' : 'Recordatori de sortida',
+      m: e.recordatoriTriat
+        ? `${diesEntreDies(e.recordatoriDia, e.sortida) === 1 ? 'El dia abans' : `${diesEntreDies(e.recordatoriDia, e.sortida)} dies abans`} (dia triat)`
+        : 'El dia abans de marxar',
       dot: 'bg-white ring-2 ring-stone-300',
       futur: true,
+      edita: 'recordatori',
+      triat: e.recordatoriTriat,
     });
   }
   items.push({ key: 'sortida', dia: e.sortida, t: 'Sortida', dot: 'bg-slate-800', futur: true });
@@ -222,9 +293,52 @@ function Historial({
               )}
             </p>
             {i.m && <p className="text-sm text-slate-600">{i.m}</p>}
+            {i.edita &&
+              (editant === i.edita ? (
+                <TriaDia
+                  inicial={i.dia}
+                  min={minDia}
+                  max={maxDia}
+                  triat={i.triat}
+                  busy={busy}
+                  onDesa={(d) => desa(i.edita!, d)}
+                  onTanca={() => setEditant(null)}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditant(i.edita!)}
+                  className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline"
+                >
+                  <Pencil className="h-3 w-3" /> Canvia el dia
+                </button>
+              ))}
           </div>
         </li>
       ))}
+      {!e.recordatoriPendent && e.situacio !== 'ALLARGA' && e.sortida > avui && (
+        <li className="pl-7">
+          {editant === 'recordatori' ? (
+            <TriaDia
+              inicial={sumaDiesDia(e.sortida, -1)}
+              min={minDia}
+              max={maxDia}
+              busy={busy}
+              text="Programa’l"
+              onDesa={(d) => desa('recordatori', d)}
+              onTanca={() => setEditant(null)}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setEditant('recordatori')}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline"
+            >
+              <Plus className="h-3 w-3" /> Programar un altre recordatori de sortida
+            </button>
+          )}
+        </li>
+      )}
     </ol>
   );
 }
@@ -242,6 +356,8 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
   const [filtre, setFiltre] = useState<Filtre>('totes');
   const [composer, setComposer] = useState<{ id: string; missatge: MissatgeProrroga } | null>(null);
   const [nota, setNota] = useState('');
+  // «Aplaça fins al…»: selector de dia obert.
+  const [aplacaDia, setAplacaDia] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Plegat o desplegat (es recorda en aquest navegador).
@@ -268,20 +384,25 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
   );
   const perDecidir = estades.filter((e) => !decidida(e)).length;
 
-  async function accio(id: string, body: Record<string, unknown>) {
+  async function accio(id: string, body: Record<string, unknown>): Promise<boolean> {
     setBusy(id);
     setError(null);
     try {
       await postJSON(`/api/estancies/${id}/prorroga`, body);
       setComposer(null);
+      setAplacaDia(false);
       if (body.accio === 'NOTA') setNota('');
       router.refresh();
+      return true;
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No s’ha pogut desar');
+      return false;
     } finally {
       setBusy(null);
     }
   }
+  const canviaDia = (id: string) => (quin: 'preguntar' | 'recordatori', dia: string | null) =>
+    accio(id, { accio: quin === 'preguntar' ? 'DIA_PREGUNTAR' : 'DIA_RECORDATORI', dia });
   async function treu(id: string, x: EventProrroga) {
     setBusy(id);
     setError(null);
@@ -381,7 +502,7 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                 ? `Contracte ${e.numContracte}`
                 : 'Sense titular';
             const esObert = obert === e.id;
-            const falta = !e.recordatoriEnviat && e.diesFalten <= 1 && e.situacio !== 'ALLARGA';
+            const falta = e.recordatoriPendent && avui >= e.recordatoriDia && e.situacio !== 'ALLARGA';
             const ambAmpliacio = e.situacio === 'ALLARGA' && e.estat !== 'SI';
             return (
               <div key={e.id} className="border-t border-stone-100">
@@ -392,6 +513,7 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                     setObert(esObert ? null : e.id);
                     setComposer(null);
                     setNota('');
+                    setAplacaDia(false);
                   }}
                   className="grid w-full grid-cols-[44px_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 px-4 py-3 text-left hover:bg-stone-50 sm:grid-cols-[52px_minmax(0,1fr)_auto] sm:gap-x-4 sm:px-5"
                 >
@@ -444,6 +566,7 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                         avui={avui}
                         busy={busy === e.id}
                         onTreu={(x) => treu(e.id, x)}
+                        onDia={canviaDia(e.id)}
                       />
                     </div>
                     <div className="grid content-start gap-2.5 rounded-xl bg-stone-50 p-3.5">
@@ -526,22 +649,50 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                                     Treu l’aplaçament
                                   </Button>
                                 ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    disabled={busy === e.id}
-                                    onClick={() =>
-                                      accio(e.id, {
-                                        accio: 'APLACA',
-                                        dies: 3,
-                                        detall: `Torna a sortir el ${dc(sumaDiesDia(avui, 3))}`,
-                                      })
-                                    }
-                                  >
-                                    Recorda-m’ho en 3 dies
-                                  </Button>
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      disabled={busy === e.id}
+                                      onClick={() =>
+                                        accio(e.id, {
+                                          accio: 'APLACA',
+                                          dies: 3,
+                                          detall: `Torna a sortir el ${dc(sumaDiesDia(avui, 3))}`,
+                                        })
+                                      }
+                                    >
+                                      Recorda-m’ho en 3 dies
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      disabled={busy === e.id}
+                                      onClick={() => setAplacaDia(true)}
+                                    >
+                                      Aplaça fins al…
+                                    </Button>
+                                  </>
                                 ))}
                             </div>
+                          )}
+                          {aplacaDia && !decidida(e) && e.situacio !== 'APLACAT' && (
+                            <TriaDia
+                              inicial={sumaDiesDia(avui, 3)}
+                              min={sumaDiesDia(avui, 1)}
+                              max={e.sortida}
+                              busy={busy === e.id}
+                              text="Aplaça"
+                              onDesa={(d) =>
+                                d &&
+                                accio(e.id, {
+                                  accio: 'APLACA',
+                                  fins: d,
+                                  detall: `Torna a sortir el ${dc(d)}`,
+                                })
+                              }
+                              onTanca={() => setAplacaDia(false)}
+                            />
                           )}
                           {e.situacio === 'ALLARGA' && (
                             <p className="text-xs text-slate-600">
