@@ -9,7 +9,28 @@ import {
   zonesComunesTxt,
   PLANTILLA_NETEJA,
   HORA_NETEJA_TXT,
+  quanSortida,
+  adaptaQuanAntic,
 } from './plantilles';
+
+describe('quanSortida', () => {
+  it('avui, demà o el dia amb el dia de la setmana', () => {
+    expect(quanSortida(0, '2026-12-02', 'ca')).toBe('avui');
+    expect(quanSortida(1, '2026-12-02', 'es')).toBe('mañana');
+    expect(quanSortida(3, '2026-12-02', 'es')).toBe('el miércoles 2 de diciembre');
+    expect(quanSortida(3, '2026-12-02', 'ca')).toBe('el dimecres 2 de desembre');
+  });
+});
+
+describe('adaptaQuanAntic', () => {
+  it('canvia el «mañana» d’una plantilla desada si la sortida no és demà', () => {
+    expect(adaptaQuanAntic('Recordarle que mañana debe dejar', 'el miércoles 2', 'es')).toBe(
+      'Recordarle que el miércoles 2 debe dejar',
+    );
+    expect(adaptaQuanAntic('que mañana debe', 'mañana', 'es')).toBe('que mañana debe');
+    expect(adaptaQuanAntic('que {quan} debe', 'hoy', 'es')).toBe('que {quan} debe');
+  });
+});
 
 describe('fillTemplate', () => {
   it('substitueix les claus', () => {

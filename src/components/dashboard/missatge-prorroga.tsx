@@ -14,6 +14,8 @@ import {
   MISSATGES_PRORROGA,
   MISSATGE_PRORROGA_LABELS,
   PLANTILLA_PRORROGA,
+  quanSortida,
+  adaptaQuanAntic,
   type Lang,
   type MissatgeProrroga,
 } from '@/lib/plantilles';
@@ -26,6 +28,8 @@ function lsGet(key: string, def: string): string {
 export interface EstadaMissatge {
   id: string;
   sortida: string; // YYYY-MM-DD
+  /** Dies que falten per a la sortida (0 = avui). */
+  diesFalten: number;
   idioma: string | null;
   numViatgers: number;
   viatgers: { nom: string; cognom1: string; telefon: string | null; esMenor: boolean }[];
@@ -63,9 +67,14 @@ export function MissatgeProrrogaComposer({
   const [dest, setDest] = useState(0);
   const v = adults[dest] ?? null;
 
-  const genera = (m: MissatgeProrroga, l: Lang) =>
-    ajustaSalutacio(
-      fillTemplate(lsGet(`plantilla_prorroga_${m}_${l}`, PLANTILLA_PRORROGA[m][l]), {
+  const esSortida = (m: MissatgeProrroga) => m === 'sortidaGrup' || m === 'sortidaUna';
+  const genera = (m: MissatgeProrroga, l: Lang) => {
+    const quan = quanSortida(estada.diesFalten, estada.sortida, l);
+    let tpl = lsGet(`plantilla_prorroga_${m}_${l}`, PLANTILLA_PRORROGA[m][l]);
+    if (esSortida(m)) tpl = adaptaQuanAntic(tpl, quan, l);
+    return ajustaSalutacio(
+      fillTemplate(tpl, {
+        quan,
         salutacio: salutacio(l),
         nom: v?.nom ?? '',
         hora: lsGet('prorroga_hora', '15:00'),
@@ -74,6 +83,7 @@ export function MissatgeProrrogaComposer({
       }),
       l,
     );
+  };
   const [text, setText] = useState(() => genera(inicial, langDe(estada)));
   const regenera = (m: MissatgeProrroga, l: Lang) => {
     setMissatge(m);
@@ -85,7 +95,13 @@ export function MissatgeProrrogaComposer({
   function envia() {
     if (!v || !enviaWhatsApp(v.telefon, text, `${v.nom} ${v.cognom1}`)) return;
     const idioma = LANGS.find((l) => l.code === lang)?.label.toLowerCase() ?? lang;
-    const parts = [`Per WhatsApp a ${v.nom}`, `en ${idioma}`, missatge === 'pregunta' ? `reserva ${importe}` : null];
+    const quanTxt = estada.diesFalten <= 0 ? 'el mateix dia' : estada.diesFalten === 1 ? 'el dia abans' : `${estada.diesFalten} dies abans`;
+    const parts = [
+      `Per WhatsApp a ${v.nom}`,
+      `en ${idioma}`,
+      missatge === 'pregunta' ? `reserva ${importe}` : null,
+      esSortida(missatge) ? quanTxt : null,
+    ];
     onEnviat({ missatge, detall: parts.filter(Boolean).join(' · ') });
   }
 

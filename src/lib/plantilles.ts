@@ -27,8 +27,9 @@ export const PLANTILLA_HOSTE: Record<Lang, string> = {
 
 /**
  * Missatges de pròrroga i sortida (variables {salutacio} {nom} {hora} {import}
- * {sortida}). `sortidaGrup` / `sortidaUna`: recordatori del dia abans, segons si
- * a l'habitació hi ha diverses persones o una.
+ * {sortida} {quan}). `sortidaGrup` / `sortidaUna`: recordatori de sortida (el dia
+ * abans o uns dies abans; {quan} = «demà» / «el dimecres 2 de desembre»), segons
+ * si a l'habitació hi ha diverses persones o una.
  */
 export const MISSATGES_PRORROGA = ['pregunta', 'noContesta', 'sortidaGrup', 'sortidaUna'] as const;
 export type MissatgeProrroga = (typeof MISSATGES_PRORROGA)[number];
@@ -54,18 +55,51 @@ export const PLANTILLA_PRORROGA: Record<MissatgeProrroga, Record<Lang, string>> 
     en: '{salutacio},\nAs I have not received a reply from you, I understand that you are not interested in extending your stay or keeping the room any longer. Therefore, you will need to leave the room on {sortida} before 11:00.\nRegards.',
   },
   sortidaGrup: {
-    ca: '{salutacio},\nLes recordo que demà han de deixar l’habitació abans de les 11:00 h.\nDeixin les claus al lloc que vam acordar.\nUna salutació.',
-    es: '{salutacio},\nRecordarles que mañana deben dejar la habitación antes de las 11:00 h.\nDejen las llaves en el lugar que acordamos.\nUn saludo.',
-    fr: '{salutacio},\nJe vous rappelle que demain vous devez libérer la chambre avant 11 h.\nLaissez les clés à l’endroit convenu.\nCordialement.',
-    en: '{salutacio},\nThis is a reminder that tomorrow you need to leave the room before 11:00.\nPlease leave the keys in the place we agreed.\nKind regards.',
+    ca: '{salutacio},\nLes recordo que {quan} han de deixar l’habitació abans de les 11:00 h.\nDeixin les claus al lloc que vam acordar.\nUna salutació.',
+    es: '{salutacio},\nRecordarles que {quan} deben dejar la habitación antes de las 11:00 h.\nDejen las llaves en el lugar que acordamos.\nUn saludo.',
+    fr: '{salutacio},\nJe vous rappelle que {quan} vous devez libérer la chambre avant 11 h.\nLaissez les clés à l’endroit convenu.\nCordialement.',
+    en: '{salutacio},\nThis is a reminder that {quan} you need to leave the room before 11:00.\nPlease leave the keys in the place we agreed.\nKind regards.',
   },
   sortidaUna: {
-    ca: '{salutacio},\nLi recordo que demà ha de deixar l’habitació abans de les 11:00 h.\nSi fos tan amable de desendollar la nevera i el microones i tancar la porta de l’habitació amb clau.\nDeixi les claus en un dels calaixos del moble del passadís.\nMoltes gràcies.',
-    es: '{salutacio},\nRecordarle que mañana debe dejar la habitación antes de las 11:00 h.\nSi fuera tan amable de desenchufar la nevera y el microondas y cerrar la puerta de la habitación con llave.\nDeje las llaves en uno de los cajones del mueble del pasillo.\nMuchas gracias.',
-    fr: '{salutacio},\nJe vous rappelle que demain vous devez libérer la chambre avant 11 h.\nPourriez-vous débrancher le réfrigérateur et le micro-ondes et fermer la porte de la chambre à clé ?\nLaissez les clés dans l’un des tiroirs du meuble du couloir.\nMerci beaucoup.',
-    en: '{salutacio},\nThis is a reminder that tomorrow you need to leave the room before 11:00.\nCould you please unplug the fridge and the microwave and lock the room door?\nLeave the keys in one of the drawers of the hallway cabinet.\nThank you very much.',
+    ca: '{salutacio},\nLi recordo que {quan} ha de deixar l’habitació abans de les 11:00 h.\nSi fos tan amable de desendollar la nevera i el microones i tancar la porta de l’habitació amb clau.\nDeixi les claus en un dels calaixos del moble del passadís.\nMoltes gràcies.',
+    es: '{salutacio},\nRecordarle que {quan} debe dejar la habitación antes de las 11:00 h.\nSi fuera tan amable de desenchufar la nevera y el microondas y cerrar la puerta de la habitación con llave.\nDeje las llaves en uno de los cajones del mueble del pasillo.\nMuchas gracias.',
+    fr: '{salutacio},\nJe vous rappelle que {quan} vous devez libérer la chambre avant 11 h.\nPourriez-vous débrancher le réfrigérateur et le micro-ondes et fermer la porte de la chambre à clé ?\nLaissez les clés dans l’un des tiroirs du meuble du couloir.\nMerci beaucoup.',
+    en: '{salutacio},\nThis is a reminder that {quan} you need to leave the room before 11:00.\nCould you please unplug the fridge and the microwave and lock the room door?\nLeave the keys in one of the drawers of the hallway cabinet.\nThank you very much.',
   },
 };
+
+const QUAN_TXT: Record<Lang, { avui: string; dema: string; dia: string; locale: string }> = {
+  ca: { avui: 'avui', dema: 'demà', dia: 'el', locale: 'ca-ES' },
+  es: { avui: 'hoy', dema: 'mañana', dia: 'el', locale: 'es-ES' },
+  fr: { avui: 'aujourd’hui', dema: 'demain', dia: 'le', locale: 'fr-FR' },
+  en: { avui: 'today', dema: 'tomorrow', dia: 'on', locale: 'en-GB' },
+};
+
+/**
+ * Valor de {quan} al recordatori de sortida, segons quants dies falten:
+ * «avui», «demà» o, si és més endavant, «el dimecres 2 de desembre».
+ */
+export function quanSortida(diesFalten: number, sortida: string, lang: Lang): string {
+  const t = QUAN_TXT[lang];
+  if (diesFalten <= 0) return t.avui;
+  if (diesFalten === 1) return t.dema;
+  const d = new Date(`${sortida}T12:00:00Z`);
+  const dia = d.toLocaleDateString(t.locale, { weekday: 'long', timeZone: 'UTC' });
+  const data = d.toLocaleDateString(t.locale, { day: 'numeric', month: 'long', timeZone: 'UTC' });
+  return `${t.dia} ${dia} ${data}`;
+}
+
+/**
+ * Plantilles desades abans de {quan} porten «demà» escrit: si la sortida no és
+ * demà, el canvia pel dia que toca (només la primera vegada que surt).
+ */
+export function adaptaQuanAntic(tpl: string, quan: string, lang: Lang): string {
+  if (tpl.includes('{quan}')) return tpl;
+  const dema = QUAN_TXT[lang].dema;
+  if (quan === dema) return tpl;
+  const i = tpl.toLowerCase().indexOf(dema.toLowerCase());
+  return i < 0 ? tpl : tpl.slice(0, i) + quan + tpl.slice(i + dema.length);
+}
 
 /** Data de sortida en text per al missatge («12 de noviembre», «12 November»…). */
 export function dataLlarga(d: Date, lang: Lang): string {

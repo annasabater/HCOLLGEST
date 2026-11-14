@@ -212,7 +212,7 @@ function ProrrogaCard() {
           </div>
         ))}
         <p className="text-xs text-slate-400">
-          Variables: {'{salutacio}'} (bon dia / bona tarda / bona nit segons l’hora) {'{nom}'} {'{hora}'} {'{import}'} {'{sortida}'}. Es desa al navegador.
+          Variables: {'{salutacio}'} (bon dia / bona tarda / bona nit segons l’hora) {'{nom}'} {'{hora}'} {'{import}'} {'{sortida}'} {'{quan}'} (al recordatori de sortida: «demà» o, si l’envies uns dies abans, «el dimecres 2 de desembre»). Es desa al navegador.
         </p>
       </div>
     </CollapsibleCard>
