@@ -1,9 +1,6 @@
-import React from 'react';
 import Link from 'next/link';
 import {
-  AlertTriangle, LogIn, LogOut,
-  Wrench, CalendarClock, ShieldAlert,
-  Sparkles, TrendingUp, ChevronRight, Bell,
+  AlertTriangle, LogIn, LogOut, ShieldAlert, Sparkles, Bell,
 } from 'lucide-react';
 import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
 import { esNomesLectura } from '@/lib/auth/restriccions';
@@ -42,15 +39,6 @@ function Initials({ nom }: { nom: string }) {
   );
 }
 
-const colorMap = {
-  amber:   { bg: 'bg-amber-50',   icon: 'bg-amber-100 text-amber-700',   border: 'border-amber-200',   num: 'text-amber-800'   },
-  violet:  { bg: 'bg-violet-50',  icon: 'bg-violet-100 text-violet-700',  border: 'border-violet-200',  num: 'text-violet-800'  },
-  red:     { bg: 'bg-red-50',     icon: 'bg-red-100 text-red-700',        border: 'border-red-200',     num: 'text-red-800'     },
-  emerald: { bg: 'bg-emerald-50', icon: 'bg-emerald-100 text-emerald-700',border: 'border-emerald-200', num: 'text-emerald-800' },
-  orange:  { bg: 'bg-orange-50',  icon: 'bg-orange-100 text-orange-700',  border: 'border-orange-200',  num: 'text-orange-800'  },
-  sky:     { bg: 'bg-sky-50',     icon: 'bg-sky-100 text-sky-700',        border: 'border-sky-200',     num: 'text-sky-800'     },
-} as const;
-
 export default async function DashboardPage() {
   const user = await getSessionUser();
   const resum = await getResum({ excloureMetodeAltres: teVistaRestringida(user) });
@@ -59,8 +47,6 @@ export default async function DashboardPage() {
   const isAdmin = user?.role === 'ADMIN';
   const canWrite = user ? hasRole(user.role, ROLES_WRITE) : false;
   const recordatoris = esNomesLectura(user) ? [] : await recordatorisAra();
-
-  type ColorKey = keyof typeof colorMap;
 
   // Llistes accionables per als 3 avisos desplegables (persones pendents).
   const itemsMossos: AvisItem[] = resum.pendentsEnviament.map((e) => ({
@@ -133,10 +119,6 @@ export default async function DashboardPage() {
   const itemsFitxesVis = senseAmagats(itemsFitxes);
   const itemsFixesVis = senseAmagats(itemsFixes);
   const itemsCobrarVis = senseAmagats(itemsCobrar);
-
-  const alertes: { label: string; value: number; icon: React.ElementType; ok: boolean; href: string; color: ColorKey }[] = [
-    { label: 'Serveis/renovacions pròximes',value: resum.alertes.serveisProxims,      icon: Wrench,      ok: resum.alertes.serveisProxims === 0,        href: '/serveis',                 color: 'sky'     },
-  ];
 
   return (
     <div className="space-y-6">
@@ -239,29 +221,6 @@ export default async function DashboardPage() {
         {isAdmin && (
           <TargetaAvis label="Estades a facturar" ok={itemsFacturarVis.length === 0} color="emerald" iconKey="Receipt" items={itemsFacturarVis} />
         )}
-        {alertes.map((a) => {
-          const Icon = a.icon;
-          const c = colorMap[a.color];
-          return (
-            <Link key={a.label} href={a.href} className="group">
-              <div className={`flex items-center gap-4 rounded-2xl border p-4 transition-all hover:shadow-md ${a.ok ? 'border-slate-200 bg-white' : `${c.border} ${c.bg}`}`}>
-                <div className={`rounded-xl p-2.5 ${a.ok ? 'bg-slate-100 text-slate-400' : c.icon}`}>
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-2xl font-bold leading-none ${a.ok ? 'text-slate-700' : c.num}`}>{a.value}</p>
-                  <p className="mt-1 text-xs text-slate-500 leading-tight">{a.label}</p>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  {a.ok
-                    ? <span className="text-xs font-semibold text-green-600">✓ OK</span>
-                    : <span className="flex items-center gap-0.5 text-xs font-semibold text-amber-600"><TrendingUp className="h-3 w-3" /> Atenció</span>}
-                  <ChevronRight className="h-4 w-4 text-slate-300 transition-colors group-hover:text-brand-500" />
-                </div>
-              </div>
-            </Link>
-          );
-        })}
       </div>
 
       {/* Entrades / Sortides */}
@@ -315,30 +274,6 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Serveis pròxims */}
-      {resum.serveisProxims.length > 0 && (
-        <Card>
-          <CardHeader className="flex items-center gap-2">
-            <div className="rounded-lg bg-amber-100 p-1.5"><CalendarClock className="h-4 w-4 text-amber-700" /></div>
-            <CardTitle>Serveis i renovacions pròximes <span className="text-sm font-normal text-slate-400">(30 dies)</span></CardTitle>
-          </CardHeader>
-          <CardBody className="space-y-0.5 p-3">
-            {resum.serveisProxims.map((s) => (
-              <Link key={s.id} href="/serveis"
-                className="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm hover:bg-slate-50">
-                <span className="font-medium text-slate-800">
-                  {s.activitat}
-                  {s.proveidor ? <span className="text-slate-400"> · {s.proveidor}</span> : null}
-                </span>
-                <span className="flex items-center gap-2">
-                  {s.import != null && <span className="font-medium text-slate-600">{formatEur(s.import)}</span>}
-                  <Badge tone={s.vencut ? 'danger' : 'warning'}>{formatDate(s.properaData)}</Badge>
-                </span>
-              </Link>
-            ))}
-          </CardBody>
-        </Card>
-      )}
     </div>
   );
 }
