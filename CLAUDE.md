@@ -173,8 +173,10 @@ Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
 - **Repartir per mesos un pagament ja fet** (sense tocar la factura): botó «Repartir per mesos» a cada
   pagament de l'estada (`components/factura/repartir-pagament.tsx`, `PUT/GET /api/cobraments/:id/periodes`) i
   pàgina `/balanc/repartir` (avís al Balanç) amb els pagaments d'estades de >1 mes sense repartir i
-  «Reparteix-ne N automàticament» (`services/repartiment-cobraments.ts`). Automàtic només si l'estada té un
-  sol pagament o ≤31 nits (cada pròrroga és una estada); si no, a mà. Canviar l'import d'un pagament en
+  «Reparteix-ne N automàticament» (`services/repartiment-cobraments.ts`). **Sempre automàtic, sense preguntar**
+  (decisió de l'Anna): ≤31 nits o pagament de tota l'estada → per nits de cada mes; estada llarga pagada a
+  trossos → cada pagament cobreix les nits següents a les dels anteriors (`periodesCoberts` a `lib/repartiment.ts`,
+  preu = max(calculadora, pagat+previstos), o el pagat si l'estada ja ha acabat). Editar l'import el refà sol. Canviar l'import d'un pagament en
   treu el repartiment. Només afecta Balanç/tauler; el llibre d'IVA va per la data de la factura.
 - **Recordatoris + WhatsApp** (`/recordatoris`, model `Recordatori`; ≠ `Avis`, que és la llista de no admissió):
   data, «es repeteix» (un cop / cada N setmanes-mesos-anys), dies d'avís. Surten al tauler des del primer avís

@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { audit } from '@/lib/audit';
 import { PeriodeInputSchema } from '@/lib/validation/factura';
-import { nitsPerMes, ocupaMesDunMes, resumNitsPerMes } from '@/lib/repartiment';
+import { nitsPerMes, ocupaMesDunMes, periodesCoberts, resumNitsPerMes } from '@/lib/repartiment';
 import { proposaPeriodesPerMes, type PropostaPeriodes } from './calcul-preu';
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -140,7 +140,6 @@ export async function pagamentsPerRepartir(
     if (!ocupaMesDunMes(entrada, sortida)) continue;
     const h = e.viatgers[0]?.huesped;
     const n = perEstada.get(c.estanciaId) ?? 1;
-    const nits = nitsPerMes(entrada, sortida).reduce((a, m) => a + m.nits, 0);
     out.push({
       id: c.id,
       estanciaId: c.estanciaId,
@@ -156,7 +155,9 @@ export async function pagamentsPerRepartir(
       // nova): els pagaments són parts de la mateixa mensualitat i repartir-los per
       // nits és correcte. Estada llarga + diversos pagaments → cadascun pot ser d'un
       // mes diferent: a mà.
-      automatic: n === 1 || nits <= NITS_MAX_AUTOMATIC,
+      // Tots es reparteixen sols: els d'estades llargues pagades a trossos, per les
+      // nits que cobreix cada pagament (`repartimentAutomaticNou`).
+      automatic: true,
       pagamentsEstada: n,
     });
   }
@@ -174,13 +175,46 @@ export async function pagamentsPerRepartir(
 }
 
 /**
+ * Estada llarga pagada a trossos: quines nits cobreix aquest pagament. Els
+ * pagaments d'allotjament de l'estada cobreixen les nits per ordre (data de
+ * cobrament); el preu de l'estada és el més gran entre la calculadora i el que
+ * s'ha pactat (pagat + pagaments previstos pendents).
+ */
+async function periodesSeguents(
+  cobramentId: string,
+  estanciaId: string,
+  entrada: string,
+  sortida: string,
+  importPagament: number,
+  calculadoraTotal: number,
+) {
+  const [cobs, previstos] = await Promise.all([
+    prisma.cobrament.findMany({
+      where: { estanciaId, concepte: 'ALLOTJAMENT', import: { gt: 0 } },
+      orderBy: [{ data: 'asc' }, { createdAt: 'asc' }],
+      select: { id: true, import: true },
+    }),
+    prisma.pagamentPrevist.aggregate({ where: { estanciaId, pagat: false }, _sum: { import: true } }),
+  ]);
+  const pagatTot = cobs.reduce((a, x) => a + Number(x.import), 0);
+  const idx = cobs.findIndex((x) => x.id === cobramentId);
+  const pagatAbans = cobs.slice(0, Math.max(idx, 0)).reduce((a, x) => a + Number(x.import), 0);
+  const pendent = Number(previstos._sum.import ?? 0);
+  const pactat = pagatTot + pendent;
+  // Estada ja acabada i res pendent: el preu és el que s'ha pagat (cobreix tota l'estada).
+  const acabada = sortida <= new Date().toISOString().slice(0, 10) && pendent === 0;
+  const totalEstada = acabada ? pagatTot : Math.max(calculadoraTotal, pactat);
+  return periodesCoberts(entrada, sortida, totalEstada, pagatAbans, importPagament);
+}
+
+/**
  * En registrar un pagament nou d'allotjament d'una estada que passa d'un mes a
- * l'altre, el reparteix sol per nits (Balanç per dies). El Balanç de caixa no en
- * depèn. Regles:
- * - estada d'un mes com a molt (≤31 nits): sempre es reparteix;
- * - estada més llarga: només si el pagament cobreix tota l'estada (≥95% del que
- *   diu la calculadora). Si no, és un pagament d'un mes i es queda al mes que es
- *   cobra (que és el que cobreix).
+ * l'altre, el reparteix sol (Balanç per dies), sense preguntar. El Balanç de
+ * caixa no en depèn. Regles:
+ * - estada d'un mes com a molt (≤31 nits), o pagament de tota l'estada: per les
+ *   nits de cada mes (segons la calculadora);
+ * - estada més llarga pagada a trossos: cada pagament cobreix les nits següents a
+ *   les que ja cobrien els anteriors (`periodesCoberts`).
  * Mai fa fallar el registre del pagament: si no pot, el deixa sense repartir.
  */
 export async function repartimentAutomaticNou(
@@ -207,14 +241,21 @@ export async function repartimentAutomaticNou(
     if (!ocupaMesDunMes(entrada, sortida)) return false;
 
     const prop = await proposaPeriodesPerMes(c.estanciaId, total);
-    if (!prop.ok || prop.periodes.length < 2) return false;
     const nits = nitsPerMes(entrada, sortida).reduce((a, m) => a + m.nits, 0);
-    const cobreixTot = prop.calculadoraTotal > 0 && total >= prop.calculadoraTotal * 0.95;
-    if (nits > NITS_MAX_AUTOMATIC && !cobreixTot) return false;
+    const cobreixTot = prop.ok && prop.calculadoraTotal > 0 && total >= prop.calculadoraTotal * 0.95;
+    let periodes: { dataInici: string; dataFi: string; import: number }[];
+    if (prop.ok && prop.periodes.length >= 2 && (nits <= NITS_MAX_AUTOMATIC || cobreixTot)) {
+      periodes = prop.periodes;
+    } else {
+      // Estada llarga pagada a trossos: aquest pagament cobreix les nits que venen
+      // després de les que ja cobrien els anteriors.
+      periodes = await periodesSeguents(cobramentId, c.estanciaId, entrada, sortida, total, prop.ok ? prop.calculadoraTotal : 0);
+    }
+    if (periodes.length === 0) return false;
 
     await desaRepartiment(
       cobramentId,
-      { periodes: prop.periodes.map((x) => ({ dataInici: x.dataInici, dataFi: x.dataFi, import: x.import })) },
+      { periodes: periodes.map((x) => ({ dataInici: x.dataInici, dataFi: x.dataFi, import: x.import })) },
       actor,
       ip,
     );
@@ -227,22 +268,14 @@ export async function repartimentAutomaticNou(
 
 /** Reparteix tots els que es poden fer automàticament (estades d'un sol pagament). */
 export async function repartirTotsAutomatics(actor: { id: string } | null, ip: string | null) {
-  const llista = (await pagamentsPerRepartir()).filter((p) => p.automatic);
+  // Tots: els d'estades llargues pagades a trossos també (cada un, les nits que cobreix).
+  // Per ordre de cobrament, perquè cada un sàpiga què cobrien els anteriors.
+  const llista = (await pagamentsPerRepartir()).sort((a, b) => a.data.localeCompare(b.data));
   let fets = 0;
   const errors: string[] = [];
   for (const p of llista) {
-    const prop = await proposaPeriodesPerMes(p.estanciaId, p.import);
-    if (!prop.ok || prop.periodes.length < 2) {
-      errors.push(`${p.titular}: ${prop.error ?? 'no s’ha pogut proposar'}`);
-      continue;
-    }
-    await desaRepartiment(
-      p.id,
-      { periodes: prop.periodes.map((x) => ({ dataInici: x.dataInici, dataFi: x.dataFi, import: x.import })) },
-      actor,
-      ip,
-    );
-    fets++;
+    if (await repartimentAutomaticNou(p.id, actor, ip)) fets++;
+    else errors.push(`${p.titular}: no s’ha pogut repartir`);
   }
   return { fets, errors };
 }

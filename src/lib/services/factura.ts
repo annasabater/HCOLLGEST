@@ -438,7 +438,7 @@ export async function editCobrament(
 ) {
   const input = CobramentEditSchema.parse(raw);
 
-  return prisma.$transaction(async (tx) => {
+  const res = await prisma.$transaction(async (tx) => {
     const existing = await tx.cobrament.findUnique({ where: { id: cobramentId } });
     if (!existing) throw new Error('Validación fallida: cobrament no trobat');
 
@@ -454,8 +454,9 @@ export async function editCobrament(
     const cobrament = await tx.cobrament.update({ where: { id: cobramentId }, data });
 
     // Si canvia l'import, el repartiment per mesos que tenia ja no quadra: es treu
-    // (torna a comptar sencer el dia del cobrament i surt a «Pagaments per repartir»).
-    if (input.import !== undefined && Number(cobrament.import) !== Number(existing.import)) {
+    // i, fora de la transacció, es torna a fer sol amb l'import nou.
+    const canviaImport = input.import !== undefined && Number(cobrament.import) !== Number(existing.import);
+    if (canviaImport) {
       await tx.cobramentPeriode.deleteMany({ where: { cobramentId } });
     }
 
@@ -480,8 +481,10 @@ export async function editCobrament(
       tx,
     );
 
-    return { cobrament, estat };
+    return { cobrament, estat, canviaImport };
   });
+  if (res.canviaImport && Number(res.cobrament.import) > 0) await repartimentAutomaticNou(cobramentId, actor, ip);
+  return { cobrament: res.cobrament, estat: res.estat };
 }
 
 /**

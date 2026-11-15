@@ -124,16 +124,14 @@ export function RepartirPagament({
         </div>
       );
     }
+    // Es reparteix sol en desar el pagament: no es pregunta res. Si l'estada és d'un
+    // sol mes no cal; si no, només queda un enllaç discret per fer-ho a mà.
+    if (!multiMes) return null;
     return (
-      <div className="mt-1.5 flex flex-wrap items-center gap-2">
-        {multiMes && (
-          <span className="rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-900">
-            L’estada ocupa més d’un mes, però aquest pagament compta tot el dia que es va cobrar.
-          </span>
-        )}
-        <Button type="button" size="sm" variant="outline" onClick={obre} className="h-9 sm:h-8">
-          <CalendarRange className="h-4 w-4" /> Repartir per mesos
-        </Button>
+      <div className="mt-1 text-xs">
+        <button type="button" onClick={obre} className="inline-flex items-center gap-1 text-slate-400 underline hover:text-brand-700">
+          <CalendarRange className="h-3.5 w-3.5" /> Repartir per mesos
+        </button>
       </div>
     );
   }

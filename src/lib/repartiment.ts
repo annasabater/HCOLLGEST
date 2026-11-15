@@ -34,6 +34,70 @@ export function resumNitsPerMes(entradaISO: string, sortidaISO: string): string 
     .join(' · ');
 }
 
+export interface PeriodeCobert {
+  dataInici: string; // primera nit (ISO)
+  dataFi: string; // última nit (ISO)
+  nits: number;
+  import: number;
+}
+
+/**
+ * Quines nits paga un pagament quan l'estada es paga a trossos (p. ex. un cop al
+ * mes): els pagaments van cobrint les nits per ordre, des de l'entrada. `pagatAbans`
+ * és el que ja cobrien els pagaments anteriors; `totalEstada` el preu de tota
+ * l'estada (preu/nit = total / nits). El que passa del final va a l'última nit.
+ * Retorna els trossos per mes natural; la suma és exactament `importPagament`.
+ */
+export function periodesCoberts(
+  entradaISO: string,
+  sortidaISO: string,
+  totalEstada: number,
+  pagatAbans: number,
+  importPagament: number,
+): PeriodeCobert[] {
+  const mesos = nitsPerMes(entradaISO, sortidaISO);
+  const nitsTotal = mesos.reduce((a, m) => a + m.nits, 0);
+  if (nitsTotal <= 0 || totalEstada <= 0 || importPagament <= 0) return [];
+  const preuNit = totalEstada / nitsTotal;
+  const eps = 1e-9;
+  // Nits (fraccionàries) que cobreix: [ini, fi). Si se'n passa, s'enganxa al final.
+  let ini = Math.min(Math.max(pagatAbans, 0) / preuNit, nitsTotal - 1);
+  let fi = Math.min((Math.max(pagatAbans, 0) + importPagament) / preuNit, nitsTotal);
+  if (fi - ini < eps) {
+    ini = nitsTotal - 1;
+    fi = nitsTotal;
+  }
+  const dia = (n: number) => {
+    const d = new Date(`${entradaISO.slice(0, 10)}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
+  const out: PeriodeCobert[] = [];
+  let a = 0;
+  let pesTotal = 0;
+  const trossos: { ini: number; fi: number }[] = [];
+  for (const m of mesos) {
+    const b = a + m.nits;
+    const x = Math.max(ini, a);
+    const y = Math.min(fi, b);
+    if (y - x > eps) {
+      trossos.push({ ini: x, fi: y });
+      pesTotal += y - x;
+    }
+    a = b;
+  }
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  let assignat = 0;
+  trossos.forEach((t, i) => {
+    const imp = i === trossos.length - 1 ? r2(importPagament - assignat) : r2((importPagament * (t.fi - t.ini)) / pesTotal);
+    assignat = r2(assignat + imp);
+    const primera = Math.floor(t.ini + eps);
+    const ultima = Math.max(primera, Math.ceil(t.fi - eps) - 1);
+    out.push({ dataInici: dia(primera), dataFi: dia(ultima), nits: ultima - primera + 1, import: imp });
+  });
+  return out;
+}
+
 /** Mes natural d'una data ISO ("2026-10-28" → "2026-10"). */
 export const mesDe = (iso: string) => iso.slice(0, 7);
 

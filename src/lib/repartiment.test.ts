@@ -1,5 +1,44 @@
 import { describe, expect, it } from 'vitest';
-import { efecteAlBalanc, nitsPerMes, ocupaMesDunMes, resumNitsPerMes } from './repartiment';
+import { efecteAlBalanc, nitsPerMes, ocupaMesDunMes, periodesCoberts, resumNitsPerMes } from './repartiment';
+
+describe('periodesCoberts', () => {
+  // 15/10 → 15/12: 61 nits (17 oct, 30 nov, 14 des) a 10 €/nit = 610 €.
+  const [e, s, total] = ['2026-10-15', '2026-12-15', 610];
+
+  it('un pagament de tota l’estada es reparteix per les nits de cada mes', () => {
+    expect(periodesCoberts(e, s, total, 0, 610)).toEqual([
+      { dataInici: '2026-10-15', dataFi: '2026-10-31', nits: 17, import: 170 },
+      { dataInici: '2026-11-01', dataFi: '2026-11-30', nits: 30, import: 300 },
+      { dataInici: '2026-12-01', dataFi: '2026-12-14', nits: 14, import: 140 },
+    ]);
+  });
+
+  it('pagaments a trossos: cadascun cobreix les nits següents', () => {
+    const p1 = periodesCoberts(e, s, total, 0, 300); // 30 nits: 15/10–13/11
+    expect(p1).toEqual([
+      { dataInici: '2026-10-15', dataFi: '2026-10-31', nits: 17, import: 170 },
+      { dataInici: '2026-11-01', dataFi: '2026-11-13', nits: 13, import: 130 },
+    ]);
+    const p2 = periodesCoberts(e, s, total, 300, 310); // la resta
+    expect(p2).toEqual([
+      { dataInici: '2026-11-14', dataFi: '2026-11-30', nits: 17, import: 170 },
+      { dataInici: '2026-12-01', dataFi: '2026-12-14', nits: 14, import: 140 },
+    ]);
+  });
+
+  it('un pagament d’un sol mes queda tot en aquell mes', () => {
+    expect(periodesCoberts(e, s, total, 170, 300)).toEqual([
+      { dataInici: '2026-11-01', dataFi: '2026-11-30', nits: 30, import: 300 },
+    ]);
+  });
+
+  it('el que passa del preu va a l’última nit; la suma sempre és l’import', () => {
+    const p = periodesCoberts(e, s, total, 600, 50);
+    expect(p).toEqual([{ dataInici: '2026-12-14', dataFi: '2026-12-14', nits: 1, import: 50 }]);
+    const q = periodesCoberts(e, s, 100, 0, 333.33);
+    expect(q.reduce((a, x) => a + x.import, 0)).toBeCloseTo(333.33, 2);
+  });
+});
 
 describe('efecteAlBalanc', () => {
   it('treu del mes del cobrament i ho posa a cada mes de l’estada', () => {
