@@ -54,6 +54,9 @@ interface EfectiuRow {
   } | null;
 }
 
+/** Una ampliació que compta: si una estada en té, no és una sortida de veritat. */
+const ampliacioViva = { deletedAt: null, estat: { not: 'CANCELLADA' } } as const;
+
 const titularSelDash = {
   select: {
     id: true,
@@ -266,7 +269,8 @@ export async function getResum(opts?: FinanceOpts) {
       include: { viatgers: { where: { esTitular: true }, include: { huesped: true } }, habitacio: true },
     }),
     prisma.estancia.findMany({
-      where: { deletedAt: null, dataSortida: { gte: now, lte: in7 } },
+      // Si ha allargat, no marxa: la sortida és la de l'ampliació.
+      where: { deletedAt: null, dataSortida: { gte: now, lte: in7 }, ampliacions: { none: ampliacioViva } },
       orderBy: { dataSortida: 'asc' },
       take: 10,
       include: { viatgers: { where: { esTitular: true }, include: { huesped: true } }, habitacio: true },
@@ -359,6 +363,7 @@ export async function getResum(opts?: FinanceOpts) {
           gte: todayStart,
           lt: new Date(todayStart.getTime() + 86_400_000),
         },
+        ampliacions: { none: ampliacioViva },
       },
       orderBy: { dataSortida: 'asc' },
       include: { viatgers: { where: { esTitular: true }, include: { huesped: true } }, habitacio: true },

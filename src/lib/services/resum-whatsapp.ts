@@ -54,7 +54,12 @@ export async function construeixResum(dia: string): Promise<ResumDiari> {
       select: { import: true, dataPrevista: true, concepte: true, estancia: { select: titularSel } },
     }),
     prisma.estancia.findMany({
-      where: { deletedAt: null, dataSortida: { gte: aData(dia), lt: aData(sumaDies(dia, 2)) } },
+      // Si ha allargat, no marxa: la sortida és la de l'ampliació.
+      where: {
+        deletedAt: null,
+        dataSortida: { gte: aData(dia), lt: aData(sumaDies(dia, 2)) },
+        ampliacions: { none: { deletedAt: null, estat: { not: 'CANCELLADA' } } },
+      },
       orderBy: { dataSortida: 'asc' },
       take: 30,
       select: { dataSortida: true, habitacio: { select: { nom: true } }, ...titularSel },
