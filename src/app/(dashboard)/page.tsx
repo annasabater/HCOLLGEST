@@ -91,15 +91,6 @@ export default async function DashboardPage() {
     tipus: 'DADES_PENDENTS',
     entitatId: f.id,
   }));
-  // Serveis fixos en mode recordatori (data a prop o vençuda): falta pujar-ne la factura.
-  const itemsFixes: AvisItem[] = resum.serveisPendentsFactura.map((s) => ({
-    key: s.id,
-    nom: s.activitat,
-    sub: `${s.vencut ? 'Vençut' : 'Venç'} ${formatDate(s.properaData)}${s.import != null ? ` · ${formatEur(s.import)}` : ''} · puja la factura`,
-    href: '/serveis',
-    tipus: 'SERVEI_FACTURA',
-    entitatId: s.id,
-  }));
   // Cobraments previstos que toca avisar (des del dia abans o vençuts).
   const itemsCobrar: AvisItem[] = resum.cobramentsPendents.map((c) => ({
     key: c.id,
@@ -117,7 +108,6 @@ export default async function DashboardPage() {
     items.filter((i) => !(i.tipus && i.entitatId && amagatSet.has(`${i.tipus}:${i.entitatId}`)));
   const itemsFacturarVis = senseAmagats(itemsFacturar);
   const itemsFitxesVis = senseAmagats(itemsFitxes);
-  const itemsFixesVis = senseAmagats(itemsFixes);
   const itemsCobrarVis = senseAmagats(itemsCobrar);
 
   return (
@@ -214,7 +204,6 @@ export default async function DashboardPage() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <TargetaAvis label="Cobraments pendents" ok={itemsCobrarVis.length === 0} color="rose" iconKey="Coins" items={itemsCobrarVis} />
         <TargetaAvis label="Fitxes amb dades pendents" ok={itemsFitxesVis.length === 0} color="amber" iconKey="FileEdit" items={itemsFitxesVis} />
-        <TargetaAvis label="Factures fixes pendents de pujar" ok={itemsFixesVis.length === 0} color="amber" iconKey="Receipt" items={itemsFixesVis} />
         <TargetaAvis label="Pendents d'enviar a Mossos" ok={itemsMossos.length === 0} color="amber" iconKey="Send" items={itemsMossos} />
         <TargetaAvis label="Firmes pendents" ok={itemsFirma.length === 0} color="violet" iconKey="PenLine" items={itemsFirma} />
         <TargetaAvis label="Enviaments amb error" ok={itemsError.length === 0} color="red" iconKey="FileWarning" items={itemsError} />
