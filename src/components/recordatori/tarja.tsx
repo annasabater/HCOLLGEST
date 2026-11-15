@@ -19,21 +19,12 @@ import type { RecordatoriVista } from '@/lib/services/recordatoris';
 
 const MESOS = ['GEN', 'FEB', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OCT', 'NOV', 'DES'];
 
-/** Calendari petit: mes, dia i any. Vermell si ja ha passat, taronja si ve. */
+/** Data en columna fina: dia gran i mes a sota. Granat si ve, vermell si ja ha passat. */
 export function DataTile({ data, vencut, petit }: { data: string; vencut?: boolean; petit?: boolean }) {
   return (
-    <div
-      className={cn(
-        'shrink-0 overflow-hidden rounded-2xl border bg-white text-center',
-        petit ? 'w-14' : 'w-[4.5rem]',
-        vencut ? 'border-red-200' : 'border-amber-200',
-      )}
-    >
-      <div className={cn('py-1 text-[11px] font-extrabold tracking-[0.1em] text-white', vencut ? 'bg-red-700' : 'bg-amber-700')}>
-        {MESOS[Number(data.slice(5, 7)) - 1]}
-      </div>
-      <div className={cn('font-extrabold text-slate-900', petit ? 'pt-0.5 text-xl' : 'pt-1 text-3xl')}>{data.slice(8, 10)}</div>
-      <div className="pb-1 text-[11px] text-slate-500">{data.slice(0, 4)}</div>
+    <div className={cn('w-10 shrink-0 text-center leading-none', vencut ? 'text-red-700' : 'text-brand-700')}>
+      <div className={cn('font-serif font-semibold tabular-nums', petit ? 'text-2xl' : 'text-3xl')}>{data.slice(8, 10)}</div>
+      <div className="mt-0.5 text-[10px] font-bold tracking-[0.12em] opacity-80">{MESOS[Number(data.slice(5, 7)) - 1]}</div>
     </div>
   );
 }

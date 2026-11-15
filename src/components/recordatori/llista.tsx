@@ -65,7 +65,7 @@ export function RecordatorisLlista({
   }
 
   const Fila = ({ r, fet }: { r: RecordatoriVista; fet?: boolean }) => (
-    <div className="flex flex-wrap items-center gap-4 border-t border-stone-100 py-3.5">
+    <div className="flex flex-wrap items-center gap-3 border-t border-stone-100 py-2.5">
       <DataTile data={r.data} petit vencut={!fet && r.data < avui} />
       <div className="min-w-0 flex-[1_1_14rem]">
         <p className={cn('font-bold text-slate-900', fet && 'text-slate-500 line-through decoration-slate-300')}>{r.titol}</p>
