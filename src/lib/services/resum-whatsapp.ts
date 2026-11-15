@@ -22,6 +22,7 @@ import {
   type ResumDiari,
 } from '../recordatoris';
 import { avancaRepeticions } from './recordatoris';
+import { idsAmbContinuacio } from './continuacions';
 
 const HORA_RESUM = 9;
 const aData = (d: string) => new Date(`${d}T00:00:00Z`);
@@ -62,7 +63,7 @@ export async function construeixResum(dia: string): Promise<ResumDiari> {
       },
       orderBy: { dataSortida: 'asc' },
       take: 30,
-      select: { dataSortida: true, habitacio: { select: { nom: true } }, ...titularSel },
+      select: { id: true, estanciaOrigenId: true, dataSortida: true, habitacio: { select: { nom: true } }, ...titularSel },
     }),
     prisma.ressenya.findMany({
       where: { estat: 'PENDENT', font: { not: 'MANUAL' }, createdAt: { gte: ahir } },
@@ -75,6 +76,8 @@ export async function construeixResum(dia: string): Promise<ResumDiari> {
       take: 10,
     }),
   ]);
+  // Si continua en una ampliació (germana, penja de l'original), no marxa.
+  const continuen = await idsAmbContinuacio(sortides);
 
   return {
     dia,
@@ -93,7 +96,7 @@ export async function construeixResum(dia: string): Promise<ResumDiari> {
       concepte: c.concepte,
     })),
     sortides: sortides
-      .filter((e) => e.dataSortida)
+      .filter((e) => e.dataSortida && !continuen.has(e.id))
       .map((e) => ({ titular: nomTitular(e), habitacio: e.habitacio?.nom ?? null, data: deData(e.dataSortida!) })),
     opinions: [
       ...ressenyes.map((r) => ({ autor: r.autor, puntuacio: r.puntuacio, tipus: 'GOOGLE' as const })),

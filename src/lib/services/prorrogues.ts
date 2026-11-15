@@ -101,20 +101,49 @@ export async function getEstadesEnCurs(now = new Date()): Promise<{ avui: string
     // Les que no s'han trobat (esborrades) tallen la cadena.
     for (const id of falten) if (!anteriors.has(id)) anteriors.set(id, { id, origen: null, entrada: null, sortida: null, numContracte: null, creada: new Date(0), events: [] });
   }
-  /** Cadena de l'estada: [la primera, …, ella mateixa]. */
-  const cadena = (id: string): Anterior[] => {
-    const out: Anterior[] = [];
-    for (let a = anteriors.get(id); a && out.length < 8; a = a.origen ? anteriors.get(a.origen) : undefined) {
-      if (a.entrada) out.unshift(a);
-    }
-    return out;
+  // Les ampliacions (.1, .2…) pengen totes de l'estada ORIGINAL (germanes), no l'una
+  // de l'altra: el grup és l'original + totes les que en pengen (a qualsevol nivell).
+  const arrel = (id: string): string => {
+    let a = anteriors.get(id);
+    for (let i = 0; a?.origen && anteriors.has(a.origen) && i < 8; i++) a = anteriors.get(a.origen);
+    return a?.id ?? id;
   };
+  const membres = new Map<string, Anterior>(anteriors);
+  for (let nivell = 0, pares = [...anteriors.keys()]; nivell < 4 && pares.length; nivell++) {
+    const fills = await prisma.estancia.findMany({
+      where: { estanciaOrigenId: { in: pares }, deletedAt: null, estat: { not: 'CANCELLADA' }, id: { notIn: [...membres.keys()] } },
+      select: { id: true, estanciaOrigenId: true, dataEntrada: true, dataSortida: true, numContracte: true, createdAt: true, prorrogaEvents: { orderBy: { createdAt: 'asc' }, take: 50 } },
+    });
+    for (const m of fills) {
+      membres.set(m.id, { id: m.id, origen: m.estanciaOrigenId, entrada: m.dataEntrada, sortida: m.dataSortida, numContracte: m.numContracte, creada: m.createdAt, events: m.prorrogaEvents.map(evVista) });
+      anteriors.set(m.id, membres.get(m.id)!);
+    }
+    pares = fills.map((m) => m.id);
+  }
+  const grups = new Map<string, Anterior[]>();
+  for (const m of membres.values()) {
+    if (!m.entrada) continue;
+    const r = arrel(m.id);
+    grups.set(r, [...(grups.get(r) ?? []), m]);
+  }
+  for (const g of grups.values()) g.sort((a, b) => a.entrada!.getTime() - b.entrada!.getTime() || a.creada.getTime() - b.creada.getTime());
+  /** Cadena de l'estada: [la primera, …, ella mateixa], per data d'entrada. */
+  const cadena = (id: string): Anterior[] => {
+    const g = grups.get(arrel(id)) ?? [];
+    const jo = g.find((a) => a.id === id);
+    return jo ? g.filter((a) => a.entrada! <= jo.entrada!) : g;
+  };
+  /** L'estada del grup que acaba més tard: és la que surt al quadre. */
+  const ultimaDelGrup = (id: string): string | undefined =>
+    (grups.get(arrel(id)) ?? [])
+      .filter((a) => a.sortida)
+      .reduce<Anterior | undefined>((m, a) => (!m || a.sortida! > m.sortida! || (+a.sortida! === +m.sortida! && a.creada > m.creada) ? a : m), undefined)?.id;
 
   const estades: EstadaEnCurs[] = [];
   for (const e of rows) {
     if (!e.dataEntrada || !e.dataSortida) continue;
-    // Si ja s'ha allargat, la que surt és l'ampliació (l'última de la cadena).
-    if (e.ampliacions.length > 0) continue;
+    // Si ja s'ha allargat, la que surt és l'ampliació que acaba més tard.
+    if (ultimaDelGrup(e.id) !== e.id) continue;
     const entradaTram = diaMadrid(e.dataEntrada);
     const sortida = diaMadrid(e.dataSortida);
     if (sortida < avui) continue;

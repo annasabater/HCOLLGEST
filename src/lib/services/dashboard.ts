@@ -9,6 +9,7 @@ import { prisma } from '../db';
 import { computeActiuInfo } from '../actiu-alerts';
 import { habitacioLlibre } from '../habitacio-llibre';
 import { generarDespesesVencudes } from './serveis-recurrents';
+import { idsAmbContinuacio } from './continuacions';
 import { indicadorsHostal } from '../indicadors-hostal';
 
 export interface FinanceOpts {
@@ -210,7 +211,7 @@ export async function getResum(opts?: FinanceOpts) {
     pendentsFirmaRaw,
     enviamentsError,
     properesEntrades,
-    properesSortides,
+    properesSortidesRaw,
     totalHostes,
     totalEstancies,
     ingressosMes,
@@ -454,7 +455,10 @@ export async function getResum(opts?: FinanceOpts) {
     })),
   }));
 
-  const sortidesToday = sortidesTodayRaw.map((e) => ({
+  // Si continua en una ampliació (germana, penja de l'original), no és una sortida.
+  const continuen = await idsAmbContinuacio([...properesSortidesRaw, ...sortidesTodayRaw]);
+  const properesSortides = properesSortidesRaw.filter((e) => !continuen.has(e.id));
+  const sortidesToday = sortidesTodayRaw.filter((e) => !continuen.has(e.id)).map((e) => ({
     id: e.id,
     habitacio: e.habitacio?.nom ?? null,
     titular: e.viatgers[0]?.huesped
