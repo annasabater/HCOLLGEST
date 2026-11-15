@@ -16,7 +16,17 @@ export async function GET(_req: Request, ctx: Ctx) {
     const auth = await authorize(ROLES_WRITE);
     if (auth instanceof Response) return auth;
     const { id } = await ctx.params;
-    const base = await prisma.estancia.findUnique({ where: { id }, select: { id: true, estanciaOrigenId: true } });
+    const base = await prisma.estancia.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        estanciaOrigenId: true,
+        viatgers: {
+          select: { id: true, esTitular: true, huesped: { select: { nom: true, cognom1: true } } },
+          orderBy: { esTitular: 'desc' },
+        },
+      },
+    });
     if (!base) return notFound('Estada no trobada');
     const rootId = base.estanciaOrigenId ?? base.id;
     const root = await prisma.estancia.findUniqueOrThrow({
@@ -31,6 +41,12 @@ export async function GET(_req: Request, ctx: Ctx) {
       arrel: { numContracte: root.numContracte, anyContracte: root.anyContracte, dataEntrada: root.dataEntrada, dataSortida: root.dataSortida },
       continuacio,
       nou,
+      // Hostes de l'estada que s'amplia, per triar quins continuen.
+      viatgers: base.viatgers.map((v) => ({
+        id: v.id,
+        nom: `${v.huesped.nom} ${v.huesped.cognom1}`.trim(),
+        esTitular: v.esTitular,
+      })),
     });
   } catch (err) {
     return handleApiError(err);
@@ -45,7 +61,7 @@ export async function POST(req: Request, ctx: Ctx) {
     if (auth instanceof Response) return auth;
     const { id } = await ctx.params;
     const body = await req.json().catch(() => null);
-    const { dataEntrada, dataSortida, habitacioId, reaprofitarFirmes, dataSignatura, llocSignatura, numContracte } =
+    const { dataEntrada, dataSortida, habitacioId, reaprofitarFirmes, dataSignatura, llocSignatura, numContracte, viatgerIds } =
       AmpliacioSchema.parse(body);
 
     if (numContracte) {
@@ -58,7 +74,7 @@ export async function POST(req: Request, ctx: Ctx) {
 
     const result = await ampliarEstancia(
       id,
-      { dataEntrada, dataSortida, habitacioId, reaprofitarFirmes, dataSignatura, llocSignatura, numContracte },
+      { dataEntrada, dataSortida, habitacioId, reaprofitarFirmes, dataSignatura, llocSignatura, numContracte, viatgerIds },
       { id: auth.id },
       clientIp(req),
     );

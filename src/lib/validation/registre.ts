@@ -247,6 +247,9 @@ export const AmpliacioSchema = z
     // Número de contracte de la nova estada ('' = sense número). Sense el camp,
     // continuació de l'estada arrel (26009_1).
     numContracte: z.string().trim().max(40).optional(),
+    // Hostes que continuen (ids d'EstanciaViatger de l'estada que s'amplia).
+    // Sense el camp, continuen tots.
+    viatgerIds: z.array(z.string().min(1)).min(1, 'Cal que continuï almenys un hoste').optional(),
   })
   .superRefine((d, ctx) => {
     if (d.dataSortida <= d.dataEntrada) {

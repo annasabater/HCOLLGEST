@@ -330,6 +330,9 @@ export async function ampliarEstancia(
     /** Número de contracte triat per a la nova estada ('' = sense número). Si no
      *  s'indica, la continuació de l'arrel (26009_1) o buit si l'arrel no en té. */
     numContracte?: string;
+    /** Hostes que continuen (ids d'EstanciaViatger de l'estada que s'amplia).
+     *  Sense indicar-ho, continuen tots. */
+    viatgerIds?: string[];
   },
   actor: { id: string } | null,
   ip: string | null,
@@ -347,6 +350,15 @@ export async function ampliarEstancia(
       const root = await tx.estancia.findUniqueOrThrow({ where: { id: rootId } });
       // Habitació de l'ampliació: la indicada o, per defecte, la de l'estada.
       const habId = dates.habitacioId !== undefined ? dates.habitacioId : base.habitacioId;
+
+      // Hostes que continuen: els triats o, per defecte, tots. Si el titular no
+      // continua, passa a ser-ho el primer dels que es queden.
+      const triats = dates.viatgerIds
+        ? base.viatgers.filter((v) => dates.viatgerIds!.includes(v.id))
+        : base.viatgers;
+      if (triats.length === 0) throw new Error('Cal que continuï almenys un hoste de l’estada');
+      const titularContinua = triats.some((v) => v.esTitular);
+      const viatgers = triats.map((v, i) => ({ ...v, esTitular: titularContinua ? v.esTitular : i === 0 }));
 
       // Número de la nova estada: el que s'ha triat al formulari o, per defecte, la
       // continuació de l'arrel (26009_1). Si l'arrel encara no té número, l'ampliació
@@ -366,7 +378,7 @@ export async function ampliarEstancia(
           dataFormalitzacio: new Date(),
           dataEntrada: dates.dataEntrada,
           dataSortida: dates.dataSortida,
-          numViatgers: base.viatgers.length,
+          numViatgers: viatgers.length,
           tipusPagament: root.tipusPagament,
           numHabitacions: root.numHabitacions,
           teInternet: root.teInternet,
@@ -376,7 +388,7 @@ export async function ampliarEstancia(
       });
 
       const reaprofita = dates.reaprofitarFirmes ?? false;
-      for (const v of base.viatgers) {
+      for (const v of viatgers) {
         const nv = await tx.estanciaViatger.create({
           data: {
             estanciaId: nova.id,

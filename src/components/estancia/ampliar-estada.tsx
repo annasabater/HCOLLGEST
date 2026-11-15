@@ -15,6 +15,7 @@ interface InfoNumero {
   arrel: { numContracte: string; anyContracte: number; dataEntrada: string | null; dataSortida: string | null };
   continuacio: string | null;
   nou: string;
+  viatgers: { id: string; nom: string; esTitular: boolean }[];
 }
 type OpcioNumero = 'continuacio' | 'nou' | 'manual' | 'cap';
 
@@ -52,6 +53,8 @@ export function AmpliarEstada({
   const [opNum, setOpNum] = useState<OpcioNumero>('continuacio');
   const [numManual, setNumManual] = useState('');
   const [manualEnUs, setManualEnUs] = useState(false);
+  // Hostes que continuen a l'ampliació (per defecte, tots).
+  const [continuen, setContinuen] = useState<string[]>([]);
 
   function obre() {
     setOpen(true);
@@ -59,6 +62,7 @@ export function AmpliarEstada({
     getJSON<InfoNumero>(`/api/estancies/${estanciaId}/ampliar`)
       .then((r) => {
         setInfoNum(r);
+        setContinuen(r.viatgers.map((v) => v.id));
         // Per defecte, el de sempre: continuació si l'arrel té número; si no, un de nou.
         setOpNum(r.continuacio ? 'continuacio' : 'nou');
       })
@@ -123,6 +127,7 @@ export function AmpliarEstada({
         reaprofitarFirmes: reaprofitar,
         ...(reaprofitar ? { dataSignatura, llocSignatura } : {}),
         ...(numeroTriat !== undefined ? { numContracte: numeroTriat } : {}),
+        ...(infoNum && infoNum.viatgers.length > 1 ? { viatgerIds: continuen } : {}),
       });
       router.push(`/estancies/${res.estanciaId}`);
     } catch (err) {
@@ -169,13 +174,41 @@ export function AmpliarEstada({
         </Field>
         {/* Ocupada/sobrepassa són AVISOS, no bloquejos: l'hostal a vegades comparteix
             habitació. Només bloquegem si falta la data de sortida. */}
-        <Button type="submit" size="sm" disabled={saving || !dataSortida || numeroInvalid}>
+        <Button type="submit" size="sm" disabled={saving || !dataSortida || numeroInvalid || (infoNum !== null && infoNum.viatgers.length > 1 && continuen.length === 0)}>
           {saving ? 'Ampliant…' : 'Crear ampliació'}
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
           Cancel·lar
         </Button>
       </div>
+
+      {infoNum && infoNum.viatgers.length > 1 && (
+        <fieldset className="space-y-1.5 border-t border-slate-100 pt-2">
+          <legend className="text-sm font-semibold text-slate-800">Qui es queda?</legend>
+          <div className="flex flex-wrap gap-2">
+            {infoNum.viatgers.map((v) => {
+              const marcat = continuen.includes(v.id);
+              return (
+                <label
+                  key={v.id}
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm ${marcat ? 'border-brand-600 bg-brand-50' : 'border-slate-200 text-slate-500'}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={marcat}
+                    onChange={(e) =>
+                      setContinuen((p) => (e.target.checked ? [...p, v.id] : p.filter((x) => x !== v.id)))
+                    }
+                  />
+                  {v.nom}
+                  {v.esTitular && <span className="text-xs text-slate-400">(titular)</span>}
+                </label>
+              );
+            })}
+          </div>
+          {continuen.length === 0 && <p className="text-xs text-red-600">Marca almenys un hoste.</p>}
+        </fieldset>
+      )}
 
       {infoNum && (
         <fieldset className="space-y-1.5 border-t border-slate-100 pt-2">
