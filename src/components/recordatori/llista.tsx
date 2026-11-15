@@ -65,8 +65,8 @@ export function RecordatorisLlista({
   }
 
   const Fila = ({ r, fet }: { r: RecordatoriVista; fet?: boolean }) => (
-    <div className="flex flex-wrap items-center gap-3 border-t border-stone-100 py-2.5">
-      <DataTile data={r.data} petit vencut={!fet && r.data < avui} />
+    <div className={cn('flex flex-wrap items-center gap-3 border-t border-stone-100 py-2.5', r.fix && 'border-l-4 border-l-blue-600 pl-3')}>
+      <DataTile data={r.data} petit vencut={!fet && r.data < avui} fix={r.fix} />
       <div className="min-w-0 flex-[1_1_14rem]">
         <p className={cn('font-bold text-slate-900', fet && 'text-slate-500 line-through decoration-slate-300')}>{r.titol}</p>
         <p className="text-sm text-slate-600">
@@ -75,6 +75,7 @@ export function RecordatorisLlista({
         </p>
       </div>
       <span className="flex flex-wrap gap-1">
+        {r.fix && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-800">Fix</span>}
         {r.whatsapp && (
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800">
             <Smartphone className="h-3.5 w-3.5" /> Mòbil

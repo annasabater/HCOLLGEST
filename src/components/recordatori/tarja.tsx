@@ -20,9 +20,9 @@ import type { RecordatoriVista } from '@/lib/services/recordatoris';
 const MESOS = ['GEN', 'FEB', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OCT', 'NOV', 'DES'];
 
 /** Data en columna fina: dia gran i mes a sota. Granat si ve, vermell si ja ha passat. */
-export function DataTile({ data, vencut, petit }: { data: string; vencut?: boolean; petit?: boolean }) {
+export function DataTile({ data, vencut, petit, fix }: { data: string; vencut?: boolean; petit?: boolean; fix?: boolean }) {
   return (
-    <div className={cn('w-10 shrink-0 text-center leading-none', vencut ? 'text-red-700' : 'text-brand-700')}>
+    <div className={cn('w-10 shrink-0 text-center leading-none', vencut ? 'text-red-700' : fix ? 'text-blue-700' : 'text-brand-700')}>
       <div className={cn('font-serif font-semibold tabular-nums', petit ? 'text-2xl' : 'text-3xl')}>{data.slice(8, 10)}</div>
       <div className="mt-0.5 text-[10px] font-bold tracking-[0.12em] opacity-80">{MESOS[Number(data.slice(5, 7)) - 1]}</div>
     </div>
@@ -157,10 +157,11 @@ export function RecordatoriTarja({
   }
 
   return (
-    <article className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:gap-5">
-      <DataTile data={r.data} vencut={vencut} />
+    <article className={cn('flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:gap-5', r.fix && 'border-l-4 border-l-blue-600')}>
+      <DataTile data={r.data} vencut={vencut} fix={r.fix} />
       <div className="min-w-0 flex-[1_1_16rem] space-y-1.5">
         <div className="flex flex-wrap gap-1.5">
+          {r.fix && <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-800">Fix</span>}
           <span
             className={cn(
               'rounded-full px-2.5 py-0.5 text-xs font-bold',
