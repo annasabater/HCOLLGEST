@@ -70,6 +70,7 @@ export function RecordatoriFormulari({
   const [altres, setAltres] = useState('');
   const [whatsapp, setWhatsapp] = useState(inicial?.whatsapp ?? true);
   const [calendari, setCalendari] = useState(inicial?.calendari ?? true);
+  const [fix, setFix] = useState(inicial?.fix ?? false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -99,6 +100,7 @@ export function RecordatoriFormulari({
       diesAbans: dies,
       whatsapp,
       calendari,
+      fix: rep !== 'CAP' && fix,
     };
     try {
       if (inicial) await putJSON(`/api/recordatoris/${inicial.id}`, body);
@@ -220,9 +222,17 @@ export function RecordatoriFormulari({
             </div>
           )}
           {rep !== 'CAP' && (
-            <p className="text-xs text-slate-500">
-              En desar-lo ja queda tota la sèrie: passat el dia, es programa sol el següent (no cal marcar «Fet»).
-            </p>
+            <>
+              <p className="text-xs text-slate-500">
+                En desar-lo ja queda tota la sèrie: passat el dia, es programa sol el següent (no cal marcar «Fet»).
+              </p>
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                <input type="checkbox" checked={fix} onChange={(e) => setFix(e.target.checked)} className="h-5 w-5 accent-brand-700" />
+                <span className="text-sm font-bold text-slate-900">
+                  És un fix <span className="font-normal text-slate-600">(llum, aigua, lloguer, assegurances…): surt a la pestanya «Fixes»</span>
+                </span>
+              </label>
+            </>
           )}
         </div>
 

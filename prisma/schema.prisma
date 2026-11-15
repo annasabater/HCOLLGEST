@@ -1559,6 +1559,7 @@ model Recordatori {
   diesAbans       Int[]     @default([]) @map("dies_abans") // p. ex. [30, 7]
   whatsapp        Boolean   @default(true) // al resum del matí (notificació al mòbil i/o WhatsApp)
   calendari       Boolean   @default(true) // es posa al Google Calendar (si està connectat)
+  fix             Boolean   @default(false) // pagament/servei fix: surt a la pestanya «Fixes»
   googleEventId   String?   @map("google_event_id")
   ajornatFins     DateTime? @map("ajornat_fins") @db.Date // "recorda-m'ho en X dies"
   ajornaments     Int       @default(0)

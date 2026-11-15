@@ -29,7 +29,8 @@ export function RecordatorisLlista({
   calendariConnectat: boolean;
 }) {
   const router = useRouter();
-  const [vista, setVista] = useState<'pendents' | 'fets'>('pendents');
+  const [vista, setVista] = useState<'pendents' | 'fixes' | 'fets'>('pendents');
+  const fixes = pendents.filter((r) => r.fix);
   const [form, setForm] = useState<{ obert: boolean; r: RecordatoriVista | null }>({ obert: false, r: null });
   const [esborra, setEsborra] = useState<RecordatoriVista | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -156,9 +157,9 @@ export function RecordatorisLlista({
 
       <section className="rounded-xl border border-slate-200 bg-white px-5 pb-2 pt-4">
         <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
-          <h2 className="font-serif text-xl font-semibold text-slate-900">{vista === 'pendents' ? 'Properament' : 'Fets'}</h2>
+          <h2 className="font-serif text-xl font-semibold text-slate-900">{vista === 'pendents' ? 'Properament' : vista === 'fixes' ? 'Fixes' : 'Fets'}</h2>
           <div role="tablist" aria-label="Quins recordatoris" className="flex gap-1 rounded-full bg-stone-100 p-1">
-            {(['pendents', 'fets'] as const).map((v) => (
+            {(['pendents', 'fixes', 'fets'] as const).map((v) => (
               <button
                 key={v}
                 type="button"
@@ -167,7 +168,7 @@ export function RecordatorisLlista({
                 onClick={() => setVista(v)}
                 className={cn('h-9 rounded-full px-4 text-sm font-bold', vista === v ? 'bg-white text-slate-900 shadow-sm' : 'text-stone-600')}
               >
-                {v === 'pendents' ? 'Pendents' : 'Fets'}
+                {v === 'pendents' ? 'Pendents' : v === 'fixes' ? `Fixes (${fixes.length})` : 'Fets'}
               </button>
             ))}
           </div>
@@ -185,6 +186,14 @@ export function RecordatorisLlista({
                 {llista.map((r) => <Fila key={r.id} r={r} />)}
               </div>
             ))
+          )
+        ) : vista === 'fixes' ? (
+          fixes.length === 0 ? (
+            <p className="border-t border-stone-100 py-6 text-sm text-slate-500">
+              Encara no n’hi ha cap. En un recordatori que es repeteix, marca «És un fix».
+            </p>
+          ) : (
+            fixes.map((r) => <Fila key={r.id} r={r} />)
           )
         ) : fets.length === 0 ? (
           <p className="border-t border-stone-100 py-6 text-sm text-slate-500">Encara no n’has marcat cap com a fet.</p>

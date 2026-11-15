@@ -27,6 +27,7 @@ export interface RecordatoriVista {
   diesAbans: number[];
   whatsapp: boolean;
   calendari: boolean;
+  fix: boolean;
   ajornatFins: string | null;
   ajornaments: number;
   fetAt: string | null;
@@ -46,6 +47,7 @@ export function vista(r: Recordatori, avui = diaMadrid()): RecordatoriVista {
     diesAbans: r.diesAbans,
     whatsapp: r.whatsapp,
     calendari: r.calendari,
+    fix: r.fix,
     ajornatFins: r.ajornatFins ? deData(r.ajornatFins) : null,
     ajornaments: r.ajornaments,
     fetAt: r.fetAt ? r.fetAt.toISOString() : null,
@@ -95,6 +97,7 @@ export async function avancaRepeticions(avui = diaMadrid()): Promise<number> {
           diesAbans: r.diesAbans,
           whatsapp: r.whatsapp,
           calendari: r.calendari,
+          fix: r.fix,
         },
       });
       await audit({ usuariId: null, accio: 'MODIFICACIO', entitat: 'recordatori', entitatId: r.id, detall: { fet: true, automatic: true, seguent: d } }, tx);
@@ -143,6 +146,7 @@ function dades(raw: unknown) {
     diesAbans: [...new Set(v.diesAbans)].sort((a, b) => b - a),
     whatsapp: v.whatsapp,
     calendari: v.calendari,
+    fix: v.fix,
   };
 }
 
@@ -220,6 +224,7 @@ export async function accioRecordatori(id: string, raw: unknown, actor: Actor, i
           diesAbans: r.diesAbans,
           whatsapp: r.whatsapp,
           calendari: r.calendari,
+          fix: r.fix,
         },
       });
       seguent = d;
