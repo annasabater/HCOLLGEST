@@ -11,7 +11,7 @@ const TABS = [
   { href: '/pressupostos', label: 'Pressupostos' },
   { href: '/tarifes', label: 'Tarifes' },
   { href: '/gastos', label: 'Despeses' },
-  { href: '/serveis', label: 'Proveïdors i serveis' },
+  { href: '/serveis', label: 'Proveïdors' },
   { href: '/verifactu', label: 'Veri*Factu' },
 ];
 

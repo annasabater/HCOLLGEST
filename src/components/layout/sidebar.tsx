@@ -66,7 +66,7 @@ const GROUPS: NavGroup[] = [
       { href: '/tarifes', label: 'Tarifes', icon: Tag, roles: ['ADMIN'] },
       { href: '/gastos', label: 'Despeses', icon: Wallet },
       { href: '/taxa-turistica', label: 'Taxa turística', icon: Landmark, hideRestringit: true },
-      { href: '/serveis', label: 'Proveïdors i serveis', icon: Truck },
+      { href: '/serveis', label: 'Proveïdors', icon: Truck },
       { href: '/justificants', label: 'Justificants', icon: FileCheck },
       { href: '/ressenyes', label: 'Ressenyes Google', icon: Star, hideRestringit: true },
       { href: '/recordatoris', label: 'Recordatoris', icon: Bell, hideRestringit: true },
