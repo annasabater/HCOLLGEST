@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Clock, Smartphone } from 'lucide-react';
+import { Check, Clock, Smartphone, X } from 'lucide-react';
 import { ApiError, patchJSON } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   diesEntre,
+  sumaDies,
   textHora,
   textQuan,
   textRepeticio,
@@ -58,11 +59,15 @@ export function RecordatoriTarja({
   const dies = diesEntre(avui, r.data);
   const vencut = dies < 0;
 
-  async function accio(a: 'FET' | 'AJORNA') {
+  // «Ajorna…» obre les opcions de quants dies.
+  const [triaDies, setTriaDies] = useState(false);
+
+  async function accio(a: 'FET' | 'AJORNA', n = 3) {
     setBusy(a);
     setErr(null);
     try {
-      await patchJSON(`/api/recordatoris/${r.id}`, a === 'FET' ? { accio: 'FET' } : { accio: 'AJORNA', dies: 3 });
+      await patchJSON(`/api/recordatoris/${r.id}`, a === 'FET' ? { accio: 'FET' } : { accio: 'AJORNA', dies: n });
+      setTriaDies(false);
       onCanvi?.();
       router.refresh();
     } catch (e) {
@@ -71,6 +76,60 @@ export function RecordatoriTarja({
       setBusy(null);
     }
   }
+
+  const botons = (mida: 'sm' | 'md') =>
+    triaDies ? (
+      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Recorda-m’ho d’aquí a">
+        <span className="text-xs font-semibold text-slate-500">Recorda-m’ho en:</span>
+        {[
+          [1, '1 dia'],
+          [2, '2 dies'],
+          [3, '3 dies'],
+          [4, '4 dies'],
+          [5, '5 dies'],
+          [7, '1 setmana'],
+          [14, '2 setmanes'],
+          [30, '1 mes'],
+        ].map(([n, t]) => (
+          <Button
+            key={n}
+            size="sm"
+            variant="outline"
+            disabled={busy !== null}
+            onClick={() => accio('AJORNA', Number(n))}
+          >
+            {t}
+          </Button>
+        ))}
+        <label className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500">
+          o el dia
+          <input
+            type="date"
+            min={sumaDies(avui, 1)}
+            disabled={busy !== null}
+            onChange={(ev) => {
+              const d = ev.target.value;
+              const n = d ? diesEntre(avui, d) : 0;
+              if (n >= 1 && n <= 365) accio('AJORNA', n);
+            }}
+            className="h-8 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900"
+            aria-label="Recorda-m’ho el dia"
+          />
+        </label>
+        <Button size="sm" variant="ghost" onClick={() => setTriaDies(false)} aria-label="Cancel·la">
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    ) : (
+      <div className="flex flex-wrap gap-1.5">
+        <Button size={mida} onClick={() => accio('FET')} disabled={busy !== null} className="bg-emerald-700 hover:bg-emerald-800">
+          <Check className="h-4 w-4" /> {busy === 'FET' ? 'Desant…' : 'Fet'}
+        </Button>
+        <Button size={mida} variant="outline" onClick={() => setTriaDies(true)} disabled={busy !== null}>
+          <Clock className="h-4 w-4" /> {busy === 'AJORNA' ? 'Desant…' : 'Ajorna…'}
+        </Button>
+      </div>
+    );
 
   if (compacte) {
     const dd = r.data.slice(8, 10);
@@ -101,16 +160,7 @@ export function RecordatoriTarja({
           {r.notes && <span className="w-full truncate text-xs text-slate-500">{r.notes}</span>}
           {err && <span className="w-full text-xs text-red-600">{err}</span>}
         </div>
-        {canWrite && (
-          <div className="flex gap-1.5">
-            <Button size="sm" onClick={() => accio('FET')} disabled={busy !== null} className="bg-emerald-700 hover:bg-emerald-800">
-              <Check className="h-4 w-4" /> {busy === 'FET' ? 'Desant…' : 'Fet'}
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => accio('AJORNA')} disabled={busy !== null} title="Recorda-m’ho en 3 dies">
-              <Clock className="h-4 w-4" /> {busy === 'AJORNA' ? 'Desant…' : '+3 dies'}
-            </Button>
-          </div>
-        )}
+        {canWrite && botons('sm')}
       </article>
     );
   }
@@ -146,16 +196,7 @@ export function RecordatoriTarja({
         {r.notes && <p className="text-sm text-slate-600">{r.notes}</p>}
         {err && <p className="text-sm text-red-600">{err}</p>}
       </div>
-      {canWrite && (
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={() => accio('FET')} disabled={busy !== null} className="bg-emerald-700 hover:bg-emerald-800">
-            <Check className="h-4 w-4" /> {busy === 'FET' ? 'Desant…' : 'Fet'}
-          </Button>
-          <Button variant="outline" onClick={() => accio('AJORNA')} disabled={busy !== null}>
-            <Clock className="h-4 w-4" /> {busy === 'AJORNA' ? 'Desant…' : 'Recorda-m’ho en 3 dies'}
-          </Button>
-        </div>
-      )}
+      {canWrite && botons('md')}
     </article>
   );
 }
