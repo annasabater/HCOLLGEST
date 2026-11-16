@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calculator, BedDouble, Check, X, Repeat, FilePlus2, Plus, Lightbulb } from 'lucide-react';
+import { Calculator, BedDouble, Check, X, Repeat, FilePlus2, Plus, Lightbulb, Tag } from 'lucide-react';
+import { TarifesDesplegable } from './tarifes-desplegable';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { getJSON, postJSON, ApiError } from '@/lib/api';
@@ -131,6 +132,7 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
   const [datesP, setDatesP] = useState<Record<number, { desde: string; fins: string }>>({});
   // Suplement per nit (€) que se suma a cada nit de l'estada (p. ex. +3 €/nit).
   const [suplement, setSuplement] = useState('');
+  const [veureTarifes, setVeureTarifes] = useState(false);
   const supNit = Math.max(0, num(suplement) ?? 0);
 
   const entradaDe = (k: number, ts: Tram[] = trams) => (k === 0 ? entrada : ts[k - 1]!.sortida);
@@ -272,9 +274,19 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Calculator className="h-5 w-5 text-brand-600" />
           <h3 className="font-serif text-lg font-semibold text-slate-800">Calculadora de preus</h3>
+          {potFerPressupost && (
+            <button
+              type="button"
+              aria-expanded={veureTarifes}
+              onClick={() => setVeureTarifes((v) => !v)}
+              className="ml-1 inline-flex min-h-8 items-center gap-1 rounded-md border border-slate-300 px-2.5 text-xs font-medium text-slate-700 hover:border-brand-400"
+            >
+              <Tag className="h-3.5 w-3.5" /> {veureTarifes ? 'Amagar tarifes' : 'Veure tarifes'}
+            </button>
+          )}
         </div>
         <div role="group" aria-label="Tipus de càlcul" className="flex gap-1 rounded-lg bg-slate-100 p-1">
           {([['nits', 'Per nits'], ['mensual', 'Regla de tres']] as const).map(([m, label]) => {
@@ -307,6 +319,8 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
           </>
         )}
       </p>
+
+      {veureTarifes && <TarifesDesplegable grupInicial={trams[0]!.grup} />}
 
       {mensual && (
         <div className="mb-3 rounded-xl border border-brand-200 bg-brand-50/50 p-3">
