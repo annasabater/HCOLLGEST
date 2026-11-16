@@ -129,6 +129,9 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
   // Correccions a mà del resultat (clau «tram.segment.línia») i dates del pressupost per tram.
   const [edits, setEdits] = useState<Record<string, LiniaEdit>>({});
   const [datesP, setDatesP] = useState<Record<number, { desde: string; fins: string }>>({});
+  // Suplement per nit (€) que se suma a cada nit de l'estada (p. ex. +3 €/nit).
+  const [suplement, setSuplement] = useState('');
+  const supNit = Math.max(0, num(suplement) ?? 0);
 
   const entradaDe = (k: number, ts: Tram[] = trams) => (k === 0 ? entrada : ts[k - 1]!.sortida);
   const nitsTotal = nitsEntre(entrada, trams[trams.length - 1]!.sortida);
@@ -211,13 +214,16 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
       const linies = s.linies.map((l, i) => efectiva(l, edits[`${k}.${si}.${i}`]));
       return { ...s, linies, subtotal: r2(linies.reduce((a, l) => a + l.subtotal, 0)) };
     });
-    const totalTram = r2(segments.reduce((a, s) => a + s.subtotal, 0));
     const linies = segments.flatMap((s) => s.linies);
     // Si només hi ha línies de regla de tres, les nits són les de les línies (editables).
     const nits = linies.length > 0 && linies.every((l) => l.bloc) ? linies.reduce((a, l) => a + l.quantitat, 0) : c.res.nits;
+    const totalSup = r2(supNit * nits);
+    const totalTram = r2(segments.reduce((a, s) => a + s.subtotal, 0) + totalSup);
     const dates = datesP[k] ?? { desde: c.entrada, fins: c.sortida };
-    return { ...c, segments, totalTram, nits, dates };
+    return { ...c, segments, totalTram, totalSup, nits, dates };
   });
+  const nitsSup = efectius.reduce((a, c) => a + c.nits, 0);
+  const totalSuplement = r2(efectius.reduce((a, c) => a + c.totalSup, 0));
   const total = r2(efectius.reduce((a, c) => a + c.totalTram, 0));
   const hiHaEdicions = Object.keys(edits).length > 0 || Object.keys(datesP).length > 0;
   const detallDe = (c: (typeof efectius)[number]) => (mensual ? [...new Set(c.segments.flatMap((s) => s.linies.map((l) => l.concepte)))].join(' + ') : undefined);
@@ -485,6 +491,42 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
                 </div>
               );
             })}
+
+            {/* Suplement per nit: se suma a cada nit (i al pressupost). */}
+            <div className="mt-2 rounded-lg border border-dashed border-slate-300 px-3 py-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="mr-1 text-xs font-medium text-slate-600">Suplement per nit</span>
+                {[2, 3, 4, 5, 6].map((n) => {
+                  const actiu = supNit === n;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      aria-pressed={actiu}
+                      onClick={() => setSuplement(actiu ? '' : String(n))}
+                      className={`min-h-8 rounded-md px-2.5 text-sm ${actiu ? 'bg-brand-700 font-medium text-white' : 'border border-slate-300 text-slate-700 hover:border-brand-400'}`}
+                    >
+                      +{n} €
+                    </button>
+                  );
+                })}
+                <input
+                  aria-label="Suplement per nit (€)"
+                  inputMode="decimal"
+                  placeholder="Altre"
+                  className="h-8 w-20 rounded-md border border-slate-200 bg-white px-2 text-right text-sm focus:border-brand-400 focus:outline-none"
+                  value={suplement}
+                  onChange={(ev) => setSuplement(ev.target.value)}
+                />
+                <span className="text-xs text-slate-500">€/nit</span>
+              </div>
+              {totalSuplement > 0 && (
+                <div className="mt-1.5 flex items-center justify-between text-sm">
+                  <span className="text-slate-600">Suplement {formatEur(supNit)}/nit × {nitsTxt(nitsSup)}</span>
+                  <span className="font-medium text-slate-800">+{formatEur(totalSuplement)}</span>
+                </div>
+              )}
+            </div>
 
             <div className="mt-2 flex items-center justify-between border-t-2 border-brand-700 pt-2">
               <span className="font-serif text-base text-slate-800">Total</span>
