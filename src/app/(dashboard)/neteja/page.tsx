@@ -536,29 +536,25 @@ export default function NetejaPage() {
             </>
           )}
 
-          <div className="flex items-center gap-3 border-t border-slate-100 pt-3">
-            <Button onClick={desar} disabled={saving || !personId}>
-              <Save className="h-4 w-4" /> {saving ? 'Desant…' : 'Desar full'}
-            </Button>
+          {/* Una sola línia (proposta A): el que cal pagar a la dona de neteja (segons
+              les tarifes configurades) a l'esquerra; «Registrar pagament» i «Desar full» a la dreta. */}
+          <div className="ui-card flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
+            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">A pagar</span>
+            <strong className="ui-page-title text-xl text-slate-900">{formatEur(aPagar)}</strong>
+            <span className="text-slate-500">
+              {nSortides} {nSortides === 1 ? 'sortida' : 'sortides'} · {nManteniments}{' '}
+              {nManteniments === 1 ? 'manteniment' : 'manteniments'}
+              {zonesComunes ? ' · zones comunes' : ''}
+            </span>
+            {pagMsg && (
+              <span className={pagMsg.tone === 'ok' ? 'text-green-600' : 'text-red-600'}>{pagMsg.text}</span>
+            )}
             {saved && (
-              <span className="flex items-center gap-1 text-sm text-green-600">
+              <span className="flex items-center gap-1 text-green-600">
                 <CheckCheck className="h-4 w-4" /> Desat
               </span>
             )}
-          </div>
-
-          {/* Pagament a la dona de neteja segons les tarifes configurades */}
-          <div className="space-y-2 rounded-lg bg-slate-50 px-3 py-3">
-            <div className="flex flex-wrap items-center gap-3 text-sm">
-              <span className="text-slate-600">
-                A pagar: <strong className="text-slate-900">{aPagar.toFixed(2)} €</strong>
-                <span className="text-slate-400">
-                  {' '}
-                  ({nSortides} sortida{nSortides !== 1 ? 'es' : ''} · {nManteniments} manteniment
-                  {nManteniments !== 1 ? 's' : ''}
-                  {zonesComunes ? ' · zones' : ''})
-                </span>
-              </span>
+            <span className="ml-auto flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -567,12 +563,13 @@ export default function NetejaPage() {
               >
                 {pagant ? 'Registrant…' : 'Registrar pagament'}
               </Button>
-              {pagMsg && (
-                <span className={pagMsg.tone === 'ok' ? 'text-green-600' : 'text-red-600'}>
-                  {pagMsg.text}
-                </span>
-              )}
-            </div>
+              <Button onClick={desar} disabled={saving || !personId}>
+                <Save className="h-4 w-4" /> {saving ? 'Desant…' : 'Desar full'}
+              </Button>
+            </span>
+          </div>
+
+          <div className="space-y-2">
             {senseTarifes && (
               <p className="text-xs text-amber-600">
                 Configura les tarifes al perfil del treballador a{' '}
