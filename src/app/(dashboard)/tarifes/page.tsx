@@ -1,11 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Trash2, Save, FileDown } from 'lucide-react';
+import { Plus, Trash2, Save, FileDown, ChevronDown } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FinancesNav } from '@/components/balanc/finances-nav';
+import { Segmentat } from '@/components/ui/navegador-periode';
 import { getJSON, ApiError } from '@/lib/api';
 import { GRUP_TARIFA, GRUP_TARIFA_LABELS, type GrupTarifa } from '@/lib/validation/tarifa-tipus';
 import { VersionsTarifes, type FilaVersio } from '@/components/tarifes/versions-tarifes';
@@ -45,6 +46,8 @@ export default function TarifesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  // Quina habitació es veu (la targeta de sota les pestanyes).
+  const [veure, setVeure] = useState<GrupTarifa | 'TOTES'>('TOTES');
   const [error, setError] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState(false);
   // Es canvia en cada desat perquè l'historial de versions es torni a carregar.
@@ -141,26 +144,43 @@ export default function TarifesPage() {
         subtitle="Full de preus per tipus d'habitació i temporada — editable i descarregable en PDF"
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {okMsg && <span className="text-sm font-medium text-green-600">Desat ✓</span>}
-            <Button onClick={desar} disabled={saving || !dirty}>
-              <Save className="h-4 w-4" /> {saving ? 'Desant…' : 'Desar canvis'}
+            {/* Els PDF, en un sol desplegable (abans eren quatre botons). */}
+            <details className="relative">
+              <summary className="ui-btn-md inline-flex h-10 cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+                <FileDown className="h-4 w-4" /> Descarregar PDF <ChevronDown className="h-4 w-4 text-slate-500" />
+              </summary>
+              <div className="ui-card absolute right-0 z-30 mt-1 w-60 border border-slate-300 bg-white py-1 shadow-lg">
+                <a href="/imprimir/tarifes" target="_blank" rel="noreferrer" className="block px-3 py-2.5 text-sm hover:bg-slate-50">
+                  Totes les habitacions
+                </a>
+                {GRUP_TARIFA.map((g) => (
+                  <a key={g} href={`/imprimir/tarifes?grup=${g}`} target="_blank" rel="noreferrer" className="block px-3 py-2.5 text-sm hover:bg-slate-50">
+                    {GRUP_TARIFA_LABELS[g]}
+                  </a>
+                ))}
+              </div>
+            </details>
+            {/* Sense canvis: blanc i apagat (no un granat descolorit). Amb canvis: granat. */}
+            <Button onClick={desar} disabled={saving || !dirty} variant={dirty || saving ? 'primary' : 'outline'}>
+              <Save className="h-4 w-4" /> {saving ? 'Desant…' : dirty ? 'Desar canvis' : 'Sense canvis'}
             </Button>
           </div>
         }
       />
       <FinancesNav />
 
-      {/* Descàrrega PDF (tot o per tipus) */}
-      <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
-        <span className="font-medium text-slate-700">Descarregar PDF:</span>
-        <a href="/imprimir/tarifes" target="_blank" rel="noreferrer">
-          <Button variant="outline" size="sm"><FileDown className="h-4 w-4" /> Totes</Button>
-        </a>
-        {GRUP_TARIFA.map((g) => (
-          <a key={g} href={`/imprimir/tarifes?grup=${g}`} target="_blank" rel="noreferrer">
-            <Button variant="outline" size="sm"><FileDown className="h-4 w-4" /> {GRUP_TARIFA_LABELS[g]}</Button>
-          </a>
-        ))}
+      {/* Plantilla de Finances: sota les pestanyes, la targeta blanca. Aquí, quina
+          habitació veus i si hi ha canvis per desar. */}
+      <div className="ui-card mb-5 flex flex-wrap items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm sm:px-4">
+        <Segmentat
+          etiqueta="Quina habitació"
+          opcions={[{ valor: 'TOTES' as const, label: 'Totes' }, ...GRUP_TARIFA.map((g) => ({ valor: g, label: GRUP_TARIFA_LABELS[g] }))]}
+          valor={veure}
+          onChange={setVeure}
+        />
+        <span className={`ml-auto ${dirty ? 'font-semibold text-amber-700' : okMsg ? 'font-semibold text-green-700' : 'text-slate-500'}`}>
+          {dirty ? 'Hi ha canvis sense desar' : okMsg ? 'Desat ✓' : 'Sense canvis per desar'}
+        </span>
       </div>
 
       {error && (
@@ -173,7 +193,7 @@ export default function TarifesPage() {
         <p className="text-sm text-slate-500">Carregant…</p>
       ) : (
         <div className="space-y-6">
-          {GRUP_TARIFA.map((grup) => {
+          {GRUP_TARIFA.filter((g) => veure === 'TOTES' || g === veure).map((grup) => {
             const rows = files.filter((f) => f.grup === grup).sort((a, b) => a.ordre - b.ordre);
             return (
               <div key={grup} className="rounded-xl border border-slate-200 bg-white shadow-sm">
