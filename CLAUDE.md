@@ -224,6 +224,13 @@ etiqueta `ui-etiqueta`. Nombres TODO EN MAYÚSCULAS → «Adnan Besic» al mostr
   `ProrrogaEvent`: PREGUNTAT, NO_CONTESTA, RECORDATORI, APLACAT, SI, NO, NOTA). Es proposa preguntar 18 dies abans
   (≥20 nits, comptant tota la cadena d’ampliacions) o 3 (curtes), però es pot fer quan es vulgui. Si ja ha allargat, surt l’última ampliació (encara que no hagi començat) amb la història de tota la cadena i un pas «Ha allargat». Lògica pura `situacioEstada`/`dataProposadaProrroga` a
   `src/lib/prorroga.ts`; API `POST/DELETE /api/estancies/:id/prorroga`.
+- **Neteja · Planificació** (pestanya a /neteja): el full «per setmanes» com el de paper. Model
+  `NetejaPlanificada` (dia + habitació + sortida/manteniment + observació; NO compta per pagar) i `NotaNeteja`
+  (observació del DIA o de la SETMANA = dilluns). Si un dia té TascaNeteja (desada al «Full del dia»), la feta mana.
+  «Repetir la setmana passada» copia dies i habitacions +7 dies (sortida només si aquell dia marxa algú). El
+  «Full del dia» surt proposat amb la planificació però no es desa fins a «Desar full». Full imprès A4:
+  `/imprimir/neteja?desde&fins`. Lògica pura a `src/lib/neteja-planificacio.ts` (testejada), servei
+  `services/neteja-planificacio.ts`, API `/api/neteja/planificacio`, `/api/neteja/notes`.
 - **Deure i Haver** (`/balanc/deure-haver`): registre de la CAIXA i del BANC (Deure = entra, Haver = surt,
   saldo fila a fila). Surt sol dels cobraments, dipòsits (rebuts i tornats) i despeses per forma de pagament
   (efectiu → caixa; targeta/transferència/Bizum → banc; «Altres» no hi entra i s'avisa). A mà (`MovimentTresoreria`):

@@ -648,6 +648,7 @@ model Habitacio {
   actius           Actiu[]
   gastos           Gasto[]
   tasquesNeteja    TascaNeteja[]
+  netejaPlanificada NetejaPlanificada[]
   tarifes          Tarifa[]
   incidencies      Incidencia[]
   viatgersSeparats EstanciaViatger[]
@@ -697,6 +698,47 @@ model ArticleBugaderia {
   deletedAt DateTime? @map("deleted_at")
 
   @@map("article_bugaderia")
+}
+
+// Neteja PLANIFICADA (encara no feta): una habitació un dia, amb sortida o
+// manteniment i una observació. No compta per pagar: quan es desa el «Full del dia»
+// es converteix en TascaNeteja. Es pot planificar amb setmanes d'antelació.
+model NetejaPlanificada {
+  id            String       @id @default(cuid())
+  data          DateTime // inici del dia (UTC), com TascaNeteja
+  habitacioId   String       @map("habitacio_id")
+  habitacio     Habitacio    @relation(fields: [habitacioId], references: [id], onDelete: Cascade)
+  tipus         TipusNeteja
+  treballadorId String?      @map("treballador_id")
+  treballador   Treballador? @relation(fields: [treballadorId], references: [id], onDelete: SetNull)
+  nota          String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([data, habitacioId])
+  @@index([data])
+  @@map("neteja_planificada")
+}
+
+enum AmbitNotaNeteja {
+  DIA
+  SETMANA // data = el dilluns de la setmana
+}
+
+// Observació general d'un dia o d'una setmana de neteja (la de cada habitació va a
+// NetejaPlanificada.nota o TascaNeteja.notes).
+model NotaNeteja {
+  id     String          @id @default(cuid())
+  data   DateTime
+  ambit  AmbitNotaNeteja
+  text   String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([data, ambit])
+  @@map("nota_neteja")
 }
 
 model TascaNeteja {
@@ -1266,6 +1308,7 @@ model Treballador {
   nomines       Nomina[]
   jornades      Jornada[]
   tasquesNeteja TascaNeteja[]
+  netejaPlanificada NetejaPlanificada[]
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

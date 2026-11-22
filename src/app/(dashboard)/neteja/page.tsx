@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Save, Check, Undo2, CheckCheck, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { ProximsDies } from '@/components/neteja/proxims-dies';
+import { PlanificacioNeteja } from '@/components/neteja/planificacio';
 import { BugaderiaMensualCard } from '@/components/estancia/bugaderia-mensual-card';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
@@ -12,7 +13,7 @@ import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getJSON, postJSON, putJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { formatDate, formatEur } from '@/lib/utils';
+import { cn, formatDate, formatEur } from '@/lib/utils';
 import { toISODate, addDays } from '@/lib/dates';
 import { tipusNetejaValues, TIPUS_NETEJA_LABELS } from '@/lib/validation/enums';
 
@@ -55,7 +56,17 @@ interface Row {
   bugaderia?: Record<string, number>;
 }
 
+interface PlaDia {
+  plans: { id: string; habitacioId: string; tipus: 'CANVI_COMPLET' | 'REPAS'; treballadorId: string | null; nota: string | null }[];
+  notaDia: string | null;
+}
+
 export default function NetejaPage() {
+  // Dues pestanyes: el full d'un dia (com sempre) i la planificació per setmanes.
+  const [vista, setVista] = useState<'dia' | 'planificacio'>('dia');
+  // Planificació del dia triat: es proposa al full fins que es desa (o es treu).
+  const [pla, setPla] = useState<PlaDia | null>(null);
+  const [ambProposta, setAmbProposta] = useState(true);
   const [habitacions, setHabitacions] = useState<Habitacio[]>([]);
   const [treballadors, setTreballadors] = useState<Treballador[]>([]);
   const [dayTasks, setDayTasks] = useState<Tasca[]>([]);
@@ -110,9 +121,19 @@ export default function NetejaPage() {
 
   // Si s'arriba des del calendari amb ?data=YYYY-MM-DD, obre aquell dia.
   useEffect(() => {
-    const p = new URLSearchParams(window.location.search).get('data');
+    const q = new URLSearchParams(window.location.search);
+    const p = q.get('data');
     if (p) setData(p);
+    if (q.get('vista') === 'planificacio') setVista('planificacio');
   }, []);
+
+  // Planificació del dia (si n'hi ha): es proposa al full.
+  useEffect(() => {
+    setAmbProposta(true);
+    getJSON<PlaDia>(`/api/neteja/planificacio?dia=${data}`)
+      .then(setPla)
+      .catch(() => setPla(null));
+  }, [data]);
 
   // Càrrega inicial: habitacions + treballadors.
   useEffect(() => {
@@ -172,10 +193,16 @@ export default function NetejaPage() {
     setZonesEstat(z?.estat ?? null);
   }, [dayTasks, personId]);
 
+  // Proposta: només si aquesta persona encara no té res desat aquell dia.
+  const plansPersona = (pla?.plans ?? []).filter((p) => !p.treballadorId || p.treballadorId === personId);
+  const teDesat = dayTasks.some((t) => t.assignadaA === personId);
+  const proposta = ambProposta && !teDesat && plansPersona.length > 0;
+
   useEffect(() => {
     setSaved(false);
     setRows(
       habitacions.map((h) => {
+        const p = proposta ? plansPersona.find((x) => x.habitacioId === h.id) : undefined;
         const meva = dayTasks.find((t) => t.habitacioId === h.id && t.assignadaA === personId);
         const lliure = dayTasks.find((t) => t.habitacioId === h.id && t.assignadaA === null);
         const altra = dayTasks.find(
@@ -185,9 +212,9 @@ export default function NetejaPage() {
         return {
           habitacioId: h.id,
           nom: h.nom,
-          checked: !!meva,
-          tipus: meva?.tipus ?? lliure?.tipus ?? (sortida ? 'CANVI_COMPLET' : 'REPAS'),
-          notes: meva?.notes ?? '',
+          checked: !!meva || !!p,
+          tipus: meva?.tipus ?? p?.tipus ?? lliure?.tipus ?? (sortida ? 'CANVI_COMPLET' : 'REPAS'),
+          notes: meva?.notes ?? p?.nota ?? '',
           taskId: meva?.id,
           estat: meva?.estat,
           sortida,
@@ -198,7 +225,8 @@ export default function NetejaPage() {
         };
       }),
     );
-  }, [habitacions, dayTasks, personId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- plansPersona es deriva de pla/personId
+  }, [habitacions, dayTasks, personId, pla, proposta]);
 
   function setRow(habitacioId: string, patch: Partial<Row>) {
     setSaved(false);
@@ -299,7 +327,39 @@ export default function NetejaPage() {
 
   return (
     <div>
-      <PageHeader title="Neteja" subtitle="Full de neteja diari per persona" />
+      <PageHeader
+        title="Neteja"
+        subtitle={vista === 'dia' ? 'Full de neteja diari per persona' : 'Registre de neteges: les fetes i les que vénen'}
+      />
+      <div role="tablist" aria-label="Neteja" className="ui-pestanyes mb-4 flex gap-6 border-b border-slate-200">
+        {([['dia', 'Full del dia'], ['planificacio', 'Planificació']] as const).map(([v, l]) => (
+          <button
+            key={v}
+            type="button"
+            role="tab"
+            aria-selected={vista === v}
+            onClick={() => setVista(v)}
+            className={cn(
+              'ui-pestanya -mb-px border-b-2 pb-2 text-sm font-bold uppercase tracking-wide',
+              vista === v ? 'border-brand-700 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-800',
+            )}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {vista === 'planificacio' ? (
+        <PlanificacioNeteja
+          onObreDia={(iso, persona) => {
+            setData(iso);
+            if (persona) setPersonId(persona);
+            setVista('dia');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
+      ) : (
+      <>
 
       {/* Una sola barra: dia (amb fletxes i «Avui»), persona i, a la dreta, la
           bugaderia del mes en petit (en clicar-la s'obre el detall i els preus). */}
@@ -344,6 +404,21 @@ export default function NetejaPage() {
           <span className="text-sm text-slate-500">{seleccionades} habitacions</span>
         </CardHeader>
         <CardBody className="space-y-2">
+          {proposta && (
+            <div className="flex flex-wrap items-center gap-3 border border-l-4 border-brand-200 border-l-brand-700 bg-brand-50/50 px-3.5 py-2.5 text-sm text-slate-800">
+              <span className="min-w-0 flex-1">
+                <b>Ve de la planificació:</b>{' '}
+                {plansPersona
+                  .map((p) => `${habitacions.find((h) => h.id === p.habitacioId)?.nom ?? '?'} ${p.tipus === 'CANVI_COMPLET' ? 'sortida' : 'manteniment'}`)
+                  .join(' · ')}
+                {pla?.notaDia ? ` · ${pla.notaDia}` : ''}.{' '}
+                <span className="text-brand-800">Encara <b>no està desat</b>: revisa-ho i clica «Desar full» quan estigui fet.</span>
+              </span>
+              <button type="button" onClick={() => setAmbProposta(false)} className="text-xs font-bold text-brand-700 hover:underline">
+                Treure la proposta
+              </button>
+            </div>
+          )}
           {rows.length === 0 ? (
             <p className="text-sm text-slate-500">No hi ha habitacions configurades.</p>
           ) : (
@@ -593,6 +668,8 @@ export default function NetejaPage() {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       />
+      </>
+      )}
       <ConfirmDialog
         open={!!confirmElimJornada}
         title="Eliminar pagament de neteja"
