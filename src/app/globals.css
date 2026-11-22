@@ -137,8 +137,17 @@ html[data-estil='nou'] .ui-page-title {
   letter-spacing: -0.01em;
 }
 html[data-estil='nou'] h1.ui-page-title {
-  font-size: 2.25rem;
+  font-size: 1.875rem;
   line-height: 1.15;
+}
+/* Estades en curs per dins: lletra més contenguda (la de «Entrada», «Ha allargat»
+   i el nom del client), perquè no es vegi tan gran. */
+html[data-estil='nou'] .ui-tl-titol {
+  font-size: 15px;
+  line-height: 1.35;
+}
+html[data-estil='nou'] .ui-estada-nom {
+  font-size: 15px;
 }
 /* Etiquetes dels camps: ENTRADA, SORTIDA… (la nota entre parèntesis, normal). */
 html[data-estil='nou'] .ui-label {

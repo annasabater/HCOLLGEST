@@ -275,7 +275,7 @@ function Historial({
             </p>
             <p
               className={cn(
-                'flex items-start gap-1 font-semibold',
+                'ui-tl-titol flex items-start gap-1 font-semibold',
                 i.futur ? 'text-slate-500' : 'text-slate-900',
               )}
             >
@@ -524,7 +524,7 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                   </span>
                   <span className="grid min-w-0 gap-1.5">
                     <span className="flex flex-wrap items-baseline gap-x-2.5">
-                      <strong className="text-slate-900">{titular}</strong>
+                      <strong className="ui-estada-nom text-slate-900">{titular}</strong>
                       <span className="text-xs tabular-nums text-slate-500">
                         {dc(e.entrada)} → {dc(e.sortida)} · {e.nits} nits
                         {e.ampliacions.length > 0 && (
