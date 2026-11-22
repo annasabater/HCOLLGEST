@@ -1,7 +1,8 @@
 'use client';
 
 import { useId, useState } from 'react';
-import { formatEur, cn } from '@/lib/utils';
+import { formatEur } from '@/lib/utils';
+import { Segmentat } from '@/components/ui/navegador-periode';
 import { useAmountsHidden } from '@/components/finances/amounts-visibility';
 import { COLORS_BALANC, MostraRatllada, PatroRatllat, separaTicks } from '@/components/balanc/cascada-caixa';
 
@@ -16,7 +17,7 @@ export interface PuntFiances {
 type Vista = 'sense' | 'amb' | 'nomes';
 const SUBTITOL: Record<Vista, string> = {
   sense: 'Ingressos, despeses i benefici real. Les fiances no hi són.',
-  amb: 'La fiança surt ratllada a sobre de cada barra. La línia del benefici no canvia.',
+  amb: 'Tot: la fiança surt ratllada a sobre de cada barra. La línia del benefici no canvia.',
   nomes: 'Només fiances: les que has rebut contra les que has pagat, i el saldo que portes.',
 };
 
@@ -24,7 +25,11 @@ const SUBTITOL: Record<Vista, string> = {
  * Gràfic mes a mes amb tres vistes: sense fiances, amb fiances (ratllades a sobre
  * de cada barra, sense tocar el benefici) i només fiances (amb el saldo acumulat).
  */
-export function MesosFiancesChart({ titol, punts, ambFiances = true }: { titol: string; punts: PuntFiances[]; ambFiances?: boolean }) {
+export function MesosFiancesChart({ titol, punts: tots, ambFiances = true }: { titol: string; punts: PuntFiances[]; ambFiances?: boolean }) {
+  // Comença pel primer mes amb algun moviment: els mesos buits del principi
+  // (abans de tenir dades) només ocupaven lloc.
+  const primer = tots.findIndex((p) => p.ingressos || p.despeses || p.rebudes || p.pagades);
+  const punts = primer > 0 ? tots.slice(primer) : tots;
   const { hidden } = useAmountsHidden();
   const uid = useId().replace(/:/g, '');
   const [vista, setVista] = useState<Vista>('sense');
@@ -107,28 +112,16 @@ export function MesosFiancesChart({ titol, punts, ambFiances = true }: { titol: 
           <p className="text-sm text-slate-500">{SUBTITOL[v]}</p>
         </div>
         {ambFiances && (
-          <div role="group" aria-label="Vista del gràfic" className="inline-flex rounded-xl border border-slate-200 bg-white p-0.5">
-            {(
-              [
-                ['sense', 'Sense fiances'],
-                ['amb', 'Amb fiances'],
-                ['nomes', 'Només fiances'],
-              ] as const
-            ).map(([k, l]) => (
-              <button
-                key={k}
-                type="button"
-                aria-pressed={v === k}
-                onClick={() => setVista(k)}
-                className={cn(
-                  'rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
-                  v === k ? 'bg-brand-700 text-white' : 'text-slate-600 hover:text-brand-700',
-                )}
-              >
-                {l}
-              </button>
-            ))}
-          </div>
+          <Segmentat
+            etiqueta="Vista del gràfic"
+            opcions={[
+              { valor: 'amb' as const, label: 'Tot' },
+              { valor: 'sense' as const, label: 'Sense fiances' },
+              { valor: 'nomes' as const, label: 'Només fiances' },
+            ]}
+            valor={v}
+            onChange={setVista}
+          />
         )}
       </div>
       <div className="mb-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
