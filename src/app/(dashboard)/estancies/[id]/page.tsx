@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Send, Receipt, FileSignature, Pencil, Mail, Clock, FileText } from 'lucide-react';
+import { Send, Receipt, FileSignature, Pencil, Clock, FileText } from 'lucide-react';
 import { BackLink } from '@/components/ui/back-link';
 import { prisma } from '@/lib/db';
 import { habitacioLlibre } from '@/lib/habitacio-llibre';
@@ -674,12 +674,13 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
 
         {/* Mossos */}
         <div className="space-y-6">
+          {/* Accions: Mossos i missatges a l'hoste, en una sola caixa. */}
           <Card>
             <CardHeader className="flex items-center gap-2">
               <Send className="h-4 w-4 text-brand-600" />
-              <CardTitle>Comunicació a Mossos</CardTitle>
+              <CardTitle>Accions</CardTitle>
             </CardHeader>
-            <CardBody>
+            <CardBody className="space-y-5">
               <EstanciaActions
                 estanciaId={estancia.id}
                 esAmpliacio={!!estancia.origen}
@@ -695,25 +696,17 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   errorMsg: formataRebuigMossos(e.errorMsg) || null,
                 }))}
               />
-            </CardBody>
-          </Card>
-
-          {/* Missatges a l'hoste (benvinguda WhatsApp / gràcies + ressenya) */}
-          <Card>
-            <CardHeader className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-brand-600" />
-              <CardTitle>Missatges a l’hoste</CardTitle>
-            </CardHeader>
-            <CardBody>
-              <EmailsPanel
-                estanciaId={estancia.id}
-                titularNom={titular ? titular.nom : ''}
-                titularEmail={titular?.email ?? null}
-                titularTelefon={titular?.telefon ?? null}
-                habitacioNom={estancia.habitacio?.nom ?? null}
-                dataSortida={estancia.dataSortida?.toISOString() ?? ''}
-                idioma={estancia.idioma ?? 'ca'}
-              />
+              <div className="border-t border-slate-100 pt-4">
+                <EmailsPanel
+                  estanciaId={estancia.id}
+                  titularNom={titular ? titular.nom : ''}
+                  titularEmail={titular?.email ?? null}
+                  titularTelefon={titular?.telefon ?? null}
+                  habitacioNom={estancia.habitacio?.nom ?? null}
+                  dataSortida={estancia.dataSortida?.toISOString() ?? ''}
+                  idioma={estancia.idioma ?? 'ca'}
+                />
+              </div>
             </CardBody>
           </Card>
         </div>

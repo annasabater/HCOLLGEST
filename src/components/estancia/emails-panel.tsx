@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Trash2, Send, Clock, CheckCircle, XCircle, Plus, MessageCircle } from 'lucide-react';
+import { Trash2, Send, Clock, CheckCircle, XCircle, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -162,49 +162,51 @@ export function EmailsPanel({
 
   return (
     <div className="space-y-4">
-      {/* Botons principals — a mòbil ocupen tota l'amplada i s'apilen; a partir de
-          `sm` flueixen en fila i fan salt de línia si cal. */}
+      {/* Hoste: títol + idioma i, a sota, tres botons iguals. */}
       {form === null && (
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-          <Select
-            value={lang}
-            onChange={(e) => setLang(e.target.value as LangEmail)}
-            className="h-9 w-full text-xs sm:w-28"
-            aria-label="Idioma del missatge"
-          >
-            {LANGS.map((l) => (
-              <option key={l.code} value={l.code}>{l.label}</option>
-            ))}
-          </Select>
-          <Button
-            type="button"
-            size="sm"
-            disabled={!titularTelefon}
-            title={titularTelefon ? undefined : 'El titular no té telèfon'}
-            onClick={openWhatsAppBenvinguda}
-            className="w-full justify-center bg-green-600 hover:bg-green-700 text-white border-green-600 sm:w-auto"
-          >
-            <MessageCircle className="h-4 w-4" /> Benvinguda WhatsApp
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            disabled={!titularTelefon}
-            title={titularTelefon ? undefined : 'El titular no té telèfon'}
-            onClick={openWhatsAppGracies}
-            className="w-full justify-center bg-green-600 hover:bg-green-700 text-white border-green-600 sm:w-auto"
-          >
-            <MessageCircle className="h-4 w-4" /> Gràcies WhatsApp
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => openForm('gracies')}
-            className="w-full justify-center sm:w-auto"
-          >
-            <Plus className="h-4 w-4" /> Email de gràcies
-          </Button>
+        <div>
+          <div className="mb-1.5 flex items-center justify-between gap-3">
+            <p className="ui-label text-xs font-bold uppercase tracking-wider text-slate-600">Hoste</p>
+            <Select
+              value={lang}
+              onChange={(e) => setLang(e.target.value as LangEmail)}
+              className="h-8 w-28 text-xs"
+              aria-label="Idioma del missatge"
+            >
+              {LANGS.map((l) => (
+                <option key={l.code} value={l.code}>{l.label}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <Button
+              type="button"
+              disabled={!titularTelefon}
+              title={titularTelefon ? 'Benvinguda per WhatsApp' : 'El titular no té telèfon'}
+              onClick={openWhatsAppBenvinguda}
+              className="w-full justify-center border-green-600 bg-green-600 text-white hover:bg-green-700"
+            >
+              Benvinguda
+            </Button>
+            <Button
+              type="button"
+              disabled={!titularTelefon}
+              title={titularTelefon ? 'Gràcies + ressenya per WhatsApp' : 'El titular no té telèfon'}
+              onClick={openWhatsAppGracies}
+              className="w-full justify-center border-green-600 bg-green-600 text-white hover:bg-green-700"
+            >
+              Gràcies
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              title="Programar un email de gràcies"
+              onClick={() => openForm('gracies')}
+              className="w-full justify-center"
+            >
+              <Mail className="h-4 w-4" /> Email
+            </Button>
+          </div>
         </div>
       )}
 

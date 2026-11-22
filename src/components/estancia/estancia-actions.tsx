@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Download, AlertTriangle, FileCheck, Send, ShieldAlert, Trash2 } from 'lucide-react';
+import { Download, AlertTriangle, FileCheck, ShieldAlert, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { GenerarFitxerButton, type FitxerNotice } from './generar-fitxer-button';
@@ -76,22 +76,25 @@ export function EstanciaActions({
           <p>Ampliació: els hostes ja es van comunicar a Mossos a l’estada original; normalment no cal reenviar-los (§4).</p>
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={() => setConfirmaEnviar(true)} disabled={enviant}>
-          <Send className="h-4 w-4" /> {enviant ? 'Pujant a Mossos…' : 'Pujar a Mossos'}
-        </Button>
-        <GenerarFitxerButton
-          estanciaId={estanciaId}
-          label="Descarregar .txt (manual)"
-          variant="outline"
-          onResult={(n) => setNotice(n)}
-          onDone={() => router.refresh()}
-        />
+      <div>
+        <p className="ui-label mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-600">Mossos</p>
+        <div className="grid grid-cols-2 gap-2">
+          <Button onClick={() => setConfirmaEnviar(true)} disabled={enviant} className="w-full">
+            {enviant ? 'Pujant a Mossos…' : 'Pujar a Mossos'}
+          </Button>
+          <GenerarFitxerButton
+            estanciaId={estanciaId}
+            label=".txt manual"
+            variant="outline"
+            className="w-full"
+            onResult={(n) => setNotice(n)}
+            onDone={() => router.refresh()}
+          />
+        </div>
+        <p className="mt-1.5 text-xs text-slate-500" title="Automàtic: l’app puja el fitxer al portal de Mossos sola i desa el comprovant. Manual: descarrega el .txt per pujar-lo tu.">
+          <strong>Pujar</strong>: l’app el puja sola i desa el comprovant · <strong>.txt</strong>: el descarregues i el puges tu.
+        </p>
       </div>
-      <p className="text-xs text-slate-500">
-        <strong>Automàtic</strong>: l’app puja el fitxer al portal de Mossos sola i desa el comprovant.
-        <strong> Manual</strong>: descarrega el .txt per pujar-lo tu.
-      </p>
 
       {confirmaEnviar && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">

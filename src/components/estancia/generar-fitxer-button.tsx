@@ -96,6 +96,7 @@ export function GenerarFitxerButton({
   size = 'md',
   variant = 'primary',
   contracteLabel,
+  className,
   onResult,
   onDone,
 }: {
@@ -104,6 +105,7 @@ export function GenerarFitxerButton({
   size?: ButtonProps['size'];
   variant?: ButtonProps['variant'];
   contracteLabel?: string;
+  className?: string;
   onResult?: (n: FitxerNotice) => void;
   onDone?: () => void;
 }) {
@@ -196,7 +198,7 @@ export function GenerarFitxerButton({
 
   return (
     <>
-      <Button onClick={obrir} disabled={busy || loading} size={size} variant={variant}>
+      <Button onClick={obrir} disabled={busy || loading} size={size} variant={variant} className={className}>
         <FileText className="h-4 w-4" /> {loading ? 'Carregant…' : label}
       </Button>
 
