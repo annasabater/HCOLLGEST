@@ -4,14 +4,13 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
-  Download,
-  FileText,
   CheckCircle2,
   AlertTriangle,
   Scale,
   X,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
+import { MenuImprimir } from '@/components/balanc/menu-imprimir';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, Thead, Th, Td, Tr } from '@/components/ui/table';
@@ -889,19 +888,17 @@ export default function BalancPage() {
                 Situació
               </button>
             )}
-            <Button variant="outline" size="sm" onClick={exporta}>
-              <Download className="h-4 w-4" /> CSV
-            </Button>
-            {pdfHref && !veureSituacio && (
-              <a
-                href={pdfHref}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-              >
-                <FileText className="h-4 w-4" /> PDF
-              </a>
-            )}
+            {/* Imprimir ▾: el període i els informes (resum, despeses per proveïdor i per categoria). */}
+            <MenuImprimir
+              estat={estat}
+              onEstat={setEstat}
+              avui={avui}
+              desde={desde}
+              fins={fins}
+              pdfResum={veureSituacio ? null : pdfHref}
+              onExcelResum={exporta}
+              senseInformes={veureSituacio}
+            />
           </div>
         }
       />

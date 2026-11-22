@@ -150,7 +150,12 @@ etiqueta `ui-etiqueta`. Nombres TODO EN MAYÚSCULAS → «Adnan Besic» al mostr
   (sin pestaña aparte): cercador de proveïdor/categoria/paraula (unió), «Compara» (anterior / any passat /
   rang), consultes desades ★ (model `ConsultaDespeses`, `/api/gastos/consultes`) i «Treu els filtres»; amb
   filtre surt total + diferència + gràfic i les files del període comparat. Lògica pura a
-  `src/lib/filtre-despeses.ts` (testejada); UI a `components/gastos/filtre-barra.tsx` i `grafic-despeses.tsx`. ·
+  `src/lib/filtre-despeses.ts` (testejada); UI a `components/gastos/filtre-barra.tsx` i `grafic-despeses.tsx`.
+  **Balanç → «Imprimir ▾»** (`components/balanc/menu-imprimir.tsx`): el període de la pàgina (editable dins el menú)
+  i els informes amb PDF i Excel: resum del balanç (el de sempre) i **despeses per proveïdor / per categoria**
+  (`/imprimir/despeses-agrupades?per=&desde=&fins=[&format=csv]`, només ADMIN, sense fiances; lògica pura i testejada a
+  `src/lib/informes-despeses.ts`, base/IVA de `gasto-iva.ts`). PENDENT dels informes del mockup: ingressos per forma
+  de cobrament, fiances, personal, del benefici a la caixa i «imprimir-ne diversos junts». ·
   **5** Activos (alertas garantía/antigüedad, historial) + animales ·
   **6** Personal (trabajadores, ausencias, nóminas) ·
 - **Compte del treballador** (`/personal/:id`): neteja y bugadería en **una sola lista** filtrada por
