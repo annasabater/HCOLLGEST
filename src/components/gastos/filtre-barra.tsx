@@ -64,6 +64,7 @@ export function FiltreBarra({
   onEsborraConsulta,
   onTreuTot,
   canWrite,
+  className,
 }: {
   filtres: FiltreDespesa[];
   onFiltres: (f: FiltreDespesa[]) => void;
@@ -83,6 +84,7 @@ export function FiltreBarra({
   onEsborraConsulta: (c: ConsultaDesada) => Promise<void>;
   onTreuTot: () => void;
   canWrite: boolean;
+  className?: string;
 }) {
   const [text, setText] = useState('');
   const [obert, setObert] = useState<'cerca' | 'compara' | 'consultes' | null>(null);
@@ -124,7 +126,7 @@ export function FiltreBarra({
   );
 
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-2">
+    <div className={cn("flex flex-wrap items-center gap-2", className)}>
       {/* Què vols mirar: cercador amb els filtres triats com a etiquetes. */}
       <div ref={refCerca} className="relative min-w-[16rem] flex-[1_1_22rem]">
         <div
@@ -333,11 +335,11 @@ export function ResultatFiltre({
   onGrafic: () => void;
 }) {
   return (
-    <div className="mb-4 rounded-xl border border-slate-200 bg-white ui-card">
+    <div>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 text-sm">
         <span>
-          <span className="text-lg font-bold text-slate-900"><Eur value={total} /></span>
-          <span className="text-slate-500"> · {n} {n === 1 ? 'despesa' : 'despeses'}</span>
+          <span className="ui-page-title text-xl font-bold text-slate-900"><Eur value={total} /></span>
+          <span className="text-slate-500"> en {n} {n === 1 ? 'despesa' : 'despeses'}</span>
         </span>
         {comparat && (
           <>

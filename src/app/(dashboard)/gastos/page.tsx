@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { Plus, Trash2, Paperclip, Filter, Camera, Upload, X, ShieldCheck, ShieldOff, Pencil, Check } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
@@ -17,7 +17,7 @@ import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { formatDate, formatEur, cn } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
 import { rangDeEstat, type EstatPeriode } from '@/lib/periode';
-import { NavegadorPeriode } from '@/components/ui/navegador-periode';
+import { PeriodeCompacte } from '@/components/ui/navegador-periode';
 import { redueixImatge, motiuPujada } from '@/lib/images/redueix-client';
 import { optionsFrom, metodeCobramentValues, METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 import { LiniesIva, liniaBuida, liniesDeGasto, payloadIva, type LiniaIvaForm } from '@/components/gastos/linies-iva';
@@ -182,11 +182,24 @@ function GastosVariablesTab({
   fins,
   filtre,
   onSavedDate,
+  periode,
+  resumPeriode,
+  showForm,
+  setShowForm,
+  fotoNova,
 }: {
   desde: string;
   fins: string;
   filtre: FiltreEstat;
   onSavedDate: (data: string) => void;
+  /** El selector de període (va a la primera fila de la targeta). */
+  periode: ReactNode;
+  /** La línia del total del període quan no hi ha cap filtre. */
+  resumPeriode: ReactNode;
+  showForm: boolean;
+  setShowForm: (v: boolean | ((s: boolean) => boolean)) => void;
+  /** Foto feta amb «Fer foto» de la capçalera: obre el formulari i s'escaneja. */
+  fotoNova: { file: File; n: number } | null;
 }) {
   const { filtres, rangB } = filtre;
   const actiu = filtres.length > 0 || rangB !== null;
@@ -198,11 +211,19 @@ function GastosVariablesTab({
   const [gastosB, setGastosB] = useState<Gasto[] | null>(null);
   const [graficObert, setGraficObert] = useState(true);
 
-  const [showForm, setShowForm] = useState(false);
   const [nova, setNova] = useState(novaBuida);
   const [file, setFile] = useState<File | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // «Fer foto» de la capçalera: la càmera s'obre allà mateix (si s'obrís des
+  // d'aquí, el mòbil la bloquejaria), i la foto arriba aquí per escanejar-la.
+  const fotoN = fotoNova?.n ?? 0;
+  useEffect(() => {
+    if (!fotoNova) return;
+    setShowForm(true);
+    triaFitxer(fotoNova.file);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- només quan arriba una foto nova
+  }, [fotoN]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Avís quan la despesa s'ha vinculat sola a un servei recurrent (p. ex. Gestaigua).
@@ -582,10 +603,6 @@ function GastosVariablesTab({
         }
       />
 
-      <div className="mb-4 flex justify-end">
-        <Button onClick={() => setShowForm((s) => !s)}><Plus className="h-4 w-4" /> Nova despesa</Button>
-      </div>
-
       {avisServei && (
         <div className="mb-4 flex items-start justify-between gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
           <span>{avisServei}</span>
@@ -719,45 +736,56 @@ function GastosVariablesTab({
         </Card>
       )}
 
-      <FiltreBarra
-        filtres={filtres}
-        onFiltres={filtre.setFiltres}
-        comparacio={filtre.comparacio}
-        onComparacio={filtre.setComparacio}
-        rangComparat={rangB}
-        rangAMa={filtre.rangAMa}
-        onRangAMa={filtre.setRangAMa}
-        gastosPeriode={gastos}
-        proveidors={proveidors}
-        categories={categories}
-        consultes={filtre.consultes}
-        consultaActiva={filtre.consultaActiva}
-        onAplicaConsulta={filtre.aplicaConsulta}
-        onDesaConsulta={filtre.desaConsulta}
-        onEsborraConsulta={filtre.esborraConsulta}
-        onTreuTot={filtre.treuTot}
-        canWrite
-      />
-
-      {actiu && (
-        <ResultatFiltre
-          total={totalVisible}
-          n={nVisible}
-          fiances={fiancaVisible}
-          comparat={resumB ? { total: resumB.total, ...variacio(totalVisible, resumB.total) } : null}
-          etiquetaComparat={rangB ? `del ${formatDate(rangB.desde)} al ${formatDate(rangB.fins)}` : ''}
-          graficObert={graficObert}
-          onGrafic={() => setGraficObert((o) => !o)}
-          grafic={
-            <GraficDespeses
-              gastosAra={visibles}
-              rangAra={{ desde, fins }}
-              gastosAbans={visiblesB}
-              rangAbans={rangB}
+      {/* Una sola targeta: a dalt, el període i el filtre; a sota, el total del
+          període o, amb un filtre, el resultat (i el gràfic). */}
+      <div className="mb-5 rounded-xl border border-slate-200 bg-white ui-card">
+        <div className="flex flex-wrap items-center gap-2 px-3 py-3 sm:px-4">
+          {periode}
+          <FiltreBarra
+            className="min-w-0 flex-[1_1_28rem]"
+            filtres={filtres}
+            onFiltres={filtre.setFiltres}
+            comparacio={filtre.comparacio}
+            onComparacio={filtre.setComparacio}
+            rangComparat={rangB}
+            rangAMa={filtre.rangAMa}
+            onRangAMa={filtre.setRangAMa}
+            gastosPeriode={gastos}
+            proveidors={proveidors}
+            categories={categories}
+            consultes={filtre.consultes}
+            consultaActiva={filtre.consultaActiva}
+            onAplicaConsulta={filtre.aplicaConsulta}
+            onDesaConsulta={filtre.desaConsulta}
+            onEsborraConsulta={filtre.esborraConsulta}
+            onTreuTot={filtre.treuTot}
+            canWrite
+          />
+        </div>
+        <div className="border-t border-slate-100 bg-slate-50/60">
+          {actiu ? (
+            <ResultatFiltre
+              total={totalVisible}
+              n={nVisible}
+              fiances={fiancaVisible}
+              comparat={resumB ? { total: resumB.total, ...variacio(totalVisible, resumB.total) } : null}
+              etiquetaComparat={rangB ? `del ${formatDate(rangB.desde)} al ${formatDate(rangB.fins)}` : ''}
+              graficObert={graficObert}
+              onGrafic={() => setGraficObert((o) => !o)}
+              grafic={
+                <GraficDespeses
+                  gastosAra={visibles}
+                  rangAra={{ desde, fins }}
+                  gastosAbans={visiblesB}
+                  rangAbans={rangB}
+                />
+              }
             />
-          }
-        />
-      )}
+          ) : (
+            resumPeriode
+          )}
+        </div>
+      </div>
 
       {visibles.length === 0 && !(visiblesB && visiblesB.length > 0) ? (
         <EmptyState>
@@ -1032,7 +1060,6 @@ function GastosContent() {
       setConsultaActiva(null);
     },
   };
-  const filtreActiu = filtres.length > 0 || rangB !== null;
   const [errResum, setErrResum] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1054,54 +1081,79 @@ function GastosContent() {
     setEstat({ tipus: 'per', desde: data < desde ? data : desde, fins: data > fins ? data : fins });
   }
 
+  const [showForm, setShowForm] = useState(false);
+  const [fotoNova, setFotoNova] = useState<{ file: File; n: number } | null>(null);
+  const fotoRef = useRef<HTMLInputElement>(null);
+
   return (
     <div>
-      <PageHeader title="Despeses" subtitle="Les factures i tiquets del hostal" />
+      <PageHeader
+        title="Despeses"
+        subtitle="Les factures i tiquets del hostal"
+        actions={
+          <div className="flex items-center gap-2">
+            <HideAmountsButton nomesIcona />
+            <input
+              ref={fotoRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) setFotoNova((p) => ({ file, n: (p?.n ?? 0) + 1 }));
+                e.target.value = '';
+              }}
+            />
+            <Button variant="outline" onClick={() => fotoRef.current?.click()}>
+              <Camera className="h-4 w-4" /> Fer foto
+            </Button>
+            <Button onClick={() => setShowForm((s) => !s)}>
+              <Plus className="h-4 w-4" /> Nova despesa
+            </Button>
+          </div>
+        }
+      />
       <FinancesNav />
 
-      <NavegadorPeriode
-        className="mb-4"
-        estat={estat}
-        onChange={setEstat}
-        avui={avui}
-        primerDia="2000-01-01"
-        extra={<HideAmountsButton className="rounded-full" />}
-      />
-
       {errResum && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{errResum}</div>}
-
-      {/* Una sola línia: el total de la llista, les fiances a part i, si n'hi ha,
-          el personal del període amb enllaç a Treballadors. Amb un filtre posat,
-          la substitueix el resultat del filtre (a sota de la barra). */}
-      <div className={cn('mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm', filtreActiu && 'hidden')}>
-        <span>
-          <span className="text-lg font-bold text-slate-900"><Eur value={resum?.variables ?? 0} /></span>
-          <span className="text-slate-500">
-            {' · '}
-            {resum ? `${resum.nVariables} ${resum.nVariables === 1 ? 'despesa' : 'despeses'}` : '…'}
-          </span>
-        </span>
-        <span className="text-amber-700">
-          Fiances a part: <Eur value={resum?.fiances ?? 0} />
-        </span>
-        {resum && resum.personal > 0 && (
-          <Link href="/personal" className="text-slate-600 hover:text-brand-700">
-            Personal: <Eur value={resum.personal} />
-            {resum.personalPendent > 0 && (
-              <span className="font-semibold text-amber-700"> · pendent de pagar <Eur value={resum.personalPendent} /></span>
-            )}
-          </Link>
-        )}
-        <Link href="/balanc" className="ml-auto text-sm font-semibold text-brand-700 hover:underline">
-          Resum i gràfics, al Balanç →
-        </Link>
-      </div>
 
       <GastosVariablesTab
         desde={desde}
         fins={fins}
         filtre={filtre}
         onSavedDate={mostraDespesa}
+        showForm={showForm}
+        setShowForm={setShowForm}
+        fotoNova={fotoNova}
+        periode={<PeriodeCompacte estat={estat} onChange={setEstat} avui={avui} primerDia="2000-01-01" />}
+        resumPeriode={
+          // El total de la llista, les fiances a part i, si n'hi ha, el personal
+          // del període amb enllaç a Treballadors.
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 text-sm">
+            <span>
+              <span className="ui-page-title text-xl font-bold text-slate-900"><Eur value={resum?.variables ?? 0} /></span>
+              <span className="text-slate-500">
+                {resum ? ` en ${resum.nVariables} ${resum.nVariables === 1 ? 'despesa' : 'despeses'}` : ' …'}
+              </span>
+            </span>
+            <span className="hidden h-6 w-px bg-slate-200 sm:block" aria-hidden="true" />
+            <span className="text-slate-500">
+              Fiances <span className="font-semibold text-slate-800"><Eur value={resum?.fiances ?? 0} /></span>
+            </span>
+            {resum && resum.personal > 0 && (
+              <Link href="/personal" className="text-slate-500 hover:text-brand-700">
+                Personal <span className="font-semibold text-slate-800"><Eur value={resum.personal} /></span>
+                {resum.personalPendent > 0 && (
+                  <span className="font-semibold text-amber-700"> · <Eur value={resum.personalPendent} /> per pagar</span>
+                )}
+              </Link>
+            )}
+            <Link href="/balanc" className="ml-auto text-sm font-semibold text-brand-700 hover:underline">
+              Gràfics al Balanç →
+            </Link>
+          </div>
+        }
       />
     </div>
   );

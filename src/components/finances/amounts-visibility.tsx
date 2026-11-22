@@ -51,20 +51,24 @@ export function HideAmountsOnMount() {
 }
 
 /** Botó d'ull per mostrar/amagar tots els imports de la pàgina. */
-export function HideAmountsButton({ className }: { className?: string }) {
+export function HideAmountsButton({ className, nomesIcona }: { className?: string; nomesIcona?: boolean }) {
   const { hidden, toggle } = useAmountsHidden();
+  const text = hidden ? 'Mostrar imports' : 'Amagar imports';
   return (
     <button
       type="button"
       onClick={toggle}
       aria-pressed={hidden}
+      aria-label={nomesIcona ? text : undefined}
+      title={nomesIcona ? text : undefined}
       className={cn(
-        'flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-200',
+        'flex items-center gap-1.5 rounded-lg border border-slate-300 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-200',
+        nomesIcona ? 'h-10 w-10 justify-center bg-white' : 'px-3 py-1.5',
         className,
       )}
     >
       {hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-      {hidden ? 'Mostrar imports' : 'Amagar imports'}
+      {!nomesIcona && text}
     </button>
   );
 }
