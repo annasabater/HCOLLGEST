@@ -243,10 +243,27 @@ function NetejaCard() {
   const [mostrarHora, setMostrarHora] = useState(false);
   const [hora, setHora] = useState('15:00');
   const [incloureBugaderia, setIncloureBugaderia] = useState(false);
-  const [lang, setLang] = useState<Lang>('es');
+  // Català per defecte; l'idioma triat per a cada persona es recorda al navegador.
+  const [lang, setLangEstat] = useState<Lang>('ca');
   const [tpls, setTpls] = useState<Record<Lang, string>>(PLANTILLA_NETEJA);
-  const [editLang, setEditLang] = useState<Lang>('es');
+  const [editLang, setEditLang] = useState<Lang>('ca');
   const [msg, setMsg] = useState('');
+
+  function setLang(l: Lang) {
+    setLangEstat(l);
+    setEditLang(l); // la plantilla que edites és la de l'idioma del missatge
+    if (treballadorId) {
+      try { window.localStorage.setItem(`neteja_lang_${treballadorId}`, l); } catch { /* ignora */ }
+    }
+  }
+
+  useEffect(() => {
+    if (!treballadorId) return;
+    const guardat = lsGet(`neteja_lang_${treballadorId}`, 'ca');
+    const l: Lang = (LANGS.some((x) => x.code === guardat) ? guardat : 'ca') as Lang;
+    setLangEstat(l);
+    setEditLang(l);
+  }, [treballadorId]);
 
   useEffect(() => {
     setTpls(loadTpls('neteja'));
