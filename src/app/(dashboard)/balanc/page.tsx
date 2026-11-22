@@ -898,6 +898,8 @@ export default function BalancPage() {
               pdfResum={veureSituacio ? null : pdfHref}
               onExcelResum={exporta}
               senseInformes={veureSituacio}
+              criteri={criteri}
+              senseFiances={restringit}
             />
           </div>
         }

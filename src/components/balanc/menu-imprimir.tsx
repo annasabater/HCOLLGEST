@@ -70,6 +70,8 @@ export function MenuImprimir({
   pdfResum,
   onExcelResum,
   senseInformes,
+  criteri = 'dies',
+  senseFiances = false,
 }: {
   estat: EstatPeriode;
   onEstat: (e: EstatPeriode) => void;
@@ -81,6 +83,10 @@ export function MenuImprimir({
   onExcelResum: () => void;
   /** Vista «Situació»: té el seu propi període, només hi ha el resum en Excel. */
   senseInformes?: boolean;
+  /** Criteri del balanç (per dies o fiscal): l'informe amb gràfics l'hereta. */
+  criteri?: string;
+  /** Comptes de propietat: l'informe amb gràfics només surt sense fiances. */
+  senseFiances?: boolean;
 }) {
   const [obert, setObert] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -93,6 +99,8 @@ export function MenuImprimir({
     return () => { document.removeEventListener('mousedown', clic); document.removeEventListener('keydown', tecla); };
   }, [obert]);
 
+  const grafics = (fiances: 'sense' | 'amb' | 'tot') =>
+    `/imprimir/balanc?desde=${desde}&fins=${fins}&fiances=${fiances}&criteri=${criteri}&auto=1`;
   const informe = (per: 'proveidor' | 'categoria', extra = '') =>
     `/imprimir/despeses-agrupades?per=${per}&desde=${desde}&fins=${fins}${extra}`;
 
@@ -116,6 +124,29 @@ export function MenuImprimir({
             </div>
           )}
           <div className="divide-y divide-slate-100 py-1">
+            {!senseInformes && (
+              <div className="px-4 py-2.5">
+                <span className="block text-sm font-semibold text-slate-900">Informe amb gràfics</span>
+                <span className="block text-xs text-slate-500">
+                  Resultat, mes a mes amb els imports, despeses, pagaments i caixa. Per imprimir o desar com a PDF.
+                </span>
+                <span className="mt-2 flex flex-wrap gap-1.5">
+                  <a href={grafics('sense')} target="_blank" rel="noreferrer" className={botoPetit} title="El resultat real: el que compta per a Hisenda">
+                    <Printer className="h-3.5 w-3.5" /> Sense fiances
+                  </a>
+                  {!senseFiances && (
+                    <>
+                      <a href={grafics('amb')} target="_blank" rel="noreferrer" className={botoPetit} title="Tot el que ha entrat i sortit, amb les fiances">
+                        <Printer className="h-3.5 w-3.5" /> Amb fiances
+                      </a>
+                      <a href={grafics('tot')} target="_blank" rel="noreferrer" className={botoPetit} title="Les dues vistes en un sol informe">
+                        <Printer className="h-3.5 w-3.5" /> Total (les dues)
+                      </a>
+                    </>
+                  )}
+                </span>
+              </div>
+            )}
             <InformeFila
               nom="Resum del balanç"
               desc="Ingressos, despeses, benefici, fiances i mes a mes"
