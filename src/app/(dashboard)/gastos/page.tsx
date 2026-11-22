@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Plus, Trash2, Paperclip, Filter, Camera, Upload, X, ShieldCheck, ShieldOff, Pencil, Check } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { FinancesNav } from '@/components/balanc/finances-nav';
@@ -16,7 +16,7 @@ import { Eur, HideAmountsButton } from '@/components/finances/amounts-visibility
 import { getJSON, postJSON, patchJSON, ApiError } from '@/lib/api';
 import { formatDate, formatEur, cn } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
-import { rangDeEstat, periodeComparacio, type EstatPeriode } from '@/lib/periode';
+import { rangDeEstat, type EstatPeriode } from '@/lib/periode';
 import { NavegadorPeriode } from '@/components/ui/navegador-periode';
 import { redueixImatge, motiuPujada } from '@/lib/images/redueix-client';
 import { optionsFrom, metodeCobramentValues, METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
@@ -853,309 +853,29 @@ function GastosVariablesTab({
   );
 }
 
-// ─── Pestanya Personal ────────────────────────────────────────────────────────
-
-// Qui ha cobrat què dins del període. Surt del mateix càlcul que la fitxa de
-// cada persona, així que hi entra la bugaderia i no només les jornades.
-function PersonalTab({ detall }: { detall: PersonaPeriode[] }) {
-  const router = useRouter();
-  if (detall.length === 0) {
-    return <EmptyState>Ningú ha treballat en aquest període.</EmptyState>;
-  }
-  const total = detall.reduce((a, p) => a + p.total, 0);
-  return (
-    <>
-      <p className="mb-3 text-sm text-slate-500">
-        Nòmines, neteja i bugaderia del període. Una nòmina compta el dia que tanca el seu mes,
-        així que només hi entra si el període cobreix el mes sencer.
-      </p>
-      <Table>
-        <Thead>
-          <tr>
-            <Th>Persona</Th>
-            <Th className="text-right">Nòmines</Th>
-            <Th className="text-right">Neteja</Th>
-            <Th className="text-right">Bugaderia</Th>
-            <Th className="text-right">Total</Th>
-            <Th>Pagat / pendent</Th>
-            <Th></Th>
-          </tr>
-        </Thead>
-        <tbody>
-          {detall.map((p) => (
-            <Tr key={p.id}>
-              <Td>
-                <span className="font-medium text-slate-800">{p.nom}</span>
-                {p.carrec && <span className="block text-xs text-slate-400">{p.carrec}</span>}
-              </Td>
-              <Td className="text-right">{p.nomines > 0 ? <Eur value={p.nomines} /> : <span className="text-slate-300">—</span>}</Td>
-              <Td className="text-right">{p.neteja > 0 ? <Eur value={p.neteja} /> : <span className="text-slate-300">—</span>}</Td>
-              <Td className="text-right">{p.bugaderia > 0 ? <Eur value={p.bugaderia} /> : <span className="text-slate-300">—</span>}</Td>
-              <Td className="text-right font-semibold text-slate-900"><Eur value={p.total} /></Td>
-              <Td>
-                <span className="flex h-1.5 w-24 overflow-hidden rounded-full bg-slate-200">
-                  <span className="bg-green-600" style={{ width: pct(p.pagat, p.pagat + p.pendent) }} />
-                  <span className="bg-amber-500" style={{ width: pct(p.pendent, p.pagat + p.pendent) }} />
-                </span>
-                <span className="text-xs text-slate-400">
-                  {p.pendent > 0 ? <>pendent <Eur value={p.pendent} /></> : 'tot pagat'}
-                </span>
-              </Td>
-              <Td className="text-right">
-                <Button size="sm" variant="outline" onClick={() => router.push(`/personal/${p.id}`)}>Obrir fitxa</Button>
-              </Td>
-            </Tr>
-          ))}
-          <Tr className="bg-brand-50">
-            <Td colSpan={4} className="font-semibold text-slate-700">Total personal al període</Td>
-            <Td className="text-right font-semibold text-brand-800"><Eur value={total} /></Td>
-            <Td colSpan={2}></Td>
-          </Tr>
-        </tbody>
-      </Table>
-    </>
-  );
-}
-
-// ─── Pestanya Resum ───────────────────────────────────────────────────────────
-
-const MESOS_CURT = ['Gen', 'Feb', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Des'];
-
-interface MesDespeses { mes: string; variables: number; fixes: number; personal: number; fiances: number }
-interface PersonaPeriode {
-  id: string; nom: string; carrec: string;
-  nomines: number; neteja: number; bugaderia: number; total: number;
-  pagat: number; pendent: number;
-}
-interface Resum {
-  desde: string; fins: string;
-  variables: number; fixes: number; personal: number; fiances: number; total: number;
-  nVariables: number; nFixes: number; personalPendent: number;
-  anterior: { desde: string; fins: string; total: number };
-  categories: { nom: string; import: number; variables: number; fixes: number; personal: number }[];
-  fiancesDetall: { proveidor: string; import: number }[];
-  personalDetall: PersonaPeriode[];
-  any: number;
-  mesos: MesDespeses[];
-}
-
-const pct = (part: number, tot: number) => `${tot > 0 ? (part / tot) * 100 : 0}%`;
-const eur0 = (n: number) =>
-  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
-
-// Gràfic de l'any: una barra apilada per mes (variables + personal).
-// Els mesos que queden fora del període es veuen més fluixos, però es veuen: la
-// gràcia és no perdre la tendència quan mires una setmana concreta.
-function GraficAny({
-  mesos,
-  desde,
-  fins,
-  onMes,
-}: {
-  mesos: MesDespeses[];
-  desde: string;
-  fins: string;
-  onMes: (desde: string, fins: string) => void;
-}) {
-  // Tres vistes, com al Balanç: sense fiances, amb fiances (ratllades a sobre) o només fiances.
-  const [vista, setVista] = useState<'sense' | 'amb' | 'nomes'>('sense');
-  const despesa = (m: MesDespeses) => m.variables + m.fixes + m.personal;
-  const totals = mesos.map((m) => (vista === 'nomes' ? m.fiances : vista === 'amb' ? despesa(m) + m.fiances : despesa(m)));
-  const max = Math.max(...totals, 0);
-  const ratllat = 'repeating-linear-gradient(135deg, #B45309 0 3px, #B4530929 3px 6px)';
-  const sostre = max > 0 ? Math.ceil(max / 500) * 500 : 500;
-  const alt = (v: number) => `${(v / sostre) * 88}%`;
-  const ultimDia = (mes: string) => {
-    const [y, m] = mes.split('-').map(Number);
-    return new Date(Date.UTC(y!, m!, 0)).toISOString().slice(0, 10);
-  };
-  const dinsRang = (mes: string) => mes <= fins.slice(0, 7) && mes >= desde.slice(0, 7);
-
-  return (
-    <div className="rounded-xl border border-slate-200 p-4">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-semibold text-slate-800">Com ha anat l&apos;any</h3>
-          <p className="text-xs text-slate-400">Clica una barra per posar el període en aquell mes</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
-          {vista !== 'nomes' && (
-            <>
-              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm bg-brand-700" /> Variables</span>
-              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm bg-amber-600" /> Personal</span>
-            </>
-          )}
-          {vista !== 'sense' && (
-            <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm" style={{ background: ratllat }} /> Fiances pagades</span>
-          )}
-          <div role="group" aria-label="Vista del gràfic" className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
-            {(
-              [
-                ['sense', 'Sense fiances'],
-                ['amb', 'Amb fiances'],
-                ['nomes', 'Només fiances'],
-              ] as const
-            ).map(([k, l]) => (
-              <button
-                key={k}
-                type="button"
-                aria-pressed={vista === k}
-                onClick={() => setVista(k)}
-                className={cn(
-                  'rounded-md px-2.5 py-1 font-medium transition-colors',
-                  vista === k ? 'bg-brand-700 text-white' : 'text-slate-600 hover:text-brand-700',
-                )}
-              >
-                {l}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="relative flex h-48 items-end gap-0.5 border-b border-slate-300 pl-14">
-        {[sostre, sostre / 2].map((v) => (
-          <div
-            key={v}
-            className="pointer-events-none absolute left-14 right-0 border-t border-dashed border-slate-200"
-            style={{ bottom: alt(v) }}
-          >
-            <span className="absolute -left-14 -top-1.5 w-12 text-right text-[10px] leading-none text-slate-400">
-              {eur0(v)}
-            </span>
-          </div>
-        ))}
-        {mesos.map((m, i) => {
-          const dins = dinsRang(m.mes);
-          const tot = totals[i] ?? 0;
-          return (
-            <button
-              key={m.mes}
-              type="button"
-              onClick={() => onMes(`${m.mes}-01`, ultimDia(m.mes))}
-              title={`${MESOS_CURT[i]}: ${formatEur(tot)}`}
-              className="relative flex h-full flex-1 flex-col justify-end gap-0.5 px-0.5"
-            >
-              <span className="whitespace-nowrap text-center text-[10px] font-bold tabular-nums text-slate-600">
-                {dins && tot > 0 ? eur0(tot) : ' '}
-              </span>
-              {vista !== 'sense' && m.fiances > 0 && (
-                <span className={cn('rounded-t', !dins && 'opacity-55')} style={{ height: alt(m.fiances), background: ratllat }} />
-              )}
-              {vista !== 'nomes' && (
-                <>
-                  <span className={cn('bg-brand-700', (vista === 'sense' || !m.fiances) && 'rounded-t', !dins && 'opacity-55')} style={{ height: alt(m.variables + m.fixes) }} />
-                  <span className={cn('bg-amber-600', !dins && 'opacity-55')} style={{ height: alt(m.personal) }} />
-                </>
-              )}
-            </button>
-          );
-        })}
-      </div>
-      <div className="flex gap-0.5 pl-14 pt-1.5">
-        {mesos.map((m, i) => (
-          <span
-            key={m.mes}
-            className={cn('flex-1 text-center text-[11px]', dinsRang(m.mes) ? 'font-bold text-slate-700' : 'text-slate-400')}
-          >
-            {MESOS_CURT[i]}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ResumTab({
-  resum,
-  onMes,
-  onCategoria,
-}: {
-  resum: Resum;
-  onMes: (desde: string, fins: string) => void;
-  onCategoria: (c: Resum['categories'][number]) => void;
-}) {
-  const maxCat = resum.categories[0]?.import ?? 0;
-  const totalCats = resum.categories.reduce((a, c) => a + c.import, 0);
-  return (
-    <div className="space-y-4">
-      <GraficAny mesos={resum.mesos} desde={resum.desde} fins={resum.fins} onMes={onMes} />
-
-      <div className="grid gap-4">
-        <div className="rounded-xl border border-slate-200 p-4">
-          <h3 className="text-sm font-semibold text-slate-800">En què se&apos;n va</h3>
-          <p className="mb-3 text-xs text-slate-400">
-            Per categoria, dins del període. Clica&apos;n una per veure&apos;n les línies.
-          </p>
-          {resum.categories.length === 0 ? (
-            <p className="text-sm text-slate-400">Cap despesa en aquest període.</p>
-          ) : (
-            resum.categories.map((c) => (
-              <button
-                key={c.nom}
-                type="button"
-                onClick={() => onCategoria(c)}
-                className="flex w-full flex-col gap-1 rounded-lg px-1 py-1.5 text-left transition-colors hover:bg-brand-50"
-              >
-                <span className="flex items-baseline justify-between gap-3 text-sm">
-                  <span className="text-slate-600">
-                    {c.nom}
-                    <span className="ml-1.5 text-xs text-slate-400">
-                      {totalCats > 0 ? Math.round((c.import / totalCats) * 100) : 0}%
-                    </span>
-                  </span>
-                  <span className="font-semibold text-slate-800"><Eur value={c.import} /></span>
-                </span>
-                <span className="flex h-1.5 overflow-hidden rounded-full bg-slate-100">
-                  <span className="bg-brand-700" style={{ width: pct(c.variables, maxCat) }} />
-                  <span className="bg-amber-600" style={{ width: pct(c.personal, maxCat) }} />
-                </span>
-              </button>
-            ))
-          )}
-          {resum.fiancesDetall.length > 0 && (
-            <div className="mt-3 border-t border-slate-100 pt-2">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-700">Fiances (a part)</p>
-              {resum.fiancesDetall.map((f) => (
-                <div key={f.proveidor} className="flex justify-between gap-3 py-0.5 text-sm text-amber-700">
-                  <span className="min-w-0 truncate">{f.proveidor}</span>
-                  <span className="shrink-0 font-medium"><Eur value={f.import} /></span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-      </div>
-    </div>
-  );
-}
-
 // ─── Pàgina principal ─────────────────────────────────────────────────────────
+// Despeses = la llista de factures i tiquets (entrar-les i repassar-les). El
+// resum (gràfic de l'any, «En què se'n va») i el personal es miren al Balanç i a
+// Treballadors; aquí només en queda una línia amb l'enllaç.
 
-const fmtCurt = (dia: string) => { const p = dia.split('-'); return `${p[2]}/${p[1]}`; };
+interface ResumCurt {
+  variables: number; nVariables: number;
+  fiances: number;
+  personal: number; personalPendent: number;
+}
 
 function GastosContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const tab = searchParams.get('tab') ?? 'resum';
-
-  // El període mana sobre les quatre pestanyes.
+  // El període mana sobre la llista i el resum de dalt.
   const avui = toISODate(new Date());
   const [estat, setEstat] = useState<EstatPeriode>({ tipus: 'mes', off: 0 });
   const { desde, fins } = rangDeEstat(estat, avui);
-  // Es compara amb el període anterior del mateix tipus (trimestre ↔ trimestre…).
-  const comp = periodeComparacio(estat, avui);
-  const antDesde = comp?.desde ?? '';
-  const antFins = comp?.fins ?? '';
   const [catNom, setCatNom] = useState<string | null>(null);
-  const [resum, setResum] = useState<Resum | null>(null);
+  const [resum, setResum] = useState<ResumCurt | null>(null);
   const [errResum, setErrResum] = useState<string | null>(null);
 
   useEffect(() => {
     let cancel = false;
-    const ant = antDesde && antFins ? `&antDesde=${antDesde}&antFins=${antFins}` : '';
-    getJSON<Resum>(`/api/gastos/resum?desde=${desde}&fins=${fins}${ant}`)
+    getJSON<ResumCurt>(`/api/gastos/resum?desde=${desde}&fins=${fins}`)
       .then((r) => { if (!cancel) { setResum(r); setErrResum(null); } })
       .catch((e) => {
         if (!cancel) {
@@ -1164,20 +884,7 @@ function GastosContent() {
         }
       });
     return () => { cancel = true; };
-  }, [desde, fins, antDesde, antFins]);
-
-  const vesA = (t: string) => router.replace(t === 'resum' ? '/gastos' : `/gastos?tab=${t}`);
-  // Clic a un mes del gràfic: si és un mes sencer, el navegador queda en «Mes».
-  function posaRang(d: string, f: string) {
-    const [dy, dm, dd] = d.split('-').map(Number) as [number, number, number];
-    const [ay, am] = avui.split('-').map(Number) as [number, number];
-    const ultim = new Date(Date.UTC(dy, dm, 0)).toISOString().slice(0, 10);
-    if (dd === 1 && (f === ultim || (f === avui && f.slice(0, 7) === d.slice(0, 7)))) {
-      setEstat({ tipus: 'mes', off: (dy * 12 + dm) - (ay * 12 + am) });
-    } else {
-      setEstat({ tipus: 'per', desde: d, fins: f });
-    }
-  }
+  }, [desde, fins]);
 
   // Una despesa desada fora del període: s'eixampla el rang perquè es vegi.
   function mostraDespesa(data: string) {
@@ -1185,28 +892,11 @@ function GastosContent() {
     setEstat({ tipus: 'per', desde: data < desde ? data : desde, fins: data > fins ? data : fins });
   }
 
-  const delta = resum && resum.anterior.total > 0
-    ? Math.round(((resum.total - resum.anterior.total) / resum.anterior.total) * 100)
-    : null;
-
-  // Les caselles hi són sempre (mentre carrega, amb «…»), perquè no es vegi un forat.
-  const parts: { clau: string; nom: string; color: string; valor: number; peu: string }[] = [
-    {
-      clau: 'variables', nom: 'Variables', color: 'bg-brand-700', valor: resum?.variables ?? 0,
-      peu: resum ? `${resum.nVariables} ${resum.nVariables === 1 ? 'despesa' : 'despeses'}` : '…',
-    },
-    {
-      clau: 'personal', nom: 'Personal', color: 'bg-amber-600', valor: resum?.personal ?? 0,
-      peu: !resum ? '…' : resum.personalPendent > 0 ? `pendent de pagar ${formatEur(resum.personalPendent)}` : 'tot pagat',
-    },
-  ];
-
   return (
     <div>
-      <PageHeader title="Despeses" subtitle="Gestió de despeses del hostal" />
+      <PageHeader title="Despeses" subtitle="Les factures i tiquets del hostal" />
       <FinancesNav />
 
-      {/* Període únic: mana sobre totes les pestanyes */}
       <NavegadorPeriode
         className="mb-4"
         estat={estat}
@@ -1218,100 +908,39 @@ function GastosContent() {
 
       {errResum && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{errResum}</div>}
 
-      {/* Total del període, les parts que el componen (que són les pestanyes) i,
-          a part i sense sumar, les fiances pagades; en pantalla estreta el total va a dalt. */}
-      <div className="mb-5 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 lg:grid-cols-[1.35fr_1fr_1fr_1fr]">
-        <div className="col-span-2 flex flex-col justify-center gap-1 bg-white px-4 py-3 lg:col-span-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Despesa real del període</p>
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <span className="text-3xl font-bold tracking-tight text-brand-800">
-              <Eur value={resum?.total ?? 0} />
-            </span>
-            {delta !== null && resum && (
-              <span className={cn(
-                'whitespace-nowrap rounded-full px-2.5 py-0.5 text-sm font-semibold',
-                delta > 0 ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700',
-              )}>
-                {delta > 0 ? '▲ +' : '▼ '}{delta}%{' '}
-                <span className="font-normal opacity-80">
-                  vs {comp ? comp.etiqueta : `${fmtCurt(resum.anterior.desde)}–${fmtCurt(resum.anterior.fins)}`}
-                </span>
-              </span>
-            )}
-          </div>
-        </div>
-        {parts.map((p) => (
-          <button
-            key={p.clau}
-            type="button"
-            onClick={() => { setCatNom(null); vesA(p.clau); }}
-            className="flex min-w-0 flex-col gap-0.5 bg-white px-4 py-3 text-left transition-colors hover:bg-brand-50"
-          >
-            <span className="flex items-center gap-2 text-xs font-bold text-slate-500">
-              <i className={cn('h-2.5 w-2.5 rounded-sm', p.color)} /> {p.nom}
-            </span>
-            <span className="text-xl font-bold tracking-tight text-slate-900"><Eur value={p.valor} /></span>
-            <span className="text-xs text-slate-400">{p.peu}</span>
-          </button>
-        ))}
-        <div className="flex min-w-0 flex-col gap-0.5 bg-gradient-to-b from-amber-50 to-white px-4 py-3">
-          <span className="flex items-center gap-2 text-xs font-bold text-slate-500">
-            <i
-              className="h-2.5 w-2.5 rounded-sm"
-              style={{ background: 'repeating-linear-gradient(135deg, #B45309 0 2px, #B4530929 2px 4px)' }}
-            />{' '}
-            Fiances pagades
+      {/* Una sola línia: el total de la llista, les fiances a part i, si n'hi ha,
+          el personal del període amb enllaç a Treballadors. */}
+      <div className="mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
+        <span>
+          <span className="text-lg font-bold text-slate-900"><Eur value={resum?.variables ?? 0} /></span>
+          <span className="text-slate-500">
+            {' · '}
+            {resum ? `${resum.nVariables} ${resum.nVariables === 1 ? 'despesa' : 'despeses'}` : '…'}
           </span>
-          <span className="text-xl font-bold tracking-tight text-amber-700"><Eur value={resum?.fiances ?? 0} /></span>
-          <span className="text-xs text-slate-400">fora del total · recuperables</span>
-        </div>
-      </div>
-
-      {/* Sub-pestanyes Resum / Variables / Personal.
-          flex-wrap perquè, si no hi caben en una línia, passin a la següent i es
-          vegin sempre TOTES (sense barra de desplaçament). */}
-      <div className="mb-5 flex flex-wrap gap-1 border-b border-slate-200">
-        {(['resum', 'variables', 'personal'] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => { setCatNom(null); vesA(t); }}
-            className={cn(
-              '-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors',
-              tab === t ? 'border-brand-700 text-brand-800' : 'border-transparent text-slate-500 hover:text-slate-800',
+        </span>
+        <span className="text-amber-700">
+          Fiances a part: <Eur value={resum?.fiances ?? 0} />
+        </span>
+        {resum && resum.personal > 0 && (
+          <Link href="/personal" className="text-slate-600 hover:text-brand-700">
+            Personal: <Eur value={resum.personal} />
+            {resum.personalPendent > 0 && (
+              <span className="font-semibold text-amber-700"> · pendent de pagar <Eur value={resum.personalPendent} /></span>
             )}
-          >
-            {t === 'resum' ? 'Resum' : t === 'variables' ? 'Variables' : 'Personal'}
-          </button>
-        ))}
+          </Link>
+        )}
+        <Link href="/balanc" className="ml-auto text-sm font-semibold text-brand-700 hover:underline">
+          Resum i gràfics, al Balanç →
+        </Link>
       </div>
 
-      {tab === 'resum' ? (
-        resum ? (
-          <ResumTab
-            resum={resum}
-            onMes={posaRang}
-            onCategoria={(c) => {
-              // Porta a la pestanya d'on ve la major part de la categoria: així
-              // no s'aterra mai en una llista buida.
-              const on = c.personal > c.variables ? 'personal' : 'variables';
-              setCatNom(on === 'variables' ? c.nom : null);
-              vesA(on);
-            }}
-          />
-        ) : (
-          <p className="text-sm text-slate-400">Carregant…</p>
-        )
-      ) : tab === 'personal' ? (
-        resum ? <PersonalTab detall={resum.personalDetall} /> : <p className="text-sm text-slate-400">Carregant…</p>
-      ) : (
-        <GastosVariablesTab
-          desde={desde}
-          fins={fins}
-          catNom={catNom}
-          setCatNom={setCatNom}
-          onSavedDate={mostraDespesa}
-        />
-      )}
+      <GastosVariablesTab
+        desde={desde}
+        fins={fins}
+        catNom={catNom}
+        setCatNom={setCatNom}
+        onSavedDate={mostraDespesa}
+      />
     </div>
   );
 }
