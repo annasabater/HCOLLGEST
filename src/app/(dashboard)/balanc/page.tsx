@@ -1165,7 +1165,7 @@ export default function BalancPage() {
           className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-20"
           onClick={() => setBreakdown(null)}
         >
-          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <div className={cn('w-full rounded-2xl bg-white p-5 shadow-xl', breakdown.moviments && breakdown.moviments.length > 0 ? 'max-w-4xl' : 'max-w-md')} onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-start justify-between gap-3">
               <h3 className="font-serif text-lg font-semibold text-slate-800">{breakdown.title}</h3>
               <button onClick={() => setBreakdown(null)} className="shrink-0 text-slate-400 hover:text-slate-700" aria-label="Tancar">
@@ -1197,11 +1197,11 @@ export default function BalancPage() {
                     Al balanç per dies, un pagament surt només amb la part que correspon a les nits d&apos;aquest període: la data és la del pagament i «part de» és l&apos;import complet.
                   </p>
                 )}
-                <div className="max-h-72 space-y-0.5 overflow-y-auto">
+                <div className="max-h-[55vh] space-y-0.5 overflow-y-auto">
                   {breakdown.moviments.map((m) => {
                     const inner = (
                       <>
-                        <span className="min-w-0 flex-1 truncate">
+                        <span className="min-w-0 flex-1">
                           <span className="text-slate-400">{dataCurta(m.data)}</span>{' '}
                           <span className="text-slate-600">{m.concepte}</span>
                           {m.metode ? <span className="text-slate-400"> · {METODE_COBRAMENT_LABELS[m.metode as keyof typeof METODE_COBRAMENT_LABELS] ?? m.metode}</span> : null}
@@ -1214,9 +1214,9 @@ export default function BalancPage() {
                       </>
                     );
                     return m.href ? (
-                      <a key={m.id} href={m.href} className="flex items-center justify-between gap-2 rounded px-1 py-1 text-xs hover:bg-slate-50">{inner}</a>
+                      <a key={m.id} href={m.href} className="flex items-start justify-between gap-3 rounded px-1.5 py-1.5 text-sm hover:bg-slate-50">{inner}</a>
                     ) : (
-                      <div key={m.id} className="flex items-center justify-between gap-2 px-1 py-1 text-xs">{inner}</div>
+                      <div key={m.id} className="flex items-start justify-between gap-3 px-1.5 py-1.5 text-sm">{inner}</div>
                     );
                   })}
                 </div>
