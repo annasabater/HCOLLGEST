@@ -123,8 +123,9 @@ La UI replica la identidad de la web del hostal (`../hostalcoll/index.html`):
 Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
 
 **Estilo «nou» opcional** (/config → Estil visual, galeta `estil` por navegador, `src/lib/estil.ts`):
-cuadrado, grises de hostalcoll.com, títulos Montserrat, barra lateral granate oscuro `#5C1620`
-(texto crema tenue; activo blanco en negrita con raya gruesa). Es solo CSS bajo
+cuadrado, grises de hostalcoll.com, títulos Montserrat, barra lateral **clara** como el mockup
+«El tauler d'ara, amb estil Tezel» (`#F8F8F8`, apartados en mayúsculas sin iconos, activo granate
+con fondo gris y raya granate). Es solo CSS bajo
 `html[data-estil="nou"]` en `globals.css` (variables de Tailwind + clases gancho `app-sidebar`,
 `app-nav-item`, `ui-card`, `ui-card-title`, `ui-page-title`…). Sin la galeta → estilo original intacto.
 Textos (como el mockup): títulos de bloque en mayúsculas pequeñas granate sin icono (`ui-card-title` y los

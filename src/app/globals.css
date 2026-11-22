@@ -212,62 +212,64 @@ html[data-estil='nou'] .ui-etiqueta {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-/* Barra lateral: granat fosc de la web, text crema clar. Com l'original (icona +
-   nom en minúscules, títols de grup en rosat), però amb la tipografia nova
-   (logo en Montserrat) i l'actiu en blanc amb ratlla (triat per l'Anna). */
+/* Barra lateral com al mockup «El tauler d'ara, amb estil Tezel» (triat per
+   l'Anna): clara, amb vora fina; logo HOSTAL COLL espaiat amb la H granat; títols
+   de grup granat en majúscules espaiades; apartats en majúscules petites, sense
+   icones; l'actiu en granat amb fons gris i ratlla granat a l'esquerra. */
 html[data-estil='nou'] .app-sidebar {
-  background: #5c1620;
-  color: #f5efe6;
+  background: #f8f8f8;
+  color: #1a1a1a;
+  border-right: 1px solid #e0e0e0;
 }
 html[data-estil='nou'] .app-sidebar .border-brand-800 {
-  border-color: rgb(245 239 230 / 0.14);
+  border-color: #e0e0e0;
 }
 html[data-estil='nou'] .app-sidebar :is(.text-brand-100, .text-brand-200, .text-brand-300) {
-  color: #f5efe6;
+  color: #3a3632;
+}
+html[data-estil='nou'] .app-sidebar button.text-brand-200 {
+  color: #3a3632;
 }
 html[data-estil='nou'] .app-logo {
   font-size: 15px;
   font-weight: 700;
-  letter-spacing: 0.28em;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: #f5efe6;
+  color: #1a1a1a;
+}
+html[data-estil='nou'] .app-logo::first-letter {
+  color: var(--color-brand-700);
 }
 html[data-estil='nou'] .app-nav-group {
-  color: #e8a3ad;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  color: var(--color-brand-700);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
 }
 html[data-estil='nou'] .app-nav-item {
-  color: #f5efe6;
-  font-size: 15px;
-  font-weight: 500;
-  gap: 14px;
-  padding-top: 7px;
-  padding-bottom: 7px;
+  color: #3a3632;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding-top: 9px;
+  padding-bottom: 9px;
 }
 html[data-estil='nou'] .app-sidebar nav {
-  gap: 1px;
+  gap: 0;
 }
 html[data-estil='nou'] .app-nav-item svg {
-  width: 18px;
-  height: 18px;
-  stroke-width: 1.75;
+  display: none;
 }
-/* L'actiu, blanc i en negreta amb una ratlla gruixuda; la resta, més tènue
-   (proposta D, triada per l'Anna). El tènue té 5,8:1 de contrast sobre el granat. */
-html[data-estil='nou'] .app-sidebar .app-nav-item:not([aria-current='page']) {
-  color: rgb(245 239 230 / 0.88);
-}
-html[data-estil='nou'] .app-sidebar .app-nav-item:not([aria-current='page']):hover {
-  background: rgb(245 239 230 / 0.08);
-  color: #f5efe6;
+html[data-estil='nou'] .app-sidebar .app-nav-item:hover {
+  background: #eeeeee;
+  color: #1a1a1a;
 }
 html[data-estil='nou'] .app-sidebar .app-nav-item[aria-current='page'] {
-  background: transparent;
-  color: #ffffff;
-  font-weight: 800;
-  box-shadow: inset 6px 0 0 #ffffff;
+  background: #eeeeee;
+  color: var(--color-brand-700);
+  font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--color-brand-700);
 }
 
 /* Selecció granate (com a la web). */
