@@ -102,7 +102,7 @@ export function AppShell({
         </header>
         {/* A l'ordinador (lg+) el contingut aprofita l'amplada (fins a 1800 px) amb
             un marge petit; a la tauleta i al mòbil, com sempre. */}
-        <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:max-w-[1800px] lg:px-8">{children}</div>
+        <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:max-w-[1800px] lg:px-12">{children}</div>
       </main>
     </div>
     </RestringitProvider>
