@@ -145,38 +145,46 @@ export default async function HuespedesPage({
 
       <AvisosPanel />
 
-      {/* Cerca */}
-      <form method="get" className="mb-4 flex flex-wrap items-center gap-2">
-        {estatFiltre && <input type="hidden" name="estat" value={estatFiltre} />}
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      {/* Fila 1: cerca (la lupa dins el camp; Enter cerca) + filtre d'estat + mascota. */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <form method="get" className="relative w-full max-w-sm sm:flex-1">
+          {estatFiltre && <input type="hidden" name="estat" value={estatFiltre} />}
+          {nomesMascota && <input type="hidden" name="mascota" value="1" />}
+          <button type="submit" aria-label="Cercar" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-brand-700">
+            <Search className="h-4 w-4" />
+          </button>
           <Input name="q" defaultValue={q ?? ''} placeholder="Cerca per nom, document, email…" className="pl-9" />
-        </div>
-        <Button type="submit" variant="outline"><Search className="h-4 w-4" /></Button>
-        <label className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 cursor-pointer hover:bg-slate-50">
-          <AutoSubmitCheckbox name="mascota" value="1" defaultChecked={nomesMascota} className="accent-brand-700" />
-          <PawPrint className="h-4 w-4 text-slate-400" /> Amb mascota
-        </label>
-      </form>
+        </form>
 
-      {/* Filtre: tots / hi són ara / no hi són */}
-      <div className="mb-6 inline-flex rounded-lg border border-slate-200 p-0.5 text-sm">
-        {[
-          { k: '', l: 'Tots' },
-          { k: 'presents', l: 'Hi són ara' },
-          { k: 'absents', l: 'No hi són' },
-        ].map((t) => (
-          <Link
-            key={t.k}
-            href={hrefEstat(t.k)}
-            className={cn(
-              'rounded-md px-3 py-1 font-medium transition-colors',
-              estatFiltre === t.k ? 'bg-brand-700 text-white' : 'text-slate-600 hover:bg-slate-100',
-            )}
-          >
-            {t.l}
-          </Link>
-        ))}
+        {/* Filtre: tots / hi són ara / no hi són, amb el color de cada estat. */}
+        <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 text-sm">
+          {[
+            { k: '', l: 'Tots', dot: null },
+            { k: 'presents', l: 'Hi són ara', dot: 'bg-emerald-400' },
+            { k: 'absents', l: 'No hi són', dot: 'bg-rose-400' },
+          ].map((t) => (
+            <Link
+              key={t.k}
+              href={hrefEstat(t.k)}
+              className={cn(
+                'flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-colors',
+                estatFiltre === t.k ? 'bg-brand-700 text-white' : 'text-slate-600 hover:bg-slate-100',
+              )}
+            >
+              {t.dot && <span className={cn('h-2.5 w-2.5 rounded-full', t.dot)} />}
+              {t.l}
+            </Link>
+          ))}
+        </div>
+
+        <form method="get">
+          {q?.trim() && <input type="hidden" name="q" value={q} />}
+          {estatFiltre && <input type="hidden" name="estat" value={estatFiltre} />}
+          <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
+            <AutoSubmitCheckbox name="mascota" value="1" defaultChecked={nomesMascota} className="accent-brand-700" />
+            <PawPrint className="h-4 w-4 text-slate-400" /> Amb mascota
+          </label>
+        </form>
       </div>
 
       {/* Llegenda del color de l'avatar */}
