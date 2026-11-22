@@ -132,8 +132,7 @@ export default function OcupacioPage() {
             key={orient}
             title="Full d'ocupació"
             src={url}
-            className="mx-auto block h-[78vh] w-full border-0 bg-white shadow-lg"
-            style={{ maxWidth: orient === 'v' ? '820px' : '1120px' }}
+            className="block h-[85vh] w-full border-0"
           />
         </div>
       </div>

@@ -98,8 +98,13 @@ h1 { margin: 0; font-size: 21px; }
 .num { font-size: 26px; font-weight: 700; color: #7a1f2b; line-height: 1; }
 .blanc { height: 22px; border-bottom: 1px dotted #999; margin-top: 2px; }
 footer { margin-top: 8px; font-size: 9px; color: #777; border-top: 1px solid #ccc; padding-top: 4px; display: flex; justify-content: space-between; }
+@media screen {
+  body { background: #e2e5e9; padding: 18px 12px; }
+  .full { max-width: ${h ? '297mm' : '210mm'}; margin: 0 auto; background: #fff; padding: 14mm; min-height: ${h ? '210mm' : '297mm'}; box-shadow: 0 2px 14px rgba(0,0,0,.18); }
+}
 </style></head>
 <body>
+<div class="full">
 <header>
   <div><div class="marca">HOSTAL COLL</div><h1>Ocupació d'habitacions</h1></div>
   <div class="per">Del <strong>${dllarg(desde)}</strong> al <strong>${dllarg(fins)}</strong><br><small>Imprès el ${dllarg(avui)}</small></div>
@@ -107,6 +112,7 @@ footer { margin-top: 8px; font-size: 9px; color: #777; border-top: 1px solid #cc
 <div class="capwrap"><div></div>${cap}</div>
 ${blocs}
 <footer><span>Hostal Coll</span><span>${dllarg(avui)}</span></footer>
+</div>
 ${auto ? '<script>window.addEventListener("load",function(){setTimeout(function(){window.print()},300)})</script>' : ''}
 </body></html>`;
 
