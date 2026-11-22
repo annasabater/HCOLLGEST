@@ -124,7 +124,7 @@ Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
 
 **Estilo «nou» opcional** (/config → Estil visual, galeta `estil` por navegador, `src/lib/estil.ts`):
 cuadrado, grises de hostalcoll.com, títulos Montserrat, barra lateral granate oscuro `#5C1620`
-(texto crema, activo `#7A1F2B`). Es solo CSS bajo
+(texto crema tenue; activo blanco en negrita con raya gruesa). Es solo CSS bajo
 `html[data-estil="nou"]` en `globals.css` (variables de Tailwind + clases gancho `app-sidebar`,
 `app-nav-item`, `ui-card`, `ui-card-title`, `ui-page-title`…). Sin la galeta → estilo original intacto.
 

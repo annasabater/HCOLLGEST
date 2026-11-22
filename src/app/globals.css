@@ -120,8 +120,8 @@ html[data-estil='nou'] .ui-page-title {
   font-weight: 700;
   letter-spacing: -0.01em;
 }
-/* Barra lateral: granat fosc de la web, text crema clar, l'actiu en granat més viu
-   amb una ratlla crema. Apartats en majúscules espaiades, sense icones. */
+/* Barra lateral: granat fosc de la web, text crema clar. Apartats en majúscules
+   espaiades, sense icones. */
 html[data-estil='nou'] .app-sidebar {
   background: #5c1620;
   color: #f5efe6;
@@ -154,13 +154,20 @@ html[data-estil='nou'] .app-nav-item {
 html[data-estil='nou'] .app-nav-item svg {
   display: none;
 }
-html[data-estil='nou'] .app-nav-item:hover {
-  background: rgb(245 239 230 / 0.08);
+/* L'actiu, blanc i en negreta amb una ratlla gruixuda; la resta, més tènue
+   (proposta D, triada per l'Anna). El tènue té 5,8:1 de contrast sobre el granat. */
+html[data-estil='nou'] .app-sidebar .app-nav-item:not([aria-current='page']) {
+  color: rgb(245 239 230 / 0.62);
 }
-html[data-estil='nou'] .app-nav-item[aria-current='page'] {
-  background: #7a1f2b;
+html[data-estil='nou'] .app-sidebar .app-nav-item:not([aria-current='page']):hover {
+  background: rgb(245 239 230 / 0.08);
+  color: #f5efe6;
+}
+html[data-estil='nou'] .app-sidebar .app-nav-item[aria-current='page'] {
+  background: transparent;
   color: #ffffff;
-  box-shadow: inset 3px 0 0 #f5efe6;
+  font-weight: 800;
+  box-shadow: inset 6px 0 0 #ffffff;
 }
 
 /* Selecció granate (com a la web). */
