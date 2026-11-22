@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
-import { Download, ShieldCheck, BookOpen, Mail, CloudUpload, Shirt, MessageCircle, Smartphone, CalendarDays, Palette } from 'lucide-react';
+import { Download, ShieldCheck, BookOpen, Mail, CloudUpload, Shirt, MessageCircle, Smartphone, CalendarDays, Palette, Phone } from 'lucide-react';
 import { EstilConfig } from '@/components/config/estil-config';
+import { MeuWhatsappConfig } from '@/components/config/meu-whatsapp-config';
 import { ESTIL_COOKIE, estilValid } from '@/lib/estil';
 import { WhatsappConfig } from '@/components/config/whatsapp-config';
 import { NotificacionsConfig } from '@/components/config/notificacions-config';
@@ -72,6 +73,13 @@ export default async function ConfigPage({
         defaultOpen={!!sp.calendari}
       >
         <CalendariConfig retorn={sp.calendari} />
+      </CollapsibleCard>
+
+      <CollapsibleCard
+        title="El meu WhatsApp (des d’on envio)"
+        icon={<Phone className="h-4 w-4 text-brand-600" />}
+      >
+        <MeuWhatsappConfig />
       </CollapsibleCard>
 
       <CollapsibleCard
