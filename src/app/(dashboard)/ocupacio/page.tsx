@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Printer, ExternalLink } from 'lucide-react';
+import { Printer, ExternalLink, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,6 +21,10 @@ interface Estada {
   trams: number;
 }
 
+const LS_ESTAT = 'ocupacio_estat';
+const LS_EXCLOSES = 'ocupacio_excloses';
+const LS_AMAGADA = 'ocupacio_llista_amagada';
+
 const dc = (iso: string | null) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(2, 4)}` : '');
 
 /**
@@ -37,19 +41,51 @@ export default function OcupacioPage() {
   const [carregant, setCarregant] = useState(true);
   const frame = useRef<HTMLIFrameElement>(null);
 
+  // Es recorda al navegador l'últim que has deixat: període, estades que has tret i llista amagada.
+  const [llistaAmagada, setLlistaAmagada] = useState(false);
+  const excloses = useRef<Set<string>>(new Set());
+  const [restaurat, setRestaurat] = useState(false);
   useEffect(() => {
+    try {
+      const e = JSON.parse(window.localStorage.getItem(LS_ESTAT) ?? 'null') as EstatPeriode | null;
+      if (e && typeof e === 'object' && 'tipus' in e) setEstat(e);
+      const x = JSON.parse(window.localStorage.getItem(LS_EXCLOSES) ?? '[]') as unknown;
+      if (Array.isArray(x)) excloses.current = new Set(x.filter((v): v is string => typeof v === 'string'));
+      setLlistaAmagada(window.localStorage.getItem(LS_AMAGADA) === '1');
+    } catch { /* sense localStorage: valors per defecte */ }
+    setRestaurat(true);
+  }, []);
+  useEffect(() => {
+    if (!restaurat) return;
+    try { window.localStorage.setItem(LS_ESTAT, JSON.stringify(estat)); } catch { /* ignora */ }
+  }, [estat, restaurat]);
+  useEffect(() => {
+    if (!restaurat) return;
+    try { window.localStorage.setItem(LS_AMAGADA, llistaAmagada ? '1' : '0'); } catch { /* ignora */ }
+  }, [llistaAmagada, restaurat]);
+
+  useEffect(() => {
+    if (!restaurat) return;
     let viu = true;
     setCarregant(true);
     getJSON<Estada[]>(`/api/ocupacio/contractes?desde=${desde}&fins=${fins}`)
       .then((r) => {
         if (!viu) return;
         setEstades(r);
-        setTriades(new Set(r.map((x) => x.clau)));
+        setTriades(new Set(r.filter((x) => !excloses.current.has(x.clau)).map((x) => x.clau)));
       })
       .catch(() => viu && setEstades([]))
       .finally(() => viu && setCarregant(false));
     return () => { viu = false; };
-  }, [desde, fins]);
+  }, [desde, fins, restaurat]);
+
+  // Desa quines estades has tret (les noves surten triades per defecte).
+  function desaExcloses(tria: Set<string>) {
+    for (const x of estades) {
+      if (tria.has(x.clau)) excloses.current.delete(x.clau); else excloses.current.add(x.clau);
+    }
+    try { window.localStorage.setItem(LS_EXCLOSES, JSON.stringify([...excloses.current])); } catch { /* ignora */ }
+  }
 
   const totes = estades.length > 0 && triades.size === estades.length;
   const url = useMemo(() => {
@@ -63,8 +99,12 @@ export default function OcupacioPage() {
     const w = frame.current?.contentWindow;
     if (w) { w.focus(); w.print(); }
   };
-  const alterna = (id: string) =>
-    setTriades((t) => { const n = new Set(t); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const canviaTria = (n: Set<string>) => { setTriades(n); desaExcloses(n); };
+  const alterna = (id: string) => {
+    const n = new Set(triades);
+    if (n.has(id)) n.delete(id); else n.add(id);
+    canviaTria(n);
+  };
 
   return (
     <div>
@@ -83,10 +123,14 @@ export default function OcupacioPage() {
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <PeriodeEnLinia estat={estat} onChange={setEstat} avui={avui} primerDia="2000-01-01" />
+        <Button type="button" variant="outline" onClick={() => setLlistaAmagada((v) => !v)} aria-pressed={!llistaAmagada}>
+          {llistaAmagada ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          {llistaAmagada ? 'Mostra les estades' : 'Amaga les estades'}
+        </Button>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]">
-        <Card>
+      <div className={llistaAmagada ? 'grid gap-4' : 'grid gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]'}>
+        {!llistaAmagada && <Card>
           <CardHeader>
             <CardTitle>Estades del període</CardTitle>
           </CardHeader>
@@ -96,7 +140,7 @@ export default function OcupacioPage() {
               <button
                 type="button"
                 className="font-semibold text-brand-700 hover:underline"
-                onClick={() => setTriades(totes ? new Set() : new Set(estades.map((x) => x.clau)))}
+                onClick={() => canviaTria(totes ? new Set() : new Set(estades.map((x) => x.clau)))}
               >
                 {totes ? 'Treu-les totes' : 'Tria-les totes'}
               </button>
@@ -120,7 +164,7 @@ export default function OcupacioPage() {
               {!carregant && estades.length === 0 && <li className="px-3 py-4 text-sm text-slate-400">Cap estada en aquest període.</li>}
             </ul>
           </CardBody>
-        </Card>
+        </Card>}
 
         <div className="min-w-0 border border-slate-200 bg-slate-200/60 p-3">
           <iframe ref={frame} title="Full d'ocupació" src={url} className="block h-[85vh] w-full border-0" />
