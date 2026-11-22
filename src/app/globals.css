@@ -120,34 +120,32 @@ html[data-estil='nou'] .ui-page-title {
   font-weight: 700;
   letter-spacing: -0.01em;
 }
-/* Barra lateral clara, apartats en majúscules, ratlla granat a l'actiu. */
+/* Barra lateral: granat fosc de la web, text crema clar, l'actiu en granat més viu
+   amb una ratlla crema. Apartats en majúscules espaiades, sense icones. */
 html[data-estil='nou'] .app-sidebar {
-  background: #f8f8f8;
-  color: #1a1a1a;
-  border-right: 1px solid #e0e0e0;
+  background: #5c1620;
+  color: #f5efe6;
 }
 html[data-estil='nou'] .app-sidebar .border-brand-800 {
-  border-color: #e0e0e0;
+  border-color: rgb(245 239 230 / 0.14);
 }
 html[data-estil='nou'] .app-sidebar :is(.text-brand-100, .text-brand-200, .text-brand-300) {
-  color: #444444;
+  color: #f5efe6;
 }
 html[data-estil='nou'] .app-logo {
   font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-}
-html[data-estil='nou'] .app-logo::first-letter {
-  color: var(--color-brand-700);
+  color: #f5efe6;
 }
 html[data-estil='nou'] .app-nav-group {
-  color: var(--color-brand-700);
+  color: rgb(245 239 230 / 0.6);
   font-weight: 700;
   letter-spacing: 0.18em;
 }
 html[data-estil='nou'] .app-nav-item {
-  color: #444444;
+  color: #f5efe6;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -157,12 +155,12 @@ html[data-estil='nou'] .app-nav-item svg {
   display: none;
 }
 html[data-estil='nou'] .app-nav-item:hover {
-  background: #eeeeee;
+  background: rgb(245 239 230 / 0.08);
 }
 html[data-estil='nou'] .app-nav-item[aria-current='page'] {
-  background: #eeeeee;
-  color: var(--color-brand-700);
-  box-shadow: inset 3px 0 0 var(--color-brand-700);
+  background: #7a1f2b;
+  color: #ffffff;
+  box-shadow: inset 3px 0 0 #f5efe6;
 }
 
 /* Selecció granate (com a la web). */

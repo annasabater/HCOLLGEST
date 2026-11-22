@@ -7,7 +7,7 @@ import { ESTIL_COOKIE, type Estil } from '@/lib/estil';
 
 const OPCIONS: { id: Estil; nom: string; desc: string }[] = [
   { id: 'original', nom: 'Original', desc: 'Com sempre: arrodonit, barra lateral granat.' },
-  { id: 'nou', nom: 'Nou', desc: 'Quadrat i net, amb els grisos de la web i la barra lateral clara.' },
+  { id: 'nou', nom: 'Nou', desc: 'Quadrat i net, amb els grisos de la web i la barra lateral granat fosc.' },
 ];
 
 /** Tria l'estil visual. Es desa en aquest navegador (cada dispositiu tria el seu). */

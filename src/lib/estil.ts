@@ -1,7 +1,7 @@
 /**
  * Estil visual de l'app, triat a /config i desat en una galeta (per navegador).
  * - 'original': l'estil de sempre (arrodonit, barra granat).
- * - 'nou': quadrat i net, inspirat en Tezel, amb els grisos de hostalcoll.com.
+ * - 'nou': quadrat i net, inspirat en Tezel, amb els grisos de hostalcoll.com i barra lateral granat fosc.
  * El CSS del nou estil viu a globals.css sota `html[data-estil="nou"]`.
  */
 export const ESTIL_COOKIE = 'estil';
