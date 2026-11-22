@@ -117,6 +117,12 @@ html[data-estil='nou'] .ui-card-title {
   text-transform: uppercase;
   color: var(--color-brand-700);
 }
+/* Títols de bloc fets a mà (Calculadora, Estades en curs…): tots a 18 px, com la
+   Calculadora; amb Montserrat, els de 20 px es veien massa grans. */
+html[data-estil='nou'] :is(h2, h3).font-serif.text-xl:not(.ui-card-title) {
+  font-size: 18px;
+  line-height: 1.4;
+}
 html[data-estil='nou'] .ui-page-title {
   font-weight: 700;
   letter-spacing: -0.01em;
