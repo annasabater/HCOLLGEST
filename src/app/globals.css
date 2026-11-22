@@ -120,8 +120,9 @@ html[data-estil='nou'] .ui-page-title {
   font-weight: 700;
   letter-spacing: -0.01em;
 }
-/* Barra lateral: granat fosc de la web, text crema clar. Apartats en majúscules
-   espaiades, sense icones. */
+/* Barra lateral: granat fosc de la web, text crema clar. Apartats en minúscules i
+   junts perquè hi càpiga tot sense desplaçar (proposta A, triada per l'Anna);
+   només els títols de grup en majúscules petites. Sense icones. */
 html[data-estil='nou'] .app-sidebar {
   background: #5c1620;
   color: #f5efe6;
@@ -146,10 +147,13 @@ html[data-estil='nou'] .app-nav-group {
 }
 html[data-estil='nou'] .app-nav-item {
   color: #f5efe6;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 500;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+html[data-estil='nou'] .app-sidebar nav {
+  gap: 1px;
 }
 html[data-estil='nou'] .app-nav-item svg {
   display: none;
