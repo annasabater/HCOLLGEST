@@ -120,9 +120,9 @@ html[data-estil='nou'] .ui-page-title {
   font-weight: 700;
   letter-spacing: -0.01em;
 }
-/* Barra lateral: granat fosc de la web, text crema clar. Apartats en minúscules i
-   junts perquè hi càpiga tot sense desplaçar (proposta A, triada per l'Anna);
-   només els títols de grup en majúscules petites. Sense icones. */
+/* Barra lateral: granat fosc de la web, text crema clar. Com l'original (icona +
+   nom en minúscules, títols de grup en rosat), però amb la tipografia nova
+   (logo en Montserrat) i l'actiu en blanc amb ratlla (triat per l'Anna). */
 html[data-estil='nou'] .app-sidebar {
   background: #5c1620;
   color: #f5efe6;
@@ -141,27 +141,31 @@ html[data-estil='nou'] .app-logo {
   color: #f5efe6;
 }
 html[data-estil='nou'] .app-nav-group {
-  color: rgb(245 239 230 / 0.6);
-  font-weight: 700;
-  letter-spacing: 0.18em;
+  color: #e8a3ad;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
 }
 html[data-estil='nou'] .app-nav-item {
   color: #f5efe6;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
-  padding-top: 6px;
-  padding-bottom: 6px;
+  gap: 14px;
+  padding-top: 7px;
+  padding-bottom: 7px;
 }
 html[data-estil='nou'] .app-sidebar nav {
   gap: 1px;
 }
 html[data-estil='nou'] .app-nav-item svg {
-  display: none;
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.75;
 }
 /* L'actiu, blanc i en negreta amb una ratlla gruixuda; la resta, més tènue
    (proposta D, triada per l'Anna). El tènue té 5,8:1 de contrast sobre el granat. */
 html[data-estil='nou'] .app-sidebar .app-nav-item:not([aria-current='page']) {
-  color: rgb(245 239 230 / 0.62);
+  color: rgb(245 239 230 / 0.88);
 }
 html[data-estil='nou'] .app-sidebar .app-nav-item:not([aria-current='page']):hover {
   background: rgb(245 239 230 / 0.08);
