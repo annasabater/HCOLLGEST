@@ -42,12 +42,12 @@ describe('construeixFull', () => {
     expect(r[0]!.trams[0]!.import).toBe(650);
   });
 
-  it('sense contracte va al final de la mateixa llista; amb contracte, per número', () => {
+  it('els més recents primer (número de gran a petit); sense contracte, al final', () => {
     const r = construeixFull(
       [est({ id: 's' }), est({ id: 'b', numContracte: '26013' }), est({ id: 'a', numContracte: '26011' })],
       o,
     );
-    expect(r.map((c) => c.numero)).toEqual(['26011', '26013', null]);
+    expect(r.map((c) => c.numero)).toEqual(['26013', '26011', null]);
   });
 
   it('el pendent suma a l import i es veu tot l historial (també les estades acabades)', () => {

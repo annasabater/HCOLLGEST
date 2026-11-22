@@ -111,11 +111,12 @@ export function construeixFull(estades: EstadaFull[], o: OpcionsFull): Contracte
     out.push({ clau, numero: numeros[0] ? base(numeros[0]) : null, habitacions, persones, trams, notes });
   }
 
-  // Per número de contracte (numèric); els sense número, al final, per data d'entrada.
+  // Els més recents primer: per número de contracte de gran a petit; els sense número,
+  // al final, també del més recent al més antic (per data d'entrada).
   return out.sort((a, b) => {
-    if (a.numero && b.numero) return a.numero.localeCompare(b.numero, 'ca', { numeric: true });
+    if (a.numero && b.numero) return b.numero.localeCompare(a.numero, 'ca', { numeric: true });
     if (a.numero) return -1;
     if (b.numero) return 1;
-    return (a.trams[0]?.del ?? '').localeCompare(b.trams[0]?.del ?? '');
+    return (b.trams[0]?.del ?? '').localeCompare(a.trams[0]?.del ?? '');
   });
 }

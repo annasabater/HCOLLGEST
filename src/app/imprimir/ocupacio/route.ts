@@ -107,7 +107,7 @@ footer { margin-top: 10px; font-size: 9.5px; color: #999; border-top: 1px solid 
   <div class="per">Del <strong>${dllarg(desde)}</strong> al <strong>${dllarg(fins)}</strong><br><small>Imprès el ${dllarg(avui)}</small></div>
 </header>
 ${cos}
-<footer>Per número de contracte; els sense número, al final · Fra. = número de factura</footer>
+<footer>Del més recent al més antic; els sense número de contracte, al final · Fra. = número de factura</footer>
 </div>
 ${auto ? '<script>window.addEventListener("load",function(){setTimeout(function(){window.print()},300)})</script>' : ''}
 </body></html>`;
