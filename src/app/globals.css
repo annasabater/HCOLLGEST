@@ -272,6 +272,28 @@ html[data-estil='nou'] .app-sidebar .app-nav-item[aria-current='page'] {
   box-shadow: inset 3px 0 0 var(--color-brand-700);
 }
 
+/* Botons, camps i desplegables més baixos (40 → 36 px, 44 → 40 px), només a
+   l'ordinador: al mòbil es queden grans perquè s'han de tocar amb el dit. Inclou
+   els grups amb vora (període, cercador, segmentats), que són caixes de 40 px. */
+@media (min-width: 768px) {
+  html[data-estil='nou'] :is(button, a, input:not([type='checkbox'], [type='radio']), select).h-10,
+  html[data-estil='nou'] div.h-10:is(.border, .ui-card) {
+    height: 2.25rem;
+  }
+  html[data-estil='nou'] :is(button, a, input, select).h-11 {
+    height: 2.5rem;
+  }
+  html[data-estil='nou'] :is(button, a, input, select).h-12 {
+    height: 2.75rem;
+  }
+  html[data-estil='nou'] :is(button, a, div).min-h-10 {
+    min-height: 2.25rem;
+  }
+  html[data-estil='nou'] .ui-segmentat > button.min-h-10 {
+    min-height: 1.875rem;
+  }
+}
+
 /* Selecció granate (com a la web). */
 ::selection {
   background: #7a1f2b;

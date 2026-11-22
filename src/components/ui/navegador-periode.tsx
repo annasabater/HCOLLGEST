@@ -198,7 +198,7 @@ export function PeriodeCompacte({
     setObert(false);
   }
 
-  const fletxa = 'grid h-10 w-9 place-items-center bg-white text-slate-700 hover:bg-slate-50 hover:text-brand-700 disabled:cursor-default disabled:text-slate-300 disabled:hover:bg-white';
+  const fletxa = 'grid h-full w-9 place-items-center bg-white text-slate-700 hover:bg-slate-50 hover:text-brand-700 disabled:cursor-default disabled:text-slate-300 disabled:hover:bg-white';
 
   return (
     <div ref={ref} className={cn('relative', className)}>
