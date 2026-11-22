@@ -59,7 +59,7 @@ export function CanviHabitacio({
 
   if (!open) {
     return (
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+      <Button variant="outline" onClick={() => setOpen(true)}>
         <ArrowRightLeft className="h-4 w-4" /> Canviar d’habitació
       </Button>
     );

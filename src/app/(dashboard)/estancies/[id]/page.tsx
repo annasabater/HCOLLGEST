@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
 import { MoreMenu } from '@/components/ui/more-menu';
+import { nomPropi } from '@/lib/nom-propi';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EstanciaActions } from '@/components/estancia/estancia-actions';
@@ -174,7 +175,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
     <div>
       <BackLink fallback="/estancies">Estades</BackLink>
       <PageHeader
-        title={titular ? `${titular.nom} ${titular.cognom1}` : 'Estada'}
+        title={titular ? [titular.nom, titular.cognom1].map((x) => nomPropi(x ?? '')).filter(Boolean).join(' ') : 'Estada'}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             <span>
@@ -205,17 +206,17 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             {contractesSeparats.length === 0 ? (
               <>
                 <a href={`/api/estancies/${estancia.id}/fitxa-pdf`} target="_blank" rel="noreferrer">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline">
                     <FileSignature className="h-4 w-4" /> Registre persones allotjades
                   </Button>
                 </a>
                 <a href={`/api/estancies/${estancia.id}/reglament-pdf`} target="_blank" rel="noreferrer">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline">
                     <FileSignature className="h-4 w-4" /> Reglament intern (LOPD)
                   </Button>
                 </a>
                 <a href={`/imprimir/registre/${estancia.id}`} target="_blank" rel="noreferrer">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline">
                     <FileSignature className="h-4 w-4" /> Llibre registre
                   </Button>
                 </a>
@@ -230,7 +231,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                     target="_blank"
                     rel="noreferrer"
                   >
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline">
                       <FileSignature className="h-4 w-4" /> Registre persones allotjades
                     </Button>
                   </a>
@@ -239,7 +240,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                     target="_blank"
                     rel="noreferrer"
                   >
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline">
                       <FileSignature className="h-4 w-4" /> Reglament (LOPD)
                     </Button>
                   </a>
@@ -248,7 +249,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                     target="_blank"
                     rel="noreferrer"
                   >
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline">
                       <FileSignature className="h-4 w-4" /> Llibre registre
                     </Button>
                   </a>
@@ -257,11 +258,13 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             )}
             {teMenor && (
               <a href={`/imprimir/ieet-declaracio/${estancia.id}`} target="_blank" rel="noreferrer">
-                <Button variant="outline" size="sm">
+                <Button variant="outline">
                   <FileSignature className="h-4 w-4" /> Declaració IEET (menor)
                 </Button>
               </a>
             )}
+            {/* Documents a l'esquerra, accions de l'estada a la dreta (proposta B). */}
+            <span aria-hidden="true" className="mx-1 hidden h-7 w-px bg-slate-300 sm:block" />
             {canWrite && estancia.estat === 'RESERVA' && (
               <ConvertirAEnCurs estanciaId={estancia.id} numContracteActual={estancia.numContracte} />
             )}

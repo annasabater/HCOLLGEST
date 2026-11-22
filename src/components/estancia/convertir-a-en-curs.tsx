@@ -43,7 +43,7 @@ export function ConvertirAEnCurs({
 
   if (!obert) {
     return (
-      <Button size="sm" onClick={() => setObert(true)}>
+      <Button onClick={() => setObert(true)}>
         <LogIn className="h-4 w-4" /> Check-in <ChevronDown className="h-3 w-3 ml-0.5" />
       </Button>
     );

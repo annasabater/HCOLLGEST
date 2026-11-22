@@ -139,7 +139,7 @@ export function AmpliarEstada({
 
   if (!open) {
     return (
-      <Button variant="outline" size="sm" onClick={obre}>
+      <Button onClick={obre}>
         <CalendarPlus className="h-4 w-4" /> Ampliar estada
       </Button>
     );

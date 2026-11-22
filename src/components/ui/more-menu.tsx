@@ -41,7 +41,7 @@ export function MoreMenu({ children, label = 'Més' }: { children: ReactNode; la
 
   return (
     <div ref={ref} className="relative">
-      <Button variant="outline" size="sm" onClick={() => setOpen((o) => !o)}>
+      <Button variant="outline" onClick={() => setOpen((o) => !o)}>
         <MoreHorizontal className="h-4 w-4" /> {label}
       </Button>
       {open && (
