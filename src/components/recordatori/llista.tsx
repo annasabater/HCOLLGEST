@@ -79,20 +79,22 @@ export function RecordatorisLlista({
   const Fila = ({ r, fet }: { r: RecordatoriVista; fet?: boolean }) => {
     const vencut = !fet && r.data < avui;
     return (
-      <div className={cn('flex flex-wrap items-center gap-4 border-t border-slate-100 py-3', r.fix && 'border-l-4 border-l-blue-600 pl-3')}>
-        <div className={cn('w-14 shrink-0 text-center leading-none', vencut ? 'text-red-700' : r.fix ? 'text-blue-700' : 'text-brand-700')}>
-          <div className="font-serif text-2xl font-semibold tabular-nums">{Number(r.data.slice(8, 10))}</div>
+      // Totes les files amb la mateixa vora esquerra (blava només als fixos): així el
+      // text queda alineat tant si és fix com si no. Mides com la resta de llistes.
+      <div className={cn('flex flex-wrap items-center gap-4 border-t border-l-4 border-t-slate-100 py-3 pl-3', r.fix ? 'border-l-blue-600' : 'border-l-transparent')}>
+        <div className={cn('w-11 shrink-0 text-center leading-none', vencut ? 'text-red-700' : r.fix ? 'text-blue-700' : 'text-brand-700')}>
+          <div className="ui-page-title font-serif text-xl font-semibold tabular-nums">{Number(r.data.slice(8, 10))}</div>
           <div className="mt-1 text-[10px] font-bold tracking-[0.12em] text-slate-500">{diaSetmana(r.data)}</div>
         </div>
         <div className="min-w-0 flex-[1_1_14rem]">
-          <p className={cn('font-bold text-slate-900', fet && 'text-slate-500 line-through decoration-slate-300')}>
+          <p className={cn('text-[15px] font-bold text-slate-900', fet && 'text-slate-500 line-through decoration-slate-300')}>
             {r.titol}
             {r.fix && <span className="ml-2 rounded bg-blue-50 px-1.5 py-0.5 align-middle text-[11px] font-bold text-blue-800">FIX</span>}
             {!r.whatsapp && !(r.calendari && calendariConnectat) && (
               <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 align-middle text-[11px] font-bold text-slate-600" title="No t'arriba al mòbil ni al Calendar">NOMÉS TAULER</span>
             )}
           </p>
-          <p className="text-sm text-slate-500">
+          <p className="mt-0.5 text-[13px] text-slate-500">
             {fet && r.fetAt ? `Fet el ${dataCurta(r.fetAt.slice(0, 10))}` : `Avisa ${textDiesAbans(r.diesAbans)}${r.hora ? ` ${textHora(r.hora)}` : ''}`} ·{textRepeticio(r.repeticioCada, r.repeticioUnitat).toLowerCase()}
             {r.notes ? ` · ${r.notes}` : ''}
           </p>
@@ -104,11 +106,11 @@ export function RecordatorisLlista({
                 <RotateCcw className="h-4 w-4" /> Desfer
               </button>
             ) : (
-              <button type="button" onClick={() => setForm({ obert: true, r })} aria-label={`Editar ${r.titol}`} className="border border-slate-200 p-2.5 text-slate-500 hover:bg-slate-50 hover:text-slate-800">
+              <button type="button" onClick={() => setForm({ obert: true, r })} aria-label={`Editar ${r.titol}`} className="grid h-10 w-10 place-items-center border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800">
                 <Pencil className="h-4 w-4" />
               </button>
             )}
-            <button type="button" onClick={() => setEsborra(r)} aria-label={`Esborrar ${r.titol}`} className="border border-slate-200 p-2.5 text-slate-400 hover:bg-red-50 hover:text-red-700">
+            <button type="button" onClick={() => setEsborra(r)} aria-label={`Esborrar ${r.titol}`} className="grid h-10 w-10 place-items-center border border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-700">
               <Trash2 className="h-4 w-4" />
             </button>
           </div>
