@@ -198,6 +198,7 @@ function Casella({
   color,
   sota,
   onSelect,
+  className,
 }: {
   label: string;
   marca: React.ReactNode;
@@ -205,13 +206,14 @@ function Casella({
   color?: string;
   sota?: React.ReactNode;
   onSelect?: () => void;
+  className?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onSelect}
       title="Veure el desglossament"
-      className="group min-w-0 border-t border-slate-100 px-5 pb-4 pt-3 text-left transition-colors first:border-t-0 hover:bg-slate-50/70 sm:border-l sm:border-t-0 sm:first:border-l-0"
+      className={cn('group min-w-0 bg-white px-5 pb-4 pt-3 text-left transition-colors hover:bg-slate-50', className)}
     >
       <span className="flex items-center gap-2 text-sm font-semibold text-slate-500">
         {marca}
@@ -952,10 +954,11 @@ export default function BalancPage() {
 
           {dades ? (
             <>
-              {/* Una sola caixa: el resultat real (ingressos, despeses, benefici) i, a la
-                  dreta i en groc, el saldo de fiances (no són ingrés ni despesa). */}
-              <section aria-label="Resultat de l'hostal" className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
-                <div className={cn('grid sm:grid-cols-3', !restringit && 'sm:grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.2fr)]')}>
+              {/* Una sola caixa amb tot el recorregut: ingressos − despeses = benefici real,
+                  + fiances rebudes = benefici total, − fiances pagades = moviment de caixa
+                  (el mateix que la cascada de sota). Les fiances, en groc. */}
+              <section aria-label="Resultat de l'hostal" className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-200">
+                <div className={cn('grid gap-px', restringit ? 'sm:grid-cols-3' : 'sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7')}>
                   <Casella
                     label="Ingressos"
                     marca={<Punt color={COLORS_BALANC.ingressos} />}
@@ -966,12 +969,12 @@ export default function BalancPage() {
                   <Casella
                     label="Despeses"
                     marca={<Punt color={COLORS_BALANC.despeses} />}
-                    value={despesesTotals}
+                    value={despesesTotals > 0 ? -despesesTotals : 0}
                     sota={comp && anterior ? <Delta pct={variacio(despesesTotals, anterior.despeses + anterior.personal)} etiqueta={comp.etiqueta} invert /> : null}
                     onSelect={() => setBreakdown(desglos('despeses', dades))}
                   />
                   <Casella
-                    label="Benefici"
+                    label={restringit ? 'Benefici' : 'Benefici real'}
                     marca={<Punt color={COLORS_BALANC.benefici} />}
                     value={dades.benefici}
                     color={dades.benefici >= 0 ? 'text-green-700' : 'text-red-700'}
@@ -979,32 +982,54 @@ export default function BalancPage() {
                     onSelect={() => setBreakdown(desglos('benefici', dades))}
                   />
                   {!restringit && (
-                    <div className="min-w-0 border-t border-amber-100 bg-amber-50/60 px-5 pb-4 pt-3 sm:border-l sm:border-t-0">
-                      <button
-                        type="button"
-                        onClick={() => setBreakdown({ title: 'Saldo de fiances', rows: [{ label: 'Rebudes de clients', value: dades.retencions }, { label: 'Pagades (recuperables)', value: -dades.despesesFianca }], total: saldoFiances })}
-                        title="Veure el desglossament"
-                        className="block w-full text-left"
-                      >
-                        <span className="flex items-center gap-2 text-sm font-semibold text-slate-500">
-                          <MostraRatllada color={COLORS_BALANC.pagades} />
-                          Fiances (saldo)
-                        </span>
-                        <span className={cn('mt-0.5 block whitespace-nowrap text-[1.65rem] font-extrabold tracking-tight tabular-nums', saldoFiances >= 0 ? 'text-amber-700' : 'text-red-700')}>
-                          <Eur value={saldoFiances} />
-                        </span>
-                      </button>
-                      <span className="mt-0.5 block text-xs text-slate-500">
-                        <button type="button" onClick={() => setBreakdown(desglos('rebudes', dades))} className="underline-offset-2 hover:underline">
-                          rebudes <Eur value={dades.retencions} />
-                        </button>
-                        {' · '}
-                        <button type="button" onClick={() => setBreakdown(desglos('pagades', dades))} className="underline-offset-2 hover:underline">
-                          pagades <Eur value={dades.despesesFianca} />
-                        </button>
-                        {' · recuperables'}
-                      </span>
-                    </div>
+                    <>
+                      <Casella
+                        className="!bg-amber-50/70 hover:!bg-amber-50"
+                        label="+ Fiances rebudes"
+                        marca={<MostraRatllada color={COLORS_BALANC.rebudes} />}
+                        value={dades.retencions}
+                        color="text-teal-700"
+                        sota="en custòdia, recuperables"
+                        onSelect={() => setBreakdown(desglos('rebudes', dades))}
+                      />
+                      <Casella
+                        label="Benefici total"
+                        marca={<Punt color={COLORS_BALANC.beneficiTotal} />}
+                        value={dades.benefici + dades.retencions}
+                        sota="benefici real + fiances"
+                        onSelect={() =>
+                          setBreakdown({
+                            title: 'Benefici total',
+                            rows: [{ label: 'Benefici real', value: dades.benefici }, { label: 'Fiances rebudes', value: dades.retencions }],
+                            total: r2(dades.benefici + dades.retencions),
+                          })
+                        }
+                      />
+                      <Casella
+                        className="!bg-amber-50/70 hover:!bg-amber-50"
+                        label="− Fiances pagades"
+                        marca={<MostraRatllada color={COLORS_BALANC.pagades} />}
+                        value={dades.despesesFianca > 0 ? -dades.despesesFianca : 0}
+                        color="text-amber-700"
+                        sota="a proveïdors, recuperables"
+                        onSelect={() => setBreakdown(desglos('pagades', dades))}
+                      />
+                      <Casella
+                        className="!bg-slate-50"
+                        label="Moviment de caixa"
+                        marca={<Punt color={COLORS_BALANC.ingressos} />}
+                        value={r2(dades.benefici + dades.retencions - dades.despesesFianca)}
+                        color={dades.benefici + dades.retencions - dades.despesesFianca >= 0 ? 'text-green-700' : 'text-red-700'}
+                        sota="el que ha entrat − sortit"
+                        onSelect={() =>
+                          setBreakdown({
+                            title: 'Moviment de caixa',
+                            rows: [{ label: 'Benefici total', value: r2(dades.benefici + dades.retencions) }, { label: 'Fiances pagades', value: -dades.despesesFianca }],
+                            total: r2(dades.benefici + dades.retencions - dades.despesesFianca),
+                          })
+                        }
+                      />
+                    </>
                   )}
                 </div>
               </section>
