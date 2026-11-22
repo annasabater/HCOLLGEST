@@ -273,6 +273,20 @@ html[data-estil='nou'] .app-sidebar .app-nav-item[aria-current='page'] {
   box-shadow: inset 3px 0 0 var(--color-brand-700);
 }
 
+/* Les opcions van de punta a punta: sense el marge de 12 px de la barra; el text
+   es queda on era (24 px de l'esquerra). També a baix (Configuració, Sortir). */
+html[data-estil='nou'] .app-sidebar nav,
+html[data-estil='nou'] .app-sidebar > div.p-3 {
+  padding-left: 0;
+  padding-right: 0;
+}
+html[data-estil='nou'] .app-sidebar .app-nav-item,
+html[data-estil='nou'] .app-sidebar .app-nav-group,
+html[data-estil='nou'] .app-sidebar > div.p-3 > div {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  border-radius: 0;
+}
 /* «Sortir»: discret, no com un apartat més; amb la icona, en minúscules i gris. */
 html[data-estil='nou'] .app-sidebar .app-logout {
   font-size: 13px;
