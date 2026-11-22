@@ -12,16 +12,17 @@ const OPCIONS: { value: string; href: string; label: string }[] = [
 /** Segmentat per filtrar les factures per tipus (simplificades / fiscals / totes). */
 export function FacturaFiltreTipus({ actual }: { actual: string }) {
   return (
-    <div className="mb-4 inline-flex rounded-lg border border-slate-200 bg-white p-0.5 text-sm">
+    <div role="group" aria-label="Tipus de factura" className="flex h-10 gap-[3px] rounded-lg border border-slate-300 bg-white p-[3px] text-sm">
       {OPCIONS.map((o) => {
         const active = o.value === actual;
         return (
           <Link
             key={o.value}
             href={o.href}
+            aria-current={active ? 'page' : undefined}
             className={cn(
-              'rounded-md px-3 py-1.5 font-medium transition-colors',
-              active ? 'bg-brand-700 text-white' : 'text-slate-500 hover:text-brand-700',
+              'flex items-center whitespace-nowrap rounded-md px-3 transition-colors',
+              active ? 'bg-brand-700 font-bold text-white' : 'font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900',
             )}
           >
             {o.label}

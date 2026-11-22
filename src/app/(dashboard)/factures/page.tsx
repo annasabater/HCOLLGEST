@@ -10,7 +10,7 @@ import { EstatFacturaToggle, EliminarFacturaIcona } from '@/components/factura/f
 import { FacturaFiltreTipus } from '@/components/factura/factura-filtre-tipus';
 import { EnviarCorreuButton } from '@/components/justificants/enviar-correu-button';
 import { FitxaExpandible } from '@/components/justificants/fitxa-expandible';
-import { formatDate } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import { estatFacturaLabel } from '@/lib/factura-display';
 import { Badge, toneEstatDiposit, toneEstatFactura } from '@/components/ui/badge';
 import type { Prisma } from '@prisma/client';
@@ -84,16 +84,20 @@ export default async function FacturesPage({
             {factures.length} factures · <Eur value={totalPendent} /> pendent de cobrament
           </>
         }
-        actions={<HideAmountsButton nomesIcona />}
       />
 
       <FinancesNav />
 
-      {!restringit && (
-        <TrimestreIvaCard />
-      )}
-
-      <FacturaFiltreTipus actual={tipusParam} />
+      {/* Una sola fila: a l'esquerra el llibre d'IVA (sempre totes les factures);
+          a la dreta, el filtre de la llista de sota i l'ull d'amagar imports. */}
+      <div className={cn('mb-4 grid gap-3', !restringit && 'xl:grid-cols-[auto_minmax(0,1fr)]')}>
+        {!restringit && <TrimestreIvaCard />}
+        <div className="ui-card flex flex-wrap items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
+          <span className="ui-card-title text-xs font-bold uppercase tracking-wider text-brand-700">Factures</span>
+          <FacturaFiltreTipus actual={tipusParam} />
+          <HideAmountsButton nomesIcona className="ml-auto" />
+        </div>
+      </div>
 
       {factures.length === 0 ? (
         <EmptyState>

@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, FileText } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { getJSON } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Eur } from '@/components/finances/amounts-visibility';
@@ -13,11 +12,11 @@ const pad = (n: number) => String(n).padStart(2, '0');
 const fmt = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
 
 /**
- * Llibre d'IVA (ingressos) en una sola fila: l'any i els 4 trimestres com a
- * pestanyes (✓ i total si ja està desat) i el botó per obrir el llibre imprimible
- * i EDITABLE del trimestre triat. De moment només ingressos.
+ * Llibre d'IVA (ingressos) en una sola fila: l'any, els 4 trimestres (✓ si ja està
+ * desat; les dates, en passar-hi el ratolí), el total del triat i l'enllaç per obrir
+ * el llibre imprimible i EDITABLE. De moment només ingressos.
  */
-export function TrimestreIvaCard() {
+export function TrimestreIvaCard({ className }: { className?: string }) {
   const avui = new Date();
   const anyActual = avui.getFullYear();
   const trimActual = Math.floor(avui.getMonth() / 3) + 1;
@@ -33,44 +32,33 @@ export function TrimestreIvaCard() {
   const esFutur = (t: number) => any > anyActual || (any === anyActual && t > trimActual);
   const enCurs = (t: number) => any === anyActual && t === trimActual;
 
-  // Dates del trimestre triat (fins avui si és l'actual).
-  const inici = new Date(any, (trim - 1) * 3, 1);
-  const fi = enCurs(trim) ? avui : new Date(any, trim * 3, 0);
-
   function canviaAny(nou: number) {
     setAny(nou);
     setTrim(nou === anyActual ? trimActual : 4);
   }
 
+  const triat = desat(trim);
+
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
-      <span className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-brand-700">
-        Llibre d&apos;IVA
-        <button
-          type="button"
-          aria-label="Any anterior"
-          onClick={() => canviaAny(any - 1)}
-          className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-brand-700"
-        >
+    <div className={cn('ui-card flex flex-wrap items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm', className)}>
+      <span className="ui-card-title text-xs font-bold uppercase tracking-wider text-brand-700">Llibre d&apos;IVA</span>
+      <span className="flex items-center font-bold tabular-nums text-slate-900">
+        <button type="button" aria-label="Any anterior" onClick={() => canviaAny(any - 1)} className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-brand-700">
           <ChevronLeft className="h-4 w-4" />
         </button>
-        <span className="tabular-nums">{any}</span>
-        <button
-          type="button"
-          aria-label="Any següent"
-          disabled={any >= anyActual}
-          onClick={() => canviaAny(any + 1)}
-          className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-brand-700 disabled:opacity-30"
-        >
+        {any}
+        <button type="button" aria-label="Any següent" disabled={any >= anyActual} onClick={() => canviaAny(any + 1)} className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-brand-700 disabled:opacity-30">
           <ChevronRight className="h-4 w-4" />
         </button>
       </span>
 
-      <div role="group" aria-label="Trimestre" className="inline-flex overflow-hidden rounded-lg border border-slate-200">
+      <div role="group" aria-label="Trimestre" className="flex h-10 gap-[3px] rounded-lg border border-slate-300 bg-white p-[3px]">
         {[1, 2, 3, 4].map((t) => {
           const d = desat(t);
           const actiu = t === trim;
           const futur = esFutur(t);
+          const ini = new Date(any, (t - 1) * 3, 1);
+          const fiT = enCurs(t) ? avui : new Date(any, t * 3, 0);
           return (
             <button
               key={t}
@@ -78,31 +66,28 @@ export function TrimestreIvaCard() {
               disabled={futur}
               aria-pressed={actiu}
               onClick={() => setTrim(t)}
-              title={d ? `Desat el ${new Date(d.updatedAt).toLocaleDateString('ca-ES')}` : undefined}
+              title={`${fmt(ini)} – ${fmt(fiT)}${d ? ` · desat el ${new Date(d.updatedAt).toLocaleDateString('ca-ES')}` : enCurs(t) ? ' · en curs' : ''}`}
               className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 transition-colors [&:not(:first-child)]:border-l [&:not(:first-child)]:border-slate-200',
-                actiu ? 'bg-brand-700 font-semibold text-white' : 'bg-white text-slate-700 hover:bg-brand-50',
-                futur && 'cursor-default text-slate-300 hover:bg-white',
+                'flex items-center gap-1 whitespace-nowrap rounded-md px-2.5 text-sm transition-colors',
+                actiu ? 'bg-brand-700 font-bold text-white' : 'font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+                futur && 'cursor-default text-slate-300 hover:bg-white hover:text-slate-300',
               )}
             >
               {t}T
               {d && <span className={actiu ? 'text-white' : 'text-green-700'}>✓</span>}
-              {d ? (
-                <Eur value={d.totalTotal} className={cn('text-xs', actiu ? 'text-white/85' : 'text-slate-400')} />
-              ) : enCurs(t) ? (
-                <span className={cn('text-xs', actiu ? 'text-white/85' : 'text-slate-400')}>en curs</span>
-              ) : null}
             </button>
           );
         })}
       </div>
 
-      <span className="text-xs text-slate-500">{fmt(inici)} – {fmt(fi)}</span>
+      {triat ? (
+        <Eur value={triat.totalTotal} className="font-bold tabular-nums text-slate-900" />
+      ) : (
+        <span className="text-xs text-slate-500">{enCurs(trim) ? 'en curs' : 'sense desar'}</span>
+      )}
 
-      <a href={`/imprimir/trimestre-ingressos/${any}-${trim}`} target="_blank" rel="noreferrer" className="ml-auto">
-        <Button size="sm" variant="outline" className="border-brand-700 text-brand-700 hover:bg-brand-50">
-          <FileText className="h-4 w-4" /> Obrir / editar / imprimir
-        </Button>
+      <a href={`/imprimir/trimestre-ingressos/${any}-${trim}`} target="_blank" rel="noreferrer" className="whitespace-nowrap font-semibold text-brand-700 hover:underline">
+        Obrir el llibre →
       </a>
     </div>
   );
