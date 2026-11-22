@@ -1,6 +1,9 @@
 import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/auth/session';
 import { teVistaRestringida } from '@/lib/auth/restriccions';
+import { prisma } from '@/lib/db';
+import { ROLES_WRITE } from '@/lib/auth/rbac';
+import { esNomesLectura } from '@/lib/auth/restriccions';
 import { getOcupacio } from '@/lib/services/ocupacio';
 import type { ContracteFull, TramFull } from '@/lib/ocupacio-contractes';
 import { nomPropi } from '@/lib/nom-propi';
@@ -57,9 +60,19 @@ export async function GET(req: Request) {
     `<div class="tram"><span class="imp">${t.import != null ? eur(t.import) : '—'}</span><span class="pt"></span>` +
     `<span class="nw">Del <b>${dc(t.del)}</b> al <b>${dc(t.al)}</b></span><span class="s">—</span><span class="pgs">${pagaments(t)}</span></div>`;
 
+  // Notes a mà per contracte: només les veu i les edita qui pot escriure (no els comptes de propietat).
+  const restr = teVistaRestringida(user);
+  const potEditar = !restr && !esNomesLectura(user) && ROLES_WRITE.includes(user.role);
+  const notes = new Map<string, string>(
+    restr
+      ? []
+      : (await prisma.notaOcupacio.findMany({ where: { clau: { in: contractes.map((c) => c.clau) } } })).map((n) => [n.clau, n.text]),
+  );
+
   const entrada = (c: ContracteFull, i: number) =>
-    `<div class="ent${i % 2 ? ' alt' : ''}"><div class="hab">${esc(c.habitacions.join('/'))}</div><div class="cos">` +
-    `<div class="pers">${persones(c)}${c.numero ? ` <span class="ctr">Contracte ${esc(c.numero)}</span>` : ''}</div>${c.trams.map(tram).join('')}</div></div>`;
+    `<div class="ent${i % 2 ? ' alt' : ''}" data-clau="${esc(c.clau)}"><div class="hab">${esc(c.habitacions.join('/'))}</div><div class="cos">` +
+    `<div class="pers">${persones(c)}${c.numero ? ` <span class="ctr">Contracte ${esc(c.numero)}</span>` : ''}${potEditar ? '<button type="button" class="lap no-print" title="Apunta alguna cosa">✎ apuntar</button>' : ''}</div>${c.trams.map(tram).join('')}` +
+    `<div class="nota"${notes.get(c.clau) ? '' : ' hidden'}>${esc(notes.get(c.clau) ?? '')}</div></div></div>`;
 
   const cos = contractes.length ? contractes.map(entrada).join('') : '<p class="buit">Cap estada en aquest període.</p>';
 
@@ -94,6 +107,13 @@ h1 { margin: 2px 0 0; font-size: 22px; font-weight: 600; color: #222; }
 .fra { color: #7a7a7a; }
 .pend { font-size: 9.5px; font-weight: 700; letter-spacing: .08em; background: #7a1f2b; color: #fff; padding: 2px 7px; white-space: nowrap; }
 .buit { color: #888; padding: 20px 10px; }
+.pers { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0; }
+.lap { margin-left: auto; font: 600 11px Arial, sans-serif; color: #7a1f2b; background: #fff; border: 1px solid #e3d3d6; padding: 2px 8px; cursor: pointer; opacity: 0; transition: opacity .12s; }
+.ent:hover .lap, .lap:focus { opacity: 1; }
+.nota { margin-top: 5px; padding: 4px 9px; background: #f7eef0; border-left: 3px solid #7a1f2b; font-size: 12px; color: #1a1a1a; white-space: pre-wrap; }
+.alt .nota { background: #fff; }
+.nota-in { display: block; width: 100%; margin-top: 5px; padding: 5px 9px; font: 12px Arial, sans-serif; border: 1px solid #7a1f2b; outline: none; resize: vertical; }
+@media print { .no-print { display: none !important; } }
 footer { margin-top: 10px; font-size: 9.5px; color: #999; border-top: 1px solid #e4e4e4; padding-top: 6px; }
 @media screen {
   body { background: #e9e9e9; padding: 18px 12px; }
@@ -109,6 +129,34 @@ footer { margin-top: 10px; font-size: 9.5px; color: #999; border-top: 1px solid 
 ${cos}
 <footer>Del més recent al més antic; els sense número de contracte, al final · Fra. = número de factura</footer>
 </div>
+<script>
+document.addEventListener('click', function (ev) {
+  var t = ev.target;
+  var ent = t.closest ? t.closest('.ent') : null;
+  if (!ent) return;
+  if (!(t.classList.contains('lap') || (t.classList.contains('nota') && document.querySelector('.lap')))) return;
+  var nota = ent.querySelector('.nota');
+  if (ent.querySelector('.nota-in')) return;
+  var ta = document.createElement('textarea');
+  ta.className = 'nota-in no-print'; ta.rows = 2; ta.maxLength = 1000; ta.placeholder = 'Apunta alguna cosa… (Enter per desar)';
+  ta.value = nota.textContent || '';
+  nota.hidden = true; nota.after(ta); ta.focus();
+  var fet = false;
+  function desa() {
+    if (fet) return; fet = true;
+    var text = ta.value.trim();
+    fetch('/api/ocupacio/nota', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clau: ent.getAttribute('data-clau'), text: text }) })
+      .then(function (r) { if (!r.ok) throw new Error(); nota.textContent = text; nota.hidden = !text; })
+      .catch(function () { nota.hidden = !nota.textContent; alert('No s\\'ha pogut desar la nota.'); })
+      .then(function () { ta.remove(); });
+  }
+  ta.addEventListener('blur', desa);
+  ta.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ta.blur(); }
+    if (e.key === 'Escape') { fet = true; nota.hidden = !nota.textContent; ta.remove(); }
+  });
+});
+</script>
 ${auto ? '<script>window.addEventListener("load",function(){setTimeout(function(){window.print()},300)})</script>' : ''}
 </body></html>`;
 

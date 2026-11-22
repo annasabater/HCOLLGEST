@@ -1756,3 +1756,12 @@ model ConsultaDespeses {
 
   @@map("consulta_despeses")
 }
+
+/// Nota a mà d'un contracte del full d'Ocupació (clau = la del contracte: l'estada inicial).
+model NotaOcupacio {
+  clau      String   @id
+  text      String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("nota_ocupacio")
+}
