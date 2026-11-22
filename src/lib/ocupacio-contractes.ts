@@ -1,7 +1,7 @@
 import { ocultaDelLlibre } from '@/lib/auth/restriccions';
 
 /**
- * Full d'ocupació per CONTRACTE (pur, testejat). Un contracte = una estada i totes les
+ * Full d'ocupació per CONTRACTE (pur, testejat; el període i la selecció de persones es fan al servei). Un contracte = una estada i totes les
  * seves ampliacions (cadena `estanciaOrigenId`); el nom i el telèfon surten un sol cop.
  * Cada tram (estada o ampliació) porta: import, «Del X al Y» i els pagaments amb el
  * dia i, només si en tenen, el número de factura. El número de contracte també és
@@ -16,7 +16,7 @@ export interface EstadaFull {
   entrada: string | null; // YYYY-MM-DD
   sortida: string | null;
   observacions: string | null;
-  viatgers: { nom: string; telefon: string | null; esTitular: boolean }[];
+  viatgers: { id: string; nom: string; telefon: string | null; esTitular: boolean }[];
   cobraments: { import: number; data: string; metode: string; factura: string | null }[];
   previstos: { import: number; dataPrevista: string; pagat: boolean }[];
 }
@@ -43,16 +43,13 @@ export interface ContracteFull {
   /** Número de contracte (el de l'estada inicial), o null si no en té. */
   numero: string | null;
   habitacions: string[];
-  persones: { nom: string; telefon: string | null }[];
+  persones: { id: string; nom: string; telefon: string | null }[];
   trams: TramFull[];
   notes: string | null;
 }
 
 export interface OpcionsFull {
-  desde: string;
-  fins: string;
-  avui: string;
-  /** Les estades ja acabades (sortida abans d'avui) s'amaguen. */
+  /** Comptes de propietat: s'oculten les estades amb ZP11 i els cobraments «Altres». */
   restringit?: boolean;
 }
 
@@ -84,19 +81,13 @@ export function construeixFull(estades: EstadaFull[], o: OpcionsFull): Contracte
   const out: ContracteFull[] = [];
   for (const [clau, tots] of grups) {
     const ordenats = [...tots].sort((a, b) => (a.entrada ?? '').localeCompare(b.entrada ?? ''));
-    // Només el que toca el període, i res d'acabat abans d'avui.
-    const vius = ordenats.filter(
-      (e) => !(e.sortida && e.sortida < o.desde) && !(e.entrada && e.entrada > o.fins) && !(e.sortida && e.sortida < o.avui),
-    );
-    if (vius.length === 0) continue;
 
     const persones: ContracteFull['persones'] = [];
     for (const e of ordenats) {
       for (const v of [...e.viatgers].sort((a, b) => Number(b.esTitular) - Number(a.esTitular))) {
-        const clau2 = v.nom.trim().toLowerCase();
-        const ja = persones.find((p) => p.nom.trim().toLowerCase() === clau2);
+        const ja = persones.find((p) => p.id === v.id);
         if (ja) ja.telefon = ja.telefon ?? v.telefon;
-        else persones.push({ nom: v.nom, telefon: v.telefon });
+        else persones.push({ id: v.id, nom: v.nom, telefon: v.telefon });
       }
     }
 

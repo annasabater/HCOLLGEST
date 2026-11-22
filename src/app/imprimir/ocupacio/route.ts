@@ -18,7 +18,8 @@ const iso = (v: string | null, def: string) => (v && /^\d{4}-\d{2}-\d{2}$/.test(
  * GET /imprimir/ocupacio — full d'ocupació per contracte, llest per imprimir (A4 vertical)
  * o desar com a PDF. Un paràgraf per contracte (les ampliacions, dins el mateix), ordenat
  * per número de contracte; els sense número, al final. Cada pagament surt amb el dia i,
- * només si en té, el número de factura. Paràmetres: desde, fins (YYYY-MM-DD), auto=1.
+ * només si en té, el número de factura. Paràmetres: desde, fins (YYYY-MM-DD), persones=id1,id2 (opcional: si falta, totes les del període), auto=1.
+ * De cada persona surt tot l'historial, no només el del període.
  */
 export async function GET(req: Request) {
   const user = await getSessionUser();
@@ -31,7 +32,8 @@ export async function GET(req: Request) {
   const fins = iso(p.get('fins'), fi.toISOString().slice(0, 10));
   const auto = p.get('auto') === '1';
 
-  const contractes = await getOcupacio(desde, fins, teVistaRestringida(user));
+  const ids = (p.get('persones') ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+  const contractes = await getOcupacio(desde, fins, teVistaRestringida(user), ids);
 
   const persones = (c: ContracteFull) =>
     c.persones

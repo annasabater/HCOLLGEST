@@ -8,12 +8,12 @@ const est = (p: Partial<EstadaFull> & { id: string }): EstadaFull => ({
   entrada: '2026-11-16',
   sortida: '2026-12-16',
   observacions: null,
-  viatgers: [{ nom: 'Firooz Imani', telefon: '651', esTitular: true }],
+  viatgers: [{ id: 'h1', nom: 'Firooz Imani', telefon: '651', esTitular: true }],
   cobraments: [],
   previstos: [],
   ...p,
 });
-const o = { desde: '2026-11-22', fins: '2027-01-31', avui: '2026-11-22' };
+const o = {};
 
 describe('construeixFull', () => {
   it('l\'ampliació va dins del mateix contracte i el nom surt un sol cop', () => {
@@ -50,16 +50,16 @@ describe('construeixFull', () => {
     expect(r.map((c) => c.numero)).toEqual(['26011', '26013', null]);
   });
 
-  it('el pendent suma a l\'import i les estades acabades s\'amaguen', () => {
+  it('el pendent suma a l import i es veu tot l historial (també les estades acabades)', () => {
     const r = construeixFull(
       [
         est({ id: 'a', previstos: [{ import: 325, dataPrevista: '2026-12-06', pagat: false }], cobraments: [{ import: 325, data: '2026-11-17', metode: 'EFECTIU', factura: null }] }),
-        est({ id: 'old', entrada: '2026-10-01', sortida: '2026-11-10' }),
+        est({ id: 'old', entrada: '2025-10-01', sortida: '2025-11-10' }),
       ],
       o,
     );
-    expect(r).toHaveLength(1);
-    expect(r[0]!.trams[0]!.import).toBe(650);
-    expect(r[0]!.trams[0]!.pendents).toHaveLength(1);
+    expect(r).toHaveLength(2);
+    expect(r.find((c) => c.clau === 'a')!.trams[0]!.import).toBe(650);
+    expect(r.find((c) => c.clau === 'a')!.trams[0]!.pendents).toHaveLength(1);
   });
 });
