@@ -58,8 +58,10 @@ export interface DiaNeteja {
   treballadorId: string | null;
   habitacions: HabDia[];
   nota: NotaInput | null;
-  /** Hi ha alguna habitació desada al full del dia (feta). */
+  /** Hi ha alguna habitació desada al full del dia. */
   fet: boolean;
+  /** Desada al full del dia però encara sense marcar com a feta (cap tasca FETA). */
+  pendent: boolean;
   /** Pagament registrat del dia: PAGAT, PER_PAGAR (registrat i no pagat) o null. */
   pagament: 'PAGAT' | 'PER_PAGAR' | null;
 }
@@ -105,7 +107,7 @@ export function construeixSetmanes(i: {
   const dia = (d: string): DiaNeteja => {
     let x = dies.get(d);
     if (!x) {
-      x = { data: d, treballadorId: null, habitacions: [], nota: null, fet: false, pagament: null };
+      x = { data: d, treballadorId: null, habitacions: [], nota: null, fet: false, pendent: false, pagament: null };
       dies.set(d, x);
     }
     return x;
@@ -113,6 +115,7 @@ export function construeixSetmanes(i: {
 
   for (const t of i.tasques) {
     const d = dia(t.data);
+    d.pendent = d.fet ? d.pendent && t.estat !== 'FETA' : t.estat !== 'FETA';
     d.fet = true;
     d.treballadorId = d.treballadorId ?? t.treballadorId;
     d.habitacions.push({

@@ -36,7 +36,9 @@ export async function GET(req: Request) {
 
   const cela = (d: DiaNeteja | null) => {
     if (!d) return '<div class="dia buit"><div class="cap">&nbsp;</div></div>';
-    const marca = d.fet
+    const marca = d.fet && d.pendent
+      ? '<span class="pl">DESADA</span>'
+      : d.fet
       ? d.pagament === 'PER_PAGAR'
         ? '<span class="pp">PER PAGAR</span>'
         : d.pagament === 'PAGAT'

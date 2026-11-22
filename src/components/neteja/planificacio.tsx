@@ -220,7 +220,9 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
           <b className="ui-page-title text-[15px] text-slate-900">{nomDia(d.data)}</b>
           <span className="text-xs text-slate-500">{nomPersona(persona)}</span>
           <span className="ml-auto text-[10.5px] font-extrabold uppercase tracking-wider">
-            {d.fet ? (
+            {d.fet && d.pendent ? (
+              <span className="text-slate-500">Desada · pendent</span>
+            ) : d.fet ? (
               d.pagament === 'PAGAT' ? <span className="text-green-700">Feta · pagada</span>
               : d.pagament === 'PER_PAGAR' ? <span className="text-amber-700">Feta · per pagar</span>
               : <span className="text-slate-500">Feta</span>
@@ -354,7 +356,7 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
         {dades.setmanes.map((s) => {
           const buits = diesBuits
             .filter((b) => b.data >= s.dilluns && b.data <= s.diumenge && !s.dies.some((d) => d.data === b.data))
-            .map((b) => ({ dia: { data: b.data, treballadorId: b.persona, habitacions: [], nota: null, fet: false, pagament: null } as DiaNeteja, persona: b.persona }));
+            .map((b) => ({ dia: { data: b.data, treballadorId: b.persona, habitacions: [], nota: null, fet: false, pendent: false, pagament: null } as DiaNeteja, persona: b.persona }));
           const tots = [...s.dies.map((d) => ({ dia: d, persona: undefined as string | undefined })), ...buits].sort((a, b) => a.dia.data.localeCompare(b.dia.data));
           const futura = s.dilluns >= setmanaActual;
           return (
@@ -395,7 +397,7 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
       <div className="flex flex-wrap gap-4 text-xs text-slate-500">
         <span className="inline-flex items-center gap-1.5"><span className="h-3 w-5 bg-brand-700" /> sortida (a fons)</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-3 w-5 border border-slate-300 bg-white" /> manteniment</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-5 border border-green-200 bg-green-50" /> feta (desada al full del dia)</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-5 border border-green-200 bg-green-50" /> desada al full del dia</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-3 w-5 border-[1.5px] border-dashed border-brand-200 bg-brand-50/30" /> planificada: no compta per pagar fins que es desa al full del dia</span>
       </div>
 

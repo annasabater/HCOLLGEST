@@ -29,6 +29,7 @@ describe('construeixSetmanes', () => {
     expect(r[0]!.dies[0]!.habitacions).toHaveLength(1);
     expect(r[0]!.dies[0]!.habitacions[0]!.origen).toBe('FETA');
     expect(r[0]!.dies[0]!.fet).toBe(true);
+    expect(r[0]!.dies[0]!.pendent).toBe(false);
     expect(r[1]!.dies[0]!.habitacions[0]!.nota).toBe('falta un coixí');
     expect(r[1]!.dies[0]!.fet).toBe(false);
   });
