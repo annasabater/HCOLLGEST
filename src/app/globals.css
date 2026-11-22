@@ -91,8 +91,8 @@ html[data-estil='nou'] {
   --color-slate-950: oklch(14.5% 0 0);
   /* Títols en Montserrat en lloc de Cormorant. */
   --font-serif: var(--font-montserrat), var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
-  /* Fons de pàgina: el mateix que l'estil original (slate-50 de Tailwind). */
-  --background: #f8fafc;
+  /* Fons de pàgina: el gris de hostalcoll.com (triat per l'Anna). */
+  --background: #f4f4f4;
 }
 html[data-estil='nou'] .rounded {
   border-radius: 0;
@@ -102,7 +102,7 @@ html[data-estil='nou'] :is(.shadow-sm, .shadow) {
   --tw-shadow: 0 0 #0000;
 }
 html[data-estil='nou'] .app-main {
-  background: #f8fafc;
+  background: #f4f4f4;
 }
 html[data-estil='nou'] .ui-card {
   border-color: #e0e0e0;
