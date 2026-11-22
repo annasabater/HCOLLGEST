@@ -90,9 +90,7 @@ export default async function FacturesPage({
       <FinancesNav />
 
       {!restringit && (
-        <div className="mb-6">
-          <TrimestreIvaCard />
-        </div>
+        <TrimestreIvaCard />
       )}
 
       <FacturaFiltreTipus actual={tipusParam} />
