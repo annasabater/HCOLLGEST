@@ -143,8 +143,12 @@ html[data-estil='nou'] h1.ui-page-title {
 /* Estades en curs per dins: lletra més contenguda (la de «Entrada», «Ha allargat»
    i el nom del client), perquè no es vegi tan gran. */
 html[data-estil='nou'] .ui-tl-titol {
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.35;
+}
+html[data-estil='nou'] .ui-tl-detall {
+  font-size: 13px;
+  line-height: 1.4;
 }
 html[data-estil='nou'] .ui-estada-nom {
   font-size: 15px;

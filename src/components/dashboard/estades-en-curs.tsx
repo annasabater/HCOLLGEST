@@ -293,7 +293,7 @@ function Historial({
                 </button>
               )}
             </p>
-            {i.m && <p className="text-sm text-slate-600">{i.m}</p>}
+            {i.m && <p className="ui-tl-detall text-sm text-slate-600">{i.m}</p>}
             {i.edita &&
               (editant === i.edita ? (
                 <TriaDia
