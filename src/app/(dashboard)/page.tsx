@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import {
-  AlertTriangle, LogIn, LogOut, ShieldAlert, Sparkles, Bell,
+  AlertTriangle, LogIn, LogOut, Sparkles, Bell,
 } from 'lucide-react';
 import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
 import { esNomesLectura } from '@/lib/auth/restriccions';
@@ -13,7 +13,6 @@ import { isFormatConfirmat } from '@/lib/mossos/fitxer';
 import { getSessionUser } from '@/lib/auth/session';
 import { teVistaRestringida } from '@/lib/auth/restriccions';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { BenvingudesPendents } from '@/components/dashboard/benvingudes-pendents';
 import { EstadesEnCurs } from '@/components/dashboard/estades-en-curs';
 import { getEstadesEnCurs } from '@/lib/services/prorrogues';
@@ -177,26 +176,6 @@ export default async function DashboardPage() {
             <p className="font-semibold">Fitxer de Mossos en format provisional</p>
             <p className="mt-0.5 text-amber-700">Verifica&apos;l amb el Manual i configura el <code>file_identifier</code> abans d&apos;usar-lo en real.</p>
           </div>
-        </div>
-      )}
-
-      {/* Vigències */}
-      {resum.vigenciesProximes.length > 0 && (
-        <div className="rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">
-          <div className="mb-2 flex items-center gap-2 font-semibold">
-            <ShieldAlert className="h-5 w-5 shrink-0" /> Vigències a punt de caducar
-          </div>
-          <ul className="space-y-1.5">
-            {resum.vigenciesProximes.map((v) => (
-              <li key={v.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                <Link href="/serveis" className="font-medium underline">{v.activitat}</Link>
-                {v.proveidor && <span className="text-amber-700">· {v.proveidor}</span>}
-                <Badge tone={v.caducada ? 'danger' : 'warning'}>
-                  {v.caducada ? 'Caducada el ' : 'Caduca el '}{formatDate(v.vigenciaFi)}
-                </Badge>
-              </li>
-            ))}
-          </ul>
         </div>
       )}
 
