@@ -7,9 +7,9 @@ import { cn } from '@/lib/utils';
 import { rangPeriode, type EstatPeriode, type TipusPeriode } from '@/lib/periode';
 
 const TIPUS: { clau: TipusPeriode | 'per'; etiqueta: string }[] = [
-  { clau: 'mes', etiqueta: 'Mes' },
-  { clau: 'tri', etiqueta: 'Trimestre' },
   { clau: 'any', etiqueta: 'Any' },
+  { clau: 'tri', etiqueta: 'Trimestre' },
+  { clau: 'mes', etiqueta: 'Mes' },
   { clau: 'per', etiqueta: 'Personalitzat' },
 ];
 

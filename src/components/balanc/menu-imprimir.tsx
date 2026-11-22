@@ -13,9 +13,9 @@ const botoPetit =
 const botoApagat = cn(botoPetit, 'cursor-not-allowed border-slate-200 text-slate-300 hover:border-slate-200 hover:text-slate-300');
 
 const MODES: { valor: ModeFiances; label: string; desc: string }[] = [
+  { valor: 'tot', label: 'Total (les dues)', desc: 'Les dues vistes en un sol informe.' },
   { valor: 'sense', label: 'Sense fiances', desc: 'El resultat real: el que compta per a Hisenda.' },
   { valor: 'amb', label: 'Amb fiances', desc: 'Tot el que ha entrat i sortit, amb les fiances a part.' },
-  { valor: 'tot', label: 'Total (les dues)', desc: 'Les dues vistes en un sol informe.' },
 ];
 
 /** Un informe: els seus botons (Gràfics, PDF i Excel segons el que tingui). */
