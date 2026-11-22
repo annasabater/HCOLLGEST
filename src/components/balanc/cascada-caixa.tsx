@@ -77,7 +77,7 @@ export function CascadaCaixa({
   passos.push({ l: '− Fiances pagades', a: benefici + rebudes, b: caixa, v: -pagades, color: COLORS_BALANC.pagades, ratllat: true, signe: true });
   passos.push({ l: 'Moviment de caixa', a: 0, b: caixa, v: caixa, color: caixa >= 0 ? COLORS_BALANC.ingressos : COLORS_BALANC.despeses });
 
-  const W = 900, H = 300, L = 70, R = 12, T = 26, B = 56;
+  const W = 900, H = 250, L = 12, R = 12, T = 24, B = 40;
   const valors = passos.flatMap((p) => [p.a, p.b]);
   const maxV = Math.max(1, ...valors);
   const minV = Math.min(0, ...valors);
@@ -85,7 +85,6 @@ export function CascadaCaixa({
   const n = passos.length;
   const slot = (W - L - R) / n;
   const bw = Math.min(110, slot * 0.62);
-  const ticks = separaTicks([maxV, minV < 0 ? null : maxV / 2, 0, minV < 0 ? minV : null], y);
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px]" role="img" aria-label="Del benefici a la caixa">
@@ -93,14 +92,8 @@ export function CascadaCaixa({
         <PatroRatllat id={`${uid}-r`} color={COLORS_BALANC.rebudes} />
         <PatroRatllat id={`${uid}-p`} color={COLORS_BALANC.pagades} />
       </defs>
-      {ticks.map((t, i) => (
-        <g key={i}>
-          <line x1={L} x2={W - R} y1={y(t)} y2={y(t)} stroke={t === 0 ? '#cbd5e1' : '#f1f5f9'} />
-          <text x={L - 8} y={y(t) + 3} textAnchor="end" fontSize={10} fill="#94a3b8">
-            {hidden ? '••••' : formatEur(Math.round(t))}
-          </text>
-        </g>
-      ))}
+      {/* Només la línia de base (sense graella ni valors a l'eix: els imports són a cada barra). */}
+      <line x1={L} x2={W - R} y1={y(0)} y2={y(0)} stroke="#cbd5e1" />
       {passos.map((p, i) => {
         const x = L + slot * i + (slot - bw) / 2;
         const top = y(Math.max(p.a, p.b));
@@ -110,7 +103,7 @@ export function CascadaCaixa({
         const next = passos[i + 1];
         return (
           <g key={p.l}>
-            <rect x={x} y={top} width={bw} height={Math.max(1.5, bot - top)} rx={4} fill={fill}>
+            <rect x={x} y={top} width={bw} height={Math.max(1.5, bot - top)} rx={0} fill={fill}>
               <title>{`${p.l}: ${eur(p.v)}`}</title>
             </rect>
             {next && (
@@ -134,7 +127,14 @@ export function CascadaCaixa({
               {p.signe && p.v > 0 ? '+' : ''}
               {eur(p.v)}
             </text>
-            <text x={L + slot * i + slot / 2} y={H - 10} textAnchor="middle" fontSize={11} fill="#64748b">
+            <text
+              x={L + slot * i + slot / 2}
+              y={H - 10}
+              textAnchor="middle"
+              fontSize={11}
+              fontWeight={i === passos.length - 1 ? 700 : 400}
+              fill={i === passos.length - 1 ? '#1e293b' : '#64748b'}
+            >
               {p.l}
             </text>
           </g>

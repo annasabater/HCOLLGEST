@@ -953,65 +953,68 @@ export default function BalancPage() {
 
           {dades ? (
             <>
-              {/* Dos blocs que no es barregen: el resultat real i les fiances */}
-              <div className={cn('grid gap-4', !restringit && '2xl:grid-cols-[1.4fr_1fr]')}>
-                <section aria-label="Resultat de l'hostal" className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-3.5">
-                    <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Resultat de l&apos;hostal</span>
-                    <span className="text-xs text-slate-400">sense fiances · és el que compta per a Hisenda</span>
-                  </div>
-                  <div className="grid sm:grid-cols-3">
-                    <Casella
-                      label="Ingressos"
-                      marca={<Punt color={COLORS_BALANC.ingressos} />}
-                      value={dades.ingressos}
-                      sota={comp && anterior ? <Delta pct={variacio(dades.ingressos, anterior.ingressos)} etiqueta={comp.etiqueta} /> : null}
-                      onSelect={() => setBreakdown(desglos('ingressos', dades))}
-                    />
-                    <Casella
-                      label="Despeses"
-                      marca={<Punt color={COLORS_BALANC.despeses} />}
-                      value={despesesTotals}
-                      sota={comp && anterior ? <Delta pct={variacio(despesesTotals, anterior.despeses + anterior.personal)} etiqueta={comp.etiqueta} invert /> : null}
-                      onSelect={() => setBreakdown(desglos('despeses', dades))}
-                    />
-                    <Casella
-                      label="Benefici"
-                      marca={<Punt color={COLORS_BALANC.benefici} />}
-                      value={dades.benefici}
-                      color={dades.benefici >= 0 ? 'text-green-700' : 'text-red-700'}
-                      sota={dades.ingressos > 0 ? `marge ${marge(dades.benefici, dades.ingressos)}% dels ingressos` : null}
-                      onSelect={() => setBreakdown(desglos('benefici', dades))}
-                    />
-                  </div>
-                </section>
-
-                {!restringit && (
-                  <section aria-label="Fiances" className="min-w-0 overflow-hidden rounded-xl border border-amber-200/70 bg-gradient-to-b from-amber-50/80 to-white">
-                    <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-3.5">
-                      <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Fiances</span>
-                      <span className="text-xs text-slate-400">no són ingrés ni despesa</span>
+              {/* Una sola caixa: el resultat real (ingressos, despeses, benefici) i, a la
+                  dreta i en groc, el saldo de fiances (no són ingrés ni despesa). */}
+              <section aria-label="Resultat de l'hostal" className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <div className={cn('grid sm:grid-cols-3', !restringit && 'sm:grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.2fr)]')}>
+                  <Casella
+                    label="Ingressos"
+                    marca={<Punt color={COLORS_BALANC.ingressos} />}
+                    value={dades.ingressos}
+                    sota={comp && anterior ? <Delta pct={variacio(dades.ingressos, anterior.ingressos)} etiqueta={comp.etiqueta} /> : null}
+                    onSelect={() => setBreakdown(desglos('ingressos', dades))}
+                  />
+                  <Casella
+                    label="Despeses"
+                    marca={<Punt color={COLORS_BALANC.despeses} />}
+                    value={despesesTotals}
+                    sota={comp && anterior ? <Delta pct={variacio(despesesTotals, anterior.despeses + anterior.personal)} etiqueta={comp.etiqueta} invert /> : null}
+                    onSelect={() => setBreakdown(desglos('despeses', dades))}
+                  />
+                  <Casella
+                    label="Benefici"
+                    marca={<Punt color={COLORS_BALANC.benefici} />}
+                    value={dades.benefici}
+                    color={dades.benefici >= 0 ? 'text-green-700' : 'text-red-700'}
+                    sota={dades.ingressos > 0 ? `marge ${marge(dades.benefici, dades.ingressos)}% dels ingressos` : null}
+                    onSelect={() => setBreakdown(desglos('benefici', dades))}
+                  />
+                  {!restringit && (
+                    <div className="min-w-0 border-t border-amber-100 bg-amber-50/60 px-5 pb-4 pt-3 sm:border-l sm:border-t-0">
+                      <button
+                        type="button"
+                        onClick={() => setBreakdown({ title: 'Saldo de fiances', rows: [{ label: 'Rebudes de clients', value: dades.retencions }, { label: 'Pagades (recuperables)', value: -dades.despesesFianca }], total: saldoFiances })}
+                        title="Veure el desglossament"
+                        className="block w-full text-left"
+                      >
+                        <span className="flex items-center gap-2 text-sm font-semibold text-slate-500">
+                          <MostraRatllada color={COLORS_BALANC.pagades} />
+                          Fiances (saldo)
+                        </span>
+                        <span className={cn('mt-0.5 block whitespace-nowrap text-[1.65rem] font-extrabold tracking-tight tabular-nums', saldoFiances >= 0 ? 'text-amber-700' : 'text-red-700')}>
+                          <Eur value={saldoFiances} />
+                        </span>
+                      </button>
+                      <span className="mt-0.5 block text-xs text-slate-500">
+                        <button type="button" onClick={() => setBreakdown(desglos('rebudes', dades))} className="underline-offset-2 hover:underline">
+                          rebudes <Eur value={dades.retencions} />
+                        </button>
+                        {' · '}
+                        <button type="button" onClick={() => setBreakdown(desglos('pagades', dades))} className="underline-offset-2 hover:underline">
+                          pagades <Eur value={dades.despesesFianca} />
+                        </button>
+                        {' · recuperables'}
+                      </span>
                     </div>
-                    <div className="grid sm:grid-cols-3">
-                      <Casella label="Rebudes" marca={<MostraRatllada color={COLORS_BALANC.rebudes} />} value={dades.retencions} color="text-teal-700" onSelect={() => setBreakdown(desglos('rebudes', dades))} />
-                      <Casella label="Pagades" marca={<MostraRatllada color={COLORS_BALANC.pagades} />} value={dades.despesesFianca} color="text-amber-700" onSelect={() => setBreakdown(desglos('pagades', dades))} />
-                      <Casella
-                        label="Saldo"
-                        marca={null}
-                        value={saldoFiances}
-                        color={saldoFiances >= 0 ? 'text-green-700' : 'text-red-700'}
-                        onSelect={() => setBreakdown({ title: 'Saldo de fiances', rows: [{ label: 'Rebudes de clients', value: dades.retencions }, { label: 'Pagades (recuperables)', value: -dades.despesesFianca }], total: saldoFiances })}
-                      />
-                    </div>
-                  </section>
-                )}
-              </div>
+                  )}
+                </div>
+              </section>
 
               {!restringit && (
                 <Card>
                   <CardBody>
                     <h3 className="font-serif text-xl font-semibold text-slate-900">Del benefici a la caixa</h3>
-                    <p className="mb-2 text-sm text-slate-500">Com passes del benefici real als diners que t&apos;han entrat o sortit del banc i la caixa.</p>
+                    <p className="mb-1 text-sm text-slate-500">Com passes del benefici real als diners que t&apos;han entrat o sortit del banc i la caixa.</p>
                     <div className="overflow-x-auto">
                       <CascadaCaixa ingressos={dades.ingressos} despeses={despesesTotals} rebudes={dades.retencions} pagades={dades.despesesFianca} />
                     </div>
