@@ -164,6 +164,15 @@ export function FiltreBarra({
             placeholder={filtres.length ? 'Afegeix-ne un altre…' : 'Proveïdor, categoria o paraula…'}
             className="h-8 min-w-[8rem] flex-1 border-0 bg-transparent text-sm outline-none"
           />
+          {hiHaFiltre && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setText(''); onTreuTot(); }}
+              className="ml-auto inline-flex h-7 items-center gap-1 whitespace-nowrap px-2 text-xs font-bold text-brand-700 hover:underline"
+            >
+              Treure tots <X className="h-3 w-3" />
+            </button>
+          )}
         </div>
         {obert === 'cerca' && (
           <div className={cn(panell, 'max-h-96 overflow-y-auto')} role="listbox" aria-label="Suggeriments">
@@ -305,11 +314,6 @@ export function FiltreBarra({
         )}
       </div>
 
-      {hiHaFiltre && (
-        <button type="button" onClick={() => { setText(''); onTreuTot(); }} className="h-10 whitespace-nowrap px-2 text-sm font-semibold text-brand-700 hover:underline">
-          Treu els filtres
-        </button>
-      )}
     </div>
   );
 }

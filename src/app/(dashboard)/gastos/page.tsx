@@ -16,7 +16,7 @@ import { Eur, HideAmountsButton } from '@/components/finances/amounts-visibility
 import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { formatDate, formatEur, cn } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
-import { rangDeEstat, type EstatPeriode } from '@/lib/periode';
+import { rangDeEstat, rangPeriode, type EstatPeriode } from '@/lib/periode';
 import { PeriodeEnLinia } from '@/components/ui/navegador-periode';
 import { redueixImatge, motiuPujada } from '@/lib/images/redueix-client';
 import { optionsFrom, metodeCobramentValues, METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
@@ -186,10 +186,19 @@ function GastosVariablesTab({
   resumPeriode,
   showForm,
   setShowForm,
+  onAmplia,
+  clauTractada,
+  avisAmpliat,
 }: {
   desde: string;
   fins: string;
   filtre: FiltreEstat;
+  /** Demana ampliar el període (a l'any) perquè el filtre no troba res. */
+  onAmplia: (clau: string) => void;
+  /** Filtre pel qual ja s'ha decidit (ampliar o no): no es torna a fer sol. */
+  clauTractada: string;
+  /** La franja groga «he passat a tot l'any · Tornar a…». */
+  avisAmpliat: ReactNode;
   onSavedDate: (data: string) => void;
   /** El selector de període (va a la primera fila de la targeta). */
   periode: ReactNode;
@@ -207,6 +216,8 @@ function GastosVariablesTab({
   // Despeses del període amb què es compara (ja sense filtrar).
   const [gastosB, setGastosB] = useState<Gasto[] | null>(null);
   const [graficObert, setGraficObert] = useState(true);
+  // Quin període han carregat ja les despeses (per no decidir amb dades velles).
+  const [carregatPer, setCarregatPer] = useState('');
 
   const [nova, setNova] = useState(novaBuida);
   const [file, setFile] = useState<File | null>(null);
@@ -248,6 +259,7 @@ function GastosVariablesTab({
     ]);
     setGastos(res.gastos);
     setGastosB(resB ? resB.gastos : null);
+    setCarregatPer(`${desde}|${fins}`);
   }, [desde, fins, bDesde, bFins]);
 
   const visibles = gastos.filter((g) => coincideix(g, filtres));
@@ -257,6 +269,16 @@ function GastosVariablesTab({
     .filter((g) => g.esFianca)
     .reduce((a, g) => a + Number(g.import), 0);
   const nFiancaVisible = visibles.filter((g) => g.esFianca).length;
+
+  // Si afegeixes un filtre i el període no té res, s'amplia sol a l'any (un cop per
+  // filtre). Només es decideix quan ja s'han carregat les despeses d'aquest període.
+  const clauFiltre = JSON.stringify(filtres.map((f) => [f.tipus, etiquetaFiltre(f)]));
+  useEffect(() => {
+    if (filtres.length === 0 || carregatPer !== `${desde}|${fins}`) return;
+    if (visibles.length > 0 || clauTractada === clauFiltre) return;
+    onAmplia(clauFiltre);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [carregatPer, clauFiltre, desde, fins, visibles.length, clauTractada]);
   const resumB = visiblesB ? totalDespeses(visiblesB) : null;
   const etiquetaFiltres = filtres.map(etiquetaFiltre).join(' + ');
 
@@ -752,6 +774,7 @@ function GastosVariablesTab({
           />
           <HideAmountsButton nomesIcona className="ml-auto" />
         </div>
+        {avisAmpliat}
         <div className="border-t border-slate-100 bg-slate-50/60">
           {actiu ? (
             <ResultatFiltre
@@ -985,6 +1008,10 @@ function GastosContent() {
   const [estat, setEstat] = useState<EstatPeriode>({ tipus: 'mes', off: 0 });
   const { desde, fins } = rangDeEstat(estat, avui);
   const [resum, setResum] = useState<ResumCurt | null>(null);
+  // Quan el filtre no troba res al període, passem sols a l'any i ho diem.
+  const [ampliat, setAmpliat] = useState<{ abans: EstatPeriode; etiqueta: string } | null>(null);
+  const [clauTractada, setClauTractada] = useState('');
+  const canviaEstat = (e: EstatPeriode) => { setAmpliat(null); setEstat(e); };
 
   // Filtre: què es mira i amb què es compara. En entrar, res (com sempre).
   const [filtres, setFiltresRaw] = useState<FiltreDespesa[]>([]);
@@ -1053,6 +1080,23 @@ function GastosContent() {
   };
   const [errResum, setErrResum] = useState<string | null>(null);
 
+  const etiquetaEstat = (e: EstatPeriode) =>
+    e.tipus === 'per' ? `${formatDate(e.desde)} – ${formatDate(e.fins)}` : rangPeriode(e.tipus, e.off, avui).etiqueta;
+  function ampliaAlAny(clau: string) {
+    setClauTractada(clau);
+    if (estat.tipus === 'any') return; // ja és l'any sencer: no hi ha res més a ampliar
+    const anyOff = Number(desde.slice(0, 4)) - Number(avui.slice(0, 4));
+    setAmpliat({ abans: estat, etiqueta: etiquetaEstat(estat) });
+    setEstat({ tipus: 'any', off: anyOff });
+  }
+  // Si treus tots els filtres, es torna al període d'abans.
+  useEffect(() => {
+    if (filtres.length === 0 && ampliat) {
+      setEstat(ampliat.abans);
+      setAmpliat(null);
+    }
+  }, [filtres.length, ampliat]);
+
   useEffect(() => {
     let cancel = false;
     getJSON<ResumCurt>(`/api/gastos/resum?desde=${desde}&fins=${fins}`)
@@ -1069,6 +1113,7 @@ function GastosContent() {
   // Una despesa desada fora del període: s'eixampla el rang perquè es vegi.
   function mostraDespesa(data: string) {
     if (data >= desde && data <= fins) return;
+    setAmpliat(null);
     setEstat({ tipus: 'per', desde: data < desde ? data : desde, fins: data > fins ? data : fins });
   }
 
@@ -1098,7 +1143,25 @@ function GastosContent() {
         onSavedDate={mostraDespesa}
         showForm={showForm}
         setShowForm={setShowForm}
-        periode={<PeriodeEnLinia estat={estat} onChange={setEstat} avui={avui} primerDia="2000-01-01" />}
+        onAmplia={ampliaAlAny}
+        clauTractada={clauTractada}
+        avisAmpliat={
+          ampliat ? (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+              <span>
+                A <strong>{ampliat.etiqueta}</strong> no hi havia res d&apos;això, i he passat a <strong>tot l&apos;any {desde.slice(0, 4)}</strong>.
+              </span>
+              <button
+                type="button"
+                onClick={() => { setClauTractada(JSON.stringify(filtres.map((f) => [f.tipus, etiquetaFiltre(f)]))); setEstat(ampliat.abans); setAmpliat(null); }}
+                className="font-bold text-brand-700 hover:underline"
+              >
+                Tornar a {ampliat.etiqueta}
+              </button>
+            </div>
+          ) : null
+        }
+        periode={<PeriodeEnLinia estat={estat} onChange={canviaEstat} avui={avui} primerDia="2000-01-01" />}
         resumPeriode={
           // El total de la llista, les fiances a part i, si n'hi ha, el personal
           // del període amb enllaç a Treballadors.
