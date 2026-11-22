@@ -303,7 +303,7 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
             <CalendarPlus className="h-4 w-4" /> Planificar un dia
           </Button>
           <a href={`/imprimir/neteja?desde=${desde}&fins=${fins}&auto=1`} target="_blank" rel="noreferrer">
-            <Button variant="outline"><Printer className="h-4 w-4" /> Imprimir el full</Button>
+            <Button variant="outline"><Printer className="h-4 w-4" /> Imprimir</Button>
           </a>
         </span>
       </div>
