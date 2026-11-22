@@ -17,7 +17,7 @@ import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { formatDate, formatEur, cn } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
 import { rangDeEstat, type EstatPeriode } from '@/lib/periode';
-import { PeriodeCompacte } from '@/components/ui/navegador-periode';
+import { PeriodeEnLinia } from '@/components/ui/navegador-periode';
 import { redueixImatge, motiuPujada } from '@/lib/images/redueix-client';
 import { optionsFrom, metodeCobramentValues, METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 import { LiniesIva, liniaBuida, liniesDeGasto, payloadIva, type LiniaIvaForm } from '@/components/gastos/linies-iva';
@@ -749,6 +749,7 @@ function GastosVariablesTab({
             onTreuTot={filtre.treuTot}
             canWrite
           />
+          <HideAmountsButton nomesIcona className="ml-auto" />
         </div>
         <div className="border-t border-slate-100 bg-slate-50/60">
           {actiu ? (
@@ -1078,7 +1079,6 @@ function GastosContent() {
         subtitle="Les factures i tiquets del hostal"
         actions={
           <div className="flex items-center gap-2">
-            <HideAmountsButton nomesIcona />
             <Button onClick={() => setShowForm((s) => !s)}>
               <Plus className="h-4 w-4" /> Nova despesa
             </Button>
@@ -1096,7 +1096,7 @@ function GastosContent() {
         onSavedDate={mostraDespesa}
         showForm={showForm}
         setShowForm={setShowForm}
-        periode={<PeriodeCompacte estat={estat} onChange={setEstat} avui={avui} primerDia="2000-01-01" />}
+        periode={<PeriodeEnLinia estat={estat} onChange={setEstat} avui={avui} primerDia="2000-01-01" />}
         resumPeriode={
           // El total de la llista, les fiances a part i, si n'hi ha, el personal
           // del període amb enllaç a Treballadors.
