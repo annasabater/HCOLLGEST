@@ -12,8 +12,6 @@ export function PageHeader({
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        {/* Només es veu amb l'estil «nou» (globals.css). */}
-        <p className="ui-page-eyebrow hidden">Hostal Coll</p>
         <h1 className="ui-page-title font-serif text-3xl font-semibold tracking-tight text-slate-900">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
       </div>

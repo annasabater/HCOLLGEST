@@ -132,16 +132,6 @@ html[data-estil='nou'] :is(h2, h3).font-serif.font-semibold:is(.text-lg, .text-x
 html[data-estil='nou'] .ui-block-icon {
   display: none;
 }
-/* Capçalera de pàgina: «HOSTAL COLL» petit damunt del títol gran. */
-html[data-estil='nou'] .ui-page-eyebrow {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--color-brand-700);
-}
 html[data-estil='nou'] .ui-page-title {
   font-weight: 700;
   letter-spacing: -0.01em;
