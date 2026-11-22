@@ -42,12 +42,16 @@ describe('construeixFull', () => {
     expect(r[0]!.trams[0]!.import).toBe(650);
   });
 
-  it('els més recents primer (número de gran a petit); sense contracte, al final', () => {
+  it('els més recents primer per data d\'entrada; els sense contracte van barrejats, no al final', () => {
     const r = construeixFull(
-      [est({ id: 's' }), est({ id: 'b', numContracte: '26013' }), est({ id: 'a', numContracte: '26011' })],
+      [
+        est({ id: 'a', numContracte: '26011', entrada: '2026-11-01', sortida: '2026-12-01' }),
+        est({ id: 's', entrada: '2026-11-10', sortida: '2026-12-10' }),
+        est({ id: 'b', numContracte: '26013', entrada: '2026-11-16', sortida: '2026-12-16' }),
+      ],
       o,
     );
-    expect(r.map((c) => c.numero)).toEqual(['26013', '26011', null]);
+    expect(r.map((c) => c.numero)).toEqual(['26013', null, '26011']);
   });
 
   it('el pendent suma a l import i es veu tot l historial (també les estades acabades)', () => {
