@@ -36,11 +36,27 @@ interface ServeiEv {
   proveidor: string | null;
   import: number | null;
 }
+/** Neteja planificada a /neteja (encara no desada al full del dia). */
+interface PlaEv {
+  id: string;
+  data: string;
+  tipus: 'CANVI_COMPLET' | 'REPAS';
+  habitacio: string;
+  assignada: string | null;
+  nota: string | null;
+}
+interface NotaDiaEv {
+  id: string;
+  data: string;
+  text: string;
+}
 interface CalData {
   entrades: Mov[];
   sortides: Mov[];
   tasques: Tasca[];
   serveis: ServeiEv[];
+  plans?: PlaEv[];
+  notesDia?: NotaDiaEv[];
 }
 
 const DOW = ['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'];
@@ -120,7 +136,11 @@ export default function CalendariPage() {
     ? data.tasques.filter((t) => onSel(t.data) && (!filtreWorker || t.assignada === filtreWorker) && (!ocultarFetes || t.estat === 'PENDENT'))
     : [];
   const selServ = data && selected && filtres.has('serveis') ? data.serveis.filter((s) => onSel(s.data)) : [];
-  const selEmpty = !selEnt.length && !selSort.length && !selTasq.length && !selServ.length;
+  const selPlans = data && selected && filtres.has('neteja')
+    ? (data.plans ?? []).filter((p) => onSel(p.data) && (!filtreWorker || p.assignada === filtreWorker))
+    : [];
+  const selNotes = data && selected && filtres.has('neteja') ? (data.notesDia ?? []).filter((n) => onSel(n.data)) : [];
+  const selEmpty = !selEnt.length && !selSort.length && !selTasq.length && !selServ.length && !selPlans.length && !selNotes.length;
   const selLabel = selected
     ? new Intl.DateTimeFormat('ca-ES', { weekday: 'long', day: 'numeric', month: 'long' }).format(
         new Date(selected),
@@ -235,6 +255,10 @@ export default function CalendariPage() {
             ? (data?.tasques.filter((t) => sameDay(t.data, day) && (!filtreWorker || t.assignada === filtreWorker) && (!ocultarFetes || t.estat === 'PENDENT')) ?? [])
             : [];
           const serveisDia = filtres.has('serveis') ? (data?.serveis.filter((s) => sameDay(s.data, day)) ?? []) : [];
+          const plansDia = filtres.has('neteja')
+            ? ((data?.plans ?? []).filter((p) => sameDay(p.data, day) && (!filtreWorker || p.assignada === filtreWorker)))
+            : [];
+          const notesDiaCel = filtres.has('neteja') ? ((data?.notesDia ?? []).filter((n) => sameDay(n.data, day))) : [];
           return (
             <div
               key={i}
@@ -308,6 +332,28 @@ export default function CalendariPage() {
                     {t.estat === 'FETA' ? <Check className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}
                     {t.habitacio ? `H${t.habitacio} ${TIPUS_NETEJA_LABELS[t.tipus]}` : 'Zones comunes'}
                   </button>
+                ))}
+                {plansDia.map((p) => (
+                  <div
+                    key={`p${p.id}`}
+                    className={cn(
+                      'flex w-full items-center gap-0.5 truncate rounded border border-dashed border-amber-300 bg-white px-1.5 py-0.5 text-amber-800',
+                      compact ? 'text-[10px]' : 'text-xs',
+                    )}
+                    title={`Planificada a Neteja · Hab. ${p.habitacio} · ${TIPUS_NETEJA_LABELS[p.tipus]}${p.assignada ? ` · ${p.assignada}` : ''}`}
+                  >
+                    <Sparkles className="h-3 w-3 shrink-0" />
+                    H{p.habitacio} {TIPUS_NETEJA_LABELS[p.tipus]}
+                  </div>
+                ))}
+                {notesDiaCel.map((n) => (
+                  <div
+                    key={`n${n.id}`}
+                    className={cn('truncate rounded bg-slate-50 px-1.5 py-0.5 italic text-slate-500', compact ? 'text-[10px]' : 'text-xs')}
+                    title={`Observació de neteja: ${n.text}`}
+                  >
+                    {n.text}
+                  </div>
                 ))}
                 {serveisDia.map((s) => (
                   <div
@@ -406,6 +452,29 @@ export default function CalendariPage() {
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
+              ))}
+              {selPlans.map((p) => (
+                <Link
+                  key={`p${p.id}`}
+                  href={`/neteja?data=${selected}`}
+                  className="flex items-center gap-2 rounded-lg border border-dashed border-amber-300 bg-white px-3 py-2 text-sm text-amber-900 hover:bg-amber-50"
+                  title="Veure a Neteja"
+                >
+                  <Sparkles className="h-4 w-4 shrink-0" />
+                  Planificada · Hab. {p.habitacio} · {TIPUS_NETEJA_LABELS[p.tipus]}
+                  {p.assignada && <span className="text-slate-400">· {p.assignada}</span>}
+                  {p.nota && <span className="text-slate-500">· {p.nota}</span>}
+                </Link>
+              ))}
+              {selNotes.map((n) => (
+                <Link
+                  key={`n${n.id}`}
+                  href={`/neteja?data=${selected}`}
+                  className="flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-sm italic text-slate-600 hover:bg-slate-100"
+                  title="Veure a Neteja"
+                >
+                  Observació de neteja: {n.text}
+                </Link>
               ))}
               {selServ.map((s) => (
                 <Link

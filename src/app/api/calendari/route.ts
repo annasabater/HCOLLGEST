@@ -20,7 +20,7 @@ export async function GET(req: Request) {
     habitacio: true,
   } as const;
 
-  const [entrades, sortides, tasques, serveisActius] = await Promise.all([
+  const [entrades, sortides, tasques, serveisActius, plansRaw, notesDiaRaw] = await Promise.all([
     prisma.estancia.findMany({
       where: { deletedAt: null, dataEntrada: range },
       include: titularInclude,
@@ -40,7 +40,29 @@ export async function GET(req: Request) {
       where: { deletedAt: null, actiu: true },
       include: { proveidor: { select: { nom: true } } },
     }),
+    // Neteja planificada (a /neteja, encara sense desar al full del dia) i observacions del dia.
+    prisma.netejaPlanificada.findMany({
+      where: { data: range },
+      include: { habitacio: { select: { nom: true } }, treballador: { select: { nom: true } } },
+      orderBy: { data: 'asc' },
+    }),
+    prisma.notaNeteja.findMany({ where: { data: range, ambit: 'DIA' } }),
   ]);
+
+  // Una planificada ja desada al full del dia (hi ha tasca la mateixa habitació el mateix dia) no es repeteix.
+  const diaIso = (d: Date) => d.toISOString().slice(0, 10);
+  const jaTasca = new Set(tasques.map((t) => `${diaIso(t.data)}|${t.habitacioId}`));
+  const plans = plansRaw
+    .filter((p) => !jaTasca.has(`${diaIso(p.data)}|${p.habitacioId}`))
+    .map((p) => ({
+      id: p.id,
+      data: p.data,
+      tipus: p.tipus,
+      habitacio: p.habitacio.nom,
+      assignada: p.treballador?.nom ?? null,
+      nota: p.nota ?? null,
+    }));
+  const notesDia = notesDiaRaw.map((n) => ({ id: n.id, data: n.data, text: n.text }));
 
   // Projecta cada servei recurrent a totes les seves ocurrències dins del rang.
   const desdeD = new Date(desde);
@@ -83,6 +105,8 @@ export async function GET(req: Request) {
       estanciaId: t.vinculadaSortidaId ?? null, // estada de la qual surt la neteja
     })),
     serveis,
+    plans,
+    notesDia,
   });
 }
 
