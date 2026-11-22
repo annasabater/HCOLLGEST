@@ -23,12 +23,13 @@ const MESOS = ['Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny', 'Juliol', 'A
 const DIES = ['dl', 'dt', 'dc', 'dj', 'dv', 'ds', 'dg'];
 const nomHab = (t: TascaDia) => t.habitacio?.nom ?? '?';
 
-function Xip({ t }: { t: TascaDia }) {
+function Xip({ t, ambTipus = false }: { t: TascaDia; ambTipus?: boolean }) {
   return (
     <span
       title={[t.tipus === 'CANVI_COMPLET' ? 'Sortida (a fons)' : 'Repàs', t.estat === 'FETA' ? 'feta' : null, t.notes].filter(Boolean).join(' · ')}
       className={cn(
-        'inline-flex h-6 min-w-6 items-center justify-center px-1.5 text-xs font-bold',
+        'inline-flex items-center justify-center gap-1 text-xs font-bold',
+        ambTipus ? 'h-[22px] px-1.5' : 'h-6 min-w-6 px-1.5',
         t.estat === 'FETA'
           ? 'bg-green-100 text-green-700'
           : t.tipus === 'CANVI_COMPLET'
@@ -38,6 +39,7 @@ function Xip({ t }: { t: TascaDia }) {
     >
       {t.estat === 'FETA' ? '✓' : ''}
       {nomHab(t)}
+      {ambTipus && <span className="text-[10px] font-medium opacity-80">{t.tipus === 'CANVI_COMPLET' ? 'sortida' : 'mant.'}</span>}
     </span>
   );
 }
@@ -202,7 +204,7 @@ export function ProximsDies({
                       {Number(iso.slice(8, 10))}
                     </span>
                     {delMes && ts.length > 0 && (
-                      <span className="flex flex-wrap gap-1">{ordena(ts).map((t) => <Xip key={t.id} t={t} />)}</span>
+                      <span className="flex flex-wrap gap-1">{ordena(ts).map((t) => <Xip key={t.id} t={t} ambTipus />)}</span>
                     )}
                   </button>
                 );
