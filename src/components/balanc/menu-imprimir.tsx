@@ -47,7 +47,7 @@ function InformeFila({
       <span className="flex shrink-0 flex-wrap justify-end gap-1.5">
         {grafics && (
           <a href={grafics} target="_blank" rel="noreferrer" className={botoPetit} title="Amb els gràfics, per imprimir o desar com a PDF">
-            <Printer className="h-3.5 w-3.5" /> Gràfics
+            <FileText className="h-3.5 w-3.5" /> PDF
           </a>
         )}
         {pdf !== undefined &&
@@ -156,7 +156,7 @@ export function MenuImprimir({
               nom="Resum del balanç"
               desc="Ingressos, despeses, benefici i mes a mes"
               grafics={senseInformes ? undefined : grafics}
-              pdf={pdfResum ? `${pdfResum}&fiances=${mode}` : null}
+              pdf={senseInformes ? (pdfResum ? `${pdfResum}&fiances=${mode}` : null) : undefined}
               pdfAvis="El PDF del resum només es fa per a mesos o anys sencers. L'informe amb gràfics serveix per a qualsevol període."
               onExcel={() => { onExcelResum(mode); setObert(false); }}
             />
