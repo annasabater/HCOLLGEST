@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Trash2, Pencil, Truck, Phone, Mail, MapPin } from 'lucide-react';
+import { Plus, Trash2, Pencil, Truck, Phone, Mail, MapPin, Search } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { FinancesNav } from '@/components/balanc/finances-nav';
 import { Button } from '@/components/ui/button';
@@ -46,6 +46,14 @@ export default function ProveidorsPage() {
   const [editProvId, setEditProvId] = useState<string | null>(null);
   const [provErr, setProvErr] = useState<string | null>(null);
   const [savingProv, setSavingProv] = useState(false);
+  const [cerca, setCerca] = useState('');
+
+  // Cerca a l'instant (sense accents ni majúscules).
+  const norm = (x: string | null) => (x ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const t = norm(cerca.trim());
+  const visibles = t
+    ? proveidors.filter((p) => [p.nom, p.activitat, p.telefon, p.email, p.cif].some((c) => norm(c).includes(t)))
+    : proveidors;
 
   const loadProveidors = useCallback(async () => {
     const r = await getJSON<{ proveidors: Prov[] }>('/api/proveidors');
@@ -174,19 +182,30 @@ export default function ProveidorsPage() {
         </Card>
       )}
 
-      {proveidors.length === 0 ? (
+      {/* Plantilla de Finances: sota les pestanyes, sempre la targeta blanca. */}
+      <div className="ui-card mb-4 mt-4 flex flex-wrap items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-3 sm:px-4">
+        <label className="relative min-w-[14rem] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input value={cerca} onChange={(e) => setCerca(e.target.value)} placeholder="Cerca per nom, activitat, telèfon o NIF…" aria-label="Cerca proveïdors" className="pl-9" />
+        </label>
+        <span className="text-sm text-slate-500">
+          {visibles.length === proveidors.length ? `${proveidors.length} proveïdors` : `${visibles.length} de ${proveidors.length}`}
+        </span>
+      </div>
+
+      {visibles.length === 0 ? (
         <EmptyState>
-          <Truck className="mx-auto mb-2 h-5 w-5 text-slate-300" /> Cap proveïdor encara.
+          <Truck className="mx-auto mb-2 h-5 w-5 text-slate-300" /> {proveidors.length === 0 ? 'Cap proveïdor encara.' : `Cap proveïdor amb «${cerca}».`}
         </EmptyState>
       ) : (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {proveidors.map((p) => (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {visibles.map((p) => (
             <Card key={p.id}>
               <CardBody>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-slate-900">{p.nom}</p>
-                    {p.activitat && <p className="text-xs text-slate-500">{p.activitat}</p>}
+                    <p className="truncate text-[15px] font-bold text-slate-900">{p.nom}</p>
+                    {p.activitat && <p className="truncate text-[13px] text-slate-500">{p.activitat}</p>}
                   </div>
                   <div className="flex shrink-0 gap-1">
                     <button className="rounded p-1 text-slate-400 hover:text-brand-600" title="Editar" onClick={() => editaProv(p)}>
@@ -197,24 +216,25 @@ export default function ProveidorsPage() {
                     </button>
                   </div>
                 </div>
-                <div className="mt-2 space-y-1 text-sm text-slate-600">
+                {/* Contacte en una línia (telèfon · correu) i l'adreça a sota. */}
+                <div className="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-0.5 text-[12.5px] text-slate-500">
                   {p.telefon && (
-                    <p className="flex items-center gap-2">
-                      <Phone className="h-3.5 w-3.5 text-slate-400" />
+                    <span className="inline-flex items-center gap-1.5">
+                      <Phone className="h-3.5 w-3.5 shrink-0" />
                       <a href={`tel:${p.telefon}`} className="hover:text-brand-700">{p.telefon}</a>
-                    </p>
+                    </span>
                   )}
                   {p.email && (
-                    <p className="flex items-center gap-2">
-                      <Mail className="h-3.5 w-3.5 text-slate-400" />
+                    <span className="inline-flex min-w-0 items-center gap-1.5">
+                      <Mail className="h-3.5 w-3.5 shrink-0" />
                       <a href={`mailto:${p.email}`} className="truncate hover:text-brand-700">{p.email}</a>
-                    </p>
+                    </span>
                   )}
                   {p.adreca && (
-                    <p className="flex items-center gap-2">
-                      <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                    <span className="flex w-full min-w-0 items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" />
                       <span className="truncate">{p.adreca}</span>
-                    </p>
+                    </span>
                   )}
                 </div>
               </CardBody>

@@ -1,21 +1,30 @@
 import Link from 'next/link';
+import { Search } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { PageHeader } from '@/components/ui/page-header';
 import { FinancesNav } from '@/components/balanc/finances-nav';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
 import { NouPressupostButton } from '@/components/pressupost/nou-pressupost-button';
 import { formatDate, formatEur } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
-export default async function PressupostosPage() {
+export default async function PressupostosPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const { q } = await searchParams;
+  const cerca = q?.trim() ?? '';
   const user = await getSessionUser();
   if (user?.role !== 'ADMIN') redirect('/');
 
   const pressupostos = await prisma.pressupost.findMany({
-    where: { deletedAt: null },
+    where: {
+      deletedAt: null,
+      ...(cerca
+        ? { OR: [{ numero: { contains: cerca, mode: 'insensitive' as const } }, { clientNom: { contains: cerca, mode: 'insensitive' as const } }] }
+        : {}),
+    },
     orderBy: { numero: 'desc' },
     take: 200,
   });
@@ -30,8 +39,19 @@ export default async function PressupostosPage() {
 
       <FinancesNav />
 
+      {/* Plantilla de Finances: sota les pestanyes, sempre la targeta blanca. */}
+      <form method="get" className="ui-card mb-4 flex flex-wrap items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-3 sm:px-4">
+        <label className="relative min-w-[14rem] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input name="q" defaultValue={cerca} placeholder="Cerca per número o client…" aria-label="Cerca pressupostos" className="pl-9" />
+        </label>
+        {cerca && (
+          <Link href="/pressupostos" className="text-sm font-semibold text-brand-700 hover:underline">Treu la cerca</Link>
+        )}
+      </form>
+
       {pressupostos.length === 0 ? (
-        <EmptyState>Encara no hi ha pressupostos. Crea’n un amb «Nou pressupost».</EmptyState>
+        <EmptyState>{cerca ? `Cap pressupost amb «${cerca}».` : 'Encara no hi ha pressupostos. Crea’n un amb «Nou pressupost».'}</EmptyState>
       ) : (
         <Table>
           <Thead>
