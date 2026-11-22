@@ -40,6 +40,9 @@ interface EfectiuRow {
   import: number;
   /** Import COMPLET del pagament quan `import` és només la part repartida a aquest període. */
   importTotal?: number;
+  /** Primer i últim dia (YYYY-MM-DD) de les nits que cobreix la part repartida. */
+  coberturaDel?: string;
+  coberturaAl?: string;
   metode: string;
   /** Concepte del cobrament (ALLOTJAMENT, EXTRA, TASA…); els dipòsits no en tenen. */
   concepte?: string;
@@ -126,10 +129,14 @@ async function cobramentsEfectius(start: Date, end: Date, opts?: FinanceOpts): P
           : Number(c.import);
       // Si al període només en toca una part, es guarda el pagament sencer per poder-ho dir a la llista.
       const parcial = c.periodes.length > 0 && Math.abs(part - Number(c.import)) > 0.005;
+      const dins = c.periodes.filter((p) => p.dataInici <= end && p.dataFi >= start);
+      const iso = (d: Date) => d.toISOString().slice(0, 10);
       return {
         concepte: c.concepte,
         import: part,
         importTotal: parcial ? Number(c.import) : undefined,
+        coberturaDel: parcial ? iso(new Date(Math.min(...dins.map((p) => p.dataInici.getTime())))) : undefined,
+        coberturaAl: parcial ? iso(new Date(Math.max(...dins.map((p) => p.dataFi.getTime())))) : undefined,
         metode: c.metode,
         data: c.data,
         estancia: c.estancia,
@@ -813,7 +820,7 @@ export async function getBalancDetall(start: Date, end: Date, opts?: FinanceOpts
   const moviments: MovDetall[] = [];
   let mk = 0;
   for (const c of cobramentsRows)
-    moviments.push({ id: `c${mk++}`, grup: 'INGRES', data: c.data.toISOString(), concepte: titularDe(c.estancia), import: r2(c.import), metode: c.metode, pagada: null, href: hrefEst(c.estancia), importTotal: c.importTotal ?? null });
+    moviments.push({ id: `c${mk++}`, grup: 'INGRES', data: c.data.toISOString(), concepte: titularDe(c.estancia), import: r2(c.import), metode: c.metode, pagada: null, href: hrefEst(c.estancia), importTotal: c.importTotal ?? null, coberturaDel: c.coberturaDel ?? null, coberturaAl: c.coberturaAl ?? null });
   for (const d of retingutsRows)
     moviments.push({ id: `r${mk++}`, grup: 'FIANCA', data: d.data.toISOString(), concepte: `${titularDe(d.estancia)} · fiança retinguda`, import: r2(d.import), metode: d.metode, pagada: null, href: hrefEst(d.estancia) });
   for (const d of custodiaMov)
@@ -841,6 +848,9 @@ export interface MovDetall {
   href: string | null;
   /** Ingressos del balanç per dies: import COMPLET del pagament quan aquí només surt la part d'aquest període. */
   importTotal?: number | null;
+  /** Idem: primer i últim dia de les nits que cobreix aquesta part. */
+  coberturaDel?: string | null;
+  coberturaAl?: string | null;
 }
 
 export type BalancDetall = Awaited<ReturnType<typeof getBalancDetall>>;

@@ -1175,7 +1175,7 @@ export default function BalancPage() {
                           <span className="text-slate-400">{dataCurta(m.data)}</span>{' '}
                           <span className="text-slate-600">{m.concepte}</span>
                           {m.metode ? <span className="text-slate-400"> · {METODE_COBRAMENT_LABELS[m.metode as keyof typeof METODE_COBRAMENT_LABELS] ?? m.metode}</span> : null}
-                          {m.importTotal != null ? <span className="text-slate-400" title="Aquest import és només la part del pagament que correspon a les nits d'aquest període (balanç per dies)."> · part de <Eur value={m.importTotal} /></span> : null}
+                          {m.importTotal != null ? <span className="text-slate-400" title="Aquest import és només la part del pagament que correspon a les nits d'aquest període (balanç per dies)."> · part de <Eur value={m.importTotal} />{m.coberturaDel && m.coberturaAl ? ` · nits del ${dataCurta(m.coberturaDel)} al ${dataCurta(m.coberturaAl)}` : ''}</span> : null}
                           {m.pagada === false ? <span className="text-amber-600"> · pendent de pagar</span> : null}
                         </span>
                         <span className={cn('shrink-0 font-medium', m.import < 0 ? 'text-red-600' : 'text-green-700')}>
