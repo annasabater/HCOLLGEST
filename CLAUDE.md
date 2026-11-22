@@ -127,6 +127,10 @@ cuadrado, grises de hostalcoll.com, títulos Montserrat, barra lateral granate o
 (texto crema tenue; activo blanco en negrita con raya gruesa). Es solo CSS bajo
 `html[data-estil="nou"]` en `globals.css` (variables de Tailwind + clases gancho `app-sidebar`,
 `app-nav-item`, `ui-card`, `ui-card-title`, `ui-page-title`…). Sin la galeta → estilo original intacto.
+Textos (como el mockup): títulos de bloque en mayúsculas pequeñas granate sin icono (`ui-card-title` y los
+`h2/h3.font-serif` hechos a mano; `ui-block-icon`), «HOSTAL COLL» sobre el título (`ui-page-eyebrow`),
+etiquetas `ui-label`, pestañas subrayadas `ui-pestanyes`/`ui-pestanya`, `ui-segmentat`, estado `ui-estat`,
+etiqueta `ui-etiqueta`. Nombres TODO EN MAYÚSCULAS → «Adnan Besic» al mostrarlos (`src/lib/nom-propi.ts`).
 
 ## Estado actual
 

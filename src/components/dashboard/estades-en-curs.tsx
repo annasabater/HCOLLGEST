@@ -8,6 +8,7 @@ import { ApiError, delJSON, postJSON } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { nomPropi } from '@/lib/nom-propi';
 import { diaMadrid } from '@/lib/recordatoris';
 import { diesEntreDies, sumaDiesDia } from '@/lib/prorroga';
 import type { MissatgeProrroga } from '@/lib/plantilles';
@@ -58,11 +59,11 @@ function Situacio({ e }: { e: EstadaEnCurs }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold',
+        'ui-estat inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold',
         s.c,
       )}
     >
-      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      <span className="ui-estat-punt h-1.5 w-1.5 rounded-full bg-current" />
       {s.t}
     </span>
   );
@@ -431,10 +432,10 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
             id="t-estades-curs"
             className="flex items-center gap-2 font-serif text-xl font-semibold text-slate-900"
           >
-            <BedDouble className="h-5 w-5 text-brand-700" /> Estades en curs
+            <BedDouble className="ui-block-icon h-5 w-5 text-brand-700" /> Estades en curs
           </h2>
           <p className="text-sm text-slate-500">
-            {estades.length} {estades.length === 1 ? 'estada' : 'estades'}
+            <b className="font-semibold text-slate-800">{estades.length} {estades.length === 1 ? 'estada' : 'estades'}</b>
             {perDecidir > 0 ? ` · ${perDecidir} per decidir si allarguen` : ''}
             {plegat ? '.' : '. Clica’n una per veure què ha passat i què pots fer.'}
           </p>
@@ -444,7 +445,7 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
             <div
               role="group"
               aria-label="Quines estades"
-              className="flex gap-1 rounded-full bg-stone-100 p-1"
+              className="ui-pestanyes flex gap-1 rounded-full bg-stone-100 p-1"
             >
               {(
                 [
@@ -459,7 +460,7 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                   aria-pressed={filtre === f}
                   onClick={() => setFiltre(f)}
                   className={cn(
-                    'h-8 rounded-full px-3 text-xs font-bold',
+                    'ui-pestanya h-8 rounded-full px-3 text-xs font-bold',
                     filtre === f ? 'bg-white text-slate-900 shadow-sm' : 'text-stone-600',
                   )}
                 >
@@ -497,7 +498,7 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
           )}
           {llista.map((e) => {
             const titular = e.viatgers[0]
-              ? `${e.viatgers[0].nom} ${e.viatgers[0].cognom1}`
+              ? nomPropi(`${e.viatgers[0].nom} ${e.viatgers[0].cognom1}`)
               : e.numContracte
                 ? `Contracte ${e.numContracte}`
                 : 'Sense titular';
@@ -527,7 +528,7 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                       <span className="text-xs tabular-nums text-slate-500">
                         {dc(e.entrada)} → {dc(e.sortida)} · {e.nits} nits
                         {e.ampliacions.length > 0 && (
-                          <span className="ml-1.5 rounded-full bg-violet-50 px-2 py-0.5 font-bold text-violet-800">
+                          <span className="ui-etiqueta ml-1.5 rounded-full bg-violet-50 px-2 py-0.5 font-bold text-violet-800">
                             {e.ampliacions.length === 1
                               ? 'ja ha allargat 1 cop'
                               : `ja ha allargat ${e.ampliacions.length} cops`}

@@ -275,7 +275,7 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Calculator className="h-5 w-5 text-brand-600" />
+          <Calculator className="ui-block-icon h-5 w-5 text-brand-600" />
           <h3 className="font-serif text-lg font-semibold text-slate-800">Calculadora de preus</h3>
           {potFerPressupost && (
             <button
@@ -288,7 +288,7 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
             </button>
           )}
         </div>
-        <div role="group" aria-label="Tipus de càlcul" className="flex gap-1 rounded-lg bg-slate-100 p-1">
+        <div role="group" aria-label="Tipus de càlcul" className="ui-segmentat flex gap-1 rounded-lg bg-slate-100 p-1">
           {([['nits', 'Per nits'], ['mensual', 'Regla de tres']] as const).map(([m, label]) => {
             const actiu = m === 'mensual' ? mensual : !mensual;
             return (
@@ -363,17 +363,17 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
             )}
             <div className={`grid gap-3 ${varisTrams ? 'sm:grid-cols-3' : 'sm:grid-cols-4'}`}>
               <label className="text-sm">
-                <span className="mb-1 block text-xs font-medium text-slate-500">Entrada</span>
+                <span className="ui-label mb-1 block text-xs font-medium text-slate-500">Entrada</span>
                 {k === 0
                   ? <Input type="date" value={entrada} onChange={(e) => canvia(() => setEntrada(e.target.value))} />
                   : <Input type="date" value={entradaDe(k)} disabled title="És la sortida del tram anterior" />}
               </label>
               <label className="text-sm">
-                <span className="mb-1 block text-xs font-medium text-slate-500">Sortida</span>
+                <span className="ui-label mb-1 block text-xs font-medium text-slate-500">Sortida</span>
                 <Input type="date" value={t.sortida} onChange={(e) => setTram(k, { sortida: e.target.value })} />
               </label>
               <label className="text-sm">
-                <span className="mb-1 block text-xs font-medium text-slate-500">Habitació</span>
+                <span className="ui-label mb-1 block text-xs font-medium text-slate-500">Habitació</span>
                 <Select value={t.grup} onChange={(e) => setTram(k, { grup: e.target.value as GrupTarifa })}>
                   {GRUP_TARIFA.map((g) => <option key={g} value={g}>{GRUP_TARIFA_LABELS[g]}</option>)}
                 </Select>
@@ -387,7 +387,7 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
               )}
             </div>
             <label className="mt-2 block text-sm">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Observacions{potFerPressupost ? ' (surten al pressupost)' : ''}</span>
+              <span className="ui-label mb-1 block text-xs font-medium text-slate-500">Observacions{potFerPressupost && <span className="ui-label-nota"> (surten al pressupost)</span>}</span>
               <Input value={t.observacio} placeholder="Opcional" onChange={(e) => setTram(k, { observacio: e.target.value })} />
             </label>
           </div>

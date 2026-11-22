@@ -117,15 +117,100 @@ html[data-estil='nou'] .ui-card-title {
   text-transform: uppercase;
   color: var(--color-brand-700);
 }
-/* Títols de bloc fets a mà (Calculadora, Estades en curs…): tots a 18 px, com la
-   Calculadora; amb Montserrat, els de 20 px es veien massa grans. */
-html[data-estil='nou'] :is(h2, h3).font-serif.text-xl:not(.ui-card-title) {
-  font-size: 18px;
+/* Títols de bloc fets a mà (Calculadora, Estades en curs, Recordatoris…): com els
+   de targeta, petits, en majúscules espaiades i granat, i sense la icona del costat. */
+html[data-estil='nou'] :is(h2, h3).font-serif.font-semibold:is(.text-lg, .text-xl):not(.ui-card-title) {
+  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  font-size: 12px;
   line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-brand-700);
+}
+html[data-estil='nou'] :is(h2, h3).font-serif.font-semibold:is(.text-lg, .text-xl) > svg,
+html[data-estil='nou'] .ui-block-icon {
+  display: none;
+}
+/* Capçalera de pàgina: «HOSTAL COLL» petit damunt del títol gran. */
+html[data-estil='nou'] .ui-page-eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-brand-700);
 }
 html[data-estil='nou'] .ui-page-title {
   font-weight: 700;
   letter-spacing: -0.01em;
+}
+html[data-estil='nou'] h1.ui-page-title {
+  font-size: 2.25rem;
+  line-height: 1.15;
+}
+/* Etiquetes dels camps: ENTRADA, SORTIDA… (la nota entre parèntesis, normal). */
+html[data-estil='nou'] .ui-label {
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #404040;
+}
+html[data-estil='nou'] .ui-label-nota {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: #737373;
+}
+/* Pestanyes subratllades en lloc de la pastilla grisa. */
+html[data-estil='nou'] .ui-pestanyes {
+  gap: 2px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 1px solid #e0e0e0;
+}
+html[data-estil='nou'] .ui-pestanya {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: #5c5650;
+}
+html[data-estil='nou'] .ui-pestanya[aria-pressed='true'] {
+  border-bottom-color: var(--color-brand-700);
+  font-weight: 700;
+  color: #1a1a1a;
+}
+/* Botons segmentats (Per nits | Regla de tres): blancs per dins amb vora. */
+html[data-estil='nou'] .ui-segmentat {
+  background: #ffffff;
+  border: 1px solid var(--color-slate-300);
+  padding: 3px;
+}
+/* Estat d'una fila (MARXA, TOCA PREGUNTAR…): text de color en majúscules, sense pastilla. */
+html[data-estil='nou'] .ui-estat {
+  background: transparent;
+  padding: 0;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+html[data-estil='nou'] .ui-estat-punt {
+  display: none;
+}
+/* Etiquetes petites (JA HA ALLARGAT 1 COP): quadrades i en majúscules. */
+html[data-estil='nou'] .ui-etiqueta {
+  border-radius: 0;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 /* Barra lateral: granat fosc de la web, text crema clar. Com l'original (icona +
    nom en minúscules, títols de grup en rosat), però amb la tipografia nova

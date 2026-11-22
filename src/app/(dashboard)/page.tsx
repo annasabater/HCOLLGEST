@@ -115,7 +115,8 @@ export default async function DashboardPage() {
       {/* Capçalera */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="font-serif text-3xl font-semibold text-slate-900">Tauler</h1>
+          <p className="ui-page-eyebrow hidden">Hostal Coll</p>
+          <h1 className="ui-page-title font-serif text-3xl font-semibold text-slate-900">Tauler</h1>
           <p className="mt-0.5 text-sm text-slate-500">Visió general de l&apos;Hostal Coll</p>
         </div>
         <GlobalSearch />
