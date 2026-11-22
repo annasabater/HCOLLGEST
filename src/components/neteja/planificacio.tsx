@@ -381,6 +381,30 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
                 ) : (
                   <div className="flex flex-wrap gap-3">{tots.map((x) => targetaDia(x.dia, x.persona))}</div>
                 )}
+                {(() => {
+                  // «+ dia»: els dies d'aquesta setmana (d'avui endavant) que encara no hi són.
+                  const lliures = [0, 1, 2, 3, 4, 5, 6]
+                    .map((n) => sumaDies(s.dilluns, n))
+                    .filter((d) => d >= avui && !tots.some((x) => x.dia.data === d));
+                  if (lliures.length === 0) return null;
+                  const persona = tots.find((x) => x.dia.treballadorId)?.dia.treballadorId ?? persona0;
+                  return (
+                    <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs">
+                      <span className="font-semibold text-slate-500">+ dia:</span>
+                      {lliures.map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setDiesBuits((b) => [...b.filter((x) => x.data !== d), { data: d, persona }])}
+                          className="h-7 border border-dashed border-brand-200 bg-white px-2 font-semibold text-brand-700 hover:border-brand-600 hover:bg-brand-50"
+                          title="Afegeix aquest dia; després tria les habitacions amb «+ habitació»"
+                        >
+                          {nomDia(d)}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
                 <NotaEditable
                   text={s.nota?.text ?? null}
                   etiqueta="Setmana"
