@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Users,
   BedDouble,
+  ClipboardList,
   CalendarDays,
   BookText,
   FileCheck,
@@ -49,6 +50,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: '/huespedes', label: 'Clients', icon: Users },
       { href: '/estancies', label: 'Estades', icon: BedDouble },
+      { href: '/ocupacio', label: 'Ocupació', icon: ClipboardList },
       { href: '/llibre', label: 'Llibre registre de viatgers', icon: BookText },
       { href: '/calendari', label: 'Calendari', icon: CalendarDays },
       { href: '/neteja', label: 'Neteja', icon: Sparkles, hideRestringit: true },
