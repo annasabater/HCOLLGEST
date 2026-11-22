@@ -82,10 +82,6 @@ export async function GET(req: Request) {
   };
 
   const subtitol = mode === 'sense' ? '' : mode === 'amb' ? ' · amb fiances' : ' · sense i amb fiances';
-  const notaFiances =
-    mode === 'sense'
-      ? 'Les fiances no hi són incloses (no són despesa). '
-      : 'Una fiança no és despesa: surt a part (columna «Fiança»), sense base ni IVA, i suma al total pagat. ';
 
   const html = `<!doctype html>
 <html lang="ca">
@@ -132,7 +128,6 @@ export async function GET(req: Request) {
     <div class="titol"><div class="t">${esc(titol)}${esc(subtitol)}</div><div class="p">Del ${dia(desde)} al ${dia(fins)}</div></div>
   </div>
   ${blocs.map(taula).join('\n')}
-  <div class="peu">${notaFiances}El total és l'import pagat, ja descomptada la retenció d'IRPF si n'hi ha; per això base + IVA pot no coincidir amb el total. Els imports sense desglossar s'han calculat amb un 21 % d'IVA inclòs.<br>Generat el ${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}.</div>
 </div>
 </body>
 </html>`;

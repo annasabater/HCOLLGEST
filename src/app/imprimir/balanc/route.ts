@@ -155,7 +155,7 @@ export async function GET(req: Request) {
 
   // ── Pàgina «amb fiances»: el que ha entrat i sortit de veritat
   const pAmb = (n: number, t: number) => `<section class="pag">${capcalera(mode === 'tot' ? 'Amb fiances · el que ha entrat i sortit' : 'Amb fiances')}
-    <div class="kpis">${kpi('INGRESSOS + FIANCES', eur(ing + reb), `${eur(ing)} + ${eur(reb)} de fiança`, C.ing)}${kpi('DESPESES + FIANCES', eur(des + pag), `${eur(des)} + ${eur(pag)} de fiança`, C.des)}${kpi('FIANCES (SALDO)', eur(reb - pag), 'rebudes − pagades · recuperables', C.pag)}${kpi('MOVIMENT DE CAIXA', eur(caixa), 'el que ha entrat − sortit', C.tot)}</div>
+    <div class="kpis kpis7">${kpi('INGRESSOS', eur(ing), 'cobrat', C.ing)}${kpi('DESPESES', eur(-des), 'personal inclòs', C.des)}${kpi('BENEFICI REAL', eur(ben), `marge ${pct(ben, ing)}`, C.ben)}${kpi('+ FIANCES REBUDES', eur(reb), 'en custòdia, recuperables', C.reb)}${kpi('BENEFICI TOTAL', eur(ben + reb), 'benefici real + fiances', C.tot)}${kpi('− FIANCES PAGADES', eur(-pag), 'a proveïdors, recuperables', C.pag)}${kpi('MOVIMENT DE CAIXA', eur(caixa), 'entrat − sortit', caixa >= 0 ? C.ing : C.des)}</div>
     <div class="caixa"><div class="ct"><span>MES A MES, AMB LES FIANCES</span><span class="lg"><b style="color:${C.ing}">■</b> ingressos &nbsp;<b style="color:${C.des}">■</b> despeses &nbsp;<b style="color:${C.reb}">▨</b> fiança rebuda &nbsp;<b style="color:${C.pag}">▨</b> fiança pagada &nbsp;<b style="color:${C.ben}">●</b> benefici</span></div>${graficMesos(mesos, true)}</div>
     <div class="caixa"><div class="ct"><span>DEL BENEFICI A LA CAIXA</span><span class="lg">les fiances no compten com a ingrés ni despesa</span></div>${cascada(ing, des, reb, pag)}</div>
     ${mode === 'amb' ? `<div class="dues"><div class="caixa"><div class="ct"><span>EN QUÈ ES VAN LES DESPESES</span></div>${barresLlista(cats, C.des)}</div><div class="caixa"><div class="ct"><span>COM T'HAN PAGAT</span></div>${barresLlista(metodes, C.ing)}</div></div>` : ''}
@@ -197,6 +197,11 @@ body { margin: 0; font: 11px/1.35 Arial, Helvetica, sans-serif; color: #111; }
 .per { text-align: right; font-size: 11px; color: #444; } .per span { color: #888; }
 .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .kpi { border: 1px solid #ddd; padding: 9px 11px; }
+.kpis7 { grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.kpis7 .kpi { padding: 7px 7px; }
+.kpis7 .kt { font-size: 7px; letter-spacing: .06em; }
+.kpis7 .kv { font-size: 12.5px; white-space: nowrap; }
+.kpis7 .ks { font-size: 7.5px; }
 .kt { font-size: 8.5px; font-weight: 700; letter-spacing: .13em; }
 .kv { font-size: 19px; font-weight: 700; margin-top: 2px; }
 .ks { font-size: 9px; color: #777; margin-top: 1px; }
