@@ -4,6 +4,7 @@ import { useId, useState } from 'react';
 import { formatEur } from '@/lib/utils';
 import { Segmentat } from '@/components/ui/navegador-periode';
 import { useAmountsHidden } from '@/components/finances/amounts-visibility';
+import { useAmplada } from '@/components/balanc/use-amplada';
 import { COLORS_BALANC, MostraRatllada, PatroRatllat, separaTicks } from '@/components/balanc/cascada-caixa';
 
 export interface PuntFiances {
@@ -36,7 +37,8 @@ export function MesosFiancesChart({ titol, punts: tots, ambFiances = true }: { t
   const v: Vista = ambFiances ? vista : 'sense';
   const eur = (x: number) => (hidden ? '••••' : formatEur(x));
 
-  const W = 900, H = 300, L = 70, R = 70, T = 18, B = 30;
+  const [ref, W] = useAmplada();
+  const H = 210, L = 70, R = 70, T = 16, B = 28;
   let acum = 0;
   const files = punts.map((p) => {
     const benefici = p.ingressos - p.despeses;
@@ -132,7 +134,8 @@ export function MesosFiancesChart({ titol, punts: tots, ambFiances = true }: { t
         ))}
       </div>
       <div className="overflow-x-auto">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px]" role="img" aria-label={titol}>
+        <div ref={ref} className="w-full">
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={titol}>
           <defs>
             <PatroRatllat id={`${uid}-r`} color={COLORS_BALANC.rebudes} />
             <PatroRatllat id={`${uid}-p`} color={COLORS_BALANC.pagades} />
@@ -177,6 +180,7 @@ export function MesosFiancesChart({ titol, punts: tots, ambFiances = true }: { t
             : linia(files.map((f) => f.benefici), COLORS_BALANC.benefici, 'benefici real')}
           {v === 'amb' && linia(files.map((f) => f.caixa), '#1e293b', 'moviment de caixa', '6 4')}
         </svg>
+        </div>
       </div>
     </div>
   );

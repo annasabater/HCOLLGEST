@@ -3,6 +3,7 @@
 import { useId } from 'react';
 import { formatEur } from '@/lib/utils';
 import { useAmountsHidden } from '@/components/finances/amounts-visibility';
+import { useAmplada } from '@/components/balanc/use-amplada';
 
 /** Colors compartits amb el gràfic mes a mes. */
 export const COLORS_BALANC = {
@@ -61,6 +62,7 @@ export function CascadaCaixa({
   pagades: number;
 }) {
   const { hidden } = useAmountsHidden();
+  const [ref, W] = useAmplada();
   const uid = useId().replace(/:/g, '');
   const eur = (v: number) => (hidden ? '••••' : formatEur(v));
   const benefici = ingressos - despeses;
@@ -77,7 +79,7 @@ export function CascadaCaixa({
   passos.push({ l: '− Fiances pagades', a: benefici + rebudes, b: caixa, v: -pagades, color: COLORS_BALANC.pagades, ratllat: true, signe: true });
   passos.push({ l: 'Moviment de caixa', a: 0, b: caixa, v: caixa, color: caixa >= 0 ? COLORS_BALANC.ingressos : COLORS_BALANC.despeses });
 
-  const W = 900, H = 250, L = 12, R = 12, T = 24, B = 40;
+  const H = 190, L = 12, R = 12, T = 22, B = 34;
   const valors = passos.flatMap((p) => [p.a, p.b]);
   const maxV = Math.max(1, ...valors);
   const minV = Math.min(0, ...valors);
@@ -87,7 +89,8 @@ export function CascadaCaixa({
   const bw = Math.min(110, slot * 0.62);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px]" role="img" aria-label="Del benefici a la caixa">
+    <div ref={ref} className="w-full">
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Del benefici a la caixa">
       <defs>
         <PatroRatllat id={`${uid}-r`} color={COLORS_BALANC.rebudes} />
         <PatroRatllat id={`${uid}-p`} color={COLORS_BALANC.pagades} />
@@ -141,5 +144,6 @@ export function CascadaCaixa({
         );
       })}
     </svg>
+    </div>
   );
 }
