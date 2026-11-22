@@ -723,6 +723,9 @@ export default function BalancPage() {
   const etiquetaPeriode = estat.tipus === 'per' ? `${dataCurta(desde)} – ${dataCurta(fins)}` : rangPeriode(estat.tipus, estat.off, avui).etiqueta;
 
   const [dades, setDades] = useState<Balanc | null>(null);
+  // Per a quin període són les dades carregades (l'Excel del menu l'espera si cal).
+  const [dadesRang, setDadesRang] = useState('');
+  const [excelPendent, setExcelPendent] = useState<{ mode: ModeFiancesInforme; rang: string } | null>(null);
   const [anterior, setAnterior] = useState<Balanc | null>(null);
   const [serie, setSerie] = useState<SerieMes[] | null>(null);
   const [breakdown, setBreakdown] = useState<Desglos | null>(null);
@@ -742,7 +745,7 @@ export default function BalancPage() {
   useEffect(() => {
     let cancel = false;
     setDades(null);
-    getJSON<Balanc>(`/api/balanc/rang?desde=${desde}&fins=${fins}&criteri=${criteri}`).then((r) => { if (!cancel) setDades(r); });
+    getJSON<Balanc>(`/api/balanc/rang?desde=${desde}&fins=${fins}&criteri=${criteri}`).then((r) => { if (!cancel) { setDades(r); setDadesRang(`${desde}|${fins}`); } });
     if (comp) {
       getJSON<Balanc>(`/api/balanc/rang?desde=${comp.desde}&fins=${comp.fins}&criteri=${criteri}`)
         .then((r) => { if (!cancel) setAnterior(r); })
@@ -816,6 +819,24 @@ export default function BalancPage() {
       : estat.tipus === 'any'
         ? `/api/balanc/pdf?any=${desde.slice(0, 4)}`
         : null;
+
+  /**
+   * Excel del resum des del menú «Imprimir», amb el període dels informes. Si no és el de
+   * la pàgina, la pàgina s'hi posa i l'Excel es baixa quan arriben les dades.
+   */
+  function excelResum(fiances: ModeFiancesInforme, periode: EstatPeriode) {
+    const r = rangDeEstat(periode, avui);
+    if (veureSituacio || (r.desde === desde && r.fins === fins)) return exporta(fiances);
+    setEstat(periode);
+    setExcelPendent({ mode: fiances, rang: `${r.desde}|${r.fins}` });
+  }
+  useEffect(() => {
+    if (excelPendent && dades && dadesRang === excelPendent.rang) {
+      setExcelPendent(null);
+      exporta(excelPendent.mode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- exporta llegeix les dades ja carregades
+  }, [excelPendent, dades, dadesRang]);
 
   function exporta(fiances: ModeFiancesInforme = 'amb') {
     // «Sense fiances» (o un compte de propietat): l'Excel no parla de fiances.
@@ -893,15 +914,14 @@ export default function BalancPage() {
                 Situació
               </button>
             )}
-            {/* Imprimir ▾: el període i els informes (resum, despeses per proveïdor i per categoria). */}
+            {/* Imprimir ▾: el període dels informes (per defecte, l'any) i els informes (resum, despeses per proveïdor i ingressos). */}
             <MenuImprimir
               estat={estat}
-              onEstat={setEstat}
               avui={avui}
               desde={desde}
               fins={fins}
               pdfResum={veureSituacio ? null : pdfHref}
-              onExcelResum={exporta}
+              onExcelResum={excelResum}
               senseInformes={veureSituacio}
               criteri={criteri}
               senseFiances={restringit}

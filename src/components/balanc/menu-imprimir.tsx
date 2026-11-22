@@ -5,7 +5,7 @@ import { ChevronDown, Download, FileText, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PeriodeEnLinia, Segmentat } from '@/components/ui/navegador-periode';
 import type { ModeFiances } from '@/lib/informes-despeses';
-import type { EstatPeriode } from '@/lib/periode';
+import { rangDeEstat, type EstatPeriode } from '@/lib/periode';
 import { cn } from '@/lib/utils';
 
 const botoPetit =
@@ -75,13 +75,13 @@ function InformeFila({
 }
 
 /**
- * «Imprimir ▾» del Balanç: el període (el mateix de la pàgina), la vista de fiances
- * (sense / amb / total) i els informes: el resum del balanç (gràfics, PDF i Excel), les
- * despeses per proveïdor i per categoria. La vista de fiances serveix per als tres.
+ * «Imprimir ▾» del Balanç: el període dels informes (per defecte, l'any en curs; és
+ * independent del de la pàgina), la vista de fiances (per defecte, Total) i els informes:
+ * el resum del balanç, les despeses per proveïdor i els ingressos. La vista de fiances
+ * serveix per als tres.
  */
 export function MenuImprimir({
   estat,
-  onEstat,
   avui,
   desde,
   fins,
@@ -92,13 +92,13 @@ export function MenuImprimir({
   senseFiances = false,
 }: {
   estat: EstatPeriode;
-  onEstat: (e: EstatPeriode) => void;
   avui: string;
   desde: string;
   fins: string;
   /** PDF del resum (només mesos i anys sencers), o null. */
   pdfResum: string | null;
-  onExcelResum: (fiances: ModeFiances) => void;
+  /** Excel del resum amb el període dels informes (la pàgina s'hi posa si cal). */
+  onExcelResum: (fiances: ModeFiances, periode: EstatPeriode) => void;
   /** Vista «Situació»: té el seu propi període, només hi ha el resum en Excel. */
   senseInformes?: boolean;
   /** Criteri del balanç (per dies o fiscal): l'informe amb gràfics l'hereta. */
@@ -107,7 +107,10 @@ export function MenuImprimir({
   senseFiances?: boolean;
 }) {
   const [obert, setObert] = useState(false);
-  const [fiances, setFiances] = useState<ModeFiances>('sense');
+  const [fiances, setFiances] = useState<ModeFiances>('tot');
+  // Període propi dels informes: per defecte, l'any en curs.
+  const [periode, setPeriode] = useState<EstatPeriode>({ tipus: 'any', off: 0 });
+  const rang = senseInformes ? { desde, fins } : rangDeEstat(periode, avui);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!obert) return;
@@ -119,9 +122,10 @@ export function MenuImprimir({
   }, [obert]);
 
   const mode: ModeFiances = senseFiances ? 'sense' : fiances;
-  const grafics = `/imprimir/balanc?desde=${desde}&fins=${fins}&fiances=${mode}&criteri=${criteri}&auto=1`;
+  const grafics = `/imprimir/balanc?desde=${rang.desde}&fins=${rang.fins}&fiances=${mode}&criteri=${criteri}&auto=1`;
   const informe = (per: 'proveidor' | 'categoria', extra = '') =>
-    `/imprimir/despeses-agrupades?per=${per}&desde=${desde}&fins=${fins}&fiances=${mode}${extra}`;
+    `/imprimir/despeses-agrupades?per=${per}&desde=${rang.desde}&fins=${rang.fins}&fiances=${mode}${extra}`;
+  const ingressos = (extra = '') => `/imprimir/ingressos?desde=${rang.desde}&fins=${rang.fins}&fiances=${mode}${extra}`;
 
   return (
     <div ref={ref} className="relative">
@@ -139,7 +143,7 @@ export function MenuImprimir({
               <div className="space-y-2">
                 <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700">Període dels informes</p>
                 <div className="flex flex-wrap items-center gap-2">
-                  <PeriodeEnLinia estat={estat} onChange={onEstat} avui={avui} />
+                  <PeriodeEnLinia estat={periode} onChange={setPeriode} avui={avui} />
                 </div>
               </div>
               {!senseFiances && (
@@ -158,7 +162,7 @@ export function MenuImprimir({
               grafics={senseInformes ? undefined : grafics}
               pdf={senseInformes ? (pdfResum ? `${pdfResum}&fiances=${mode}` : null) : undefined}
               pdfAvis="El PDF del resum només es fa per a mesos o anys sencers. L'informe amb gràfics serveix per a qualsevol període."
-              onExcel={() => { onExcelResum(mode); setObert(false); }}
+              onExcel={() => { onExcelResum(mode, senseInformes ? estat : periode); setObert(false); }}
             />
             {!senseInformes && (
               <>
@@ -169,10 +173,10 @@ export function MenuImprimir({
                   excelHref={informe('proveidor', '&format=csv')}
                 />
                 <InformeFila
-                  nom="Despeses per categoria"
-                  desc="Lloguer, subministraments, neteja…"
-                  pdf={informe('categoria')}
-                  excelHref={informe('categoria', '&format=csv')}
+                  nom="Ingressos"
+                  desc="Per forma de cobrament i cada cobrament: dia, client, factura"
+                  pdf={ingressos()}
+                  excelHref={ingressos('&format=csv')}
                 />
               </>
             )}
