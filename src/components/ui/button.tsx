@@ -13,9 +13,9 @@ const variants: Record<Variant, string> = {
 };
 
 const sizes: Record<Size, string> = {
-  sm: 'h-8 px-3 text-sm',
-  md: 'h-10 px-4 text-sm',
-  lg: 'h-11 px-6 text-base',
+  sm: 'ui-btn-sm h-8 px-3 text-sm',
+  md: 'ui-btn-md h-10 px-4 text-sm',
+  lg: 'ui-btn-lg h-11 px-6 text-base',
 };
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
