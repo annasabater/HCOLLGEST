@@ -295,28 +295,22 @@ html[data-estil='nou'] .app-sidebar .app-logout:hover {
   color: var(--color-brand-700);
 }
 
-/* Botons, camps i desplegables més baixos, només a l'ordinador (al mòbil es queden
-   grans perquè s'han de tocar amb el dit): 40 → 32 px, 44 → 36 px, 48 → 40 px.
-   - TOTS els camps de text/data/número i desplegables (encara que no facin servir
-     els components), menys els que ja són més petits o tenen una mida pròpia gran.
+/* Botons més baixos, només a l'ordinador (al mòbil es queden grans perquè s'han
+   de tocar amb el dit): 40 → 32 px, 44 → 36 px, 48 → 40 px. Els camps de text i els
+   desplegables NO: es queden a 40 px (l'Anna els vol com estaven).
    - Els botons del component Button (ui-btn-*) i els fets a mà amb h-10/h-11/h-12.
    - Els grups amb vora (període, cercador, segmentats), que són caixes de 40 px. */
 @media (min-width: 768px) {
-  html[data-estil='nou']
-    :is(input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='color'], [type='hidden']), select:not([multiple], [size])):not(.h-6, .h-7, .h-8, .h-9, .h-11, .h-12, .h-14) {
-    height: 2rem;
-    font-size: 13.5px;
-  }
   html[data-estil='nou'] :is(button, a).h-10,
   html[data-estil='nou'] .ui-btn-md,
   html[data-estil='nou'] div.h-10:is(.border, .ui-card) {
     height: 2rem;
   }
-  html[data-estil='nou'] :is(button, a, input, select).h-11,
+  html[data-estil='nou'] :is(button, a).h-11,
   html[data-estil='nou'] .ui-btn-lg {
     height: 2.25rem;
   }
-  html[data-estil='nou'] :is(button, a, input, select).h-12 {
+  html[data-estil='nou'] :is(button, a).h-12 {
     height: 2.5rem;
   }
   html[data-estil='nou'] :is(button, a, div).min-h-10 {
