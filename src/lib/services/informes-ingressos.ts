@@ -21,7 +21,7 @@ type Estada = {
 };
 const client = (e: Estada) => {
   const h = e.viatgers[0]?.huesped;
-  return h ? nomPropi(`${h.nom} ${h.cognom1}`.replace(/s+/g, ' ').trim()) : '—';
+  return h ? nomPropi(`${h.nom} ${h.cognom1}`.replace(/\s+/g, ' ').trim()) : '—';
 };
 
 /** Cobraments i dipòsits entre dos dies inclosos. Restringit: sense «Altres», ni estades ocultes, ni fiances. */
