@@ -91,9 +91,6 @@ export function EstanciaActions({
             onDone={() => router.refresh()}
           />
         </div>
-        <p className="mt-1.5 text-xs text-slate-500" title="Automàtic: l’app puja el fitxer al portal de Mossos sola i desa el comprovant. Manual: descarrega el .txt per pujar-lo tu.">
-          <strong>Pujar</strong>: l’app el puja sola i desa el comprovant · <strong>.txt</strong>: el descarregues i el puges tu.
-        </p>
       </div>
 
       {confirmaEnviar && (
