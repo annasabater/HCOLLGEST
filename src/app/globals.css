@@ -217,12 +217,13 @@ html[data-estil='nou'] .ui-etiqueta {
    de grup granat en majúscules espaiades; apartats en majúscules petites, sense
    icones; l'actiu en granat amb fons gris i ratlla granat a l'esquerra. */
 html[data-estil='nou'] .app-sidebar {
-  background: #f8f8f8;
-  color: #1a1a1a;
-  border-right: 1px solid #e0e0e0;
+  /* Blanca amb vora fina (proposta A): se separa del fons grisós de la pàgina. */
+  background: #ffffff;
+  color: #1d1b19;
+  border-right: 1px solid #e2e2e2;
 }
 html[data-estil='nou'] .app-sidebar .border-brand-800 {
-  border-color: #e0e0e0;
+  border-color: #e2e2e2;
 }
 html[data-estil='nou'] .app-sidebar :is(.text-brand-100, .text-brand-200, .text-brand-300) {
   color: #3a3632;
@@ -262,14 +263,32 @@ html[data-estil='nou'] .app-nav-item svg {
   display: none;
 }
 html[data-estil='nou'] .app-sidebar .app-nav-item:hover {
-  background: #eeeeee;
+  background: #f5f5f5;
   color: #1a1a1a;
 }
 html[data-estil='nou'] .app-sidebar .app-nav-item[aria-current='page'] {
-  background: #eeeeee;
+  background: #f6ecee;
   color: var(--color-brand-700);
   font-weight: 700;
   box-shadow: inset 3px 0 0 var(--color-brand-700);
+}
+
+/* «Sortir»: discret, no com un apartat més; amb la icona, en minúscules i gris. */
+html[data-estil='nou'] .app-sidebar .app-logout {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #737373;
+}
+html[data-estil='nou'] .app-sidebar .app-logout svg {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+}
+html[data-estil='nou'] .app-sidebar .app-logout:hover {
+  background: #f6ecee;
+  color: var(--color-brand-700);
 }
 
 /* Botons, camps i desplegables més baixos (40 → 36 px, 44 → 40 px), només a
