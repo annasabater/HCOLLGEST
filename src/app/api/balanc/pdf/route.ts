@@ -28,6 +28,9 @@ export async function GET(req: Request) {
   const anyParam = sp.get('any');
   const situacioParam = sp.get('situacio');
   const incloureCustodia = sp.get('custodia') !== 'false';
+  // `&fiances=sense` (o un compte de vista restringida): l'informe no parla de fiances ni de retencions.
+  const sense = teVistaRestringida(auth) || sp.get('fiances') === 'sense';
+  const fia = (...files: [string, string][]): [string, string][] => (sense ? [] : files);
 
   let title: string;
   let sections: ReportSection[];
@@ -91,23 +94,22 @@ export async function GET(req: Request) {
           ['Personal', eur(b.totals.personal)],
           ['Benefici', `${eur(b.totals.benefici)}   (${variacio(b.totals.benefici, b.anterior.benefici)} vs ${b.any - 1})`],
           ['Marge', marge(b.totals.benefici, b.totals.ingressos)],
-          ['Dipòsits en custòdia', eur(b.totals.retencions)],
+          ...fia(['Dipòsits en custòdia', eur(b.totals.retencions)]),
         ],
       },
       {
         heading: 'Detall mensual',
         table: {
-          headers: ['Mes', 'Ingressos', 'Retencions', 'Ing.+ret.', 'Despeses', 'Personal', 'Benefici'],
+          headers: ['Mes', 'Ingressos', ...(sense ? [] : ['Retencions', 'Ing.+ret.']), 'Despeses', 'Personal', 'Benefici'],
           rows: b.mesos.map((m) => [
             MESOS[m.mes - 1]!,
             eur(m.ingressos),
-            eur(m.retencions),
-            eur(m.ingressosAmbRetencions),
+            ...(sense ? [] : [eur(m.retencions), eur(m.ingressosAmbRetencions)]),
             eur(m.despeses),
             eur(m.personal),
             eur(m.benefici),
           ]),
-          total: ['TOTAL', eur(b.totals.ingressos), eur(b.totals.retencions), eur(b.totals.ingressosAmbRetencions), eur(b.totals.despeses), eur(b.totals.personal), eur(b.totals.benefici)],
+          total: ['TOTAL', eur(b.totals.ingressos), ...(sense ? [] : [eur(b.totals.retencions), eur(b.totals.ingressosAmbRetencions)]), eur(b.totals.despeses), eur(b.totals.personal), eur(b.totals.benefici)],
         },
       },
       { heading: 'Ingressos per mètode', kv: metodeKv(b.ingressosPerMetode) },
@@ -125,13 +127,13 @@ export async function GET(req: Request) {
       {
         heading: 'Resum del mes',
         kv: [
-          ['Ingressos (sense retencions)', eur(b.ingressos)],
-          ['Ingressos + retencions', eur(b.ingressosAmbRetencions)],
+          [sense ? 'Ingressos' : 'Ingressos (sense retencions)', eur(b.ingressos)],
+          ...fia(['Ingressos + retencions', eur(b.ingressosAmbRetencions)]),
           ['Despeses', eur(b.despeses)],
           ['Personal', eur(b.personal)],
           ['Benefici', eur(b.benefici)],
           ['Marge', marge(b.benefici, b.ingressos)],
-          ['Dipòsits en custòdia', eur(b.retencions)],
+          ...fia(['Dipòsits en custòdia', eur(b.retencions)]),
         ],
       },
       { heading: 'Ingressos per mètode', kv: metodeKv(b.ingressosPerMetode) },

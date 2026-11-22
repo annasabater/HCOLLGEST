@@ -27,6 +27,7 @@ import { Eur, HideAmountsButton, HideAmountsOnMount } from '@/components/finance
 import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 import { periodeComparacio, rangDeEstat, rangPeriode, type EstatPeriode } from '@/lib/periode';
 import type { MovDetall, MovGrup } from '@/lib/services/dashboard';
+import type { ModeFiances as ModeFiancesInforme } from '@/lib/informes-despeses';
 
 /** Data curta "dd/mm/aa" a partir d'un ISO string. */
 function dataCurta(iso: string): string {
@@ -816,7 +817,9 @@ export default function BalancPage() {
         ? `/api/balanc/pdf?any=${desde.slice(0, 4)}`
         : null;
 
-  function exporta() {
+  function exporta(fiances: ModeFiancesInforme = 'amb') {
+    // «Sense fiances» (o un compte de propietat): l'Excel no parla de fiances.
+    const senseFia = restringit || fiances === 'sense';
     if (veureSituacio && situacio) {
       const s = situacio;
       downloadCSV(`balanc-situacio-${s.data}.csv`, [
@@ -841,7 +844,7 @@ export default function BalancPage() {
       ['Despeses (personal inclòs)', despesesTotals.toFixed(2)],
       ['Benefici', dades.benefici.toFixed(2)],
       ['Marge %', marge(dades.benefici, dades.ingressos)],
-      ...(restringit
+      ...(senseFia
         ? []
         : [
             [''],
@@ -859,14 +862,14 @@ export default function BalancPage() {
       ...categoriesAmbPersonal(dades).map((d) => [d.label, d.value.toFixed(2)]),
     ];
     if (serie && serie.length > 0) {
-      rows.push([''], ['Mes', 'Ingressos', 'Despeses', 'Benefici', ...(restringit ? [] : ['Fiances rebudes', 'Fiances pagades'])]);
+      rows.push([''], ['Mes', 'Ingressos', 'Despeses', 'Benefici', ...(senseFia ? [] : ['Fiances rebudes', 'Fiances pagades'])]);
       for (const s of serie)
         rows.push([
           `${MESOS[s.mes - 1]} ${s.any}`,
           s.ingressos.toFixed(2),
           (s.despeses + s.personal).toFixed(2),
           s.benefici.toFixed(2),
-          ...(restringit ? [] : [s.retencions.toFixed(2), s.despesesFianca.toFixed(2)]),
+          ...(senseFia ? [] : [s.retencions.toFixed(2), s.despesesFianca.toFixed(2)]),
         ]);
     }
     downloadCSV(`balanc-${criteri === 'caixa' ? 'fiscal' : 'per-dies'}-${desde}_${fins}.csv`, rows);

@@ -4,15 +4,17 @@
  */
 import 'server-only';
 import { prisma } from '../db';
-import { agrupaDespeses, type AgruparPer } from '../informes-despeses';
 
-/** Despeses reals (sense fiances) entre dos dies inclosos (`YYYY-MM-DD`). */
-export async function informeDespeses(desde: string, fins: string, per: AgruparPer) {
+/**
+ * Totes les despeses entre dos dies inclosos (`YYYY-MM-DD`), fiances incloses
+ * (`esFianca`): l'agrupació decideix si les compta o no, segons el mode de l'informe.
+ */
+export async function despesesPeriode(desde: string, fins: string) {
   const gte = new Date(`${desde}T00:00:00.000Z`);
   const lt = new Date(`${fins}T00:00:00.000Z`);
   lt.setUTCDate(lt.getUTCDate() + 1);
-  const gastos = await prisma.gasto.findMany({
-    where: { deletedAt: null, esFianca: false, data: { gte, lt } },
+  return prisma.gasto.findMany({
+    where: { deletedAt: null, data: { gte, lt } },
     select: {
       import: true,
       esFianca: true,
@@ -23,5 +25,4 @@ export async function informeDespeses(desde: string, fins: string, per: AgruparP
       categoria: { select: { nom: true } },
     },
   });
-  return agrupaDespeses(gastos, per);
 }
