@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Shirt, Pencil, Trash2, Check, X, Tag } from 'lucide-react';
+import { Shirt, Pencil, Trash2, Check, X, Tag, ChevronDown } from 'lucide-react';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,11 @@ interface Resposta { total: number; detall: Row[]; articles: Article[] }
  * Cada fila és la bugaderia marcada a una tasca de neteja: es pot editar
  * (quantitats i articles) i treure. Els preus del catàleg també s'editen aquí.
  */
-export function BugaderiaMensualCard() {
+export function BugaderiaMensualCard({ compacte = false }: {
+  /** Només la xifra del mes i «Preus»; el detall s'obre en un desplegable. */
+  compacte?: boolean;
+} = {}) {
+  const [obert, setObert] = useState(false);
   const now = new Date();
   const [mes, setMes] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
   const [total, setTotal] = useState(0);
@@ -124,11 +128,16 @@ export function BugaderiaMensualCard() {
     }
   }
 
-  return (
-    <Card>
+  const card = (
+    <Card className={compacte ? 'shadow-lg' : undefined}>
       <CardHeader className="flex flex-wrap items-center justify-between gap-2">
         <CardTitle className="flex items-center gap-2"><Shirt className="h-4 w-4 text-brand-600" /> Bugaderia del mes</CardTitle>
         <div className="flex items-center gap-2">
+          {compacte && (
+            <Button size="sm" variant="ghost" aria-label="Tancar" onClick={() => setObert(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          )}
           <Button size="sm" variant={mostraPreus ? 'secondary' : 'outline'} onClick={() => setMostraPreus((v) => !v)}>
             <Tag className="h-4 w-4" /> Preus
           </Button>
@@ -288,5 +297,36 @@ export function BugaderiaMensualCard() {
         onCancel={() => setTreure(null)}
       />
     </Card>
+  );
+
+  if (!compacte) return card;
+
+  const mesCurt = new Date(`${mes}-01T00:00:00`).toLocaleDateString('ca-ES', { month: 'short' });
+  return (
+    <div className="relative flex items-center gap-2">
+      <button
+        type="button"
+        aria-expanded={obert}
+        onClick={() => setObert((o) => !o)}
+        className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50"
+        title="Veure la bugaderia del mes"
+      >
+        <span className="text-[11px] font-bold uppercase tracking-wider text-brand-700">Bugaderia {mesCurt}</span>
+        <strong className="text-slate-900">{loading ? '…' : <Eur value={total} />}</strong>
+        <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${obert ? 'rotate-180' : ''}`} />
+      </button>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => { setObert(true); setMostraPreus((v) => !obert || !v); }}
+      >
+        <Tag className="h-4 w-4" /> Preus
+      </Button>
+      {obert && (
+        <div className="absolute right-0 top-full z-30 mt-2 max-h-[70vh] w-[min(44rem,calc(100vw-2rem))] overflow-y-auto">
+          {card}
+        </div>
+      )}
+    </div>
   );
 }

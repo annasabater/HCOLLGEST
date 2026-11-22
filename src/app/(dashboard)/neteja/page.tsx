@@ -2,12 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Save, Check, Undo2, CheckCheck, Trash2 } from 'lucide-react';
+import { Save, Check, Undo2, CheckCheck, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { BugaderiaMensualCard } from '@/components/estancia/bugaderia-mensual-card';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
-import { Field } from '@/components/ui/field';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getJSON, postJSON, putJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
@@ -324,30 +323,37 @@ export default function NetejaPage() {
     <div>
       <PageHeader title="Neteja" subtitle="Full de neteja diari per persona" />
 
-      <div className="mb-4">
-        <BugaderiaMensualCard />
-      </div>
-
+      {/* Una sola barra: dia (amb fletxes i «Avui»), persona i, a la dreta, la
+          bugaderia del mes en petit (en clicar-la s'obre el detall i els preus). */}
       <Card className="mb-4">
-        <CardBody>
-          <div className="grid items-end gap-3 sm:grid-cols-3">
-            <Field label="Dia">
-              <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
-            </Field>
-            <Field label="Persona encarregada">
-              <Select value={personId} onChange={(e) => setPersonId(e.target.value)}>
-                {treballadors.length === 0 && <option value="">—</option>}
-                {treballadors.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nom}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <p className="text-sm text-slate-500">
-              Marca les habitacions que <strong>{persona?.nom ?? 'aquesta persona'}</strong> ha de
-              netejar el {formatDate(data)}. Les que no toquen, deixa-les sense marcar.
-            </p>
+        <CardBody className="flex flex-wrap items-center gap-3 py-3">
+          <div className="flex items-center gap-1">
+            <Button type="button" variant="outline" size="sm" aria-label="Dia anterior" onClick={() => setData(toISODate(addDays(new Date(`${data}T12:00:00`), -1)))}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Input type="date" aria-label="Dia" className="w-auto" value={data} onChange={(e) => setData(e.target.value)} />
+            <Button type="button" variant="outline" size="sm" aria-label="Dia següent" onClick={() => setData(toISODate(addDays(new Date(`${data}T12:00:00`), 1)))}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            {data !== toISODate(new Date()) && (
+              <Button type="button" variant="outline" size="sm" onClick={() => setData(toISODate(new Date()))}>
+                Avui
+              </Button>
+            )}
+          </div>
+          <label className="flex items-center gap-2 text-sm text-slate-500">
+            Neteja
+            <Select aria-label="Persona encarregada" className="w-auto font-semibold text-slate-900" value={personId} onChange={(e) => setPersonId(e.target.value)}>
+              {treballadors.length === 0 && <option value="">—</option>}
+              {treballadors.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nom}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <div className="ml-auto">
+            <BugaderiaMensualCard compacte />
           </div>
         </CardBody>
       </Card>
