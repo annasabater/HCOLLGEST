@@ -609,67 +609,85 @@ export default function NetejaPage() {
         </CardBody>
       </Card>
 
-      {resumDies.length > 0 && (
-        <Card className="mt-4">
-          <CardHeader>
-            <CardTitle>Pròxims dies</CardTitle>
-          </CardHeader>
-          <CardBody className="space-y-3">
-            {resumDies.map(({ iso, grups }) => (
-              <div key={iso} className="rounded-lg border border-slate-200 p-3">
-                <div className="mb-2 text-sm font-medium text-slate-700">{formatDate(iso)}</div>
-                <div className="space-y-1.5">
-                  {grups.map(([key, tasks]) => {
-                    const fetes = tasks.filter((t) => t.estat === 'FETA').length;
-                    return (
-                      <div key={key || 'sense'} className="flex flex-wrap items-center gap-2 text-sm">
-                        <span
-                          className={`min-w-32 font-medium ${key ? 'text-slate-700' : 'text-amber-700'}`}
-                        >
+      {/* Pròxims dies: la setmana en columnes (de demà a d'aquí a 7 dies), també
+          els dies sense res. Clicar un dia l'obre a dalt. */}
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Pròxims dies</CardTitle>
+        </CardHeader>
+        <div className="overflow-x-auto">
+          <div className="grid min-w-[700px] grid-cols-7">
+            {Array.from({ length: 7 }, (_, i) => toISODate(addDays(new Date(), i + 1))).map((iso, i) => {
+              const grups = resumDies.find((d) => d.iso === iso)?.grups ?? [];
+              const buit = grups.length === 0;
+              const dia = new Date(`${iso}T12:00:00`);
+              const setmana = dia.toLocaleDateString('ca-ES', { weekday: 'short' }).replace('.', '');
+              return (
+                <button
+                  key={iso}
+                  type="button"
+                  disabled={buit}
+                  onClick={() => {
+                    setData(iso);
+                    const primer = grups.find(([k]) => k)?.[0];
+                    if (primer) setPersonId(primer);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  title={buit ? undefined : `Obrir el ${formatDate(iso)}`}
+                  className={`flex min-h-28 flex-col gap-2 border-slate-100 px-3 py-3 text-left transition-colors [&:not(:last-child)]:border-r ${
+                    i === 0 ? 'bg-brand-50/60' : ''
+                  } ${buit ? 'cursor-default' : 'hover:bg-slate-50'}`}
+                >
+                  <span className="leading-tight">
+                    <span className={`block text-[11px] font-bold uppercase tracking-wider ${i === 0 ? 'text-brand-700' : 'text-transparent'}`}>
+                      {i === 0 ? 'Demà' : '·'}
+                    </span>
+                    <span className={`block font-serif text-lg font-semibold ${buit ? 'text-slate-300' : 'text-slate-900'}`}>
+                      {setmana} {Number(iso.slice(8, 10))}
+                    </span>
+                  </span>
+                  {buit ? (
+                    <span className="text-sm text-slate-300">—</span>
+                  ) : (
+                    grups.map(([key, tasks]) => (
+                      <span key={key || 'sense'} className="block text-xs">
+                        <span className={`block font-semibold ${key ? 'text-slate-700' : 'text-amber-700'}`}>
                           {nomPersona(key || null)}
                         </span>
-                        <span className="flex flex-wrap gap-1">
-                          {[...tasks].sort((a, b) => (a.habitacio?.nom ?? '').localeCompare(b.habitacio?.nom ?? '', 'ca', { numeric: true })).map((t) => (
-                            <span
-                              key={t.id}
-                              title={t.notes ?? undefined}
-                              className={`rounded px-1.5 py-0.5 text-xs ${
-                                t.estat === 'FETA'
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-slate-100 text-slate-600'
-                              }`}
-                            >
-                              {t.estat === 'FETA' ? '✓ ' : ''}{t.habitacio?.nom ?? '?'}
-                              {t.tipus === 'CANVI_COMPLET' ? ' ★' : ''}
-                            </span>
-                          ))}
+                        <span className="mt-1 flex flex-wrap gap-1">
+                          {[...tasks]
+                            .sort((a, b) => (a.habitacio?.nom ?? '').localeCompare(b.habitacio?.nom ?? '', 'ca', { numeric: true }))
+                            .map((t) => (
+                              <span
+                                key={t.id}
+                                title={[t.tipus === 'CANVI_COMPLET' ? 'Sortida (a fons)' : 'Repàs', t.estat === 'FETA' ? 'feta' : null, t.notes].filter(Boolean).join(' · ')}
+                                className={`inline-flex h-6 min-w-6 items-center justify-center px-1.5 font-bold ${
+                                  t.estat === 'FETA'
+                                    ? 'bg-green-100 text-green-700'
+                                    : t.tipus === 'CANVI_COMPLET'
+                                      ? 'bg-brand-700 text-white'
+                                      : 'border border-slate-300 text-slate-700'
+                                }`}
+                              >
+                                {t.estat === 'FETA' ? '✓' : ''}{t.habitacio?.nom ?? '?'}
+                              </span>
+                            ))}
                         </span>
-                        <span className="text-xs text-slate-400">
-                          {fetes}/{tasks.length} fetes
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="ml-auto"
-                          onClick={() => {
-                            setData(iso);
-                            if (key) setPersonId(key);
-                          }}
-                        >
-                          Obrir
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-            <p className="text-xs text-slate-400">
-              ★ = sortida (a fons). Passa el ratolí per veure les notes.
-            </p>
-          </CardBody>
-        </Card>
-      )}
+                      </span>
+                    ))
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <p className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-100 px-5 py-2 text-xs text-slate-500">
+          <span className="flex items-center gap-1.5"><span className="h-3 w-3 bg-brand-700" /> sortida (a fons)</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-3 border border-slate-300" /> repàs</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-3 bg-green-100" /> feta</span>
+          <span>Passa el ratolí per sobre d&apos;una habitació per veure&apos;n la nota.</span>
+        </p>
+      </Card>
       <ConfirmDialog
         open={!!confirmElimJornada}
         title="Eliminar pagament de neteja"
