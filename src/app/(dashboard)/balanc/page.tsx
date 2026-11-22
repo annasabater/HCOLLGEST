@@ -1162,6 +1162,11 @@ export default function BalancPage() {
             {breakdown.moviments && breakdown.moviments.length > 0 ? (
               <div className="mt-3 border-t border-slate-100 pt-2">
                 <p className="mb-1 text-xs font-medium text-slate-500">Moviments ({breakdown.moviments.length})</p>
+                {breakdown.moviments.some((m) => m.importTotal != null) && (
+                  <p className="mb-2 text-xs text-slate-400">
+                    Al balanç per dies, un pagament surt només amb la part que correspon a les nits d&apos;aquest període: la data és la del pagament i «part de» és l&apos;import complet.
+                  </p>
+                )}
                 <div className="max-h-72 space-y-0.5 overflow-y-auto">
                   {breakdown.moviments.map((m) => {
                     const inner = (
@@ -1170,6 +1175,7 @@ export default function BalancPage() {
                           <span className="text-slate-400">{dataCurta(m.data)}</span>{' '}
                           <span className="text-slate-600">{m.concepte}</span>
                           {m.metode ? <span className="text-slate-400"> · {METODE_COBRAMENT_LABELS[m.metode as keyof typeof METODE_COBRAMENT_LABELS] ?? m.metode}</span> : null}
+                          {m.importTotal != null ? <span className="text-slate-400" title="Aquest import és només la part del pagament que correspon a les nits d'aquest període (balanç per dies)."> · part de <Eur value={m.importTotal} /></span> : null}
                           {m.pagada === false ? <span className="text-amber-600"> · pendent de pagar</span> : null}
                         </span>
                         <span className={cn('shrink-0 font-medium', m.import < 0 ? 'text-red-600' : 'text-green-700')}>
