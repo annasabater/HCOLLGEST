@@ -636,16 +636,11 @@ const CRITERIS: { c: Criteri; label: string; explica: React.ReactNode }[] = [
   },
 ];
 
-/** Frase curta de cada vista (la llarga, a la «i»). */
-const RESUM_CRITERI: Record<Criteri, React.ReactNode> = {
-  dies: <>Cada pagament, repartit per les nits de cada mes: <b className="text-slate-800">quant ha rendit cada mes</b>.</>,
-  caixa: <>Cada pagament, sencer, el dia que entra: <b className="text-slate-800">el que ha entrat de veritat</b>.</>,
-};
 const NOM_CRITERI: Record<Criteri, string> = { dies: 'Per dies', caixa: 'Fiscal' };
 
 /**
  * Una sola targeta: període (tipus + ‹ mes ›), vista Per dies / Fiscal, la «i» amb
- * l'explicació i l'ull d'amagar imports; a sota, la frase de la vista triada.
+ * l'explicació (s'obre a sota) i l'ull d'amagar imports.
  */
 function BarraBalanc({
   estat,
@@ -687,18 +682,15 @@ function BarraBalanc({
         </button>
         <HideAmountsButton nomesIcona className="ml-auto" />
       </div>
-      <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-2 text-sm text-slate-600">
-        {info ? (
-          <div className="space-y-1.5 py-1">
-            {CRITERIS.map((x) => (
-              <p key={x.c}><b className="text-slate-800">{NOM_CRITERI[x.c]}:</b> {x.explica}</p>
-            ))}
-            <p className="text-slate-500">En un període llarg el total és el mateix a les dues vistes: només canvia a quin mes cau cada ingrés.</p>
-          </div>
-        ) : (
-          <p><span className="font-semibold text-slate-700">{NOM_CRITERI[criteri]}:</span> {RESUM_CRITERI[criteri]}</p>
-        )}
-      </div>
+      {/* L'explicació de les dues vistes només surt en clicar la «i». */}
+      {info && (
+        <div className="space-y-1.5 border-t border-slate-100 bg-slate-50/60 px-4 py-3 text-sm text-slate-600">
+          {CRITERIS.map((x) => (
+            <p key={x.c}><b className="text-slate-800">{NOM_CRITERI[x.c]}:</b> {x.explica}</p>
+          ))}
+          <p className="text-slate-500">En un període llarg el total és el mateix a les dues vistes: només canvia a quin mes cau cada ingrés.</p>
+        </div>
+      )}
     </div>
   );
 }
