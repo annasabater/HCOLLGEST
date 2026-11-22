@@ -186,7 +186,6 @@ function GastosVariablesTab({
   resumPeriode,
   showForm,
   setShowForm,
-  fotoNova,
 }: {
   desde: string;
   fins: string;
@@ -198,8 +197,6 @@ function GastosVariablesTab({
   resumPeriode: ReactNode;
   showForm: boolean;
   setShowForm: (v: boolean | ((s: boolean) => boolean)) => void;
-  /** Foto feta amb «Fer foto» de la capçalera: obre el formulari i s'escaneja. */
-  fotoNova: { file: File; n: number } | null;
 }) {
   const { filtres, rangB } = filtre;
   const actiu = filtres.length > 0 || rangB !== null;
@@ -215,15 +212,6 @@ function GastosVariablesTab({
   const [file, setFile] = useState<File | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  // «Fer foto» de la capçalera: la càmera s'obre allà mateix (si s'obrís des
-  // d'aquí, el mòbil la bloquejaria), i la foto arriba aquí per escanejar-la.
-  const fotoN = fotoNova?.n ?? 0;
-  useEffect(() => {
-    if (!fotoNova) return;
-    setShowForm(true);
-    triaFitxer(fotoNova.file);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- només quan arriba una foto nova
-  }, [fotoN]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Avís quan la despesa s'ha vinculat sola a un servei recurrent (p. ex. Gestaigua).
@@ -1082,8 +1070,6 @@ function GastosContent() {
   }
 
   const [showForm, setShowForm] = useState(false);
-  const [fotoNova, setFotoNova] = useState<{ file: File; n: number } | null>(null);
-  const fotoRef = useRef<HTMLInputElement>(null);
 
   return (
     <div>
@@ -1093,21 +1079,6 @@ function GastosContent() {
         actions={
           <div className="flex items-center gap-2">
             <HideAmountsButton nomesIcona />
-            <input
-              ref={fotoRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) setFotoNova((p) => ({ file, n: (p?.n ?? 0) + 1 }));
-                e.target.value = '';
-              }}
-            />
-            <Button variant="outline" onClick={() => fotoRef.current?.click()}>
-              <Camera className="h-4 w-4" /> Fer foto
-            </Button>
             <Button onClick={() => setShowForm((s) => !s)}>
               <Plus className="h-4 w-4" /> Nova despesa
             </Button>
@@ -1125,7 +1096,6 @@ function GastosContent() {
         onSavedDate={mostraDespesa}
         showForm={showForm}
         setShowForm={setShowForm}
-        fotoNova={fotoNova}
         periode={<PeriodeCompacte estat={estat} onChange={setEstat} avui={avui} primerDia="2000-01-01" />}
         resumPeriode={
           // El total de la llista, les fiances a part i, si n'hi ha, el personal
