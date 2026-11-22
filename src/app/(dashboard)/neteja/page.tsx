@@ -328,15 +328,15 @@ export default function NetejaPage() {
       <Card className="mb-4">
         <CardBody className="flex flex-wrap items-center gap-3 py-3">
           <div className="flex items-center gap-1">
-            <Button type="button" variant="outline" size="sm" aria-label="Dia anterior" onClick={() => setData(toISODate(addDays(new Date(`${data}T12:00:00`), -1)))}>
+            <Button type="button" variant="outline" className="px-3" aria-label="Dia anterior" onClick={() => setData(toISODate(addDays(new Date(`${data}T12:00:00`), -1)))}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <Input type="date" aria-label="Dia" className="w-auto" value={data} onChange={(e) => setData(e.target.value)} />
-            <Button type="button" variant="outline" size="sm" aria-label="Dia següent" onClick={() => setData(toISODate(addDays(new Date(`${data}T12:00:00`), 1)))}>
+            <Button type="button" variant="outline" className="px-3" aria-label="Dia següent" onClick={() => setData(toISODate(addDays(new Date(`${data}T12:00:00`), 1)))}>
               <ChevronRight className="h-4 w-4" />
             </Button>
             {data !== toISODate(new Date()) && (
-              <Button type="button" variant="outline" size="sm" onClick={() => setData(toISODate(new Date()))}>
+              <Button type="button" variant="outline" onClick={() => setData(toISODate(new Date()))}>
                 Avui
               </Button>
             )}
@@ -561,7 +561,6 @@ export default function NetejaPage() {
               </span>
               <Button
                 type="button"
-                size="sm"
                 variant="outline"
                 onClick={registrarPagament}
                 disabled={pagant || !personId || aPagar <= 0}

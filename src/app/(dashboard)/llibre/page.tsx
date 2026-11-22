@@ -160,7 +160,7 @@ export default function LlibrePage() {
 
       <Card className="mb-6">
         <CardBody className="flex flex-wrap items-end gap-3">
-          <Field label="Any">
+          <Field label="Any" className="min-w-28 flex-1">
             <Select value={any} onChange={(e) => aplicarPeriode(e.target.value, mes)}>
               <option value="">Tots</option>
               {ANYS.map((a) => (
@@ -168,7 +168,7 @@ export default function LlibrePage() {
               ))}
             </Select>
           </Field>
-          <Field label="Mes">
+          <Field label="Mes" className="min-w-36 flex-1">
             <Select value={mes} onChange={(e) => aplicarPeriode(any, e.target.value)} disabled={!any}>
               <option value="">Tot l’any</option>
               {MESOS.map((nom, i) => (
@@ -176,10 +176,10 @@ export default function LlibrePage() {
               ))}
             </Select>
           </Field>
-          <Field label="Des de">
+          <Field label="Des de" className="min-w-40 flex-1">
             <Input type="date" value={desde} onChange={(e) => { setDesde(e.target.value); setAny(''); setMes(''); }} />
           </Field>
-          <Field label="Fins a">
+          <Field label="Fins a" className="min-w-40 flex-1">
             <Input type="date" value={fins} onChange={(e) => { setFins(e.target.value); setAny(''); setMes(''); }} />
           </Field>
           <label className="flex h-10 items-center gap-2 text-sm text-slate-700">
