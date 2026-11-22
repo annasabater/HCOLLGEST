@@ -221,6 +221,7 @@ export function PeriodeCompacte({
           className="inline-flex items-center gap-1.5 whitespace-nowrap px-3 text-sm font-bold text-slate-900 hover:bg-slate-50"
         >
           {etiqueta}
+          {estat.tipus !== 'per' && estat.off === 0 && rang?.fins === avui && <span className="text-[12.5px] font-normal text-slate-500">· fins avui</span>}
           <ChevronDown className="h-4 w-4 text-slate-500" />
         </button>
         <button
@@ -344,7 +345,6 @@ export function PeriodeEnLinia({
   primerDia?: string;
 }) {
   const rang = estat.tipus === 'per' ? null : rangPeriode(estat.tipus, estat.off, avui);
-  const curt = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 
   function triaTipus(t: TipusPeriode | 'per') {
     if (t === estat.tipus) return;
@@ -390,11 +390,13 @@ export function PeriodeEnLinia({
           <button
             type="button"
             onClick={() => onChange({ tipus: estat.tipus, off: 0 })}
-            title={estat.off === 0 ? 'Període actual' : 'Tornar al període actual'}
-            className="flex min-w-[9.5rem] flex-col items-center justify-center px-3 leading-tight hover:bg-slate-50"
+            // Les dates exactes, en passar-hi el ratolí.
+            title={`${fmt(rang!.desde)} – ${fmt(rang!.fins)}${estat.off === 0 ? '' : ' · clica per tornar al període actual'}`}
+            className="flex min-w-[9.5rem] items-center justify-center gap-1.5 whitespace-nowrap px-3 hover:bg-slate-50"
           >
             <span className="text-sm font-bold text-slate-900">{rang!.etiqueta}</span>
-            <span className="text-[11px] text-slate-500">{curt(rang!.desde)} – {curt(rang!.fins)}</span>
+            {/* Només si el període encara corre (s'atura avui). */}
+            {estat.off === 0 && rang!.fins === avui && <span className="text-[12.5px] text-slate-500">· fins avui</span>}
           </button>
           <button type="button" aria-label="Període següent" disabled={estat.off >= 0} onClick={() => onChange({ tipus: estat.tipus, off: estat.off + 1 })} className={cn(fletxa, 'border-l border-slate-200')}>
             <ChevronRight className="h-4 w-4" />
