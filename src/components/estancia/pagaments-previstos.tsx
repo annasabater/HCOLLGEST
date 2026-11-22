@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { formatDate, formatEur } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
@@ -55,6 +56,9 @@ export function PagamentsPrevistos({
     }
   }
 
+  // «Marcar pagat» demana confirmació: només tanca l'avís, no crea cap pagament.
+  const [perMarcar, setPerMarcar] = useState<string | null>(null);
+
   async function marcarPagat(id: string, pagat: boolean) {
     setBusy(id);
     try {
@@ -79,6 +83,19 @@ export function PagamentsPrevistos({
 
   return (
     <div className="space-y-3">
+      <ConfirmDialog
+        open={perMarcar !== null}
+        danger={false}
+        title="Marcar pagat"
+        message="Això només tanca l’avís, no registra el pagament. Si no el registres, no sortirà a l’estada, ni a les factures, ni al Balanç."
+        confirmLabel="Marcar pagat"
+        onCancel={() => setPerMarcar(null)}
+        onConfirm={async () => {
+          const id = perMarcar;
+          setPerMarcar(null);
+          if (id) await marcarPagat(id, true);
+        }}
+      />
       {previstos.length === 0 ? (
         <p className="text-sm text-slate-400">Cap cobrament pendent registrat.</p>
       ) : (
@@ -105,7 +122,7 @@ export function PagamentsPrevistos({
                 ) : null}
                 <div className="ml-auto flex items-center gap-1">
                   {!p.pagat && (
-                    <Button variant="outline" size="sm" disabled={busy === p.id} onClick={() => marcarPagat(p.id, true)}>
+                    <Button variant="outline" size="sm" disabled={busy === p.id} onClick={() => setPerMarcar(p.id)}>
                       <Check className="h-4 w-4" /> Marcar pagat
                     </Button>
                   )}

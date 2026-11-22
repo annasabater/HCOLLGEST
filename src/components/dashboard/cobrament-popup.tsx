@@ -124,6 +124,9 @@ export function CobramentPopup({ items }: { items: CobramentItem[] }) {
               </div>
             </div>
           ))}
+          <p className="px-1 pt-1 text-xs text-slate-500">
+            «Ja està pagat» només tanca l’avís, no registra el pagament. Si no el registres, no sortirà a l’estada, ni a les factures, ni al Balanç.
+          </p>
         </div>
 
         <div className="flex justify-end border-t border-slate-100 px-5 py-3">
