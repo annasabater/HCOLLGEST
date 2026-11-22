@@ -137,6 +137,80 @@ function Pista({ e, avui }: { e: EstadaEnCurs; avui: string }) {
   );
 }
 
+const dm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+
+/**
+ * Un paràgraf per tram (l'estada i cada ampliació), com el full d'Ocupació: dates,
+ * nits, contracte, import i els pagaments amb el dia i la factura. A sota, l'avís del
+ * pròxim cobrament pendent. Es veu sense obrir la fila.
+ */
+function TramsIPagaments({ e, avui }: { e: EstadaEnCurs; avui: string }) {
+  if (e.trams.length === 0) return null;
+  const proper = e.pendents[0];
+  const dies = proper ? diesEntreDies(avui, proper.data) : 0;
+  return (
+    <div className="grid gap-1 px-4 pb-3 sm:pl-[88px] sm:pr-5">
+      {e.trams.map((t, n) => {
+        const cobs = e.cobraments.filter((c) => c.tramId === t.id);
+        const pends = e.pendents.filter((p) => p.tramId === t.id);
+        const total = cobs.reduce((a, c) => a + c.import, 0) + pends.reduce((a, p) => a + p.import, 0);
+        return (
+          <p key={t.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[13px] leading-relaxed text-slate-600">
+            <span className={cn('h-2 w-2 shrink-0 self-center rounded-full', n === 0 ? 'bg-brand-700/60' : 'bg-violet-600')} />
+            <b className="min-w-[4.5rem] font-bold text-slate-900">{n === 0 ? 'Estada' : 'Ampliació'}</b>
+            <span className="whitespace-nowrap tabular-nums">
+              Del <b className="font-semibold text-slate-900">{dm(t.entrada)}</b> al{' '}
+              <b className="font-semibold text-slate-900">{dm(t.sortida)}</b> · {t.nits} nits
+            </span>
+            {t.numContracte && <span className="whitespace-nowrap text-xs text-slate-400">contracte {t.numContracte}</span>}
+            <span className="text-slate-300">—</span>
+            {total > 0 && <span className="whitespace-nowrap font-semibold text-slate-900">{eur(total)}</span>}
+            <span className="min-w-0 flex-1 text-[12.5px]">
+              {cobs.length === 0 && pends.length === 0 && <span className="text-slate-400">sense pagaments registrats</span>}
+              {cobs.map((c, i) => (
+                <span key={c.id} className="whitespace-nowrap">
+                  {i > 0 && <span className="text-slate-300"> · </span>}
+                  <b className="font-semibold text-slate-700">{eur(c.import)}</b> {dm(c.data)}
+                  {c.factura && <span className="text-slate-400"> Fra. {c.factura}</span>}
+                </span>
+              ))}
+              {pends.map((p, i) => (
+                <span key={p.id} className="whitespace-nowrap">
+                  {(cobs.length > 0 || i > 0) && <span className="text-slate-300"> · </span>}
+                  <span className="bg-brand-700 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-white">
+                    Pendent {eur(p.import)} · {dm(p.data)}
+                  </span>
+                </span>
+              ))}
+            </span>
+          </p>
+        );
+      })}
+      {proper && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-3 border border-l-4 border-amber-300 border-l-amber-500 bg-amber-50 px-3 py-2">
+          <span className="grid h-6 w-6 place-items-center bg-amber-500 text-[13px] font-extrabold text-white">€</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-bold text-amber-950">
+              Ha de pagar {eur(proper.import)} el {dm(proper.data)} (
+              {dies === 0 ? 'avui' : dies === 1 ? 'demà' : dies > 0 ? `d’aquí ${dies} dies` : `fa ${-dies} ${dies === -1 ? 'dia' : 'dies'}`})
+            </p>
+            <p className="text-xs text-amber-900">
+              {proper.concepte ? `${proper.concepte} · ` : ''}
+              Encara no està registrat. T’avisarà també al pop-up del tauler des del dia abans.
+            </p>
+          </div>
+          <Link
+            href={`/estancies/${proper.tramId}`}
+            className="border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-brand-700 hover:border-brand-600"
+          >
+            Registrar el pagament
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface Item {
   key: string;
   dia: string;
@@ -602,26 +676,6 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                         )}
                       </span>
                     </span>
-                    {(e.trams.length > 1 || e.pendents.length > 0) && (
-                      <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tabular-nums text-slate-600">
-                        {e.trams.length > 1 &&
-                          e.trams.map((t, n) => (
-                            <span key={t.id} className="inline-flex items-center gap-1.5">
-                              <span className={cn('h-2 w-2 rounded-full', n === 0 ? 'bg-brand-700/60' : 'bg-violet-600')} />
-                              <b className="font-semibold text-slate-800">{n === 0 ? 'Estada' : 'Ampliació'}</b>
-                              {dc(t.entrada)} → {dc(t.sortida)} · {t.nits} nits
-                            </span>
-                          ))}
-                        {e.pendents.map((p) => (
-                          <span
-                            key={p.id}
-                            className="ui-etiqueta rounded-full bg-amber-50 px-2 py-0.5 font-bold text-amber-900 ring-1 ring-amber-300"
-                          >
-                            Cobrament pendent · {eur(p.import)} · {dc(p.data)}
-                          </span>
-                        ))}
-                      </span>
-                    )}
                     <Pista e={e} avui={avui} />
                   </span>
                   <span className="col-start-2 flex flex-wrap items-center gap-2 sm:col-start-3 sm:grid sm:justify-items-end sm:gap-1">
@@ -641,6 +695,7 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                     )}
                   </span>
                 </button>
+                <TramsIPagaments e={e} avui={avui} />
 
                 {esObert && (
                   <div className="grid gap-4 px-4 pb-5 pt-1 sm:px-5 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] md:pl-[88px]">

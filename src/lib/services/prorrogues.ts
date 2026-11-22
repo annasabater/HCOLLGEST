@@ -61,6 +61,8 @@ export interface TramEstada {
 }
 export interface CobramentEstada {
   id: string;
+  /** Tram (estada) al qual pertany. */
+  tramId: string;
   import: number;
   data: string; // YYYY-MM-DD
   metode: string;
@@ -68,6 +70,7 @@ export interface CobramentEstada {
 }
 export interface PendentEstada {
   id: string;
+  tramId: string;
   import: number;
   data: string; // YYYY-MM-DD
   concepte: string | null;
@@ -274,10 +277,10 @@ export async function getEstadesEnCurs(now = new Date()): Promise<{ avui: string
       const meus = new Set(e.trams.map((t) => t.id));
       e.cobraments = cobs
         .filter((c) => meus.has(c.estanciaId))
-        .map((c) => ({ id: c.id, import: Number(c.import), data: diaMadrid(c.data), metode: c.metode, factura: c.factura?.numero ?? null }));
+        .map((c) => ({ id: c.id, tramId: c.estanciaId, import: Number(c.import), data: diaMadrid(c.data), metode: c.metode, factura: c.factura?.numero ?? null }));
       e.pendents = prev
         .filter((p) => meus.has(p.estanciaId))
-        .map((p) => ({ id: p.id, import: Number(p.import), data: diaMadrid(p.dataPrevista), concepte: p.concepte }));
+        .map((p) => ({ id: p.id, tramId: p.estanciaId, import: Number(p.import), data: diaMadrid(p.dataPrevista), concepte: p.concepte }));
     }
   }
   return { avui, estades };
