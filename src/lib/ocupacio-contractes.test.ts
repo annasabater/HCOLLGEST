@@ -63,3 +63,13 @@ describe('construeixFull', () => {
     expect(r.find((c) => c.clau === 'a')!.trams[0]!.pendents).toHaveLength(1);
   });
 });
+
+describe('construeixFull · dipòsits', () => {
+  it('els dipòsits compten com a pagaments; els comptes de propietat no els veuen', () => {
+    const e = est({ id: 'a', cobraments: [{ import: 650, data: '2026-10-15', metode: 'EFECTIU', factura: null, diposit: true }] });
+    const r = construeixFull([e], {});
+    expect(r[0]!.trams[0]!.pagaments).toEqual([{ import: 650, data: '2026-10-15', factura: null, diposit: true }]);
+    expect(r[0]!.trams[0]!.import).toBe(650);
+    expect(construeixFull([e], { restringit: true })[0]!.trams[0]!.pagaments).toEqual([]);
+  });
+});

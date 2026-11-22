@@ -172,6 +172,7 @@ function TramsIPagaments({ e, avui }: { e: EstadaEnCurs; avui: string }) {
                   {i > 0 && <span className="text-slate-300"> · </span>}
                   <b className="font-semibold text-slate-700">{eur(c.import)}</b> {dm(c.data)}
                   {c.factura && <span className="text-slate-400"> Fra. {c.factura}</span>}
+                  {c.diposit && <span className="text-slate-400"> dipòsit</span>}
                 </span>
               ))}
               {pends.map((p, i) => (
@@ -315,7 +316,7 @@ function Historial({
     ...e.cobraments.map((c) => ({
       key: `cob-${c.id}`,
       dia: c.data,
-      t: `Cobrat ${eur(c.import)}`,
+      t: `${c.diposit ? 'Dipòsit' : 'Cobrat'} ${eur(c.import)}`,
       m: [METODE[c.metode] ?? c.metode, c.factura ? `Fra. ${c.factura}` : null].filter(Boolean).join(' · '),
       dot: DOT_COBRAT,
     })),

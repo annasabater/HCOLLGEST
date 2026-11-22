@@ -17,7 +17,8 @@ export interface EstadaFull {
   sortida: string | null;
   observacions: string | null;
   viatgers: { id: string; nom: string; telefon: string | null; esTitular: boolean }[];
-  cobraments: { import: number; data: string; metode: string; factura: string | null }[];
+  /** Pagaments: cobraments i dipòsits (`diposit: true`), amb la factura si en tenen. */
+  cobraments: { import: number; data: string; metode: string; factura: string | null; diposit?: boolean }[];
   previstos: { import: number; dataPrevista: string; pagat: boolean }[];
 }
 
@@ -26,6 +27,8 @@ export interface PagamentFull {
   data: string;
   /** Número de factura, només si el cobrament en té. */
   factura: string | null;
+  /** És un dipòsit (no un cobrament). */
+  diposit?: boolean;
 }
 
 export interface TramFull {
@@ -92,10 +95,11 @@ export function construeixFull(estades: EstadaFull[], o: OpcionsFull): Contracte
     }
 
     const trams: TramFull[] = ordenats.map((e) => {
-      const cobraments = o.restringit ? e.cobraments.filter((c) => c.metode !== 'ALTRES') : e.cobraments;
+      // Comptes de propietat: ni cobraments «Altres» ni dipòsits (fiances).
+      const cobraments = o.restringit ? e.cobraments.filter((c) => c.metode !== 'ALTRES' && !c.diposit) : e.cobraments;
       const pagaments = [...cobraments]
         .sort((a, b) => a.data.localeCompare(b.data))
-        .map((c) => ({ import: c.import, data: c.data, factura: c.factura }));
+        .map((c) => ({ import: c.import, data: c.data, factura: c.factura, ...(c.diposit ? { diposit: true } : {}) }));
       const pendents = e.previstos.filter((p) => !p.pagat).map((p) => ({ import: p.import, data: p.dataPrevista }));
       const total = r2(pagaments.reduce((a, p) => a + p.import, 0) + pendents.reduce((a, p) => a + p.import, 0));
       return { id: e.id, import: total > 0 ? total : null, del: e.entrada, al: e.sortida, pagaments, pendents };

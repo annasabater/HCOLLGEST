@@ -46,7 +46,7 @@ export async function GET(req: Request) {
   const pagaments = (t: TramFull) => {
     const l = [
       ...t.pagaments.map(
-        (g) => `<span class="pg"><b>${eur(g.import)}</b> ${dc(g.data)}${g.factura ? ` <span class="fra">Fra. ${esc(g.factura)}</span>` : ''}</span>`,
+        (g) => `<span class="pg"><b>${eur(g.import)}</b> ${dc(g.data)}${g.factura ? ` <span class="fra">Fra. ${esc(g.factura)}</span>` : ''}${g.diposit ? ' <span class="fra">dipòsit</span>' : ''}</span>`,
       ),
       ...t.pendents.map((x) => `<span class="pend">PENDENT ${eur(x.import)} · ${dc(x.data)}</span>`),
     ];

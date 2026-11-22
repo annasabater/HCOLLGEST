@@ -67,6 +67,8 @@ export interface CobramentEstada {
   data: string; // YYYY-MM-DD
   metode: string;
   factura: string | null;
+  /** És un dipòsit (no un cobrament). */
+  diposit?: boolean;
 }
 export interface PendentEstada {
   id: string;
@@ -261,7 +263,7 @@ export async function getEstadesEnCurs(now = new Date()): Promise<{ avui: string
   // Pagaments i cobraments previstos de cada cadena (una sola consulta per a totes).
   const ids = [...new Set(estades.flatMap((e) => e.trams.map((t) => t.id)))];
   if (ids.length) {
-    const [cobs, prev] = await Promise.all([
+    const [cobs, prev, dips] = await Promise.all([
       prisma.cobrament.findMany({
         where: { estanciaId: { in: ids } },
         orderBy: { data: 'asc' },
@@ -272,12 +274,23 @@ export async function getEstadesEnCurs(now = new Date()): Promise<{ avui: string
         orderBy: { dataPrevista: 'asc' },
         select: { id: true, estanciaId: true, import: true, dataPrevista: true, concepte: true },
       }),
+      // Els dipòsits també són pagaments de l'estada (els tornats no compten).
+      prisma.diposit.findMany({
+        where: { estanciaId: { in: ids }, estat: { not: 'TORNAT' } },
+        orderBy: { data: 'asc' },
+        select: { id: true, estanciaId: true, import: true, data: true, metode: true, factura: { select: { numero: true } } },
+      }),
     ]);
     for (const e of estades) {
       const meus = new Set(e.trams.map((t) => t.id));
-      e.cobraments = cobs
-        .filter((c) => meus.has(c.estanciaId))
-        .map((c) => ({ id: c.id, tramId: c.estanciaId, import: Number(c.import), data: diaMadrid(c.data), metode: c.metode, factura: c.factura?.numero ?? null }));
+      e.cobraments = [
+        ...cobs
+          .filter((c) => meus.has(c.estanciaId))
+          .map((c) => ({ id: c.id, tramId: c.estanciaId, import: Number(c.import), data: diaMadrid(c.data), metode: c.metode, factura: c.factura?.numero ?? null })),
+        ...dips
+          .filter((d) => meus.has(d.estanciaId))
+          .map((d) => ({ id: d.id, tramId: d.estanciaId, import: Number(d.import), data: diaMadrid(d.data), metode: d.metode, factura: d.factura?.numero ?? null, diposit: true })),
+      ].sort((a, b) => a.data.localeCompare(b.data));
       e.pendents = prev
         .filter((p) => meus.has(p.estanciaId))
         .map((p) => ({ id: p.id, tramId: p.estanciaId, import: Number(p.import), data: diaMadrid(p.dataPrevista), concepte: p.concepte }));
