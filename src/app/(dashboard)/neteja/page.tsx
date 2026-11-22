@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Save, Check, Undo2, CheckCheck, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Save, Check, Undo2, CheckCheck, Trash2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { ProximsDies } from '@/components/neteja/proxims-dies';
 import { PlanificacioNeteja } from '@/components/neteja/planificacio';
@@ -64,6 +64,17 @@ interface PlaDia {
 export default function NetejaPage() {
   // Dues pestanyes: el full d'un dia (com sempre) i la planificació per setmanes.
   const [vista, setVista] = useState<'dia' | 'planificacio'>('dia');
+  // Llista d'habitacions amagable; es recorda al navegador.
+  const [fullAmagat, setFullAmagat] = useState(false);
+  useEffect(() => {
+    try { setFullAmagat(window.localStorage.getItem('neteja_full_amagat') === '1'); } catch { /* ignora */ }
+  }, []);
+  const canviaFullAmagat = () => {
+    setFullAmagat((v) => {
+      try { window.localStorage.setItem('neteja_full_amagat', v ? '0' : '1'); } catch { /* ignora */ }
+      return !v;
+    });
+  };
   // Planificació del dia triat: es proposa al full fins que es desa (o es treu).
   const [pla, setPla] = useState<PlaDia | null>(null);
   const [ambProposta, setAmbProposta] = useState(true);
@@ -401,9 +412,21 @@ export default function NetejaPage() {
           <CardTitle>
             {persona?.nom ?? 'Full'} · {formatDate(data)}
           </CardTitle>
-          <span className="text-sm text-slate-500">{seleccionades} habitacions</span>
+          <span className="flex items-center gap-3 text-sm text-slate-500">
+            {seleccionades} habitacions
+            <button
+              type="button"
+              onClick={canviaFullAmagat}
+              aria-expanded={!fullAmagat}
+              className="inline-flex items-center gap-1 border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:border-brand-600 hover:text-brand-700"
+            >
+              {fullAmagat ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+              {fullAmagat ? 'Mostra les habitacions' : 'Amaga les habitacions'}
+            </button>
+          </span>
         </CardHeader>
         <CardBody className="space-y-2">
+          {!fullAmagat && (<>
           {proposta && (
             <div className="flex flex-wrap items-center gap-3 border border-l-4 border-brand-200 border-l-brand-700 bg-brand-50/50 px-3.5 py-2.5 text-sm text-slate-800">
               <span className="min-w-0 flex-1">
@@ -588,6 +611,7 @@ export default function NetejaPage() {
             )}
             </>
           )}
+          </>)}
 
           {/* Una sola línia (proposta A): el que cal pagar a la dona de neteja (segons
               les tarifes configurades) a l'esquerra; «Registrar pagament» i «Desar full» a la dreta. */}
