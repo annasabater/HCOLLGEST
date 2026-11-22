@@ -342,7 +342,8 @@ export default function NetejaPage() {
         title="Neteja"
         subtitle={vista === 'dia' ? 'Full de neteja diari per persona' : 'Registre de neteges: les fetes i les que vénen'}
       />
-      <div role="tablist" aria-label="Neteja" className="ui-pestanyes mb-4 flex gap-6 border-b border-slate-200">
+      {/* Pestanyes com les de Finances: lletra normal, la triada en granat amb ratlla a sota. */}
+      <div role="tablist" aria-label="Neteja" className="mb-6 flex flex-wrap gap-1 border-b border-slate-200">
         {([['dia', 'Full del dia'], ['planificacio', 'Planificació']] as const).map(([v, l]) => (
           <button
             key={v}
@@ -351,8 +352,8 @@ export default function NetejaPage() {
             aria-selected={vista === v}
             onClick={() => setVista(v)}
             className={cn(
-              'ui-pestanya -mb-px border-b-2 pb-2 text-sm font-bold uppercase tracking-wide',
-              vista === v ? 'border-brand-700 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-800',
+              '-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors',
+              vista === v ? 'border-brand-700 text-brand-800' : 'border-transparent text-slate-500 hover:text-slate-800',
             )}
           >
             {l}
