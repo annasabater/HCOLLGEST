@@ -36,7 +36,7 @@ export async function GET(req: Request) {
   const auto = p.get('auto') === '1';
 
   const ids = (p.get('contractes') ?? '').split(',').map((x) => x.trim()).filter(Boolean);
-  const contractes = await getOcupacio(desde, fins, teVistaRestringida(user), ids);
+  const contractes = await getOcupacio(desde, fins, teVistaRestringida(user), ids, p.get('reserves') !== '0');
 
   const persones = (c: ContracteFull) =>
     c.persones
@@ -70,8 +70,8 @@ export async function GET(req: Request) {
   );
 
   const entrada = (c: ContracteFull, i: number) =>
-    `<div class="ent${i % 2 ? ' alt' : ''}" data-clau="${esc(c.clau)}"><div class="hab">${esc(c.habitacions.join('/'))}</div><div class="cos">` +
-    `<div class="pers">${persones(c)}${c.numero ? ` <span class="ctr">Contracte ${esc(c.numero)}</span>` : ''}${potEditar ? '<button type="button" class="lap no-print" title="Apunta alguna cosa">✎ apuntar</button>' : ''}</div>${c.trams.map(tram).join('')}` +
+    `<div class="ent${i % 2 ? ' alt' : ''}" data-clau="${esc(c.clau)}"><div class="hab${c.reserva ? ' res' : ''}">${esc(c.habitacions.join('/'))}</div><div class="cos">` +
+    `<div class="pers">${persones(c)}${c.numero ? ` <span class="ctr">Contracte ${esc(c.numero)}</span>` : ''}${c.reserva && c.trams[0]?.del ? ` <span class="ctr">· Reserva, entra el ${dc(c.trams[0].del)}</span>` : ''}${potEditar ? '<button type="button" class="lap no-print" title="Apunta alguna cosa">✎ apuntar</button>' : ''}</div>${c.trams.map(tram).join('')}` +
     `<div class="nota"${notes.get(c.clau) ? '' : ' hidden'}>${esc(notes.get(c.clau) ?? '')}</div></div></div>`;
 
   const cos = contractes.length ? contractes.map(entrada).join('') : '<p class="buit">Cap estada en aquest període.</p>';
@@ -89,6 +89,7 @@ h1 { margin: 2px 0 0; font-size: 22px; font-weight: 600; color: #222; }
 .per small { color: #999; }
 .ent { display: flex; gap: 14px; padding: 9px 10px 8px; break-inside: avoid; }
 .ent.alt { background: #f9eff0; }
+.hab.res { color: #111; } /* reserva: encara no ha entrat */
 .hab { width: 38px; flex-shrink: 0; text-align: center; font-size: 26px; font-weight: 700; line-height: 1; color: #7a1f2b; }
 .cos { flex: 1; min-width: 0; }
 .pers { margin-bottom: 3px; font-size: 13px; }

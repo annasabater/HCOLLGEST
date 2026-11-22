@@ -77,3 +77,11 @@ describe('construeixFull · dipòsits', () => {
     expect(construeixFull([e], { restringit: true })[0]!.trams[0]!.pagaments).toEqual([]);
   });
 });
+
+describe('construeixFull · reserves', () => {
+  it('és reserva si encara no ha entrat', () => {
+    const r = construeixFull([est({ id: 'r', entrada: '2026-12-15', sortida: '2027-01-15' }), est({ id: 'a', viatgers: [{ id: 'h2', nom: 'Altre', telefon: null, esTitular: true }] })], { avui: '2026-11-22' });
+    expect(r.find((c) => c.clau === 'r')!.reserva).toBe(true);
+    expect(r.find((c) => c.clau === 'a')!.reserva).toBe(false);
+  });
+});

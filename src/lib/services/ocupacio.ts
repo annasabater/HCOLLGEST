@@ -19,10 +19,21 @@ const filtrePeriode = (desde: string, fins: string) => ({
   dataSortida: { gte: new Date(`${desde}T00:00:00.000Z`) },
 });
 
-/** Persones que han estat en alguna estada del període (per triar-les al full). */
-export async function getPersonesPeriode(desde: string, fins: string, restringit: boolean): Promise<PersonaPeriode[]> {
+/**
+ * Persones que han estat en alguna estada del període i, amb `reserves`, també les que
+ * tenen una estada que encara ha d'entrar (reserves, hagin pagat o no).
+ */
+export async function getPersonesPeriode(desde: string, fins: string, restringit: boolean, reserves = false): Promise<PersonaPeriode[]> {
+  const avui = new Date().toISOString().slice(0, 10);
   const estades = await prisma.estancia.findMany({
-    where: filtrePeriode(desde, fins),
+    where: reserves
+      ? {
+          OR: [
+            filtrePeriode(desde, fins),
+            { deletedAt: null, estat: { not: 'CANCELLADA' as const }, dataEntrada: { gt: new Date(`${avui}T23:59:59.999Z`) } },
+          ],
+        }
+      : filtrePeriode(desde, fins),
     orderBy: { dataEntrada: 'asc' },
     select: {
       observacions: true,
@@ -53,8 +64,14 @@ export async function getPersonesPeriode(desde: string, fins: string, restringit
  * l'historial (totes les seves estades, no només les del període), un paràgraf per
  * contracte. `claus` (opcional) limita el full als contractes triats.
  */
-export async function getOcupacio(desde: string, fins: string, restringit: boolean, claus?: string[]): Promise<ContracteFull[]> {
-  const persones = (await getPersonesPeriode(desde, fins, restringit)).map((p) => p.id);
+export async function getOcupacio(
+  desde: string,
+  fins: string,
+  restringit: boolean,
+  claus?: string[],
+  reserves = true,
+): Promise<ContracteFull[]> {
+  const persones = (await getPersonesPeriode(desde, fins, restringit, reserves)).map((p) => p.id);
   if (persones.length === 0) return [];
 
   const estades = await prisma.estancia.findMany({
@@ -107,7 +124,9 @@ export async function getOcupacio(desde: string, fins: string, restringit: boole
     previstos: e.pagamentsPrevistos.map((p) => ({ import: Number(p.import), dataPrevista: dia(p.dataPrevista) ?? '', pagat: p.pagat })),
   }));
 
-  const full = construeixFull(dades, { restringit });
+  const avui = new Date().toISOString().slice(0, 10);
+  // Sense reserves: fora els contractes que encara no han entrat i no toquen el període.
+  const full = construeixFull(dades, { restringit, avui }).filter((c) => reserves || !c.reserva || (c.trams[0]?.del ?? '') <= fins);
   if (!claus || claus.length === 0) return full;
   const triats = new Set(claus);
   return full.filter((c) => triats.has(c.clau));

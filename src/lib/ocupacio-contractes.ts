@@ -49,11 +49,15 @@ export interface ContracteFull {
   persones: { id: string; nom: string; telefon: string | null }[];
   trams: TramFull[];
   notes: string | null;
+  /** Reserva: encara no ha entrat (la primera entrada és després d'avui). */
+  reserva: boolean;
 }
 
 export interface OpcionsFull {
   /** Comptes de propietat: s'oculten les estades amb ZP11 i els cobraments «Altres». */
   restringit?: boolean;
+  /** Dia d'avui (YYYY-MM-DD): per saber quins contractes són reserves. */
+  avui?: string;
 }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -108,7 +112,9 @@ export function construeixFull(estades: EstadaFull[], o: OpcionsFull): Contracte
     const numeros = ordenats.map((e) => e.numContracte?.trim()).filter((n): n is string => !!n);
     const habitacions = [...new Set(ordenats.map((e) => e.habitacio).filter((h): h is string => !!h))];
     const notes = o.restringit ? null : ordenats.map((e) => e.observacions?.trim()).filter(Boolean).pop() ?? null;
-    out.push({ clau, numero: numeros[0] ? base(numeros[0]) : null, habitacions, persones, trams, notes });
+    const primera = trams[0]?.del ?? null;
+    const reserva = !!o.avui && !!primera && primera > o.avui;
+    out.push({ clau, numero: numeros[0] ? base(numeros[0]) : null, habitacions, persones, trams, notes, reserva });
   }
 
   // Els més recents primer, tots barrejats per data d'entrada (els sense número de

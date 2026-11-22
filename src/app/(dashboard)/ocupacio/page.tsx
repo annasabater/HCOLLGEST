@@ -19,11 +19,14 @@ interface Estada {
   del: string | null;
   al: string | null;
   trams: number;
+  /** Encara no ha entrat (reserva, hagi pagat o no). */
+  reserva: boolean;
 }
 
 const LS_ESTAT = 'ocupacio_estat';
 const LS_EXCLOSES = 'ocupacio_excloses';
 const LS_AMAGADA = 'ocupacio_llista_amagada';
+const LS_RESERVES = 'ocupacio_reserves';
 
 const dc = (iso: string | null) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(2, 4)}` : '');
 
@@ -43,6 +46,8 @@ export default function OcupacioPage() {
 
   // Es recorda al navegador l'últim que has deixat: període, estades que has tret i llista amagada.
   const [llistaAmagada, setLlistaAmagada] = useState(false);
+  // Les reserves que encara han d'entrar (encara que sigui després del període): per defecte, sí.
+  const [ambReserves, setAmbReserves] = useState(true);
   const excloses = useRef<Set<string>>(new Set());
   const [restaurat, setRestaurat] = useState(false);
   useEffect(() => {
@@ -52,6 +57,7 @@ export default function OcupacioPage() {
       const x = JSON.parse(window.localStorage.getItem(LS_EXCLOSES) ?? '[]') as unknown;
       if (Array.isArray(x)) excloses.current = new Set(x.filter((v): v is string => typeof v === 'string'));
       setLlistaAmagada(window.localStorage.getItem(LS_AMAGADA) === '1');
+      setAmbReserves(window.localStorage.getItem(LS_RESERVES) !== '0');
     } catch { /* sense localStorage: valors per defecte */ }
     setRestaurat(true);
   }, []);
@@ -63,12 +69,16 @@ export default function OcupacioPage() {
     if (!restaurat) return;
     try { window.localStorage.setItem(LS_AMAGADA, llistaAmagada ? '1' : '0'); } catch { /* ignora */ }
   }, [llistaAmagada, restaurat]);
+  useEffect(() => {
+    if (!restaurat) return;
+    try { window.localStorage.setItem(LS_RESERVES, ambReserves ? '1' : '0'); } catch { /* ignora */ }
+  }, [ambReserves, restaurat]);
 
   useEffect(() => {
     if (!restaurat) return;
     let viu = true;
     setCarregant(true);
-    getJSON<Estada[]>(`/api/ocupacio/contractes?desde=${desde}&fins=${fins}`)
+    getJSON<Estada[]>(`/api/ocupacio/contractes?desde=${desde}&fins=${fins}&reserves=${ambReserves ? '1' : '0'}`)
       .then((r) => {
         if (!viu) return;
         setEstades(r);
@@ -77,7 +87,7 @@ export default function OcupacioPage() {
       .catch(() => viu && setEstades([]))
       .finally(() => viu && setCarregant(false));
     return () => { viu = false; };
-  }, [desde, fins, restaurat]);
+  }, [desde, fins, restaurat, ambReserves]);
 
   // Desa quines estades has tret (les noves surten triades per defecte).
   function desaExcloses(tria: Set<string>) {
@@ -89,11 +99,11 @@ export default function OcupacioPage() {
 
   const totes = estades.length > 0 && triades.size === estades.length;
   const url = useMemo(() => {
-    const q = new URLSearchParams({ desde, fins });
+    const q = new URLSearchParams({ desde, fins, reserves: ambReserves ? '1' : '0' });
     // Si no se'n tria cap, el full queda buit (no «totes»): es marca amb un id que no existeix.
     q.set('contractes', triades.size ? [...triades].join(',') : '-');
     return `/imprimir/ocupacio?${q.toString()}`;
-  }, [desde, fins, triades]);
+  }, [desde, fins, triades, ambReserves]);
 
   const imprimeix = () => {
     const w = frame.current?.contentWindow;
@@ -145,6 +155,10 @@ export default function OcupacioPage() {
                 {totes ? 'Treu-les totes' : 'Tria-les totes'}
               </button>
             </div>
+            <label className="flex cursor-pointer items-center gap-2 border border-brand-200 bg-brand-50/40 px-3 py-2 text-sm text-slate-800">
+              <input type="checkbox" checked={ambReserves} onChange={(e) => setAmbReserves(e.target.checked)} className="h-4 w-4 accent-brand-700" />
+              Incloure les <b className="font-semibold">reserves</b> (les que encara han d&apos;entrar)
+            </label>
             <ul className="max-h-[70vh] divide-y divide-slate-100 overflow-y-auto border border-slate-200">
               {estades.map((x) => (
                 <li key={x.clau}>
@@ -152,7 +166,8 @@ export default function OcupacioPage() {
                     <input type="checkbox" checked={triades.has(x.clau)} onChange={() => alterna(x.clau)} className="mt-0.5 h-4 w-4 accent-brand-700" />
                     <span className="min-w-0">
                       <span className="block font-medium text-slate-800">{x.persones.map(nomPropi).join(', ')}</span>
-                      <span className="block text-xs text-slate-500">
+                      <span className={`block text-xs ${x.reserva ? 'text-brand-700' : 'text-slate-500'}`}>
+                        {x.reserva ? 'Reserva · ' : ''}
                         {x.numero ? `Contracte ${x.numero}` : 'Sense contracte'}
                         {x.habitacions.length ? ` · Hab. ${x.habitacions.join('/')}` : ''} · {dc(x.del)} → {dc(x.al)}
                         {x.trams > 1 ? ` · ${x.trams - 1} ${x.trams === 2 ? 'ampliació' : 'ampliacions'}` : ''}

@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     const desde = sp.get('desde') ?? '';
     const fins = sp.get('fins') ?? '';
     if (!RE_DATA.test(desde) || !RE_DATA.test(fins) || desde > fins) return badRequest('Període no vàlid');
-    const full = await getOcupacio(desde, fins, teVistaRestringida(auth));
+    const full = await getOcupacio(desde, fins, teVistaRestringida(auth), undefined, sp.get('reserves') !== '0');
     return ok(
       full.map((c) => ({
         clau: c.clau,
@@ -25,6 +25,7 @@ export async function GET(req: Request) {
         del: c.trams[0]?.del ?? null,
         al: c.trams.at(-1)?.al ?? null,
         trams: c.trams.length,
+        reserva: c.reserva,
       })),
     );
   } catch (err) {
