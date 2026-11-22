@@ -34,20 +34,22 @@ function Xip({ h, actiu, onClick }: { h: HabDia; actiu?: boolean; onClick?: () =
       onClick={onClick}
       title={fet ? 'Feta (desada al full del dia)' : 'Clica per canviar-la o deixar-hi una observació'}
       className={cn(
-        'inline-flex h-7 items-center gap-1.5 px-2 text-[13px] font-bold',
+        'inline-flex h-6 items-center gap-1 px-1.5 text-xs font-semibold',
         fet
-          ? 'border border-green-200 bg-green-50 text-green-700'
+          ? h.tipus === 'CANVI_COMPLET'
+            ? 'border border-green-300 bg-green-50 text-green-800'
+            : 'border border-green-100 bg-green-50/60 text-green-700'
           : h.tipus === 'CANVI_COMPLET'
             ? 'bg-brand-700 text-white'
-            : 'border border-slate-300 bg-white text-slate-700',
+            : 'border border-slate-200 bg-white text-slate-700',
         actiu && 'outline outline-2 outline-offset-2 outline-brand-700',
         !onClick && 'cursor-default',
       )}
     >
-      {fet && '✓ '}
-      {h.habitacioId ? h.nom : 'Zones'}
-      <span className="text-[11px] font-semibold opacity-80">{h.tipus === 'CANVI_COMPLET' ? 'sortida' : 'mant.'}</span>
-      {h.bugaderia && <span className="text-[11px] font-semibold opacity-75">· bugaderia</span>}
+      {fet && <span className="text-[10px]">✓</span>}
+      <b className="font-bold">{h.habitacioId ? h.nom : 'Zones'}</b>
+      <span className="text-[10.5px] font-medium opacity-75">{h.tipus === 'CANVI_COMPLET' ? 'sortida' : 'mant.'}</span>
+      {h.bugaderia && <span className="text-[10.5px] font-medium opacity-70">· bugaderia</span>}
       {h.nota && <MessageSquare className="h-3 w-3 opacity-70" />}
     </button>
   );
@@ -73,7 +75,7 @@ function NotaEditable({
   if (editant)
     return (
       <form
-        className="mt-2 flex gap-1.5"
+        className="flex w-full basis-full gap-1.5"
         onSubmit={async (e) => {
           e.preventDefault();
           await onDesa(valor);
@@ -87,12 +89,12 @@ function NotaEditable({
     );
   if (!text)
     return (
-      <button type="button" onClick={() => setEditant(true)} className="mt-2 text-xs font-semibold text-brand-700 hover:underline">
+      <button type="button" onClick={() => setEditant(true)} className="text-[11px] font-semibold text-slate-400 hover:text-brand-700">
         + {afegir}
       </button>
     );
   return (
-    <div className={cn('group mt-2 flex items-start gap-1.5 text-[13px]', className)}>
+    <div className={cn('group flex w-full basis-full items-start gap-1.5 text-[12.5px]', className)}>
       <button type="button" onClick={() => setEditant(true)} className="min-w-0 flex-1 text-left" title="Clica per canviar-la">
         <b>{etiqueta}:</b> {text}
       </button>
@@ -215,11 +217,11 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
     const lliures = dades.habitacions.filter((h) => !d.habitacions.some((x) => x.habitacioId === h.id));
     const planificat = !d.fet;
     return (
-      <div key={d.data} className={cn('relative min-w-0 flex-1 basis-72 p-3', planificat ? 'border-[1.5px] border-dashed border-brand-200 bg-brand-50/30' : 'border border-slate-200 bg-white')}>
-        <div className="mb-2 flex flex-wrap items-baseline gap-x-2">
-          <b className="ui-page-title text-[15px] text-slate-900">{nomDia(d.data)}</b>
-          <span className="text-xs text-slate-500">{nomPersona(persona)}</span>
-          <span className="ml-auto text-[10.5px] font-extrabold uppercase tracking-wider">
+      <div key={d.data} className={cn('relative min-w-0 flex-1 basis-64 px-3 py-2.5', planificat ? 'border border-dashed border-brand-200 bg-brand-50/20' : 'border border-slate-100 bg-white')}>
+        <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2">
+          <b className="ui-page-title text-sm text-slate-900">{nomDia(d.data)}</b>
+          <span className="text-[11px] text-slate-400">{nomPersona(persona)}</span>
+          <span className="ml-auto text-[9.5px] font-bold uppercase tracking-wider">
             {d.fet && d.pendent ? (
               <span className="text-slate-500">Desada · pendent</span>
             ) : d.fet ? (
@@ -231,7 +233,7 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
             )}
           </span>
         </div>
-        <div className="relative flex flex-wrap gap-1.5">
+        <div className="relative flex flex-wrap gap-1">
           {d.habitacions.map((h) => (
             <span key={h.id} className="relative">
               <Xip h={h} actiu={obert === h.id} onClick={h.origen === 'PLA' ? () => setObert(obert === h.id ? null : h.id) : undefined} />
@@ -257,7 +259,7 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
               aria-label="Afegir una habitació"
               value=""
               onChange={(e) => e.target.value && afegeixHab(d.data, e.target.value, persona)}
-              className="h-7 w-auto border-dashed py-0 text-xs font-bold text-brand-700"
+              className="h-6 w-auto border-dashed border-slate-200 py-0 pl-1.5 text-[11px] font-semibold text-slate-400 hover:border-brand-400 hover:text-brand-700"
             >
               <option value="">+ habitació</option>
               {lliures.map((h) => (
@@ -270,20 +272,21 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
           )}
         </div>
         {d.habitacions.filter((h) => h.nota).map((h) => (
-          <p key={`n-${h.id}`} className="mt-1.5 text-[13px] text-slate-700">
+          <p key={`n-${h.id}`} className="mt-1 text-[12px] text-slate-600">
             <b className="text-brand-700">Hab. {h.nom}:</b> {h.nota}
           </p>
         ))}
-        <NotaEditable text={d.nota?.text ?? null} etiqueta="Dia" afegir="observació del dia" onDesa={desaNota(d.data, 'DIA', d.nota?.text ?? null)} className="border-l-2 border-slate-200 pl-2 text-slate-600" />
-        <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-2 text-xs">
-          <button type="button" onClick={() => onObreDia(d.data, persona)} className="inline-flex items-center gap-1 font-semibold text-brand-700 hover:underline">
-            Obrir al full del dia <ExternalLink className="h-3 w-3" />
+        {/* Les accions del dia, en una sola línia discreta. */}
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px]">
+          <NotaEditable text={d.nota?.text ?? null} etiqueta="Dia" afegir="observació" onDesa={desaNota(d.data, 'DIA', d.nota?.text ?? null)} className="border-l-2 border-slate-200 pl-2 text-slate-600" />
+          <button type="button" onClick={() => onObreDia(d.data, persona)} className="inline-flex items-center gap-1 font-semibold text-slate-400 hover:text-brand-700">
+            Full del dia <ExternalLink className="h-3 w-3" />
           </button>
           {planificat && d.habitacions.length > 0 && (
             <button
               type="button"
               onClick={() => fes(() => delJSON(`/api/neteja/planificacio?dia=${d.data}`))}
-              className="ml-auto inline-flex items-center gap-1 text-slate-400 hover:text-red-700"
+              className="ml-auto inline-flex items-center gap-1 text-slate-300 hover:text-red-700"
               title="Treu tot el que hi ha planificat aquest dia"
             >
               <Trash2 className="h-3 w-3" /> Esborrar el dia
@@ -343,9 +346,9 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
           ['Bugaderia', `${r.bugaderia} ${r.bugaderia === 1 ? 'cop' : 'cops'}`],
           ['Per pagar', formatEur(r.perPagar)],
         ] as const).map(([k, v], i) => (
-          <div key={k} className={cn('px-4 py-3', i > 0 && 'sm:border-l sm:border-slate-200')}>
-            <p className="text-[10.5px] font-extrabold uppercase tracking-[0.12em] text-slate-400">{k}</p>
-            <p className={cn('ui-page-title mt-0.5 text-xl font-bold', i === 4 ? 'text-brand-700' : 'text-slate-900')}>{v}</p>
+          <div key={k} className={cn('px-4 py-2.5', i > 0 && 'sm:border-l sm:border-slate-100')}>
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-400">{k}</p>
+            <p className={cn('ui-page-title mt-0.5 text-lg font-semibold', i === 4 ? 'text-brand-700' : 'text-slate-900')}>{v}</p>
           </div>
         ))}
       </div>
@@ -353,22 +356,22 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="ui-card border border-slate-200 bg-white px-4">
-        {dades.setmanes.map((s) => {
+        {[...dades.setmanes].reverse().map((s) => {
           const buits = diesBuits
             .filter((b) => b.data >= s.dilluns && b.data <= s.diumenge && !s.dies.some((d) => d.data === b.data))
             .map((b) => ({ dia: { data: b.data, treballadorId: b.persona, habitacions: [], nota: null, fet: false, pendent: false, pagament: null } as DiaNeteja, persona: b.persona }));
           const tots = [...s.dies.map((d) => ({ dia: d, persona: undefined as string | undefined })), ...buits].sort((a, b) => a.dia.data.localeCompare(b.dia.data));
           const futura = s.dilluns >= setmanaActual;
           return (
-            <div key={s.dilluns} className="grid gap-3 border-b border-slate-200 py-3.5 last:border-b-0 md:grid-cols-[7.5rem_minmax(0,1fr)]">
+            <div key={s.dilluns} className="grid gap-2.5 border-b border-slate-100 py-3 last:border-b-0 md:grid-cols-[7rem_minmax(0,1fr)]">
               <div>
-                <p className="text-[10.5px] font-extrabold uppercase tracking-[0.12em] text-slate-400">Setmana</p>
-                <p className="text-[13px] font-bold text-slate-700">{curt(s.dilluns)} – {curt(s.diumenge)}</p>
+                <p className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-400">Setmana</p>
+                <p className="text-[13px] font-semibold text-slate-700">{curt(s.dilluns)} – {curt(s.diumenge)}</p>
                 {futura && (
                   <button
                     type="button"
                     onClick={() => fes(() => postJSON('/api/neteja/planificacio/repetir', { dilluns: s.dilluns }))}
-                    className="mt-1.5 inline-flex items-center gap-1 text-left text-xs font-semibold text-brand-700 hover:underline"
+                    className="mt-1 inline-flex items-center gap-1 text-left text-[11px] font-semibold text-slate-400 hover:text-brand-700"
                     title="Copia les habitacions i els dies de la setmana anterior"
                   >
                     <Copy className="h-3 w-3" /> Repetir la setmana passada
@@ -377,9 +380,9 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
               </div>
               <div>
                 {tots.length === 0 ? (
-                  <p className="py-1 text-sm text-slate-400">Cap neteja.</p>
+                  <p className="py-0.5 text-xs text-slate-300">Cap neteja.</p>
                 ) : (
-                  <div className="flex flex-wrap gap-3">{tots.map((x) => targetaDia(x.dia, x.persona))}</div>
+                  <div className="flex flex-wrap gap-2">{tots.map((x) => targetaDia(x.dia, x.persona))}</div>
                 )}
                 {(() => {
                   // «+ dia»: els dies d'aquesta setmana (d'avui endavant) que encara no hi són.
@@ -389,14 +392,14 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
                   if (lliures.length === 0) return null;
                   const persona = tots.find((x) => x.dia.treballadorId)?.dia.treballadorId ?? persona0;
                   return (
-                    <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs">
-                      <span className="font-semibold text-slate-500">+ dia:</span>
+                    <div className="mt-2 flex flex-wrap items-center gap-1 text-[11px]">
+                      <span className="font-semibold text-slate-400">+ dia</span>
                       {lliures.map((d) => (
                         <button
                           key={d}
                           type="button"
                           onClick={() => setDiesBuits((b) => [...b.filter((x) => x.data !== d), { data: d, persona }])}
-                          className="h-7 border border-dashed border-brand-200 bg-white px-2 font-semibold text-brand-700 hover:border-brand-600 hover:bg-brand-50"
+                          className="h-6 border border-dashed border-slate-200 bg-white px-1.5 font-semibold text-slate-500 hover:border-brand-400 hover:text-brand-700"
                           title="Afegeix aquest dia; després tria les habitacions amb «+ habitació»"
                         >
                           {nomDia(d)}
@@ -405,13 +408,15 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
                     </div>
                   );
                 })()}
+                <div className="mt-2 flex flex-wrap">
                 <NotaEditable
                   text={s.nota?.text ?? null}
                   etiqueta="Setmana"
                   afegir="nota de la setmana"
                   onDesa={desaNota(s.dilluns, 'SETMANA', s.nota?.text ?? null)}
-                  className="border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-amber-950"
+                  className="border border-amber-100 bg-amber-50/70 px-2.5 py-1 text-amber-950"
                 />
+                </div>
               </div>
             </div>
           );
