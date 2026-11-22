@@ -29,7 +29,11 @@ export async function GET(req: Request) {
   const fins = RE.test(p.get('fins') ?? '') ? p.get('fins')! : avui;
   const auto = p.get('auto') === '1';
 
-  const { setmanes, treballadors, resum } = await getPlanificacio(desde, fins);
+  const { setmanes: totesSetmanes, treballadors, resum } = await getPlanificacio(desde, fins);
+  // En períodes llargs (any, trimestre…) només surten les setmanes amb dades; en un mes o menys,
+  // les buides es mantenen per poder escriure-hi a mà.
+  const dies = (Date.parse(`${fins}T00:00:00Z`) - Date.parse(`${desde}T00:00:00Z`)) / 86_400_000 + 1;
+  const setmanes = dies > 31 ? totesSetmanes.filter((s) => s.dies.length > 0 || s.nota) : totesSetmanes;
   const persones = [
     ...new Set(setmanes.flatMap((s) => s.dies.map((d) => d.treballadorId)).filter((x): x is string => !!x)),
   ].map((id) => treballadors.find((t) => t.id === id)?.nom ?? '');
@@ -116,7 +120,7 @@ footer { margin-top: 10px; padding-top: 6px; border-top: 1px solid #e4e4e4; font
   <div><div class="marca">HOSTAL COLL</div><h1>Neteja${persones.length ? ` · ${esc(persones.join(', '))}` : ''}</h1></div>
   <div class="per">Del <strong>${dllarg(desde)}</strong> al <strong>${dllarg(fins)}</strong><br><small>Imprès el ${dllarg(avui)}</small></div>
 </header>
-${files.join('')}
+${files.join('') || '<p style="color:#888;padding:16px 4px">Cap neteja en aquest període.</p>'}
 <div class="llegenda"><span><b style="color:#7a1f2b">sortida</b> = a fons</span><span>mant. = manteniment</span><span>✓ feta</span><span><span class="pp">PER PAGAR</span> feta i no pagada</span><span class="pl" style="font-size:10px">PLANIF. = encara no feta</span></div>
 <div class="resum"><b class="t">Resum del període:</b> ${resum.dies} dies · ${resum.sortides} sortides · ${resum.manteniments} manteniments · bugaderia ${resum.bugaderia} ${resum.bugaderia === 1 ? 'cop' : 'cops'} · <b>per pagar ${eur(resum.perPagar)}</b></div>
 <footer>Les caselles buides, per escriure-hi a mà.</footer>
