@@ -49,12 +49,12 @@ export async function getPersonesPeriode(desde: string, fins: string, restringit
 }
 
 /**
- * Full per contracte de les persones triades (o, si no se'n tria cap, de totes les del
- * període). De cada persona surt TOT l'historial: totes les seves estades, no només les
- * del període.
+ * Full per contracte de les persones que han estat al període: de cada persona surt TOT
+ * l'historial (totes les seves estades, no només les del període), un paràgraf per
+ * contracte. `claus` (opcional) limita el full als contractes triats.
  */
-export async function getOcupacio(desde: string, fins: string, restringit: boolean, ids?: string[]): Promise<ContracteFull[]> {
-  const persones = ids && ids.length ? ids : (await getPersonesPeriode(desde, fins, restringit)).map((p) => p.id);
+export async function getOcupacio(desde: string, fins: string, restringit: boolean, claus?: string[]): Promise<ContracteFull[]> {
+  const persones = (await getPersonesPeriode(desde, fins, restringit)).map((p) => p.id);
   if (persones.length === 0) return [];
 
   const estades = await prisma.estancia.findMany({
@@ -96,5 +96,8 @@ export async function getOcupacio(desde: string, fins: string, restringit: boole
     previstos: e.pagamentsPrevistos.map((p) => ({ import: Number(p.import), dataPrevista: dia(p.dataPrevista) ?? '', pagat: p.pagat })),
   }));
 
-  return construeixFull(dades, { restringit });
+  const full = construeixFull(dades, { restringit });
+  if (!claus || claus.length === 0) return full;
+  const triats = new Set(claus);
+  return full.filter((c) => triats.has(c.clau));
 }
