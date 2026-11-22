@@ -84,7 +84,7 @@ export default async function FacturesPage({
             {factures.length} factures · <Eur value={totalPendent} /> pendent de cobrament
           </>
         }
-        actions={<HideAmountsButton />}
+        actions={<HideAmountsButton nomesIcona />}
       />
 
       <FinancesNav />

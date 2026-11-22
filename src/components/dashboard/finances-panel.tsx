@@ -34,7 +34,7 @@ export function FinancesPanel({ items }: { items: FinanceKpi[] }) {
   return (
     <div className="mb-6">
       <div className="mb-2 flex items-center justify-end">
-        <HideAmountsButton />
+        <HideAmountsButton nomesIcona />
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {items.map((f) => {

@@ -269,7 +269,7 @@ export default function DeureHaverPage() {
       <div className="print:hidden"><FinancesNav /></div>
 
       <div className="mb-4 print:hidden">
-        <NavegadorPeriode estat={estat} onChange={setEstat} avui={avui} extra={<HideAmountsButton />} />
+        <NavegadorPeriode estat={estat} onChange={setEstat} avui={avui} extra={<HideAmountsButton nomesIcona />} />
       </div>
       <p className="mb-4 hidden text-sm font-semibold print:block">Període: del {dataLlarga(desde)} al {dataLlarga(fins)}</p>
 
