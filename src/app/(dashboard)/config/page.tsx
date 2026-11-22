@@ -1,5 +1,8 @@
 import Link from 'next/link';
-import { Download, ShieldCheck, BookOpen, Mail, CloudUpload, Shirt, MessageCircle, Smartphone, CalendarDays } from 'lucide-react';
+import { cookies } from 'next/headers';
+import { Download, ShieldCheck, BookOpen, Mail, CloudUpload, Shirt, MessageCircle, Smartphone, CalendarDays, Palette } from 'lucide-react';
+import { EstilConfig } from '@/components/config/estil-config';
+import { ESTIL_COOKIE, estilValid } from '@/lib/estil';
 import { WhatsappConfig } from '@/components/config/whatsapp-config';
 import { NotificacionsConfig } from '@/components/config/notificacions-config';
 import { CalendariConfig } from '@/components/config/calendari-config';
@@ -45,6 +48,14 @@ export default async function ConfigPage({
   return (
     <div className="space-y-4">
       <PageHeader title="Configuració" subtitle="Establiment, Mossos, facturació i RGPD" />
+
+      <CollapsibleCard
+        title="Estil visual"
+        icon={<Palette className="h-4 w-4 text-brand-600" />}
+        defaultOpen
+      >
+        <EstilConfig actual={estilValid((await cookies()).get(ESTIL_COOKIE)?.value)} />
+      </CollapsibleCard>
 
       <ConfigForm />
 

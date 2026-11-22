@@ -91,7 +91,7 @@ export function Sidebar({ role, restringit = false }: { role: Role; restringit?:
         return (
           <div key={gi} className={gi > 0 ? 'mt-4' : ''}>
             {group.title && (
-              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-brand-400">
+              <p className="app-nav-group px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-brand-400">
                 {group.title}
               </p>
             )}
@@ -102,8 +102,9 @@ export function Sidebar({ role, restringit = false }: { role: Role; restringit?:
                 <Link
                   key={item.href}
                   href={item.href}
+                  aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    'app-nav-item flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                     active ? 'bg-brand-700 text-white' : 'text-brand-100 hover:bg-brand-800',
                   )}
                 >

@@ -122,6 +122,11 @@ La UI replica la identidad de la web del hostal (`../hostalcoll/index.html`):
 **Cormorant Garamond** (titulares, `font-serif`) + **Manrope** (texto, `font-sans`) vía `next/font`.
 Definido en `src/app/globals.css` (`@theme`) y `src/app/layout.tsx`.
 
+**Estilo «nou» opcional** (/config → Estil visual, galeta `estil` por navegador, `src/lib/estil.ts`):
+cuadrado, grises de hostalcoll.com, títulos Montserrat, barra lateral clara. Es solo CSS bajo
+`html[data-estil="nou"]` en `globals.css` (variables de Tailwind + clases gancho `app-sidebar`,
+`app-nav-item`, `ui-card`, `ui-card-title`, `ui-page-title`…). Sin la galeta → estilo original intacto.
+
 ## Estado actual
 
 **Todas las fases (0–7) implementadas:**

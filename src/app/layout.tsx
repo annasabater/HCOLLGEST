@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
-import { Manrope, Cormorant_Garamond } from 'next/font/google';
+import { cookies } from 'next/headers';
+import { Manrope, Cormorant_Garamond, Montserrat } from 'next/font/google';
+import { ESTIL_COOKIE, estilValid } from '@/lib/estil';
 import './globals.css';
 
 const manrope = Manrope({
@@ -13,6 +15,14 @@ const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-cormorant',
+  display: 'swap',
+});
+
+// Títols del nou estil (vegeu src/lib/estil.ts).
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  weight: ['600', '700'],
+  variable: '--font-montserrat',
   display: 'swap',
 });
 
@@ -32,9 +42,10 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: 'Hostal Coll', statusBarStyle: 'default' },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const estil = estilValid((await cookies()).get(ESTIL_COOKIE)?.value);
   return (
-    <html lang="ca" className={`${manrope.variable} ${cormorant.variable}`}>
+    <html lang="ca" data-estil={estil} className={`${manrope.variable} ${cormorant.variable} ${montserrat.variable}`}>
       <body>{children}</body>
     </html>
   );

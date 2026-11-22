@@ -62,6 +62,109 @@ input::-webkit-date-and-time-value {
   line-height: 1.5;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   NOU ESTIL (opcional, /config → Estil visual). Només s'aplica amb
+   <html data-estil="nou">; sense, tot queda com sempre. Quadrat i net (inspirat
+   en Tezel) amb els grisos de hostalcoll.com. Vegeu src/lib/estil.ts.
+   ═══════════════════════════════════════════════════════════════════════════ */
+html[data-estil='nou'] {
+  /* Cantonades rectes a tot arreu (rounded-full es queda: avatars i pastilles). */
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+  --radius-4xl: 0;
+  /* Grisos neutres (els de la web) en lloc dels blavosos. */
+  --color-slate-50: oklch(98.5% 0 0);
+  --color-slate-100: oklch(97% 0 0);
+  --color-slate-200: oklch(92.2% 0 0);
+  --color-slate-300: oklch(87% 0 0);
+  --color-slate-400: oklch(70.8% 0 0);
+  --color-slate-500: oklch(55.6% 0 0);
+  --color-slate-600: oklch(43.9% 0 0);
+  --color-slate-700: oklch(37.1% 0 0);
+  --color-slate-800: oklch(26.9% 0 0);
+  --color-slate-900: oklch(20.5% 0 0);
+  --color-slate-950: oklch(14.5% 0 0);
+  /* Títols en Montserrat en lloc de Cormorant. */
+  --font-serif: var(--font-montserrat), var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --background: #f4f4f4;
+}
+html[data-estil='nou'] .rounded {
+  border-radius: 0;
+}
+/* Sense ombres: vores fines. */
+html[data-estil='nou'] :is(.shadow-sm, .shadow) {
+  --tw-shadow: 0 0 #0000;
+}
+html[data-estil='nou'] .app-main {
+  background: #f4f4f4;
+}
+html[data-estil='nou'] .ui-card {
+  border-color: #e0e0e0;
+}
+/* Títols de targeta: petits, en majúscules i espaiats, en granat. */
+html[data-estil='nou'] .ui-card-title {
+  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-brand-700);
+}
+html[data-estil='nou'] .ui-page-title {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+/* Barra lateral clara, apartats en majúscules, ratlla granat a l'actiu. */
+html[data-estil='nou'] .app-sidebar {
+  background: #f8f8f8;
+  color: #1a1a1a;
+  border-right: 1px solid #e0e0e0;
+}
+html[data-estil='nou'] .app-sidebar .border-brand-800 {
+  border-color: #e0e0e0;
+}
+html[data-estil='nou'] .app-sidebar :is(.text-brand-100, .text-brand-200, .text-brand-300) {
+  color: #444444;
+}
+html[data-estil='nou'] .app-logo {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+html[data-estil='nou'] .app-logo::first-letter {
+  color: var(--color-brand-700);
+}
+html[data-estil='nou'] .app-nav-group {
+  color: var(--color-brand-700);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+html[data-estil='nou'] .app-nav-item {
+  color: #444444;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+html[data-estil='nou'] .app-nav-item svg {
+  display: none;
+}
+html[data-estil='nou'] .app-nav-item:hover {
+  background: #eeeeee;
+}
+html[data-estil='nou'] .app-nav-item[aria-current='page'] {
+  background: #eeeeee;
+  color: var(--color-brand-700);
+  box-shadow: inset 3px 0 0 var(--color-brand-700);
+}
+
 /* Selecció granate (com a la web). */
 ::selection {
   background: #7a1f2b;
