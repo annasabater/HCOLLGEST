@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { Download, ShieldCheck, BookOpen, Mail, CloudUpload, Shirt, MessageCircle, Smartphone, CalendarDays, Palette, Phone } from 'lucide-react';
 import { EstilConfig } from '@/components/config/estil-config';
 import { MeuWhatsappConfig } from '@/components/config/meu-whatsapp-config';
-import { ESTIL_COOKIE, estilValid } from '@/lib/estil';
+import { BARRA_COOKIE, ESTIL_COOKIE, barraValida, estilValid } from '@/lib/estil';
 import { WhatsappConfig } from '@/components/config/whatsapp-config';
 import { NotificacionsConfig } from '@/components/config/notificacions-config';
 import { CalendariConfig } from '@/components/config/calendari-config';
@@ -55,7 +55,10 @@ export default async function ConfigPage({
         icon={<Palette className="h-4 w-4 text-brand-600" />}
         defaultOpen
       >
-        <EstilConfig actual={estilValid((await cookies()).get(ESTIL_COOKIE)?.value)} />
+        <EstilConfig
+          actual={estilValid((await cookies()).get(ESTIL_COOKIE)?.value)}
+          barraActual={barraValida((await cookies()).get(BARRA_COOKIE)?.value)}
+        />
       </CollapsibleCard>
 
       <ConfigForm />

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { Manrope, Cormorant_Garamond, Montserrat } from 'next/font/google';
-import { ESTIL_COOKIE, estilValid } from '@/lib/estil';
+import { BARRA_COOKIE, ESTIL_COOKIE, barraValida, estilValid } from '@/lib/estil';
 import './globals.css';
 
 const manrope = Manrope({
@@ -43,9 +43,11 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const estil = estilValid((await cookies()).get(ESTIL_COOKIE)?.value);
+  const galetes = await cookies();
+  const estil = estilValid(galetes.get(ESTIL_COOKIE)?.value);
+  const barra = barraValida(galetes.get(BARRA_COOKIE)?.value);
   return (
-    <html lang="ca" data-estil={estil} className={`${manrope.variable} ${cormorant.variable} ${montserrat.variable}`}>
+    <html lang="ca" data-estil={estil} data-barra={barra} className={`${manrope.variable} ${cormorant.variable} ${montserrat.variable}`}>
       <body>{children}</body>
     </html>
   );

@@ -295,6 +295,50 @@ html[data-estil='nou'] .app-sidebar .app-logout:hover {
   color: var(--color-brand-700);
 }
 
+/* Barra granat (proposta E, triable a /config → Estil visual → Barra lateral):
+   tota granat fosc, text crema, títols en rosat i l'opció on ets en crema amb
+   lletra granat. Mateixa forma que la clara; només canvien els colors. */
+html[data-estil='nou'][data-barra='granat'] .app-sidebar {
+  background: #5c1620;
+  color: #f5efe6;
+  border-right-color: #5c1620;
+}
+html[data-estil='nou'][data-barra='granat'] .app-sidebar .border-brand-800 {
+  border-color: rgb(245 239 230 / 0.16);
+}
+html[data-estil='nou'][data-barra='granat'] .app-sidebar :is(.text-brand-100, .text-brand-200, .text-brand-300),
+html[data-estil='nou'][data-barra='granat'] .app-sidebar button.text-brand-200 {
+  color: #f5efe6;
+}
+html[data-estil='nou'][data-barra='granat'] .app-logo {
+  color: #f5efe6;
+}
+html[data-estil='nou'][data-barra='granat'] .app-logo::first-letter {
+  color: #f2c9bd;
+}
+html[data-estil='nou'][data-barra='granat'] .app-nav-group {
+  color: #edbfb2;
+}
+html[data-estil='nou'][data-barra='granat'] .app-sidebar .app-nav-item {
+  color: #f5efe6;
+}
+html[data-estil='nou'][data-barra='granat'] .app-sidebar .app-nav-item:hover {
+  background: rgb(245 239 230 / 0.1);
+  color: #ffffff;
+}
+html[data-estil='nou'][data-barra='granat'] .app-sidebar .app-nav-item[aria-current='page'] {
+  background: #f5efe6;
+  color: #5c1620;
+  box-shadow: inset 3px 0 0 #f5efe6;
+}
+html[data-estil='nou'][data-barra='granat'] .app-sidebar .app-logout {
+  color: rgb(245 239 230 / 0.75);
+}
+html[data-estil='nou'][data-barra='granat'] .app-sidebar .app-logout:hover {
+  background: rgb(245 239 230 / 0.1);
+  color: #ffffff;
+}
+
 /* Camps i botons a la MATEIXA alçada, 42 px (proposta B, triada per l'Anna: entre
    el botó i la data d'abans). Només a l'ordinador; al mòbil, com estaven.
    - Camps de text i desplegables (h-10).
