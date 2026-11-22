@@ -37,6 +37,18 @@ const PAS: Record<string, { t: string; dot: string }> = {
 };
 const pas = (tipus: string) => PAS[tipus] ?? { t: tipus, dot: 'bg-stone-400' };
 
+const METODE: Record<string, string> = {
+  EFECTIU: 'Efectiu',
+  TARGETA: 'Targeta',
+  TRANSFERENCIA: 'Transferència',
+  BIZUM: 'Bizum',
+  ALTRES: 'Altres',
+};
+const eur = (n: number) =>
+  `${n.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+const DOT_COBRAT = 'bg-teal-600';
+const DOT_PENDENT = 'bg-amber-400';
+
 const ACCIO_MISSATGE: Record<MissatgeProrroga, string> = {
   pregunta: 'PREGUNTAT',
   noContesta: 'NO_CONTESTA',
@@ -98,6 +110,14 @@ function Pista({ e, avui }: { e: EstadaEnCurs; avui: string }) {
           style={{ left: `${pos(d)}%` }}
         />
       ))}
+      {e.pendents.map((p) => (
+        <div
+          key={p.id}
+          title={`Cobrament pendent · ${eur(p.import)} · ${dc(p.data)}`}
+          className="absolute top-[6px] h-3 w-3 -translate-x-1/2 rotate-45 border-2 border-white bg-amber-400"
+          style={{ left: `${pos(p.data)}%` }}
+        />
+      ))}
       <div
         className="absolute -bottom-0.5 -top-0.5 w-0.5 -translate-x-1/2 bg-brand-700"
         style={{ left: `${pos(avui)}%` }}
@@ -128,6 +148,8 @@ interface Item {
   /** Es pot canviar el dia (preguntar / recordatori de sortida). */
   edita?: QuinDia;
   triat?: boolean;
+  /** Cobrament previst: s'enllaça a la fitxa per registrar-lo. */
+  pendent?: boolean;
 }
 
 type QuinDia = 'preguntar' | 'recordatori';
@@ -205,7 +227,7 @@ function Historial({
       key: 'entrada',
       dia: e.entrada,
       t: 'Entrada',
-      m: `${e.nits} nits · ${e.numViatgers} ${e.numViatgers === 1 ? 'persona' : 'persones'}`,
+      m: `${e.trams[0]?.nits ?? e.nits} nits · ${e.numViatgers} ${e.numViatgers === 1 ? 'persona' : 'persones'}`,
       dot: 'bg-slate-800',
     },
     ...e.events.map((x) => ({
@@ -215,6 +237,22 @@ function Historial({
       m: x.detall,
       dot: pas(x.tipus).dot,
       event: x,
+    })),
+    ...e.cobraments.map((c) => ({
+      key: `cob-${c.id}`,
+      dia: c.data,
+      t: `Cobrat ${eur(c.import)}`,
+      m: [METODE[c.metode] ?? c.metode, c.factura ? `Fra. ${c.factura}` : null].filter(Boolean).join(' · '),
+      dot: DOT_COBRAT,
+    })),
+    ...e.pendents.map((p) => ({
+      key: `pend-${p.id}`,
+      dia: p.data,
+      t: `Cobrament pendent · ${eur(p.import)}`,
+      m: `${p.concepte ? `${p.concepte} · ` : ''}Previst · es veu al tauler des del dia abans`,
+      dot: DOT_PENDENT,
+      futur: p.data >= avui,
+      pendent: true,
     })),
   ];
   if (!decidit && !e.events.some((x) => x.tipus === 'PREGUNTAT')) {
@@ -294,6 +332,14 @@ function Historial({
               )}
             </p>
             {i.m && <p className="ui-tl-detall text-sm text-slate-600">{i.m}</p>}
+            {i.pendent && (
+              <Link
+                href={`/estancies/${e.id}`}
+                className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline"
+              >
+                Registrar el pagament a la fitxa <ExternalLink className="h-3 w-3" />
+              </Link>
+            )}
             {i.edita &&
               (editant === i.edita ? (
                 <TriaDia
@@ -361,6 +407,10 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
   const [aplacaDia, setAplacaDia] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // «+ Cobrament pendent»: formulari obert, import i data.
+  const [nouPendent, setNouPendent] = useState(false);
+  const [pendImport, setPendImport] = useState('');
+  const [pendData, setPendData] = useState('');
   // Plegat o desplegat (es recorda en aquest navegador).
   const [plegat, setPlegat] = useState(false);
   useEffect(() => {
@@ -398,6 +448,21 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No s’ha pogut desar');
       return false;
+    } finally {
+      setBusy(null);
+    }
+  }
+  async function afegeixPendent(id: string) {
+    const imp = parseFloat(pendImport.replace(',', '.'));
+    if (!(imp > 0) || !pendData) return;
+    setBusy(id);
+    setError(null);
+    try {
+      await postJSON(`/api/estancies/${id}/pagaments-previstos`, { import: imp, dataPrevista: pendData, concepte: '' });
+      setNouPendent(false);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No s’ha pogut afegir');
     } finally {
       setBusy(null);
     }
@@ -515,6 +580,7 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                     setComposer(null);
                     setNota('');
                     setAplacaDia(false);
+                    setNouPendent(false);
                   }}
                   className="grid w-full grid-cols-[44px_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 px-4 py-3 text-left hover:bg-stone-50 sm:grid-cols-[52px_minmax(0,1fr)_auto] sm:gap-x-4 sm:px-5"
                 >
@@ -536,6 +602,26 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                         )}
                       </span>
                     </span>
+                    {(e.trams.length > 1 || e.pendents.length > 0) && (
+                      <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tabular-nums text-slate-600">
+                        {e.trams.length > 1 &&
+                          e.trams.map((t, n) => (
+                            <span key={t.id} className="inline-flex items-center gap-1.5">
+                              <span className={cn('h-2 w-2 rounded-full', n === 0 ? 'bg-brand-700/60' : 'bg-violet-600')} />
+                              <b className="font-semibold text-slate-800">{n === 0 ? 'Estada' : 'Ampliació'}</b>
+                              {dc(t.entrada)} → {dc(t.sortida)} · {t.nits} nits
+                            </span>
+                          ))}
+                        {e.pendents.map((p) => (
+                          <span
+                            key={p.id}
+                            className="ui-etiqueta rounded-full bg-amber-50 px-2 py-0.5 font-bold text-amber-900 ring-1 ring-amber-300"
+                          >
+                            Cobrament pendent · {eur(p.import)} · {dc(p.data)}
+                          </span>
+                        ))}
+                      </span>
+                    )}
                     <Pista e={e} avui={avui} />
                   </span>
                   <span className="col-start-2 flex flex-wrap items-center gap-2 sm:col-start-3 sm:grid sm:justify-items-end sm:gap-1">
@@ -702,6 +788,51 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                                 : 'Següent pas: «Ampliar l’estada» a la fitxa (crea l’estada següent).'}
                             </p>
                           )}
+                          {nouPendent ? (
+                            <form
+                              className="flex flex-wrap items-center gap-2"
+                              onSubmit={(ev) => {
+                                ev.preventDefault();
+                                afegeixPendent(e.id);
+                              }}
+                            >
+                              <Input
+                                inputMode="decimal"
+                                value={pendImport}
+                                onChange={(ev) => setPendImport(ev.target.value)}
+                                placeholder="Import €"
+                                aria-label="Import del cobrament pendent"
+                                className="h-9 w-28 text-right"
+                              />
+                              <Input
+                                type="date"
+                                value={pendData}
+                                onChange={(ev) => setPendData(ev.target.value)}
+                                aria-label="Data prevista"
+                                className="h-9 w-40"
+                              />
+                              <Button size="sm" type="submit" disabled={busy === e.id || !pendImport || !pendData}>
+                                Afegir
+                              </Button>
+                              <Button size="sm" variant="ghost" type="button" onClick={() => setNouPendent(false)}>
+                                Cancel·la
+                              </Button>
+                            </form>
+                          ) : (
+                            <div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setNouPendent(true);
+                                  setPendImport('');
+                                  setPendData(e.sortida);
+                                }}
+                              >
+                                <Plus className="h-4 w-4" /> Cobrament pendent
+                              </Button>
+                            </div>
+                          )}
                           <form
                             className="flex gap-2"
                             onSubmit={(ev) => {
@@ -762,6 +893,12 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                 </span>
               ),
             )}
+            <span className="inline-flex items-center gap-1.5">
+              <span className={cn('h-2.5 w-2.5 rounded-full', DOT_COBRAT)} /> Cobrat
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rotate-45 bg-amber-400" /> Cobrament pendent
+            </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2.5 w-4 rounded border border-dashed border-amber-600 bg-amber-50" />{' '}
               Quan et proposo preguntar

@@ -44,6 +44,33 @@ export interface EstadaEnCurs {
   events: EventProrroga[];
   /** Dies en què comença cada ampliació (si l'hoste ja ha allargat). */
   ampliacions: string[];
+  /** Cada tram de la cadena: l'estada i les ampliacions, amb les seves dates. */
+  trams: TramEstada[];
+  /** Pagaments registrats de tota la cadena (amb la factura, si en tenen). */
+  cobraments: CobramentEstada[];
+  /** Cobraments previstos encara no marcats com a pagats (de tota la cadena). */
+  pendents: PendentEstada[];
+}
+
+export interface TramEstada {
+  id: string;
+  entrada: string; // YYYY-MM-DD
+  sortida: string;
+  nits: number;
+  numContracte: string | null;
+}
+export interface CobramentEstada {
+  id: string;
+  import: number;
+  data: string; // YYYY-MM-DD
+  metode: string;
+  factura: string | null;
+}
+export interface PendentEstada {
+  id: string;
+  import: number;
+  data: string; // YYYY-MM-DD
+  concepte: string | null;
 }
 
 const DIA_MS = 86_400_000;
@@ -174,10 +201,15 @@ export async function getEstadesEnCurs(now = new Date()): Promise<{ avui: string
       events.push(...a.events);
       const seg = ch[i + 1];
       if (seg?.sortida) {
+        const dd = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+        const ini = seg.entrada ? diaMadrid(seg.entrada) : null;
+        const fi = diaMadrid(seg.sortida);
         events.push({
           id: `ampliacio-${seg.id}`,
           tipus: 'AMPLIAT',
-          detall: `Estada nova fins al ${diaMadrid(seg.sortida).slice(8, 10)}/${diaMadrid(seg.sortida).slice(5, 7)}${seg.numContracte ? ` (contracte ${seg.numContracte})` : ''}`,
+          detall: ini
+            ? `De ${dd(ini)} a ${dd(fi)} · ${diesEntreDies(ini, fi)} nits més${seg.numContracte ? ` · contracte ${seg.numContracte}` : ''}`
+            : `Estada nova fins al ${dd(fi)}${seg.numContracte ? ` (contracte ${seg.numContracte})` : ''}`,
           data: seg.creada.toISOString(),
         });
       }
@@ -209,7 +241,44 @@ export async function getEstadesEnCurs(now = new Date()): Promise<{ avui: string
         .map((v) => ({ nom: v.huesped.nom, cognom1: v.huesped.cognom1, telefon: v.huesped.telefon, esTitular: v.esTitular, esMenor: v.esMenor })),
       events,
       ampliacions: ch.slice(1).map((a) => diaMadrid(a.entrada!)),
+      trams: ch
+        .filter((a) => a.entrada && a.sortida)
+        .map((a) => ({
+          id: a.id,
+          entrada: diaMadrid(a.entrada!),
+          sortida: diaMadrid(a.sortida!),
+          nits: diesEntreDies(diaMadrid(a.entrada!), diaMadrid(a.sortida!)),
+          numContracte: a.numContracte || null,
+        })),
+      cobraments: [],
+      pendents: [],
     });
+  }
+
+  // Pagaments i cobraments previstos de cada cadena (una sola consulta per a totes).
+  const ids = [...new Set(estades.flatMap((e) => e.trams.map((t) => t.id)))];
+  if (ids.length) {
+    const [cobs, prev] = await Promise.all([
+      prisma.cobrament.findMany({
+        where: { estanciaId: { in: ids } },
+        orderBy: { data: 'asc' },
+        select: { id: true, estanciaId: true, import: true, data: true, metode: true, factura: { select: { numero: true } } },
+      }),
+      prisma.pagamentPrevist.findMany({
+        where: { estanciaId: { in: ids }, pagat: false },
+        orderBy: { dataPrevista: 'asc' },
+        select: { id: true, estanciaId: true, import: true, dataPrevista: true, concepte: true },
+      }),
+    ]);
+    for (const e of estades) {
+      const meus = new Set(e.trams.map((t) => t.id));
+      e.cobraments = cobs
+        .filter((c) => meus.has(c.estanciaId))
+        .map((c) => ({ id: c.id, import: Number(c.import), data: diaMadrid(c.data), metode: c.metode, factura: c.factura?.numero ?? null }));
+      e.pendents = prev
+        .filter((p) => meus.has(p.estanciaId))
+        .map((p) => ({ id: p.id, import: Number(p.import), data: diaMadrid(p.dataPrevista), concepte: p.concepte }));
+    }
   }
   return { avui, estades };
 }
