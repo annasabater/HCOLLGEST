@@ -146,6 +146,26 @@ export function agrupaPerMesos(gs: DespesaFiltrable[], desde: string, fins: stri
   }));
 }
 
+/**
+ * Les FIANCES (recuperables, no compten com a despesa) agrupades igual que
+ * `agrupaPerMesos`: el mateix nombre de grups, en el mateix ordre. Serveix perquè
+ * el gràfic les pugui dibuixar (rallades) al costat de la despesa real.
+ */
+export function agrupaFiancesPerMesos(gs: DespesaFiltrable[], desde: string, fins: string, mesos: number): number[] {
+  const llista = mesosDelRang(desde, fins);
+  const mida = Math.max(1, Math.floor(mesos));
+  const grups: { mesos: string[]; import: number }[] = [];
+  for (let i = 0; i < llista.length; i += mida) grups.push({ mesos: llista.slice(i, i + mida), import: 0 });
+  for (const g of gs) {
+    if (!g.esFianca) continue;
+    const dia = g.data.slice(0, 10);
+    if (dia < desde || dia > fins) continue;
+    const grup = grups.find((x) => x.mesos.includes(dia.slice(0, 7)));
+    if (grup) grup.import += Number(g.import);
+  }
+  return grups.map((g) => Math.round(g.import * 100) / 100);
+}
+
 /** Suggeriments del cercador: categories i proveïdors amb el que sumen al període. */
 export interface Suggeriment {
   filtre: FiltreDespesa;

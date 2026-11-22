@@ -256,6 +256,7 @@ function GastosVariablesTab({
   const fiancaVisible = visibles
     .filter((g) => g.esFianca)
     .reduce((a, g) => a + Number(g.import), 0);
+  const nFiancaVisible = visibles.filter((g) => g.esFianca).length;
   const resumB = visiblesB ? totalDespeses(visiblesB) : null;
   const etiquetaFiltres = filtres.map(etiquetaFiltre).join(' + ');
 
@@ -757,6 +758,7 @@ function GastosVariablesTab({
               total={totalVisible}
               n={nVisible}
               fiances={fiancaVisible}
+              nFiances={nFiancaVisible}
               comparat={resumB ? { total: resumB.total, ...variacio(totalVisible, resumB.total) } : null}
               etiquetaComparat={rangB ? `del ${formatDate(rangB.desde)} al ${formatDate(rangB.fins)}` : ''}
               graficObert={graficObert}

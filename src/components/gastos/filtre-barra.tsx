@@ -319,6 +319,7 @@ export function ResultatFiltre({
   total,
   n,
   fiances,
+  nFiances,
   comparat,
   etiquetaComparat,
   grafic,
@@ -328,6 +329,7 @@ export function ResultatFiltre({
   total: number;
   n: number;
   fiances: number;
+  nFiances: number;
   comparat: { total: number; diff: number; pct: number | null } | null;
   etiquetaComparat: string;
   grafic: ReactNode;
@@ -355,7 +357,18 @@ export function ResultatFiltre({
           </>
         )}
         {fiances > 0 && (
-          <span className="text-amber-700">Fiances a part: <Eur value={fiances} /></span>
+          <>
+            <span className="border-l border-slate-200 pl-5 text-amber-700">
+              <span className="text-xs font-bold uppercase tracking-wider">Fiances</span>{' '}
+              <span className="text-base font-bold"><Eur value={fiances} /></span>
+              <span className="text-slate-500"> · {nFiances} {nFiances === 1 ? 'fiança' : 'fiances'}, recuperables</span>
+            </span>
+            <span className="border-l border-slate-200 pl-5 text-brand-700">
+              <span className="text-xs font-bold uppercase tracking-wider">Sortit de la caixa</span>{' '}
+              <span className="text-base font-bold"><Eur value={Math.round((total + fiances) * 100) / 100} /></span>
+              <span className="text-slate-500"> · despeses + fiances</span>
+            </span>
+          </>
         )}
         <button type="button" onClick={onGrafic} className="ml-auto text-sm font-semibold text-brand-700 hover:underline">
           {graficObert ? 'Amaga el gràfic ▴' : 'Mostra el gràfic ▾'}

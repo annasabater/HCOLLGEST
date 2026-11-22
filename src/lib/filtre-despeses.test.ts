@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   agrupaPerMesos,
+  agrupaFiancesPerMesos,
   coincideix,
   mesosDelRang,
   normalitza,
@@ -96,6 +97,15 @@ describe('agrupaPerMesos', () => {
   });
   it('no compta el que cau fora del rang', () => {
     expect(agrupaPerMesos([aigua2], '2026-10-20', '2026-10-31', 1)).toEqual([{ etiqueta: 'oct. 2026', import: 0, n: 0 }]);
+  });
+});
+
+describe('agrupaFiancesPerMesos', () => {
+  it('suma només les fiances, amb els mateixos grups que la despesa', () => {
+    const f = { ...fianca, data: '2026-10-29T00:00:00.000Z', import: 6186.86 };
+    expect(agrupaFiancesPerMesos([f, aigua2], '2026-08-01', '2026-11-30', 1)).toEqual([0, 0, 6186.86, 0]);
+    expect(agrupaFiancesPerMesos([f], '2026-08-01', '2026-11-30', 2)).toEqual([0, 6186.86]);
+    expect(agrupaFiancesPerMesos([f], '2026-11-01', '2026-11-30', 1)).toEqual([0]);
   });
 });
 
