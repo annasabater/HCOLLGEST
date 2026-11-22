@@ -1700,3 +1700,16 @@ model ProrrogaEvent {
   @@index([estanciaId, createdAt])
   @@map("prorroga_event")
 }
+
+// Consulta desada de la llista de despeses (/gastos): què es mira (proveïdors,
+// categories o paraules, veure src/lib/filtre-despeses.ts) i amb què es compara.
+// El període no es desa: s'aplica al que s'estigui mirant.
+model ConsultaDespeses {
+  id         String   @id @default(cuid())
+  nom        String
+  filtres    Json // FiltreDespesa[]
+  comparacio String   @default("CAP") // CAP | ANTERIOR | ANY_PASSAT
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("consulta_despeses")
+}

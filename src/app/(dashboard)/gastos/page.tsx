@@ -13,7 +13,7 @@ import { Card, CardBody } from '@/components/ui/card';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Eur, HideAmountsButton } from '@/components/finances/amounts-visibility';
-import { getJSON, postJSON, patchJSON, ApiError } from '@/lib/api';
+import { getJSON, postJSON, patchJSON, delJSON, ApiError } from '@/lib/api';
 import { formatDate, formatEur, cn } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
 import { rangDeEstat, type EstatPeriode } from '@/lib/periode';
@@ -21,6 +21,17 @@ import { NavegadorPeriode } from '@/components/ui/navegador-periode';
 import { redueixImatge, motiuPujada } from '@/lib/images/redueix-client';
 import { optionsFrom, metodeCobramentValues, METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 import { LiniesIva, liniaBuida, liniesDeGasto, payloadIva, type LiniaIvaForm } from '@/components/gastos/linies-iva';
+import { FiltreBarra, ResultatFiltre, type ConsultaDesada } from '@/components/gastos/filtre-barra';
+import { GraficDespeses } from '@/components/gastos/grafic-despeses';
+import {
+  coincideix,
+  etiquetaFiltre,
+  rangComparacio,
+  totalDespeses,
+  variacio,
+  type FiltreDespesa,
+  type ModeComparacio,
+} from '@/lib/filtre-despeses';
 
 // ─── Tipus ────────────────────────────────────────────────────────────────────
 
@@ -148,24 +159,44 @@ function duplicatsDe(err: unknown): DuplicatInfo[] | null {
   return d?.code === 'DUPLICAT' && d.duplicats?.length ? d.duplicats : null;
 }
 
+/** Què es mira i amb què es compara (ho porta la pàgina; la llista ho aplica). */
+interface FiltreEstat {
+  filtres: FiltreDespesa[];
+  setFiltres: (f: FiltreDespesa[]) => void;
+  comparacio: ModeComparacio;
+  setComparacio: (m: ModeComparacio) => void;
+  rangAMa: { desde: string; fins: string };
+  setRangAMa: (r: { desde: string; fins: string }) => void;
+  /** Rang amb què es compara ara, o null si no es compara. */
+  rangB: { desde: string; fins: string } | null;
+  consultes: ConsultaDesada[];
+  consultaActiva: string | null;
+  aplicaConsulta: (c: ConsultaDesada) => void;
+  desaConsulta: (nom: string) => Promise<void>;
+  esborraConsulta: (c: ConsultaDesada) => Promise<void>;
+  treuTot: () => void;
+}
+
 function GastosVariablesTab({
   desde,
   fins,
-  catNom,
-  setCatNom,
+  filtre,
   onSavedDate,
 }: {
   desde: string;
   fins: string;
-  catNom: string | null;
-  setCatNom: (c: string | null) => void;
+  filtre: FiltreEstat;
   onSavedDate: (data: string) => void;
 }) {
+  const { filtres, rangB } = filtre;
+  const actiu = filtres.length > 0 || rangB !== null;
   const [categories, setCategories] = useState<Cat[]>([]);
   const [proveidors, setProveidors] = useState<Prov[]>([]);
   const [habitacions, setHabitacions] = useState<Hab[]>([]);
   const [gastos, setGastos] = useState<Gasto[]>([]);
-  const [perCat, setPerCat] = useState<Record<string, number>>({});
+  // Despeses del període amb què es compara (ja sense filtrar).
+  const [gastosB, setGastosB] = useState<Gasto[] | null>(null);
+  const [graficObert, setGraficObert] = useState(true);
 
   const [showForm, setShowForm] = useState(false);
   const [nova, setNova] = useState(novaBuida);
@@ -194,21 +225,30 @@ function GastosVariablesTab({
   // Despesa a destacar a la llista (després de «Veure-la»).
   const [destacaId, setDestacaId] = useState<string | null>(null);
 
-  // Es demana el període sencer sense filtrar per categoria: així les pastilles
-  // de categoria mostren tot el que hi ha i filtrar és immediat, sense anar al servidor.
+  // Es demana el període sencer sense filtrar: així els suggeriments del cercador
+  // mostren tot el que hi ha i filtrar és immediat, sense anar al servidor.
+  const bDesde = rangB?.desde ?? null;
+  const bFins = rangB?.fins ?? null;
   const load = useCallback(async () => {
-    const p = new URLSearchParams({ variables: '1', desde, fins });
-    const res = await getJSON<{ gastos: Gasto[]; total: number; perCategoria: Record<string, number> }>(`/api/gastos?${p.toString()}`);
-    setGastos(res.gastos); setPerCat(res.perCategoria);
-  }, [desde, fins]);
+    const p = new URLSearchParams({ desde, fins });
+    const [res, resB] = await Promise.all([
+      getJSON<{ gastos: Gasto[] }>(`/api/gastos?${p.toString()}`),
+      bDesde && bFins
+        ? getJSON<{ gastos: Gasto[] }>(`/api/gastos?${new URLSearchParams({ desde: bDesde, fins: bFins }).toString()}`)
+        : Promise.resolve(null),
+    ]);
+    setGastos(res.gastos);
+    setGastosB(resB ? resB.gastos : null);
+  }, [desde, fins, bDesde, bFins]);
 
-  const visibles = catNom ? gastos.filter((g) => g.categoria.nom === catNom) : gastos;
-  const totalVisible = visibles
-    .filter((g) => !g.esFianca)
-    .reduce((a, g) => a + Number(g.import), 0);
+  const visibles = gastos.filter((g) => coincideix(g, filtres));
+  const visiblesB = gastosB ? gastosB.filter((g) => coincideix(g, filtres)) : null;
+  const { total: totalVisible, n: nVisible } = totalDespeses(visibles);
   const fiancaVisible = visibles
     .filter((g) => g.esFianca)
     .reduce((a, g) => a + Number(g.import), 0);
+  const resumB = visiblesB ? totalDespeses(visiblesB) : null;
+  const etiquetaFiltres = filtres.map(etiquetaFiltre).join(' + ');
 
   useEffect(() => {
     getJSON<{ categories: Cat[] }>('/api/categories-gasto').then((r) => setCategories(r.categories));
@@ -679,30 +719,51 @@ function GastosVariablesTab({
         </Card>
       )}
 
-      <div className="mb-4 flex flex-wrap items-center gap-1.5">
-        {Object.entries(perCat).sort((a, b) => b[1] - a[1]).map(([nom, imp]) => (
-          <button
-            key={nom}
-            type="button"
-            aria-pressed={catNom === nom}
-            onClick={() => setCatNom(catNom === nom ? null : nom)}
-            className={cn(
-              'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-              catNom === nom
-                ? 'border-brand-700 bg-brand-700 text-white'
-                : 'border-slate-300 text-slate-600 hover:border-brand-600 hover:text-brand-700',
-            )}
-          >
-            {nom} · <Eur value={imp} />
-          </button>
-        ))}
-        {catNom && (
-          <Button size="sm" variant="ghost" onClick={() => setCatNom(null)}>Treure el filtre</Button>
-        )}
-      </div>
+      <FiltreBarra
+        filtres={filtres}
+        onFiltres={filtre.setFiltres}
+        comparacio={filtre.comparacio}
+        onComparacio={filtre.setComparacio}
+        rangComparat={rangB}
+        rangAMa={filtre.rangAMa}
+        onRangAMa={filtre.setRangAMa}
+        gastosPeriode={gastos}
+        proveidors={proveidors}
+        categories={categories}
+        consultes={filtre.consultes}
+        consultaActiva={filtre.consultaActiva}
+        onAplicaConsulta={filtre.aplicaConsulta}
+        onDesaConsulta={filtre.desaConsulta}
+        onEsborraConsulta={filtre.esborraConsulta}
+        onTreuTot={filtre.treuTot}
+        canWrite
+      />
 
-      {visibles.length === 0 ? (
-        <EmptyState><Filter className="mx-auto mb-2 h-5 w-5 text-slate-300" /> Cap despesa en aquest període.</EmptyState>
+      {actiu && (
+        <ResultatFiltre
+          total={totalVisible}
+          n={nVisible}
+          fiances={fiancaVisible}
+          comparat={resumB ? { total: resumB.total, ...variacio(totalVisible, resumB.total) } : null}
+          etiquetaComparat={rangB ? `del ${formatDate(rangB.desde)} al ${formatDate(rangB.fins)}` : ''}
+          graficObert={graficObert}
+          onGrafic={() => setGraficObert((o) => !o)}
+          grafic={
+            <GraficDespeses
+              gastosAra={visibles}
+              rangAra={{ desde, fins }}
+              gastosAbans={visiblesB}
+              rangAbans={rangB}
+            />
+          }
+        />
+      )}
+
+      {visibles.length === 0 && !(visiblesB && visiblesB.length > 0) ? (
+        <EmptyState>
+          <Filter className="mx-auto mb-2 h-5 w-5 text-slate-300" />
+          {filtres.length > 0 ? `Cap despesa de ${etiquetaFiltres} en aquest període.` : 'Cap despesa en aquest període.'}
+        </EmptyState>
       ) : (
         <Table>
           <Thead>
@@ -836,7 +897,7 @@ function GastosVariablesTab({
             ))}
             <Tr className="bg-brand-50">
               <Td colSpan={6} className="font-semibold text-slate-700">
-                Total variables{catNom ? ` · ${catNom}` : ''}
+                Total{etiquetaFiltres ? ` · ${etiquetaFiltres}` : ''}
                 {fiancaVisible > 0 && (
                   <span className="ml-2 font-normal text-amber-700">
                     (fiances a part: <Eur value={fiancaVisible} />)
@@ -846,6 +907,41 @@ function GastosVariablesTab({
               <Td className="text-right font-semibold text-brand-800"><Eur value={totalVisible} /></Td>
               <Td></Td>
             </Tr>
+            {rangB && visiblesB && (
+              <>
+                <tr>
+                  <td colSpan={8} className="bg-amber-50/70 px-4 pb-2 pt-5 text-[11px] font-bold uppercase tracking-[0.12em] text-amber-800">
+                    Per comparar · {formatDate(rangB.desde)} – {formatDate(rangB.fins)}
+                  </td>
+                </tr>
+                {visiblesB.length === 0 && (
+                  <tr className="bg-amber-50/70">
+                    <td colSpan={8} className="px-4 py-3 text-sm text-slate-500">Cap despesa en aquest període.</td>
+                  </tr>
+                )}
+                {visiblesB.map((g) => (
+                  <Tr key={`b-${g.id}`} className="bg-amber-50/70 text-slate-600">
+                    <Td>{formatDate(g.data)}</Td>
+                    <Td>
+                      {g.descripcio}
+                      {g.esFianca && <Badge tone="warning" className="ml-2 align-middle">Fiança</Badge>}
+                      {g.adjuntPath && <a href={`/api/files?path=${encodeURIComponent(g.adjuntPath)}`} target="_blank" rel="noreferrer" className="ml-2 inline-flex text-brand-600" title="Veure adjunt"><Paperclip className="h-3.5 w-3.5" /></a>}
+                    </Td>
+                    <Td>{g.categoria.nom}</Td>
+                    <Td>{g.habitacio?.nom ? `Hab. ${g.habitacio.nom}` : 'General'}</Td>
+                    <Td>{g.proveidor?.nom ?? '—'}</Td>
+                    <Td>{METODE_COBRAMENT_LABELS[g.metodePagament]}</Td>
+                    <Td className="text-right"><Eur value={Number(g.import)} /></Td>
+                    <Td></Td>
+                  </Tr>
+                ))}
+                <Tr className="bg-amber-50">
+                  <Td colSpan={6} className="font-semibold text-slate-700">Total per comparar</Td>
+                  <Td className="text-right font-semibold text-slate-800"><Eur value={resumB?.total ?? 0} /></Td>
+                  <Td></Td>
+                </Tr>
+              </>
+            )}
           </tbody>
         </Table>
       )}
@@ -869,8 +965,74 @@ function GastosContent() {
   const avui = toISODate(new Date());
   const [estat, setEstat] = useState<EstatPeriode>({ tipus: 'mes', off: 0 });
   const { desde, fins } = rangDeEstat(estat, avui);
-  const [catNom, setCatNom] = useState<string | null>(null);
   const [resum, setResum] = useState<ResumCurt | null>(null);
+
+  // Filtre: què es mira i amb què es compara. En entrar, res (com sempre).
+  const [filtres, setFiltresRaw] = useState<FiltreDespesa[]>([]);
+  const [comparacio, setComparacioRaw] = useState<ModeComparacio>('CAP');
+  const [rangAMa, setRangAMa] = useState<{ desde: string; fins: string }>({ desde: '', fins: '' });
+  const [consultes, setConsultes] = useState<ConsultaDesada[]>([]);
+  const [consultaActiva, setConsultaActiva] = useState<string | null>(null);
+  const rangB = rangComparacio(comparacio, estat, desde, fins, avui, rangAMa);
+  // Tocar el filtre a mà vol dir que ja no és la consulta desada tal qual.
+  const setFiltres = (f: FiltreDespesa[]) => { setFiltresRaw(f); setConsultaActiva(null); };
+  const setComparacio = (m: ModeComparacio) => {
+    setComparacioRaw(m);
+    setConsultaActiva(null);
+    // «Un altre rang…» comença amb el període anterior, per no sortir buit.
+    if (m === 'RANG' && !rangAMa.desde) {
+      const r = rangComparacio('ANTERIOR', estat, desde, fins, avui);
+      if (r) setRangAMa(r);
+    }
+  };
+
+  useEffect(() => {
+    getJSON<{ consultes: ConsultaDesada[] }>('/api/gastos/consultes')
+      .then((r) => setConsultes(r.consultes))
+      .catch(() => { /* sense consultes desades, la llista funciona igual */ });
+  }, []);
+
+  const filtre: FiltreEstat = {
+    filtres,
+    setFiltres,
+    comparacio,
+    setComparacio,
+    rangAMa,
+    setRangAMa,
+    rangB,
+    consultes,
+    consultaActiva,
+    aplicaConsulta: (c) => {
+      setFiltresRaw(c.filtres);
+      setComparacioRaw((['CAP', 'ANTERIOR', 'ANY_PASSAT'] as const).find((m) => m === c.comparacio) ?? 'CAP');
+      setConsultaActiva(c.id);
+    },
+    desaConsulta: async (nom) => {
+      try {
+        const { consulta } = await postJSON<{ consulta: ConsultaDesada }>('/api/gastos/consultes', {
+          nom,
+          filtres,
+          comparacio: comparacio === 'RANG' ? 'CAP' : comparacio,
+        });
+        setConsultes((cs) => [...cs, consulta]);
+        setConsultaActiva(consulta.id);
+      } catch (e) {
+        throw new Error(e instanceof ApiError ? e.message : 'No s’ha pogut desar la consulta');
+      }
+    },
+    esborraConsulta: async (c) => {
+      if (!confirm(`Esborrar la consulta «${c.nom}»? Les despeses no es toquen.`)) return;
+      await delJSON(`/api/gastos/consultes/${c.id}`);
+      setConsultes((cs) => cs.filter((x) => x.id !== c.id));
+      if (consultaActiva === c.id) setConsultaActiva(null);
+    },
+    treuTot: () => {
+      setFiltresRaw([]);
+      setComparacioRaw('CAP');
+      setConsultaActiva(null);
+    },
+  };
+  const filtreActiu = filtres.length > 0 || rangB !== null;
   const [errResum, setErrResum] = useState<string | null>(null);
 
   useEffect(() => {
@@ -909,8 +1071,9 @@ function GastosContent() {
       {errResum && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{errResum}</div>}
 
       {/* Una sola línia: el total de la llista, les fiances a part i, si n'hi ha,
-          el personal del període amb enllaç a Treballadors. */}
-      <div className="mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
+          el personal del període amb enllaç a Treballadors. Amb un filtre posat,
+          la substitueix el resultat del filtre (a sota de la barra). */}
+      <div className={cn('mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm', filtreActiu && 'hidden')}>
         <span>
           <span className="text-lg font-bold text-slate-900"><Eur value={resum?.variables ?? 0} /></span>
           <span className="text-slate-500">
@@ -937,8 +1100,7 @@ function GastosContent() {
       <GastosVariablesTab
         desde={desde}
         fins={fins}
-        catNom={catNom}
-        setCatNom={setCatNom}
+        filtre={filtre}
         onSavedDate={mostraDespesa}
       />
     </div>

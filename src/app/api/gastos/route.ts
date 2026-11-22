@@ -30,7 +30,7 @@ export async function GET(req: Request) {
   const gastos = await prisma.gasto.findMany({
     where,
     orderBy: { data: 'desc' },
-    take: 300,
+    take: 2000, // amb un filtre es poden mirar períodes llargs (p. ex. «Tot» d’un proveïdor)
     include: { categoria: true, proveidor: true, habitacio: true, animal: true },
   });
 

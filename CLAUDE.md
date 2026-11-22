@@ -141,7 +141,11 @@ cuadrado, grises de hostalcoll.com, títulos Montserrat, barra lateral granate o
   de l'Anna, nov. 2026: el resumen y el personal ya están en Balanç y Treballadors). Arriba, una línea:
   total + nº de despeses, fianzas aparte (fuera del total), personal del período con lo pendiente
   (enlace a /personal) y «Resum i gràfics, al Balanç →». Datos de `GET /api/gastos/resum?desde&fins`
-  (`src/lib/services/despeses.ts`); rangos en `src/lib/periode.ts` (testeado). ·
+  (`src/lib/services/despeses.ts`); rangos en `src/lib/periode.ts` (testeado). **Filtre i comparació**
+  (sin pestaña aparte): cercador de proveïdor/categoria/paraula (unió), «Compara» (anterior / any passat /
+  rang), consultes desades ★ (model `ConsultaDespeses`, `/api/gastos/consultes`) i «Treu els filtres»; amb
+  filtre surt total + diferència + gràfic i les files del període comparat. Lògica pura a
+  `src/lib/filtre-despeses.ts` (testejada); UI a `components/gastos/filtre-barra.tsx` i `grafic-despeses.tsx`. ·
   **5** Activos (alertas garantía/antigüedad, historial) + animales ·
   **6** Personal (trabajadores, ausencias, nóminas) ·
 - **Compte del treballador** (`/personal/:id`): neteja y bugadería en **una sola lista** filtrada por
