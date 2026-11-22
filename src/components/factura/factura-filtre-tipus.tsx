@@ -10,7 +10,9 @@ const OPCIONS: { value: string; href: string; label: string }[] = [
 ];
 
 /** Segmentat per filtrar les factures per tipus (simplificades / fiscals / totes). */
-export function FacturaFiltreTipus({ actual }: { actual: string }) {
+export function FacturaFiltreTipus({ actual, cerca = '' }: { actual: string; cerca?: string }) {
+  // Canviar de tipus manté la cerca.
+  const amb = (href: string) => (cerca ? `${href}${href.includes('?') ? '&' : '?'}q=${encodeURIComponent(cerca)}` : href);
   return (
     <div role="group" aria-label="Tipus de factura" className="flex h-10 gap-[3px] rounded-lg border border-slate-300 bg-white p-[3px] text-sm">
       {OPCIONS.map((o) => {
@@ -18,7 +20,7 @@ export function FacturaFiltreTipus({ actual }: { actual: string }) {
         return (
           <Link
             key={o.value}
-            href={o.href}
+            href={amb(o.href)}
             aria-current={active ? 'page' : undefined}
             className={cn(
               'flex items-center whitespace-nowrap rounded-md px-3 transition-colors',

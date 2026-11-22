@@ -1,4 +1,7 @@
+import Link from 'next/link';
+import { Search } from 'lucide-react';
 import { prisma } from '@/lib/db';
+import { Input } from '@/components/ui/input';
 import { getSessionUser } from '@/lib/auth/session';
 import { teVistaRestringida } from '@/lib/auth/restriccions';
 import { PageHeader } from '@/components/ui/page-header';
@@ -20,7 +23,7 @@ export const dynamic = 'force-dynamic';
 export default async function FacturesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tipus?: string; ordre?: string; dir?: string }>;
+  searchParams: Promise<{ tipus?: string; ordre?: string; dir?: string; q?: string }>;
 }) {
   const user = await getSessionUser();
   const restringit = teVistaRestringida(user);
@@ -38,6 +41,20 @@ export default async function FacturesPage({
   // Ordenació (per capçalera): número o data, ascendent/descendent. Per defecte,
   // data descendent (les més noves a dalt). El número és "26005"/"26005.1", que
   // com a text ja queda en ordre correcte (any + seqüència de 5 dígits).
+  // Cerca: número, client de la factura (nom o NIF) o qualsevol hoste de l'estada.
+  const cerca = sp.q?.trim() ?? '';
+  const ins = { contains: cerca, mode: 'insensitive' as const };
+  const filtreCerca: Prisma.FacturaWhereInput = cerca
+    ? {
+        OR: [
+          { numero: ins },
+          { clientNom: ins },
+          { clientNif: ins },
+          { estancia: { viatgers: { some: { huesped: { OR: [{ nom: ins }, { cognom1: ins }, { cognom2: ins }] } } } } },
+        ],
+      }
+    : {};
+
   const ordre = sp.ordre === 'numero' ? 'numero' : 'data';
   const dir: 'asc' | 'desc' = sp.dir === 'asc' ? 'asc' : 'desc';
   const orderBy: Prisma.FacturaOrderByWithRelationInput =
@@ -46,6 +63,7 @@ export default async function FacturesPage({
     const nextDir = ordre === col && dir === 'asc' ? 'desc' : 'asc';
     const p = new URLSearchParams();
     if (tipusParam !== 'totes') p.set('tipus', tipusParam);
+    if (cerca) p.set('q', cerca);
     p.set('ordre', col);
     p.set('dir', nextDir);
     return `/factures?${p.toString()}`;
@@ -53,7 +71,7 @@ export default async function FacturesPage({
   const fletxa = (col: 'numero' | 'data') => (ordre === col ? (dir === 'asc' ? ' ↑' : ' ↓') : '');
 
   const totes = await prisma.factura.findMany({
-    where: { deletedAt: null, ...filtreTipus },
+    where: { deletedAt: null, ...filtreTipus, ...filtreCerca },
     orderBy,
     take: 100,
     include: {
@@ -94,14 +112,26 @@ export default async function FacturesPage({
         {!restringit && <TrimestreIvaCard />}
         <div className="ui-card flex flex-wrap items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
           <span className="ui-card-title text-xs font-bold uppercase tracking-wider text-brand-700">Factures</span>
-          <FacturaFiltreTipus actual={tipusParam} />
+          <FacturaFiltreTipus actual={tipusParam} cerca={cerca} />
+          <form method="get" className="relative min-w-[12rem] flex-1">
+            {tipusParam !== 'totes' && <input type="hidden" name="tipus" value={tipusParam} />}
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input name="q" defaultValue={cerca} placeholder="Cerca per número, client o NIF…" aria-label="Cerca factures" className="pl-9" />
+          </form>
+          {cerca && (
+            <Link href={tipusParam !== 'totes' ? `/factures?tipus=${tipusParam}` : '/factures'} className="text-sm font-semibold text-brand-700 hover:underline">
+              Treu la cerca
+            </Link>
+          )}
           <HideAmountsButton nomesIcona className="ml-auto" />
         </div>
       </div>
 
       {factures.length === 0 ? (
         <EmptyState>
-          {tipusParam === 'fiscals'
+          {cerca
+            ? `Cap factura amb «${cerca}».`
+            : tipusParam === 'fiscals'
             ? 'Cap factura fiscal.'
             : tipusParam === 'simples'
             ? 'Cap factura simplificada.'
