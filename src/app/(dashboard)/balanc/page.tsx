@@ -23,7 +23,7 @@ import { FinancesNav } from '@/components/balanc/finances-nav';
 import { CascadaCaixa, COLORS_BALANC, MostraRatllada } from '@/components/balanc/cascada-caixa';
 import { MesosFiancesChart } from '@/components/balanc/mesos-fiances-chart';
 import { AvisPerRepartir } from '@/components/balanc/per-repartir';
-import { NavegadorPeriode } from '@/components/ui/navegador-periode';
+import { PeriodeEnLinia, Segmentat } from '@/components/ui/navegador-periode';
 import { Eur, HideAmountsButton, HideAmountsOnMount } from '@/components/finances/amounts-visibility';
 import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
 import { periodeComparacio, rangDeEstat, rangPeriode, type EstatPeriode } from '@/lib/periode';
@@ -636,28 +636,69 @@ const CRITERIS: { c: Criteri; label: string; explica: React.ReactNode }[] = [
   },
 ];
 
-function SelectorCriteri({ criteri, onChange }: { criteri: Criteri; onChange: (c: Criteri) => void }) {
-  const actual = CRITERIS.find((x) => x.c === criteri)!;
+/** Frase curta de cada vista (la llarga, a la «i»). */
+const RESUM_CRITERI: Record<Criteri, React.ReactNode> = {
+  dies: <>Cada pagament, repartit per les nits de cada mes: <b className="text-slate-800">quant ha rendit cada mes</b>.</>,
+  caixa: <>Cada pagament, sencer, el dia que entra: <b className="text-slate-800">el que ha entrat de veritat</b>.</>,
+};
+const NOM_CRITERI: Record<Criteri, string> = { dies: 'Per dies', caixa: 'Fiscal' };
+
+/**
+ * Una sola targeta: període (tipus + ‹ mes ›), vista Per dies / Fiscal, la «i» amb
+ * l'explicació i l'ull d'amagar imports; a sota, la frase de la vista triada.
+ */
+function BarraBalanc({
+  estat,
+  onEstat,
+  avui,
+  criteri,
+  onCriteri,
+}: {
+  estat: EstatPeriode;
+  onEstat: (e: EstatPeriode) => void;
+  avui: string;
+  criteri: Criteri;
+  onCriteri: (c: Criteri) => void;
+}) {
+  const [info, setInfo] = useState(false);
   return (
-    <div className="space-y-2">
-      <div role="tablist" aria-label="Vista del balanç" className="inline-flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1">
-        {CRITERIS.map(({ c, label }) => (
-          <button
-            key={c}
-            type="button"
-            role="tab"
-            aria-selected={criteri === c}
-            onClick={() => onChange(c)}
-            className={cn(
-              'rounded-lg px-4 py-2 text-sm font-semibold transition-colors',
-              criteri === c ? 'bg-brand-700 text-white shadow-sm' : 'text-slate-600 hover:bg-white/70 hover:text-slate-900',
-            )}
-          >
-            {label}
-          </button>
-        ))}
+    <div className="rounded-xl border border-slate-200 bg-white ui-card">
+      <div className="flex flex-wrap items-center gap-2.5 px-3 py-3 sm:px-4">
+        <PeriodeEnLinia estat={estat} onChange={onEstat} avui={avui} />
+        <span className="hidden h-7 w-px bg-slate-200 sm:block" aria-hidden="true" />
+        <Segmentat
+          rol="tablist"
+          etiqueta="Com es compten els ingressos"
+          opcions={CRITERIS.map((x) => ({ valor: x.c, label: NOM_CRITERI[x.c] }))}
+          valor={criteri}
+          onChange={onCriteri}
+        />
+        <button
+          type="button"
+          aria-expanded={info}
+          aria-label="Què vol dir Per dies i Fiscal"
+          onClick={() => setInfo((i) => !i)}
+          className={cn(
+            'grid h-7 w-7 place-items-center rounded-full border text-xs font-bold',
+            info ? 'border-brand-700 bg-brand-700 text-white' : 'border-slate-300 bg-white text-slate-600 hover:border-brand-600 hover:text-brand-700',
+          )}
+        >
+          i
+        </button>
+        <HideAmountsButton nomesIcona className="ml-auto" />
       </div>
-      <p className="text-sm text-slate-600">{actual.explica} El total d&apos;un període llarg és el mateix a les dues vistes: només canvia a quin mes cau cada ingrés.</p>
+      <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-2 text-sm text-slate-600">
+        {info ? (
+          <div className="space-y-1.5 py-1">
+            {CRITERIS.map((x) => (
+              <p key={x.c}><b className="text-slate-800">{NOM_CRITERI[x.c]}:</b> {x.explica}</p>
+            ))}
+            <p className="text-slate-500">En un període llarg el total és el mateix a les dues vistes: només canvia a quin mes cau cada ingrés.</p>
+          </div>
+        ) : (
+          <p><span className="font-semibold text-slate-700">{NOM_CRITERI[criteri]}:</span> {RESUM_CRITERI[criteri]}</p>
+        )}
+      </div>
     </div>
   );
 }
@@ -916,8 +957,7 @@ export default function BalancPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          <SelectorCriteri criteri={criteri} onChange={setCriteri} />
-          <NavegadorPeriode estat={estat} onChange={setEstat} avui={avui} extra={<HideAmountsButton />} />
+          <BarraBalanc estat={estat} onEstat={setEstat} avui={avui} criteri={criteri} onCriteri={setCriteri} />
 
           {dades ? (
             <>

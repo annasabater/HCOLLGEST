@@ -292,3 +292,115 @@ export function PeriodeCompacte({
     </div>
   );
 }
+
+/** Grup de botons «segmentat» (blanc per dins, l'actiu en granat), per posar en una fila. */
+export function Segmentat<T extends string>({
+  opcions,
+  valor,
+  onChange,
+  etiqueta,
+  rol = 'group',
+}: {
+  opcions: { valor: T; label: string }[];
+  valor: T;
+  onChange: (v: T) => void;
+  etiqueta: string;
+  /** `tablist` quan canvia la vista (accessibilitat). */
+  rol?: 'group' | 'tablist';
+}) {
+  return (
+    <div role={rol} aria-label={etiqueta} className="flex h-10 gap-[3px] rounded-lg border border-slate-300 bg-white p-[3px] ui-card">
+      {opcions.map((o) => (
+        <button
+          key={o.valor}
+          type="button"
+          {...(rol === 'tablist' ? { role: 'tab', 'aria-selected': valor === o.valor } : { 'aria-pressed': valor === o.valor })}
+          onClick={() => onChange(o.valor)}
+          className={cn(
+            'whitespace-nowrap rounded-md px-3 text-sm transition-colors',
+            valor === o.valor ? 'bg-brand-700 font-bold text-white' : 'font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * El navegador en línia, sense fons propi (per anar dins d'una targeta):
+ * [Mes | Trimestre | Any | Personalitzat] i ‹ Novembre 2026 › (o les dues dates).
+ */
+export function PeriodeEnLinia({
+  estat,
+  onChange,
+  avui,
+  primerDia,
+}: {
+  estat: EstatPeriode;
+  onChange: (e: EstatPeriode) => void;
+  avui: string;
+  primerDia?: string;
+}) {
+  const rang = estat.tipus === 'per' ? null : rangPeriode(estat.tipus, estat.off, avui);
+  const curt = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+
+  function triaTipus(t: TipusPeriode | 'per') {
+    if (t === estat.tipus) return;
+    if (t === 'per') {
+      const r = rang ?? { desde: avui, fins: avui };
+      onChange({ tipus: 'per', desde: r.desde, fins: r.fins });
+    } else {
+      onChange({ tipus: t, off: 0 });
+    }
+  }
+
+  const fletxa = 'grid w-9 place-items-center text-slate-700 hover:bg-slate-50 hover:text-brand-700 disabled:cursor-default disabled:text-slate-300 disabled:hover:bg-white';
+
+  return (
+    <>
+      <Segmentat
+        etiqueta="Tipus de període"
+        opcions={TIPUS.map((t) => ({ valor: t.clau, label: t.etiqueta }))}
+        valor={estat.tipus}
+        onChange={triaTipus}
+      />
+      {estat.tipus === 'per' ? (
+        <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+          <label className="flex items-center gap-1.5">
+            Des de
+            <Input type="date" value={estat.desde} max={estat.fins} onChange={(e) => e.target.value && onChange({ ...estat, desde: e.target.value })} className="h-10 w-40" />
+          </label>
+          <label className="flex items-center gap-1.5">
+            fins a
+            <Input type="date" value={estat.fins} min={estat.desde} onChange={(e) => e.target.value && onChange({ ...estat, fins: e.target.value })} className="h-10 w-40" />
+          </label>
+          {primerDia && (
+            <button type="button" onClick={() => onChange({ tipus: 'per', desde: primerDia, fins: avui })} className="h-10 rounded-lg border border-slate-300 bg-white px-3 font-semibold text-slate-700 hover:border-brand-600 hover:text-brand-700">
+              Tot
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="flex h-10 items-stretch overflow-hidden rounded-lg border border-slate-300 bg-white ui-card">
+          <button type="button" aria-label="Període anterior" onClick={() => onChange({ tipus: estat.tipus, off: estat.off - 1 })} className={cn(fletxa, 'border-r border-slate-200')}>
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange({ tipus: estat.tipus, off: 0 })}
+            title={estat.off === 0 ? 'Període actual' : 'Tornar al període actual'}
+            className="flex min-w-[9.5rem] flex-col items-center justify-center px-3 leading-tight hover:bg-slate-50"
+          >
+            <span className="text-sm font-bold text-slate-900">{rang!.etiqueta}</span>
+            <span className="text-[11px] text-slate-500">{curt(rang!.desde)} – {curt(rang!.fins)}</span>
+          </button>
+          <button type="button" aria-label="Període següent" disabled={estat.off >= 0} onClick={() => onChange({ tipus: estat.tipus, off: estat.off + 1 })} className={cn(fletxa, 'border-l border-slate-200')}>
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
