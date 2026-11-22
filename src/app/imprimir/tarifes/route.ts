@@ -165,6 +165,12 @@ export async function GET(req: Request) {
   .notes{ margin:10px 0 0; padding-left:18px; color:var(--muted); font-size:11.5px; }
   .notes li{ margin:2px 0; }
   .foot{ margin-top:24px; padding-top:12px; border-top:1px solid var(--line); color:var(--muted); font-size:11px; text-align:center; }
+  .edit{ display:inline-block; min-width:60px; padding:0 4px; margin:0 -4px; outline:none; }
+  .edit:hover{ outline:1px dashed var(--accent); outline-offset:3px; cursor:text; }
+  .edit:focus{ outline:2px dashed var(--accent); outline-offset:3px; background:#fff; color:var(--ink); }
+  .tb-dreta{ display:flex; align-items:center; gap:14px; }
+  .tb-hint{ font-size:12px; color:var(--muted); }
+  .tb-reset{ font:inherit; font-size:12px; color:var(--accent); background:none; border:0; cursor:pointer; text-decoration:underline; padding:0; }
   @page{ size:A4; margin:10mm; }
   @media print{
     body{ background:#fff; font-size:10px; line-height:1.45; }
@@ -192,7 +198,11 @@ export async function GET(req: Request) {
 <body>
 <div class="toolbar">
   <div class="tb-brand">Hostal Coll · Tarifes</div>
-  <button class="btn" onclick="window.print()">Imprimir / Guardar PDF</button>
+  <div class="tb-dreta">
+    <span class="tb-hint">✎ Clica el text de dalt a la dreta del full per canviar-lo (es manté a tots els fulls).</span>
+    <button type="button" id="per-reset" class="tb-reset" hidden>Torna al text original</button>
+    <button class="btn" onclick="window.print()">Imprimir / Guardar PDF</button>
+  </div>
 </div>
 <div class="app">
   <div class="sheet">
@@ -201,13 +211,36 @@ export async function GET(req: Request) {
         <div class="brand">HOSTAL COLL</div>
         <div class="brand-sub">Casa de Hostes · Calella</div>
       </div>
-      <div class="period">Full de preus<br>${vigencia ? esc(vigencia) : '2025 – 2026'}</div>
+      <div class="period"><span id="per1" class="edit" contenteditable="plaintext-only" spellcheck="false" title="Clica per canviar el text">Full de preus</span><br><span id="per2" class="edit" contenteditable="plaintext-only" spellcheck="false" title="Clica per canviar el text">${vigencia ? esc(vigencia) : '2025 – 2026'}</span></div>
     </div>
     <div class="accent-rule"></div>
     ${seccions || '<p style="color:#7A6868">No hi ha tarifes configurades.</p>'}
     <div class="foot">Preus per habitació i nit segons temporada. Consulteu la recepció per a estades llargues.</div>
   </div>
 </div>
+<script>
+(function () {
+  var KEY = 'tarifes_full_text';
+  var e1 = document.getElementById('per1'), e2 = document.getElementById('per2'), reset = document.getElementById('per-reset');
+  var orig = { l1: e1.textContent, l2: e2.textContent };
+  function llegeix() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
+  function desa() {
+    var v = { l1: e1.textContent.trim(), l2: e2.textContent.trim() };
+    try {
+      if (v.l1 === orig.l1 && v.l2 === orig.l2) localStorage.removeItem(KEY); else localStorage.setItem(KEY, JSON.stringify(v));
+    } catch (e) {}
+    reset.hidden = v.l1 === orig.l1 && v.l2 === orig.l2;
+  }
+  var s = llegeix();
+  if (s) { if (typeof s.l1 === 'string') e1.textContent = s.l1; if (typeof s.l2 === 'string') e2.textContent = s.l2; }
+  reset.hidden = !s;
+  [e1, e2].forEach(function (el) {
+    el.addEventListener('input', desa);
+    el.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); el.blur(); } });
+  });
+  reset.addEventListener('click', function () { e1.textContent = orig.l1; e2.textContent = orig.l2; desa(); });
+})();
+</script>
 </body>
 </html>`;
 
