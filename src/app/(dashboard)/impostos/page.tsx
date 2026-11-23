@@ -15,6 +15,7 @@ import type { ImpostosAny, Ieet950, ModelInfo, TrimestreInfo } from '@/lib/servi
 import type { AvisBoe } from '@/lib/services/boe-formularis';
 import type { ResultatValidacio } from '@/lib/aeat/servei';
 import { CertificatAeatCard, PresentarAeat } from '@/components/impostos/presentacio-aeat';
+import { MenuMes, type OpcioMes } from '@/components/ui/menu-mes';
 
 type Unitat = 'eur' | 'pct' | 'n';
 interface Fila { c: string; text: string; u?: Unitat; clau?: boolean }
@@ -377,58 +378,53 @@ function ModelCard({ m, any, onCanvi, extra }: { m: ModelInfo; any: number; onCa
               </div>
             )}
 
-            {!edit && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {FONT_FORMULARI[m.model] && (
-                  <a
-                    href={`/api/impostos/formulari?model=${m.model}&any=${any}&periode=${m.periode}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    title={`Formulari oficial: ${FONT_FORMULARI[m.model]}`}
-                  >
-                    <Button size="sm" variant="outline"><Download className="h-4 w-4" /> Formulari oficial (PDF)</Button>
-                  </a>
-                )}
-                {(m.model === '303' || m.model === '130' || m.model === '115') && m.periode >= 1 && any >= 2026 && m.estat !== 'futur' && (
-                  <Button size="sm" variant="outline" onClick={() => void baixaFitxer()} disabled={busy}
-                    title="Fitxer en format oficial de l’AEAT: a la Seu, obre el formulari i fes «Importar»">
-                    <FileDown className="h-4 w-4" /> Fitxer per importar a la Seu
-                  </Button>
-                )}
-                {(m.model === '303' || m.model === '130' || m.model === '115') && m.periode >= 1 && any >= 2026 && m.estat !== 'futur' && (
-                  <Button size="sm" variant="outline" onClick={() => void validaAeat()} disabled={busy}
-                    title="L’AEAT revisa el fitxer i en torna l’esborrany oficial en PDF. No presenta res.">
-                    <ShieldCheck className="h-4 w-4" /> Validar a l’AEAT
-                  </Button>
-                )}
-                {(m.model === '303' || m.model === '130' || m.model === '115') && m.periode >= 1 && any >= 2026 && m.estat !== 'futur' && !m.presentada && (
-                  <PresentarAeat
-                    model={m.model} any={any} periode={m.periode} resum={r.text}
-                    importResultat={r.tone === 'danger' ? r.import : -r.import}
-                    pagament={pagamentAeat()} onFet={onCanvi}
-                  />
-                )}
-                {SEU[m.model] && (
-                  <a href={SEU[m.model]} target="_blank" rel="noreferrer">
-                    <Button size="sm" variant="outline"><ExternalLink className="h-4 w-4" /> Seu electrònica</Button>
-                  </a>
-                )}
-                {m.presentada ? (
-                  <Button size="sm" variant="ghost" onClick={() => void desfes()} disabled={busy}><Undo2 className="h-4 w-4" /> Desmarca</Button>
-                ) : (
-                  m.estat !== 'futur' && (
-                    <Button
-                      size="sm"
-                      onClick={() =>
-                        setEdit(Object.fromEntries(FILES[m.model].filter((f) => m.calculades[f.c] !== undefined).map((f) => [f.c, perCopiar(m.calculades[f.c]!)])))
-                      }
+            {!edit && (() => {
+              // A la vista, només el formulari i «Presentar a l'AEAT»; la resta, dins de «Més ▾».
+              const modelAeat = (m.model === '303' || m.model === '130' || m.model === '115') && m.periode >= 1 && any >= 2026 && m.estat !== 'futur' ? m.model : null;
+              const ambAeat = modelAeat !== null;
+              const mes: OpcioMes[] = [
+                ...(ambAeat
+                  ? [
+                      { label: 'Validar a l’AEAT', icon: <ShieldCheck className="h-4 w-4" />, desc: 'L’AEAT ho revisa i et torna l’esborrany en PDF. No presenta res.', onClick: () => void validaAeat(), disabled: busy },
+                      { label: 'Fitxer per importar a la Seu', icon: <FileDown className="h-4 w-4" />, desc: 'Per fer-la tu a la Seu: obre el formulari i fes «Importar».', onClick: () => void baixaFitxer(), disabled: busy },
+                    ]
+                  : []),
+                ...(SEU[m.model] ? [{ label: 'Seu electrònica', icon: <ExternalLink className="h-4 w-4" />, desc: 'Obre la web de l’AEAT per fer-la a mà.', href: SEU[m.model], nova: true }] : []),
+                ...(!m.presentada && m.estat !== 'futur'
+                  ? [{
+                      label: 'Marca com a presentada',
+                      icon: <Check className="h-4 w-4" />,
+                      desc: 'Si l’has presentada per la Seu o la gestoria: només ho apunta aquí.',
+                      onClick: () => setEdit(Object.fromEntries(FILES[m.model].filter((f) => m.calculades[f.c] !== undefined).map((f) => [f.c, perCopiar(m.calculades[f.c]!)]))),
+                    }]
+                  : []),
+              ];
+              return (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {FONT_FORMULARI[m.model] && (
+                    <a
+                      href={`/api/impostos/formulari?model=${m.model}&any=${any}&periode=${m.periode}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={`Formulari oficial: ${FONT_FORMULARI[m.model]}`}
                     >
-                      Marca com a presentada
-                    </Button>
-                  )
-                )}
-              </div>
-            )}
+                      <Button size="sm" variant="outline"><Download className="h-4 w-4" /> Formulari oficial (PDF)</Button>
+                    </a>
+                  )}
+                  {modelAeat && !m.presentada && (
+                    <PresentarAeat
+                      model={modelAeat} any={any} periode={m.periode} resum={r.text}
+                      importResultat={r.tone === 'danger' ? r.import : -r.import}
+                      pagament={pagamentAeat()} onFet={onCanvi}
+                    />
+                  )}
+                  {m.presentada && (
+                    <Button size="sm" variant="ghost" onClick={() => void desfes()} disabled={busy}><Undo2 className="h-4 w-4" /> Desmarca</Button>
+                  )}
+                  <MenuMes opcions={mes} />
+                </div>
+              );
+            })()}
             {!edit && err && <p className="mt-2 text-xs text-red-700">{err}</p>}
             {!edit && validacio && (
               <div className={cn('mt-3 rounded-lg px-3 py-2 text-xs', validacio.errors.length ? 'bg-red-50 text-red-900' : 'bg-green-50 text-green-900')}>
