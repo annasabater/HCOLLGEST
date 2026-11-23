@@ -71,7 +71,7 @@ export async function GET(req: Request) {
 
   const entrada = (c: ContracteFull, i: number) =>
     `<div class="ent${i % 2 ? ' alt' : ''}" data-clau="${esc(c.clau)}"><div class="hab${c.reserva ? ' res' : ''}">${esc(c.habitacions.join('/'))}</div><div class="cos">` +
-    `<div class="pers">${persones(c)}${c.numero ? ` <span class="ctr">Contracte ${esc(c.numero)}</span>` : ''}${c.reserva && c.trams[0]?.del ? ` <span class="ctr">· Reserva, entra el ${dc(c.trams[0].del)}</span>` : ''}${potEditar ? '<button type="button" class="lap no-print" title="Apunta alguna cosa">✎ apuntar</button>' : ''}</div>${c.trams.map(tram).join('')}` +
+    `<div class="pers"><span class="noms">${persones(c)}</span>${c.numero || c.reserva ? `<span class="ctr">${c.numero ? `Contracte ${esc(c.numero)}` : ''}${c.reserva && c.trams[0]?.del ? `${c.numero ? ' · ' : ''}Reserva, entra el ${dc(c.trams[0].del)}` : ''}</span>` : ''}${potEditar ? '<button type="button" class="lap no-print" title="Apunta alguna cosa">✎ apuntar</button>' : ''}</div>${c.trams.map(tram).join('')}` +
     `<div class="nota"${notes.get(c.clau) ? '' : ' hidden'}>${esc(notes.get(c.clau) ?? '')}</div></div></div>`;
 
   const cos = contractes.length ? contractes.map(entrada).join('') : '<p class="buit">Cap estada en aquest període.</p>';
@@ -108,7 +108,9 @@ h1 { margin: 2px 0 0; font-size: 22px; font-weight: 600; color: #222; }
 .fra { color: #7a7a7a; }
 .pend { font-size: 9.5px; font-weight: 700; letter-spacing: .08em; background: #7a1f2b; color: #fff; padding: 2px 7px; white-space: nowrap; }
 .buit { color: #888; padding: 20px 10px; }
-.pers { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0; }
+/* Els noms van junts en un bloc (dins, els espais es respecten); entre blocs, aire. */
+.pers { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; }
+.pers .ctr { margin-left: 0; }
 .lap { margin-left: auto; font: 600 11px Arial, sans-serif; color: #7a1f2b; background: #fff; border: 1px solid #e3d3d6; padding: 2px 8px; cursor: pointer; opacity: 0; transition: opacity .12s; }
 .ent:hover .lap, .lap:focus { opacity: 1; }
 .nota { margin-top: 5px; padding: 4px 9px; background: #f7eef0; border-left: 3px solid #7a1f2b; font-size: 12px; color: #1a1a1a; white-space: pre-wrap; }
