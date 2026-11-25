@@ -233,7 +233,7 @@ export function CompteTreballador({
               title="Els dies de neteja del període, amb habitacions, imports i el que s'ha pagat"
               className={classePdf('sm', 'px-2')}
             >
-              <FileText className="h-4 w-4" /> PDF dels dies
+              <FileText className="h-4 w-4" /> PDF de llistat
             </a>
             <a
               href={pdfPendent}
