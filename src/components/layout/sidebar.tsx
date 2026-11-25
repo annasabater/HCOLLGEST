@@ -80,6 +80,16 @@ const GROUPS: NavGroup[] = [
   },
 ];
 
+/** Apartat de la barra lateral d'una adreça (per al pretítol de les pàgines). */
+export function apartatDe(pathname: string): string | null {
+  if (pathname.startsWith('/config')) return 'Sistema';
+  if (pathname === '/') return null;
+  for (const g of GROUPS) {
+    if (g.items.some((i) => i.href !== '/' && (pathname === i.href || pathname.startsWith(`${i.href}/`)))) return g.title ?? null;
+  }
+  return null;
+}
+
 export function Sidebar({ role, restringit = false, compacta = false }: { role: Role; restringit?: boolean; compacta?: boolean }) {
   const pathname = usePathname();
 
