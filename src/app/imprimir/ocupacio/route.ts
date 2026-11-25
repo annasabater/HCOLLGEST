@@ -121,6 +121,7 @@ h1 { margin: 2px 0 0; font-size: 22px; font-weight: 600; color: #222; }
 .barra a, .barra button { font: 600 14px Arial, sans-serif; padding: 9px 16px; border: 1px solid #7a1f2b; text-decoration: none; cursor: pointer; }
 .barra a { color: #7a1f2b; background: #fff; }
 .barra button { color: #fff; background: #7a1f2b; }
+.barra[hidden] { display: none; } /* dins la vista prèvia de /ocupacio no surt */
 footer { margin-top: 10px; font-size: 9.5px; color: #999; border-top: 1px solid #e4e4e4; padding-top: 6px; }
 @media screen {
   body { background: #e9e9e9; padding: 18px 12px; }
