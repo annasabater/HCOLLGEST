@@ -388,7 +388,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   td.roC{ font-weight:600; color:var(--slate); padding:7px 6px; }
   td.ro{ padding:7px 6px; }
   .buit{ color:var(--muted); font-style:italic; padding:14px 6px; }
-  .resum{ margin-top:16px; margin-left:auto; width:380px; max-width:100%; }
+  .resum{ margin-top:16px; margin-left:auto; width:460px; max-width:100%; }
+  #r-dip-lab{ white-space:nowrap; }
   .resum-row{ display:flex; justify-content:space-between; gap:16px; padding:7px 12px; }
   .resum-row > span:last-child{ white-space:nowrap; font-variant-numeric:tabular-nums; }
   .resum-row.grand{ background:var(--accent-soft); border-top:2px solid var(--accent); border-radius:4px; font-family:Georgia,serif; font-size:14px; color:var(--ink); }
@@ -720,7 +721,7 @@ ${edicionsBootstrap('trimestre', periode, edicions)}
     for (const r of rows) { tb += r.base; ti += r.iva; tt += r.total; td += r.diposit; }
     document.getElementById('t1-dip').textContent = plain(td);
     // Si el trimestre només té devolucions, surt «devueltos» i el signe com a guió llarg (−150,00 €).
-    document.getElementById('r-dip-lab').textContent = td < 0 ? 'Depósitos devueltos (no son ingreso)' : 'Depósitos (no computan como ingreso)';
+    document.getElementById('r-dip-lab').textContent = td < 0 ? 'Depósitos devueltos (no computan como ingreso)' : 'Depósitos (no computan como ingreso)';
     document.getElementById('r-dip').textContent = (td < 0 ? '−' : '') + plain(Math.abs(td)) + ' €';
     document.getElementById('r-dip-row').style.display = td === 0 ? 'none' : '';
     document.getElementById('t1-base').textContent = plain(tb);
