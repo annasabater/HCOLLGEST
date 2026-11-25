@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, X, Settings, PanelLeftClose } from 'lucide-react';
+import { Menu, X, Settings, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import type { Role } from '@prisma/client';
 import { Sidebar } from '@/components/layout/sidebar';
 import { LogoutButton } from '@/components/layout/logout-button';
@@ -38,10 +38,7 @@ export function AppShell({
     setAmagada(v);
     try { window.localStorage.setItem('barra_amagada', v ? '1' : '0'); } catch { /* ignora */ }
   };
-  const obreMenu = () => {
-    if (window.matchMedia('(min-width: 1024px)').matches) canviaAmagada(false);
-    else setOpen(true);
-  };
+  const obreMenu = () => setOpen(true);
 
   // Tanca el menú en navegar (mòbil/tablet).
   useEffect(() => {
@@ -62,14 +59,15 @@ export function AppShell({
       )}
 
       <aside
+        data-compacta={amagada ? '1' : undefined}
         className={cn(
           'app-sidebar fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col bg-brand-900 text-white transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:z-auto lg:translate-x-0',
           open ? 'translate-x-0' : '-translate-x-full',
-          amagada && 'lg:hidden',
+          amagada && 'lg:w-16',
         )}
       >
-        <div className="flex items-center justify-between border-b border-brand-800 px-5 py-5">
-          <div>
+        <div className={cn('flex items-center justify-between border-b border-brand-800 px-5 py-5', amagada && 'lg:justify-center lg:px-0')}>
+          <div className={cn(amagada && 'lg:hidden')}>
             <p className="app-logo font-serif text-2xl font-semibold tracking-wide">Hostal Coll</p>
           </div>
           <button
@@ -82,39 +80,41 @@ export function AppShell({
           </button>
           <button
             type="button"
-            onClick={() => canviaAmagada(true)}
+            onClick={() => canviaAmagada(!amagada)}
             className="hidden rounded-lg p-1 text-brand-200 hover:bg-brand-800 lg:block"
-            aria-label="Amagar la barra lateral"
-            title="Amagar la barra lateral"
+            aria-label={amagada ? 'Mostrar la barra lateral' : 'Plegar la barra lateral'}
+            title={amagada ? 'Mostrar la barra lateral' : 'Plegar la barra lateral'}
           >
-            <PanelLeftClose className="h-5 w-5" />
+            {amagada ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
           </button>
         </div>
-        <Sidebar role={user.role} restringit={readOnly} />
+        <Sidebar role={user.role} restringit={readOnly} compacta={amagada} />
         <div className="border-t border-brand-800 p-3">
           {user.role === 'ADMIN' ? (
             <Link
               href="/config"
               aria-current={pathname.startsWith('/config') ? 'page' : undefined}
-              className="app-nav-item mb-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-100 transition-colors hover:bg-brand-800"
+              title={amagada ? 'Configuració' : undefined}
+              aria-label={amagada ? 'Configuració' : undefined}
+              className={cn('app-nav-item mb-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-100 transition-colors hover:bg-brand-800', amagada && 'lg:justify-center lg:px-0')}
             >
-              <Settings className="h-4 w-4 shrink-0" />
-              Configuració
+              <Settings className={cn('h-4 w-4 shrink-0', amagada && 'lg:h-5 lg:w-5')} />
+              <span className={cn(amagada && 'lg:hidden')}>Configuració</span>
             </Link>
           ) : (
-            <div className="mb-2 px-3">
+            <div className={cn('mb-2 px-3', amagada && 'lg:hidden')}>
               <p className="truncate text-sm font-medium">{user.nom}</p>
               <p className="text-xs text-brand-300">
                 {readOnly ? 'Només lectura' : (ROLE_LABEL[user.role] ?? user.role)}
               </p>
             </div>
           )}
-          <LogoutButton />
+          <LogoutButton compacta={amagada} />
         </div>
       </aside>
 
       <main className="app-main flex min-w-0 flex-1 flex-col bg-slate-50">
-        <header className={`sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/80 px-4 py-3 backdrop-blur sm:px-6${amagada ? '' : ' lg:hidden'}`}>
+        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/80 px-4 py-3 backdrop-blur sm:px-6 lg:hidden">
           <button
             type="button"
             onClick={obreMenu}

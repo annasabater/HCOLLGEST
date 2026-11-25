@@ -80,20 +80,20 @@ const GROUPS: NavGroup[] = [
   },
 ];
 
-export function Sidebar({ role, restringit = false }: { role: Role; restringit?: boolean }) {
+export function Sidebar({ role, restringit = false, compacta = false }: { role: Role; restringit?: boolean; compacta?: boolean }) {
   const pathname = usePathname();
 
   return (
-    <nav className="scrollbar-hide flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
+    <nav className={cn('scrollbar-hide flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4', compacta && 'lg:px-2')}>
       {GROUPS.map((group, gi) => {
         const items = group.items.filter(
           (i) => (!i.roles || i.roles.includes(role)) && !(restringit && i.hideRestringit),
         );
         if (items.length === 0) return null;
         return (
-          <div key={gi} className={gi > 0 ? 'mt-4' : ''}>
+          <div key={gi} className={cn(gi > 0 && 'mt-4', gi > 0 && compacta && 'lg:mt-2 lg:border-t lg:border-brand-800 lg:pt-2')}>
             {group.title && (
-              <p className="app-nav-group px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-brand-400">
+              <p className={cn('app-nav-group px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-brand-400', compacta && 'lg:hidden')}>
                 {group.title}
               </p>
             )}
@@ -105,13 +105,16 @@ export function Sidebar({ role, restringit = false }: { role: Role; restringit?:
                   key={item.href}
                   href={item.href}
                   aria-current={active ? 'page' : undefined}
+                  title={compacta ? item.label : undefined}
+                  aria-label={compacta ? item.label : undefined}
                   className={cn(
                     'app-nav-item flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    compacta && 'lg:justify-center lg:px-0',
                     active ? 'bg-brand-700 text-white' : 'text-brand-100 hover:bg-brand-800',
                   )}
                 >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className="flex-1">{item.label}</span>
+                  <Icon className={cn('h-4 w-4 shrink-0', compacta && 'lg:h-5 lg:w-5')} />
+                  <span className={cn('flex-1', compacta && 'lg:hidden')}>{item.label}</span>
                 </Link>
               );
             })}

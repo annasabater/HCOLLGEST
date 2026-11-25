@@ -400,3 +400,20 @@ html[data-estil='nou'][data-barra='granat'] .app-sidebar .app-logout:hover {
 .scrollbar-hide::-webkit-scrollbar {
   display: none; /* Chrome/Safari/Edge */
 }
+
+/* Barra lateral plegada (només ordinador, lg+): cinta estreta d'icones. Al nou estil les
+   icones normalment s'amaguen; aquí són l'únic que hi ha, així que es tornen a veure. */
+@media (min-width: 1024px) {
+  html[data-estil='nou'] .app-sidebar[data-compacta='1'] .app-nav-item svg {
+    display: block;
+  }
+  html[data-estil='nou'] .app-sidebar[data-compacta='1'] .app-nav-item,
+  html[data-estil='nou'] .app-sidebar[data-compacta='1'] > div.p-3 > div {
+    padding-left: 0;
+    padding-right: 0;
+    justify-content: center;
+  }
+  html[data-estil='nou'] .app-sidebar[data-compacta='1'] .app-nav-item[aria-current='page'] {
+    box-shadow: inset 3px 0 0 var(--color-brand-700);
+  }
+}
