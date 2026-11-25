@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, LogOut, CheckCircle2 } from 'lucide-react';
 import { getJSON, postJSON, ApiError } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { toISODate } from '@/lib/dates';
 
 interface Conflicte {
   id: string;
@@ -12,6 +13,9 @@ interface Conflicte {
   titular: string;
   dataEntrada: string | null;
   dataSortida: string | null;
+  sortidaProbable: string | null;
+  /** Ha dit que marxa probablement abans (o el dia) que entri la nova. */
+  probable: boolean;
 }
 
 /**
@@ -65,7 +69,7 @@ export function AvisSolapament({
     try {
       // La sortida de l'estada en conflicte queda fixada al dia d'entrada de la nova.
       await postJSON(`/api/estancies/${c.id}/finalitzar-anticipada`, {
-        dataSortida: dataEntrada,
+        dataSortida: c.probable && c.sortidaProbable ? c.sortidaProbable : dataEntrada,
         retorn: false,
       });
       setConflictes((prev) => prev.filter((x) => x.id !== c.id));
@@ -88,6 +92,34 @@ export function AvisSolapament({
     );
   }
   if (conflictes.length === 0) return null;
+
+  // Totes les que hi coincideixen han dit que marxen abans: avís suau.
+  if (conflictes.every((c) => c.probable)) {
+    const avui = toISODate(new Date());
+    return (
+      <div className="mt-2 space-y-2 border-l-4 border-amber-400 bg-amber-50 p-3">
+        {conflictes.map((c) => (
+          <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 text-sm text-amber-900">
+            <span>
+              <strong>L’habitació encara és de {c.titular} fins al {c.dataSortida ? formatDate(c.dataSortida) : '—'}</strong>, però
+              ha dit que marxa probablement el <strong>{formatDate(c.sortidaProbable)}</strong>. Pots desar igualment; quan entri
+              la persona nova, es donarà per marxada sola.
+            </span>
+            {c.sortidaProbable && c.sortidaProbable <= avui && <button
+              type="button"
+              disabled={busyId === c.id}
+              onClick={() => finalitzar(c)}
+              className="inline-flex items-center gap-1.5 border border-amber-400 bg-white px-2.5 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-40"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              {busyId === c.id ? 'Desant…' : `Ja ha marxat (${formatDate(c.sortidaProbable)})`}
+            </button>}
+          </div>
+        ))}
+        {error && <p className="text-xs text-red-600">{error}</p>}
+      </div>
+    );
+  }
 
   // "Reservada" si totes les estades en conflicte són reserves; si no, "ocupada".
   const totReserves = conflictes.every((c) => c.estat === 'RESERVA');

@@ -31,6 +31,7 @@ interface Estada {
   dataEntrada: string;
   dataSortida: string;
   estat: string;
+  sortidaProbable: string | null;
 }
 
 const DOW = ['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'];
@@ -116,6 +117,10 @@ export function CalendariOcupacioTotal() {
           );
         })}
         <span className="flex items-center gap-1.5 text-xs text-slate-500">
+          <span className="inline-block h-3 w-3 rounded-sm border border-dashed border-brand-300" style={{ backgroundImage: 'repeating-linear-gradient(135deg, rgba(122,31,43,.16) 0 5px, transparent 5px 10px)' }} />
+          Probablement lliure (marxarà abans)
+        </span>
+        <span className="flex items-center gap-1.5 text-xs text-slate-500">
           <span className="inline-block h-3 w-3 rounded-sm border border-dashed border-slate-300" />
           Canvi d&apos;hostes
         </span>
@@ -175,17 +180,21 @@ export function CalendariOcupacioTotal() {
                     <div key={hab.id} className="flex flex-col gap-0.5">
                       {occ.map((e) => {
                         const etiqueta = [hab.nom, e.titularNom, e.numContracte].filter(Boolean).join(' · ');
+                        // «Marxarà abans»: des del dia probable, ratllat (probablement lliure).
+                        const probable = !!e.sortidaProbable && iso >= e.sortidaProbable;
                         return (
                           <Link
                             key={e.id}
                             href={`/estancies/${e.id}`}
-                            title={`Hab. ${hab.nom} · ${e.titular}${e.numContracte ? ` · ${e.numContracte}` : ''}${canvi ? ' · CANVI D\'HOSTES' : ''}`}
+                            title={`Hab. ${hab.nom} · ${e.titular}${e.numContracte ? ` · ${e.numContracte}` : ''}${canvi ? ' · CANVI D\'HOSTES' : ''}${probable ? ' · PROBABLEMENT LLIURE (marxarà abans)' : ''}`}
                             className={cn(
                               'block truncate rounded px-1 text-[10px] font-medium leading-tight',
                               c.light,
                               c.text,
                               canvi && 'border border-dashed border-current',
+                              probable && 'border border-dashed border-brand-300 bg-white text-brand-800',
                             )}
+                            style={probable ? { backgroundImage: 'repeating-linear-gradient(135deg, rgba(122,31,43,.16) 0 5px, transparent 5px 10px)' } : undefined}
                           >
                             {canvi && '⇄ '}
                             {etiqueta}

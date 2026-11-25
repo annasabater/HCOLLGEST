@@ -30,11 +30,20 @@ async function sortidesEntre(desde: string, fins: string): Promise<Set<string>> 
       deletedAt: null,
       estat: { not: 'CANCELLADA' },
       habitacioId: { not: null },
-      dataSortida: { gte: diaDate(desde), lte: new Date(`${fins}T23:59:59.999Z`) },
+      OR: [
+        { dataSortida: { gte: diaDate(desde), lte: new Date(`${fins}T23:59:59.999Z`) } },
+        { sortidaProbable: { gte: diaDate(desde), lte: new Date(`${fins}T23:59:59.999Z`) } },
+      ],
     },
-    select: { habitacioId: true, dataSortida: true },
+    select: { habitacioId: true, dataSortida: true, sortidaProbable: true },
   });
-  return new Set(est.map((e) => `${isoDia(e.dataSortida!)}|${e.habitacioId}`));
+  // «Marxarà abans»: la neteja de sortida va el dia probable, no el de la sortida oficial.
+  return new Set(
+    est
+      .map((e) => ({ hab: e.habitacioId, dia: isoDia((e.sortidaProbable ?? e.dataSortida)!) }))
+      .filter((x) => x.dia >= desde && x.dia <= fins)
+      .map((x) => `${x.dia}|${x.hab}`),
+  );
 }
 
 export interface Planificacio {

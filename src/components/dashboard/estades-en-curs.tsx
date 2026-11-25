@@ -56,8 +56,12 @@ const ACCIO_MISSATGE: Record<MissatgeProrroga, string> = {
   sortidaUna: 'RECORDATORI',
 };
 
-function Situacio({ e }: { e: EstadaEnCurs }) {
-  const s = {
+function Situacio({ e, avui }: { e: EstadaEnCurs; avui: string }) {
+  // «Marxarà abans»: abans del dia, «marxa probablement»; passat el dia, cal confirmar-ho.
+  const p = e.sortidaProbable;
+  const s = p ? (p < avui
+    ? { t: `Havia de marxar el ${dc(p)} · ha marxat?`, c: 'bg-orange-50 text-orange-800' }
+    : { t: `Marxa probablement el ${dc(p)}`, c: 'bg-amber-50 text-amber-900' }) : {
     PER_PREGUNTAR: { t: 'Per preguntar', c: 'bg-stone-100 text-stone-600' },
     TOCA: { t: 'Toca preguntar', c: 'bg-amber-50 text-amber-900' },
     ESPERANT: { t: 'Esperant resposta', c: 'bg-blue-50 text-blue-800' },
@@ -504,7 +508,8 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
     }
   };
 
-  const decidida = (e: EstadaEnCurs) => e.situacio === 'ALLARGA' || e.situacio === 'MARXA';
+  const decidida = (e: EstadaEnCurs) =>
+    (e.situacio === 'ALLARGA' || e.situacio === 'MARXA') && !(e.sortidaProbable && e.sortidaProbable < avui);
   const llista = estades.filter((e) =>
     filtre === 'pendents' ? !decidida(e) : filtre === 'setmana' ? e.diesFalten <= 7 : true,
   );
@@ -523,6 +528,18 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No s’ha pogut desar');
       return false;
+    } finally {
+      setBusy(null);
+    }
+  }
+  async function crida(id: string, fn: () => Promise<unknown>) {
+    setBusy(id);
+    setError(null);
+    try {
+      await fn();
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No s’ha pogut desar');
     } finally {
       setBusy(null);
     }
@@ -667,7 +684,10 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                     <span className="flex flex-wrap items-baseline gap-x-2.5">
                       <strong className="ui-estada-nom text-slate-900">{titular}</strong>
                       <span className="text-xs tabular-nums text-slate-500">
-                        {dc(e.entrada)} → {dc(e.sortida)} · {e.nits} nits
+                        {dc(e.entrada)} → {e.sortidaProbable ? <s>{dc(e.sortida)}</s> : dc(e.sortida)} · {e.nits} nits
+                        {e.sortidaProbable && (
+                          <span className="ml-1 font-bold text-amber-800">· marxa probablement el {dc(e.sortidaProbable)}</span>
+                        )}
                         {e.ampliacions.length > 0 && (
                           <span className="ui-etiqueta ml-1.5 rounded-full bg-violet-50 px-2 py-0.5 font-bold text-violet-800">
                             {e.ampliacions.length === 1
@@ -680,7 +700,7 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                     <Pista e={e} avui={avui} />
                   </span>
                   <span className="col-start-2 flex flex-wrap items-center gap-2 sm:col-start-3 sm:grid sm:justify-items-end sm:gap-1">
-                    <Situacio e={e} />
+                    <Situacio e={e} avui={avui} />
                     <span className="text-xs tabular-nums text-slate-500">
                       surt{' '}
                       {e.diesFalten === 0
@@ -755,7 +775,35 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                               </Button>
                             )}
                           </div>
-                          {!ambAmpliacio && (
+                          {e.sortidaProbable && (
+                            <div className="flex flex-wrap gap-2">
+                              {e.sortidaProbable <= avui && (
+                                <Button
+                                  size="sm"
+                                  disabled={busy === e.id}
+                                  onClick={() =>
+                                    crida(e.id, () =>
+                                      postJSON(`/api/estancies/${e.id}/finalitzar-anticipada`, {
+                                        dataSortida: e.sortidaProbable,
+                                        retorn: false,
+                                      }),
+                                    )
+                                  }
+                                >
+                                  Ha marxat el {dc(e.sortidaProbable)}
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={busy === e.id}
+                                onClick={() => crida(e.id, () => delJSON(`/api/estancies/${e.id}/sortida-probable`))}
+                              >
+                                Al final es queda
+                              </Button>
+                            </div>
+                          )}
+                          {!ambAmpliacio && !e.sortidaProbable && (
                             <div className="flex flex-wrap gap-2">
                               {e.situacio !== 'ALLARGA' && (
                                 <Button

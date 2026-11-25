@@ -7,6 +7,7 @@ import { handleApiError, notFound, ok } from '@/lib/http';
 import { TipusPagamentEnum } from '@/lib/validation/enums';
 import { RegistreSchema, RegistreEsborranySchema } from '@/lib/validation/registre';
 import { updateRegistre } from '@/lib/services/registre';
+import { tancaProbablesEnEntrar } from '@/lib/services/sortida-probable';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -72,6 +73,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     const exists = await prisma.estancia.findFirst({ where: { id, deletedAt: null }, select: { id: true } });
     if (!exists) return notFound();
     const estancia = await prisma.estancia.update({ where: { id }, data });
+    const tancades = await tancaProbablesEnEntrar(id, { id: auth.id }, clientIp(req)).catch(() => []);
 
     await audit({
       usuariId: auth.id,
@@ -82,7 +84,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       ip: clientIp(req),
     });
 
-    return ok({ estancia });
+    return ok({ estancia, tancades });
   } catch (err) {
     return handleApiError(err);
   }
@@ -103,7 +105,8 @@ export async function PUT(req: Request, ctx: Ctx) {
     const result = await updateRegistre(id, input, { id: auth.id }, clientIp(req), {
       esBorrany: borrany,
     });
-    return ok(result);
+    const tancades = borrany ? [] : await tancaProbablesEnEntrar(id, { id: auth.id }, clientIp(req)).catch(() => []);
+    return ok({ ...result, tancades });
   } catch (err) {
     return handleApiError(err);
   }

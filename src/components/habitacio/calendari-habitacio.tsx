@@ -17,6 +17,7 @@ interface Estada {
   viatgers: string[];
   dataEntrada: string;
   dataSortida: string;
+  sortidaProbable: string | null;
   estat: Estat;
 }
 
@@ -117,6 +118,9 @@ export function CalendariHabitacio({ habitacions }: { habitacions: { id: string;
           <span className="inline-block h-3 w-3 rounded-sm bg-slate-200" /> Finalitzada
         </span>
         <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-sm border border-dashed border-brand-300" style={{ backgroundImage: 'repeating-linear-gradient(135deg, rgba(122,31,43,.16) 0 5px, transparent 5px 10px)' }} /> Probablement lliure
+        </span>
+        <span className="flex items-center gap-1.5">
           <span className="inline-block h-3 w-3 rounded-sm border border-slate-200 bg-white" /> Lliure
         </span>
       </div>
@@ -134,8 +138,12 @@ export function CalendariHabitacio({ habitacions }: { habitacions: { id: string;
           const iso = toISODate(day);
           const isToday = iso === todayIso;
           const dim = !sameMonth(day, anchor);
-          const dayEst = estadesDelDia(day);
+          const dayEst0 = estadesDelDia(day);
+          const esProbable = (st: Estada) => !!st.sortidaProbable && iso >= st.sortidaProbable;
+          // Primer les que hi són segur; les «probablement lliures» al final.
+          const dayEst = [...dayEst0.filter((st) => !esProbable(st)), ...dayEst0.filter(esProbable)];
           const e = dayEst[0];
+          const nomesProbable = !!e && dayEst.every(esProbable);
           const cell = e ? ESTAT_CELL[e.estat] : '';
           // Tots els hostes del dia (de tots els contractes que hi coincideixen).
           const noms = dayEst.flatMap((st) => (st.viatgers.length > 0 ? st.viatgers : [st.titular]));
@@ -161,14 +169,15 @@ export function CalendariHabitacio({ habitacions }: { habitacions: { id: string;
           const base = cn(
             'flex min-h-16 flex-col rounded-lg border p-1.5',
             isToday ? 'border-brand-400 ring-1 ring-brand-200' : 'border-slate-200',
-            dim && !e ? 'bg-slate-50' : e ? cell : 'bg-white',
+            dim && !e ? 'bg-slate-50' : nomesProbable ? 'border-dashed border-brand-300 bg-white text-brand-800' : e ? cell : 'bg-white',
           );
           return e ? (
             <Link
               key={i}
               href={`/estancies/${e.id}`}
               className={base}
-              title={`${ESTAT_LABEL[e.estat]}: ${dayEst.map((st) => st.titular).join(' · ')}`}
+              style={nomesProbable ? { backgroundImage: 'repeating-linear-gradient(135deg, rgba(122,31,43,.16) 0 5px, transparent 5px 10px)' } : undefined}
+              title={`${nomesProbable ? 'Probablement lliure (marxarà abans)' : ESTAT_LABEL[e.estat]}: ${dayEst.map((st) => st.titular).join(' · ')}`}
             >
               {content}
             </Link>

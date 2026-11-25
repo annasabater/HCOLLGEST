@@ -44,6 +44,7 @@ export async function GET(req: Request) {
         estat: true,
         dataEntrada: true,
         dataSortida: true,
+        sortidaProbable: true,
         habitacioId: true,
         ...SELECT_CANVIS,
         viatgers: {
@@ -64,6 +65,10 @@ export async function GET(req: Request) {
         titular: h ? `${h.nom} ${h.cognom1}${h.cognom2 ? ` ${h.cognom2}` : ''}` : 'Sense titular',
         dataEntrada: e.dataEntrada ? toISODate(e.dataEntrada) : null,
         dataSortida: e.dataSortida ? toISODate(e.dataSortida) : null,
+        // «Marxarà abans»: si marxa probablement abans (o el dia) que entri la nova,
+        // és un avís suau, no un conflicte de debò.
+        sortidaProbable: e.sortidaProbable ? toISODate(e.sortidaProbable) : null,
+        probable: !!e.sortidaProbable && toISODate(e.sortidaProbable) <= desdeStr,
       };
     });
 

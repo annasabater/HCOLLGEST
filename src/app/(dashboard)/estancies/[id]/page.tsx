@@ -22,6 +22,7 @@ import { ViatgerFirma } from '@/components/estancia/viatger-firma';
 import { AmpliarEstada } from '@/components/estancia/ampliar-estada';
 import { CanviHabitacio, HistorialHabitacio } from '@/components/estancia/canvi-habitacio';
 import { tramsHabitacio } from '@/lib/habitacio-trams';
+import { MarxaraAbans } from '@/components/estancia/marxara-abans';
 import { FinalitzarAnticipada } from '@/components/estancia/finalitzar-anticipada';
 import { EliminarEstada } from '@/components/estancia/eliminar-estada';
 import { TreureEsborrany } from '@/components/estancia/treure-esborrany';
@@ -281,6 +282,20 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   actualHabitacioId={estancia.habitacioId}
                 />
               )}
+            {canWrite &&
+              estancia.estat !== 'CANCELLADA' &&
+              estancia.estat !== 'FINALITZADA' &&
+              !estancia.sortidaAnticipada &&
+              !estancia.esBorrany &&
+              estancia.dataEntrada &&
+              estancia.dataSortida && (
+                <MarxaraAbans
+                  estanciaId={estancia.id}
+                  dataEntrada={toISODate(estancia.dataEntrada)}
+                  dataSortida={toISODate(estancia.dataSortida)}
+                  sortidaProbable={estancia.sortidaProbable ? toISODate(estancia.sortidaProbable) : null}
+                />
+              )}
             <AmpliarEstada
               estanciaId={estancia.id}
               defaultEntrada={estancia.dataSortida ? toISODate(estancia.dataSortida) : ''}
@@ -382,7 +397,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
               <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 <Dl label="Entrada" value={formatDate(estancia.dataEntrada)} />
                 <Dl
-                  label={estancia.sortidaAnticipada ? 'Sortida (anticipada)' : 'Sortida'}
+                  label={estancia.sortidaAnticipada ? 'Sortida (anticipada)' : estancia.sortidaProbable ? 'Sortida oficial' : 'Sortida'}
                   value={
                     estancia.sortidaAnticipada && estancia.dataSortidaPrevista ? (
                       <span>
@@ -395,6 +410,19 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   }
                 />
 
+                {estancia.sortidaProbable && !estancia.sortidaAnticipada && (
+                  <Dl
+                    label="Sortida probable"
+                    value={
+                      <span className="text-amber-800">
+                        <b>{formatDate(estancia.sortidaProbable)}</b>
+                        {estancia.sortidaProbableNota && (
+                          <span className="block text-xs text-slate-500">{estancia.sortidaProbableNota}</span>
+                        )}
+                      </span>
+                    }
+                  />
+                )}
                 <Dl label="Formalització" value={formatDate(estancia.dataFormalitzacio)} />
                 <Dl label="Viatgers" value={estancia.numViatgers} />
                 <Dl label="Pagament" value={TIPUS_PAGAMENT_LABELS[estancia.tipusPagament]} />

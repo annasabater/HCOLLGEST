@@ -5,6 +5,7 @@ import { created, handleApiError, ok } from '@/lib/http';
 import { RegistreSchema, RegistreEsborranySchema } from '@/lib/validation/registre';
 import { createRegistre } from '@/lib/services/registre';
 import { addPagamentEstada, addDiposit } from '@/lib/services/factura';
+import { tancaProbablesEnEntrar } from '@/lib/services/sortida-probable';
 import type { Prisma } from '@prisma/client';
 
 // GET /api/estancies?estat=&desde=&fins=&q=
@@ -88,7 +89,11 @@ export async function POST(req: Request) {
       }
     }
 
-    return created({ ...result });
+    // Si entra a una habitació on algú havia de marxar «probablement» abans, el
+    // dona per marxat (no s'ha de recordar de prémer «Ha marxat»).
+    const tancades = await tancaProbablesEnEntrar(result.estanciaId, { id: auth.id }, clientIp(req)).catch(() => []);
+
+    return created({ ...result, tancades });
   } catch (err) {
     return handleApiError(err);
   }

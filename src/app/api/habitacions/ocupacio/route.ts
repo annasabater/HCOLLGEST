@@ -50,6 +50,7 @@ export async function GET(req: Request) {
       dataEntrada: t.desde,
       dataSortida: t.fins,
       estat: e.estat,
+      sortidaProbable: e.sortidaProbable && !e.sortidaAnticipada ? e.sortidaProbable.toISOString().slice(0, 10) : null,
     }))),
   });
 }

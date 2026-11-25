@@ -465,6 +465,11 @@ model Estancia {
   // la sortida original per poder desfer-ho (tornar a allotjat) si va ser per error.
   sortidaAnticipada   Boolean         @default(false) @map("sortida_anticipada")
   dataSortidaPrevista DateTime?       @map("data_sortida_prevista")
+  // «Marxarà abans»: l'hoste ha dit que probablement marxarà aquest dia. NO toca
+  // la sortida oficial (Mossos, factura, pagat): l'habitació surt «probablement
+  // lliure» des d'aquí. Quan marxa de debò → sortida anticipada (i es buida).
+  sortidaProbable     DateTime?       @map("sortida_probable")
+  sortidaProbableNota String?         @map("sortida_probable_nota")
   numViatgers         Int             @map("num_viatgers")
   tipusPagament       TipusPagament   @map("tipus_pagament")
   numHabitacions      Int?            @map("num_habitacions")

@@ -55,6 +55,8 @@ export async function GET(req: Request) {
         dataEntrada: t.desde?.toISOString().slice(0, 10) ?? null,
         dataSortida: t.fins?.toISOString().slice(0, 10) ?? null,
         estat: e.estat,
+        // «Marxarà abans»: des d'aquest dia, probablement lliure (la sortida oficial no canvia).
+        sortidaProbable: e.sortidaProbable && !e.sortidaAnticipada ? e.sortidaProbable.toISOString().slice(0, 10) : null,
       };
     })),
   });

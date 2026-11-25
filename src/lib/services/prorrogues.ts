@@ -24,6 +24,8 @@ export interface EstadaEnCurs {
   numContracte: string | null;
   entrada: string; // YYYY-MM-DD
   sortida: string; // YYYY-MM-DD
+  /** «Marxarà abans»: dia que ha dit que probablement marxa (la sortida oficial no canvia). */
+  sortidaProbable: string | null;
   nits: number;
   diesFalten: number;
   dataProposada: string;
@@ -229,13 +231,15 @@ export async function getEstadesEnCurs(now = new Date()): Promise<{ avui: string
       numContracte: e.numContracte,
       entrada,
       sortida,
+      sortidaProbable: e.sortidaProbable ? diaMadrid(e.sortidaProbable) : null,
       nits: diesEntreDies(entrada, sortida),
-      diesFalten: diesEntreDies(avui, sortida),
+      diesFalten: Math.max(0, diesEntreDies(avui, e.sortidaProbable ? diaMadrid(e.sortidaProbable) : sortida)),
       // Llarga o curta segons tota l'estada; mai abans que comenci l'última ampliació.
       dataProposada: preguntarEl ?? dataProposadaProrroga(entrada, sortida, entradaTram),
       preguntarTriat: !!preguntarEl,
       estat,
-      situacio: situacioEstada({ entrada, sortida, estat, aplacatFins, teAmpliacio: false, entradaTram, preguntarEl }, avui),
+      // Si ha dit que marxa abans, ja no cal preguntar si allarga.
+      situacio: e.sortidaProbable ? 'MARXA' : situacioEstada({ entrada, sortida, estat, aplacatFins, teAmpliacio: false, entradaTram, preguntarEl }, avui),
       aplacatFins,
       recordatoriEnviat: enviatPerAquesta,
       recordatoriDia: rec.dia,
