@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Download, FileText, Plus, Trash2 } from 'lucide-react';
+import { Check, FileText, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -188,7 +188,6 @@ export function CompteTreballador({
     }
   }
 
-  const exportUrl = `/api/treballadors/${treballadorId}/compte/export?desde=${desde}&fins=${fins}`;
   const pdfPeriode = `/imprimir/neteja-pagaments?treballador=${treballadorId}&mode=desde&desde=${desde}&fins=${fins}`;
   const pdfPendent = `/imprimir/neteja-pagaments?treballador=${treballadorId}&mode=pendent`;
 
@@ -235,13 +234,6 @@ export function CompteTreballador({
           >
             <Check className="h-4 w-4" /> Marcar el pendent com a pagat
           </Button>
-          <a
-            href={exportUrl}
-            download
-            className="inline-flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200"
-          >
-            <Download className="h-4 w-4" /> Exportar el període
-          </a>
           <div className="grid grid-cols-2 gap-2">
             <a
               href={pdfPeriode}
