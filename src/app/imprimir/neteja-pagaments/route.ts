@@ -89,9 +89,18 @@ export async function GET(req: Request) {
 
   const fila = (d: DiaPagament, i: number) => {
     const dow = DIES[new Date(`${d.dia}T00:00:00Z`).getUTCDay()];
-    const habs = d.habitacions.length ? d.habitacions.map(esc).join(' · ') : '<span class="g">—</span>';
+    const habs = d.detall.length
+      ? d.detall
+          .map((h) => `<span class="rh">${esc(h.etiqueta)}${h.id ? `<button type="button" class="lap no-print" data-id="${esc(h.id)}" data-nota="${esc(h.nota ?? '')}" title="${h.nota ? 'Canvia l’observació' : 'Afegeix una observació'}">✎</button>` : ''}</span>`)
+          .join(' · ')
+      : '<span class="g">—</span>';
     const nota = d.nota ? `<div class="nt">${esc(d.nota)}</div>` : '';
-    const notesHab = d.notesHab.length ? `<div class="nt">${d.notesHab.map(esc).join(' · ')}</div>` : '';
+    const notesHab = d.detall.some((h) => h.nota)
+      ? `<div class="nt">${d.detall
+          .filter((h) => h.nota)
+          .map((h) => `<span class="nn" data-id="${esc(h.id ?? '')}" data-nota="${esc(h.nota ?? '')}" title="Clica per canviar-la">${h.habitacio ? `Hab. ${esc(h.habitacio)}` : 'Zones'}: ${esc(h.nota)}</span>`)
+          .join(' · ')}</div>`
+      : '';
     const imp = mode === 'pendent' ? d.pendent : d.total;
     return `<div class="fila${i % 2 ? ' alt' : ''}"><span class="dia"><b>${dow} ${dcurt(d.dia)}</b></span><span class="hab">${habs}${notesHab}${nota}</span><span class="d">${d.bugaderia > 0 ? eur(d.bugaderia) : '—'}</span><span class="d b">${eur(imp)}</span>${mode === 'pendent' ? '' : `<span class="d">${estat(d)}</span>`}</div>`;
   };
@@ -132,6 +141,11 @@ h1 { margin: 2px 0 0; font-size: 22px; font-weight: 600; color: #222; }
 .g { color: #aaa; }
 .nt { color: #777; font-style: italic; font-size: 10.5px; }
 .b { font-weight: 700; }
+.lap { margin-left: 3px; padding: 0 3px; font-size: 11px; color: #7a1f2b; background: none; border: 0; cursor: pointer; opacity: 0; }
+.fila:hover .lap, .lap:focus { opacity: 1; }
+.nn { cursor: pointer; }
+.nn:hover { color: #7a1f2b; text-decoration: underline; }
+.ni { font: 12px Arial, sans-serif; border: 1px solid #7a1f2b; padding: 3px 6px; width: 100%; max-width: 420px; outline: none; margin-top: 3px; }
 .ok { color: #047857; font-weight: 700; font-size: 11px; }
 .pp { color: #7a1f2b; font-weight: 700; font-size: 11px; }
 .tm { display: flex; justify-content: space-between; padding: 6px 4px; font-size: 11px; color: #555; border-bottom: 1px solid #ddd; }
@@ -167,6 +181,31 @@ ${resum}
 </div>
 <script>
 (function(){
+  // Editar les observacions de les neteges (les mateixes que a Neteja): ✎ o clic a l'observació.
+  document.addEventListener('click', function (ev) {
+    var t = ev.target;
+    var el = t.closest ? t.closest('.lap, .nn') : null;
+    if (!el || document.querySelector('.ni')) return;
+    var id = el.getAttribute('data-id');
+    if (!id) return;
+    var inp = document.createElement('input');
+    inp.className = 'ni no-print'; inp.maxLength = 500; inp.placeholder = 'Observació (Enter per desar, buit per esborrar)';
+    inp.value = el.getAttribute('data-nota') || '';
+    var cel = el.closest('.hab');
+    cel.appendChild(inp); inp.focus();
+    var fet = false;
+    function desa() {
+      if (fet) return; fet = true;
+      fetch('/api/tasques-neteja/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: inp.value.trim() || null }) })
+        .then(function (r) { if (!r.ok) throw new Error(); location.reload(); })
+        .catch(function () { alert('No s’ha pogut desar l’observació.'); inp.remove(); });
+    }
+    inp.addEventListener('blur', desa);
+    inp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+      if (e.key === 'Escape') { fet = true; inp.remove(); }
+    });
+  });
   var a = document.getElementById('torna');
   a.addEventListener('click', function (e) {
     if (history.length > 1 && document.referrer.indexOf(location.origin) === 0) { e.preventDefault(); history.back(); }
@@ -183,7 +222,7 @@ ${auto ? '  window.addEventListener("load",function(){setTimeout(function(){wind
 async function tasques(treballadorId: string, data: { gte?: Date; lt?: Date } | undefined): Promise<TascaDia[]> {
   const rows = await prisma.tascaNeteja.findMany({
     where: { assignadaA: treballadorId, estat: 'FETA', ...(data ? { data } : {}) },
-    select: { data: true, tipus: true, notes: true, habitacio: { select: { nom: true } } },
+    select: { id: true, data: true, tipus: true, notes: true, habitacio: { select: { nom: true } } },
   });
-  return rows.map((t) => ({ dia: t.data.toISOString().slice(0, 10), habitacio: t.habitacio?.nom ?? null, tipus: t.tipus, nota: t.notes }));
+  return rows.map((t) => ({ id: t.id, dia: t.data.toISOString().slice(0, 10), habitacio: t.habitacio?.nom ?? null, tipus: t.tipus, nota: t.notes }));
 }

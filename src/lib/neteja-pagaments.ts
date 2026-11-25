@@ -6,6 +6,8 @@
 import type { MovimentCompte } from './services/compte-treballador';
 
 export interface TascaDia {
+  /** id de la tasca de neteja (per poder editar-ne l'observació). */
+  id?: string;
   /** `YYYY-MM-DD`. */
   dia: string;
   /** null = zones comunes. */
@@ -19,6 +21,8 @@ export interface DiaPagament {
   /** «5 sortida», «2 mant.», «Zones comunes»… */
   habitacions: string[];
   notesHab: string[];
+  /** Cada habitació (o zones) netejada el dia, amb la seva observació, per editar-la. */
+  detall: { id: string | null; etiqueta: string; habitacio: string | null; nota: string | null }[];
   nota: string | null;
   bugaderia: number;
   total: number;
@@ -47,7 +51,7 @@ export function resumeixDies(
   const dia = (d: string): DiaPagament => {
     let x = dies.get(d);
     if (!x) {
-      x = { dia: d, habitacions: [], notesHab: [], nota: notes.get(d) ?? null, bugaderia: 0, total: 0, pagat: 0, pendent: 0, pagatEl: null, sortides: 0, manteniments: 0 };
+      x = { dia: d, habitacions: [], notesHab: [], detall: [], nota: notes.get(d) ?? null, bugaderia: 0, total: 0, pagat: 0, pendent: 0, pagatEl: null, sortides: 0, manteniments: 0 };
       dies.set(d, x);
     }
     return x;
@@ -74,6 +78,14 @@ export function resumeixDies(
       .map((t) => ({ nom: t.habitacio ?? '', text: t.habitacio ? `${t.habitacio} ${t.tipus === 'CANVI_COMPLET' ? 'sortida' : 'mant.'}` : 'Zones comunes' }))
       .sort((a, b) => (a.nom === '' ? 1 : 0) - (b.nom === '' ? 1 : 0) || a.nom.localeCompare(b.nom, 'ca', { numeric: true }));
     d.habitacions = [...new Set(etiquetes.map((e) => e.text))];
+    d.detall = [...ts]
+      .sort((a, b) => (a.habitacio === null ? 1 : 0) - (b.habitacio === null ? 1 : 0) || (a.habitacio ?? '').localeCompare(b.habitacio ?? '', 'ca', { numeric: true }))
+      .map((t) => ({
+        id: t.id ?? null,
+        etiqueta: t.habitacio ? `${t.habitacio} ${t.tipus === 'CANVI_COMPLET' ? 'sortida' : 'mant.'}` : 'Zones comunes',
+        habitacio: t.habitacio,
+        nota: t.nota,
+      }));
     d.notesHab = ts.filter((t) => t.nota && t.habitacio).map((t) => `Hab. ${t.habitacio}: ${t.nota}`);
     d.sortides = ts.filter((t) => t.habitacio && t.tipus === 'CANVI_COMPLET').length;
     d.manteniments = ts.filter((t) => t.habitacio && t.tipus === 'REPAS').length;
