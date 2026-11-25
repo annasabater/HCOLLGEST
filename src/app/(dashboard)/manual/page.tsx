@@ -1,8 +1,9 @@
 import Link from 'next/link';
-import { BookOpen, Download } from 'lucide-react';
+import { BookOpen, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { ManualCerca } from '@/components/manual/manual-cerca';
 import { CAPITOLS, blocsCapitol, indexSeccions } from '@/lib/manual/capitols';
+import { classePdf } from '@/components/ui/boto-pdf';
 
 export const metadata = { title: 'Manual d’usuari · Hostal Coll' };
 
@@ -17,9 +18,9 @@ export default function ManualPage() {
           <a
             href="/manual/manual-hostal-coll.pdf"
             download
-            className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 hover:bg-slate-50"
+            className={classePdf('md')}
           >
-            <Download className="h-4 w-4" /> Descarregar PDF
+            <FileText className="h-4 w-4" /> Descarregar PDF
           </a>
         }
       />

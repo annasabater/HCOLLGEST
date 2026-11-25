@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Trash2, Save, FileDown, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, Save, FileText, ChevronDown } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Segmentat } from '@/components/ui/navegador-periode';
 import { getJSON, ApiError } from '@/lib/api';
 import { GRUP_TARIFA, GRUP_TARIFA_LABELS, type GrupTarifa } from '@/lib/validation/tarifa-tipus';
 import { VersionsTarifes, type FilaVersio } from '@/components/tarifes/versions-tarifes';
+import { classePdf } from '@/components/ui/boto-pdf';
 
 interface Fila {
   _key: string;
@@ -146,8 +147,8 @@ export default function TarifesPage() {
           <div className="flex flex-wrap items-center gap-2">
             {/* Els PDF, en un sol desplegable (abans eren quatre botons). */}
             <details className="relative">
-              <summary className="ui-btn-md inline-flex h-10 cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
-                <FileDown className="h-4 w-4" /> Descarregar PDF <ChevronDown className="h-4 w-4 text-slate-500" />
+              <summary className={classePdf('md', 'cursor-pointer list-none [&::-webkit-details-marker]:hidden')}>
+                <FileText className="h-4 w-4" /> Descarregar PDF <ChevronDown className="h-4 w-4" />
               </summary>
               <div className="ui-card absolute right-0 z-30 mt-1 w-60 border border-slate-300 bg-white py-1 shadow-lg">
                 <a href="/imprimir/tarifes" target="_blank" rel="noreferrer" className="block px-3 py-2.5 text-sm hover:bg-slate-50">

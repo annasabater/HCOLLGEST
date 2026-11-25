@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Download, CloudUpload, CalendarClock, FileText, Printer } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, CloudUpload, CalendarClock, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { getJSON, postJSON, ApiError } from '@/lib/api';
 import { formatEur, cn } from '@/lib/utils';
 import { TIPUS_DOCUMENT_LABELS } from '@/lib/validation/enums';
 import { infoPeriode, periodeAnterior, periodePerDefecte, periodeSeguent, type FilaIeet, type ResumIeet, type ConfigIeet, type PeriodeIeet } from '@/lib/ieet';
+import { classePdf } from '@/components/ui/boto-pdf';
 
 interface Dades {
   periode: PeriodeIeet;
@@ -129,7 +130,7 @@ export default function TaxaTuristicaPage() {
                 <a href={`/api/ieet/export?periode=${clau}`} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-brand-600">
                   <Download className="h-4 w-4" /> Descarregar Excel
                 </a>
-                <a href={`/api/ieet/pdf?periode=${clau}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-brand-600">
+                <a href={`/api/ieet/pdf?periode=${clau}`} target="_blank" rel="noreferrer" className={classePdf('sm')}>
                   <FileText className="h-4 w-4" /> Descarregar PDF
                 </a>
                 <a
@@ -137,9 +138,9 @@ export default function TaxaTuristicaPage() {
                   target="_blank"
                   rel="noreferrer"
                   title="El mateix PDF girat dins d'un full vertical: l'iPad l'imprimeix a mida sencera"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-brand-600"
+                  className={classePdf('sm')}
                 >
-                  <Printer className="h-4 w-4" /> PDF per imprimir
+                  <FileText className="h-4 w-4" /> PDF per imprimir
                 </a>
                 <Button size="sm" onClick={actualitzaDrive} disabled={sync.busy}>
                   <CloudUpload className="h-4 w-4" /> {sync.busy ? 'Actualitzant…' : 'Actualitzar Drive ara'}

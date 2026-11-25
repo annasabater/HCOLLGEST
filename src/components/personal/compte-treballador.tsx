@@ -14,6 +14,7 @@ import { toISODate } from '@/lib/dates';
 import { rangDeEstat, type EstatPeriode } from '@/lib/periode';
 import { NavegadorPeriode } from '@/components/ui/navegador-periode';
 import { cn } from '@/lib/utils';
+import { classePdf } from '@/components/ui/boto-pdf';
 
 export type TipusMoviment = 'NETEJA' | 'BUGADERIA';
 
@@ -238,14 +239,14 @@ export function CompteTreballador({
             <a
               href={pdfPeriode}
               title="Els dies de neteja del període, amb habitacions, imports i el que s'ha pagat"
-              className="inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-2 text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50"
+              className={classePdf('sm', 'px-2')}
             >
               <FileText className="h-4 w-4" /> PDF dels dies
             </a>
             <a
               href={pdfPendent}
               title="Només el que queda per pagar, amb el total"
-              className="inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-2 text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50"
+              className={classePdf('sm', 'px-2')}
             >
               <FileText className="h-4 w-4" /> PDF pendent
             </a>

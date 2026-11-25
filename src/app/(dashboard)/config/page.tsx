@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
-import { Download, ShieldCheck, BookOpen, Mail, CloudUpload, Shirt, MessageCircle, Smartphone, CalendarDays, Palette, Phone } from 'lucide-react';
+import { Download, FileText, ShieldCheck, BookOpen, Mail, CloudUpload, Shirt, MessageCircle, Smartphone, CalendarDays, Palette, Phone } from 'lucide-react';
 import { EstilConfig } from '@/components/config/estil-config';
 import { MeuWhatsappConfig } from '@/components/config/meu-whatsapp-config';
 import { BARRA_COOKIE, ESTIL_COOKIE, barraValida, estilValid } from '@/lib/estil';
@@ -16,6 +16,7 @@ import { BackupEmailButton } from '@/components/config/backup-email-button';
 import { DriveConnect } from '@/components/config/drive-connect';
 import { BugaderiaConfig } from '@/components/config/bugaderia-config';
 import { NormesReglament } from '@/components/config/normes-reglament';
+import { classePdf } from '@/components/ui/boto-pdf';
 
 export const dynamic = 'force-dynamic';
 
@@ -178,9 +179,9 @@ export default async function ConfigPage({
             <a
               href="/manual/manual-hostal-coll.pdf"
               download
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className={classePdf('md')}
             >
-              <BookOpen className="h-4 w-4" /> Descarregar PDF
+              <FileText className="h-4 w-4" /> Descarregar PDF
             </a>
           </div>
         </div>

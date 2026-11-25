@@ -7,6 +7,7 @@ import { PeriodeEnLinia, Segmentat } from '@/components/ui/navegador-periode';
 import type { ModeFiances } from '@/lib/informes-despeses';
 import { rangDeEstat, type EstatPeriode } from '@/lib/periode';
 import { cn } from '@/lib/utils';
+import { classePdf } from '@/components/ui/boto-pdf';
 
 const botoPetit =
   'inline-flex h-8 items-center gap-1.5 border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:border-brand-600 hover:text-brand-700';
@@ -46,13 +47,13 @@ function InformeFila({
       </span>
       <span className="flex shrink-0 flex-wrap justify-end gap-1.5">
         {grafics && (
-          <a href={grafics} target="_blank" rel="noreferrer" className={botoPetit} title="Amb els gràfics, per imprimir o desar com a PDF">
+          <a href={grafics} target="_blank" rel="noreferrer" className={classePdf('xs')} title="Amb els gràfics, per imprimir o desar com a PDF">
             <FileText className="h-3.5 w-3.5" /> PDF
           </a>
         )}
         {pdf !== undefined &&
           (pdf ? (
-            <a href={pdf} target="_blank" rel="noreferrer" className={botoPetit}>
+            <a href={pdf} target="_blank" rel="noreferrer" className={classePdf('xs')}>
               <FileText className="h-3.5 w-3.5" /> PDF
             </a>
           ) : (

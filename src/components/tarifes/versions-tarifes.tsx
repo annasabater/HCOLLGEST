@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { getJSON } from '@/lib/api';
 import { formatEur } from '@/lib/utils';
 import { GRUP_TARIFA, GRUP_TARIFA_LABELS, type GrupTarifa } from '@/lib/validation/tarifa-tipus';
+import { classePdf } from '@/components/ui/boto-pdf';
 
 export interface FilaVersio {
   grup: GrupTarifa;
@@ -93,7 +94,7 @@ export function VersionsTarifes({ recarrega, onRecupera }: { recarrega: number; 
                     target="_blank"
                     rel="noreferrer"
                     title="Full de preus d’aquesta versió (per imprimir o desar en PDF)"
-                    className="mx-3 flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:border-brand-300 hover:text-brand-700"
+                    className={classePdf('xs', 'mx-3 shrink-0')}
                   >
                     <FileDown className="h-3.5 w-3.5" /> PDF
                   </a>

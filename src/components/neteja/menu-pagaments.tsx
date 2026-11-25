@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Download, Wallet } from 'lucide-react';
+import { ChevronDown, FileText, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { toISODate } from '@/lib/dates';
+import { classePdf } from '@/components/ui/boto-pdf';
 
 /**
  * «Llistat de pagaments ▾» de Neteja: el PDF del compte d'una treballadora, o bé només el que
@@ -31,7 +32,7 @@ export function MenuPagaments({ treballadors }: { treballadors: { id: string; no
   }, [obert]);
 
   const base = `/imprimir/neteja-pagaments?treballador=${encodeURIComponent(persona)}`;
-  const boto = 'inline-flex h-9 items-center gap-1.5 bg-brand-700 px-3.5 text-[13px] font-semibold text-white hover:bg-brand-800';
+  const boto = classePdf('sm');
 
   return (
     <div ref={ref} className="relative">
@@ -51,7 +52,7 @@ export function MenuPagaments({ treballadors }: { treballadors: { id: string; no
               <span className="block text-sm font-bold text-slate-900">Pendent de pagament</span>
               <span className="block text-xs text-slate-500">El que encara se li ha de pagar, dia a dia, amb el total.</span>
             </span>
-            <a className={boto} href={`${base}&mode=pendent`}><Download className="h-3.5 w-3.5" /> PDF</a>
+            <a className={boto} href={`${base}&mode=pendent`}><FileText className="h-3.5 w-3.5" /> PDF</a>
           </div>
           <div className="px-4 py-3">
             <span className="block text-sm font-bold text-slate-900">Des de…</span>
@@ -63,7 +64,7 @@ export function MenuPagaments({ treballadors }: { treballadors: { id: string; no
               </a>
             </div>
             <div className="mt-2.5 flex justify-end">
-              <a className={boto} href={desde ? `${base}&mode=desde&desde=${desde}` : `${base}&mode=desde`}><Download className="h-3.5 w-3.5" /> PDF</a>
+              <a className={boto} href={desde ? `${base}&mode=desde&desde=${desde}` : `${base}&mode=desde`}><FileText className="h-3.5 w-3.5" /> PDF</a>
             </div>
           </div>
         </div>

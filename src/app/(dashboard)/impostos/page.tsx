@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Copy, Check, Download, ExternalLink, FileText, FileDown, ShieldCheck, BookOpen, Undo2, CalendarClock, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, Check, ExternalLink, FileText, FileDown, ShieldCheck, BookOpen, Undo2, CalendarClock, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import type { AvisBoe } from '@/lib/services/boe-formularis';
 import type { ResultatValidacio } from '@/lib/aeat/servei';
 import { CertificatAeatCard, PresentarAeat } from '@/components/impostos/presentacio-aeat';
 import { MenuMes, type OpcioMes } from '@/components/ui/menu-mes';
+import { classePdf } from '@/components/ui/boto-pdf';
 
 type Unitat = 'eur' | 'pct' | 'n';
 interface Fila { c: string; text: string; u?: Unitat; clau?: boolean }
@@ -408,7 +409,7 @@ function ModelCard({ m, any, onCanvi, extra }: { m: ModelInfo; any: number; onCa
                       rel="noreferrer"
                       title={`Formulari oficial: ${FONT_FORMULARI[m.model]}`}
                     >
-                      <Button size="sm" variant="outline"><Download className="h-4 w-4" /> Formulari oficial (PDF)</Button>
+                      <span className={classePdf('sm')}><FileText className="h-4 w-4" /> Formulari oficial (PDF)</span>
                     </a>
                   )}
                   {modelAeat && !m.presentada && (

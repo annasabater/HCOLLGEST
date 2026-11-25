@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Printer, ExternalLink, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { FileText, ExternalLink, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { getJSON } from '@/lib/api';
 import { toISODate } from '@/lib/dates';
 import { rangDeEstat, type EstatPeriode } from '@/lib/periode';
 import { nomPropi } from '@/lib/nom-propi';
+import { classePdf } from '@/components/ui/boto-pdf';
 
 interface Estada {
   clau: string;
@@ -127,7 +128,7 @@ export default function OcupacioPage() {
         subtitle="Un paràgraf per contracte, amb els pagaments. Per imprimir o desar com a PDF."
         actions={
           <div className="flex gap-2">
-            <Button type="button" onClick={imprimeix} disabled={triades.size === 0}><Printer className="h-4 w-4" /> Imprimir / desar PDF</Button>
+            <button type="button" onClick={imprimeix} disabled={triades.size === 0} className={classePdf('md')}><FileText className="h-4 w-4" /> Imprimir / desar PDF</button>
             <a href={url} title="Obre el full sencer (amb «← Tornar»)">
               <Button type="button" variant="outline" aria-label="Obrir el full sencer"><ExternalLink className="h-4 w-4" /></Button>
             </a>
