@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { PeriodeEnLinia } from '@/components/ui/navegador-periode';
 import { MenuPagaments } from '@/components/neteja/menu-pagaments';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { ApiError, delJSON, getJSON, patchJSON, postJSON, putJSON } from '@/lib/api';
 import { toISODate } from '@/lib/dates';
 import type { EstatPeriode } from '@/lib/periode';
@@ -218,6 +219,9 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
       );
     });
 
+  // Esborrar un dia sempre demana confirmació (diàleg de l'aplicació).
+  const [aEsborrar, setAEsborrar] = useState<DiaNeteja | null>(null);
+
   /** Esborra un dia: el planificat, o el desat al full del dia si no té cap pagament registrat. */
   const esborraDia = async (d: DiaNeteja) => {
     const fetes = d.habitacions.filter((h) => h.origen === 'FETA');
@@ -225,7 +229,6 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
       setDiesBuits((b) => b.filter((x) => x.data !== d.data));
       return;
     }
-    if (fetes.length > 0 && !window.confirm(`Esborrar el ${nomDia(d.data)}? També s'esborraran les ${fetes.length} neteges desades al full del dia.`)) return;
     const plans = d.habitacions.filter((h) => h.origen === 'PLA');
     const nota = d.nota?.text ?? null;
     await fes(async () => {
@@ -331,7 +334,7 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
           ) : (
             <button
               type="button"
-              onClick={() => void esborraDia(d)}
+              onClick={() => setAEsborrar(d)}
               className="ml-auto inline-flex items-center gap-1 text-slate-400 hover:text-red-700"
               title={d.fet ? 'Esborra el dia i les neteges desades' : 'Treu el dia i el que hi ha planificat'}
             >
@@ -482,6 +485,27 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
         <span className="inline-flex items-center gap-1.5"><span className="h-3 w-5 border border-green-200 bg-green-50" /> desada al full del dia</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-3 w-5 border-[1.5px] border-dashed border-brand-200 bg-brand-50/30" /> planificada: no compta per pagar fins que es desa al full del dia</span>
       </div>
+
+      <ConfirmDialog
+        open={aEsborrar !== null}
+        title="Esborrar el dia"
+        message={
+          aEsborrar
+            ? aEsborrar.habitacions.some((h) => h.origen === 'FETA')
+              ? `Vols esborrar el ${nomDia(aEsborrar.data)}? També s'esborraran les neteges desades al full del dia. No es pot desfer.`
+              : aEsborrar.habitacions.length > 0 || aEsborrar.nota
+                ? `Vols esborrar el ${nomDia(aEsborrar.data)} amb les habitacions i l'observació planificades?`
+                : `Vols treure el ${nomDia(aEsborrar.data)}?`
+            : ''
+        }
+        confirmLabel="Esborrar el dia"
+        onConfirm={() => {
+          const d = aEsborrar;
+          setAEsborrar(null);
+          if (d) void esborraDia(d);
+        }}
+        onCancel={() => setAEsborrar(null)}
+      />
 
       {desfer && (
         <div role="status" className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 bg-slate-900 px-4 py-2.5 text-sm text-white shadow-lg">
