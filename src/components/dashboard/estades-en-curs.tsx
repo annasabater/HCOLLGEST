@@ -13,6 +13,7 @@ import { diaMadrid } from '@/lib/recordatoris';
 import { diesEntreDies, sumaDiesDia } from '@/lib/prorroga';
 import type { MissatgeProrroga } from '@/lib/plantilles';
 import type { EstadaEnCurs, EventProrroga } from '@/lib/services/prorrogues';
+import { MarxaraAbans } from '@/components/estancia/marxara-abans';
 import { MissatgeProrrogaComposer, sortidaRecomanada, type InfoEnviat } from './missatge-prorroga';
 
 const dc = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
@@ -775,6 +776,16 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                               </Button>
                             )}
                           </div>
+                          {!e.sortidaProbable && e.trams.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              <MarxaraAbans
+                                estanciaId={e.id}
+                                dataEntrada={e.trams[e.trams.length - 1]!.entrada}
+                                dataSortida={e.sortida}
+                                sortidaProbable={null}
+                              />
+                            </div>
+                          )}
                           {e.sortidaProbable && (
                             <div className="flex flex-wrap gap-2">
                               {e.sortidaProbable <= avui && (
