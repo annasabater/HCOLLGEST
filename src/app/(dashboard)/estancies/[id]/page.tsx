@@ -465,12 +465,37 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 />
                 <Dl
                   wide
-                  label="Tipus de registre (Mossos)"
-                  value={
-                    estancia.tipusRegistre === 'RESERVA'
-                      ? 'Reserva'
-                      : 'Contracte en curs (estada formalitzada)'
-                  }
+                  label="Mossos"
+                  value={(() => {
+                    const tipus = estancia.tipusRegistre === 'RESERVA' ? 'Reserva' : 'Contracte en curs';
+                    const bo = estancia.enviaments.find((e) => e.estat === 'ENVIAT' || e.estat === 'ACCEPTAT');
+                    if (bo) {
+                      const quan = bo.dataEnviament ?? bo.createdAt;
+                      return (
+                        <span className="inline-flex flex-wrap items-center gap-2">
+                          <Badge tone="success">PUJAT</Badge>
+                          <span>{tipus} · {formatDate(quan)}</span>
+                        </span>
+                      );
+                    }
+                    // Les ampliacions es van comunicar amb l'estada original; si s'ha descartat l'avís, no cal pujar-la.
+                    if (estancia.estanciaOrigenId) return <span className="text-slate-500">Comunicat amb l&apos;estada original</span>;
+                    if (estancia.avisMossosParat) return <span className="text-slate-500">No cal pujar-la (avís descartat)</span>;
+                    if (estancia.estat === 'CANCELLADA' || estancia.esBorrany) return null;
+                    // Termini legal: 24 h des de l'entrada (només la data; no hi ha hora d'entrada).
+                    const termini = estancia.dataEntrada ? toISODate(new Date(estancia.dataEntrada.getTime() + 86_400_000)) : null;
+                    const fora = termini !== null && avuiIso > termini;
+                    return (
+                      <span className="inline-flex flex-wrap items-center gap-2">
+                        <Badge tone={fora ? 'danger' : 'warning'}>{fora ? 'FORA DE TERMINI' : 'PENDENT DE PUJAR'}</Badge>
+                        {termini && (
+                          <span className="text-slate-500">
+                            {fora ? 'havia de pujar-se abans del' : 'abans del'} {formatDate(termini)}
+                          </span>
+                        )}
+                      </span>
+                    );
+                  })()}
                 />
                 <Dl label="Observacions" value={estancia.observacions} />
               </dl>
