@@ -388,8 +388,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
   td.roC{ font-weight:600; color:var(--slate); padding:7px 6px; }
   td.ro{ padding:7px 6px; }
   .buit{ color:var(--muted); font-style:italic; padding:14px 6px; }
-  .resum{ margin-top:16px; margin-left:auto; width:280px; }
-  .resum-row{ display:flex; justify-content:space-between; padding:7px 12px; }
+  .resum{ margin-top:16px; margin-left:auto; width:380px; max-width:100%; }
+  .resum-row{ display:flex; justify-content:space-between; gap:16px; padding:7px 12px; }
+  .resum-row > span:last-child{ white-space:nowrap; font-variant-numeric:tabular-nums; }
   .resum-row.grand{ background:var(--accent-soft); border-top:2px solid var(--accent); border-radius:4px; font-family:Georgia,serif; font-size:14px; color:var(--ink); }
   .note{ font-size:10px; color:var(--muted); margin-top:14px; font-style:italic; line-height:1.5; }
   /* Depósitos y fianzas: tablas de solo lectura (salen de los depósitos). */
@@ -532,7 +533,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
       <div class="resum-row"><span>Base imponible</span><span id="r-base">0,00 €</span></div>
       <div class="resum-row"><span>IVA repercutido (10%)</span><span id="r-iva">0,00 €</span></div>
       <div class="resum-row grand"><span>Total ingresos</span><span id="r-total">0,00 €</span></div>
-      <div class="resum-row" id="r-dip-row"><span>Depósitos (no computan como ingreso)</span><span id="r-dip">0,00 €</span></div>
+      <div class="resum-row" id="r-dip-row"><span id="r-dip-lab">Depósitos (no computan como ingreso)</span><span id="r-dip">0,00 €</span></div>
       ${retingutsIngres ? `<div class="resum-row"><span>Depósitos retenidos (ingreso sin IVA)</span><span>${num(retingutsIngres)} €</span></div>` : ''}
     </div>
   </div>
@@ -718,7 +719,9 @@ ${edicionsBootstrap('trimestre', periode, edicions)}
     let tb = 0, ti = 0, tt = 0, td = 0;
     for (const r of rows) { tb += r.base; ti += r.iva; tt += r.total; td += r.diposit; }
     document.getElementById('t1-dip').textContent = plain(td);
-    document.getElementById('r-dip').textContent = plain(td) + ' €';
+    // Si el trimestre només té devolucions, surt «devueltos» i el signe com a guió llarg (−150,00 €).
+    document.getElementById('r-dip-lab').textContent = td < 0 ? 'Depósitos devueltos (no son ingreso)' : 'Depósitos (no computan como ingreso)';
+    document.getElementById('r-dip').textContent = (td < 0 ? '−' : '') + plain(Math.abs(td)) + ' €';
     document.getElementById('r-dip-row').style.display = td === 0 ? 'none' : '';
     document.getElementById('t1-base').textContent = plain(tb);
     document.getElementById('t1-iva').textContent = plain(ti);
