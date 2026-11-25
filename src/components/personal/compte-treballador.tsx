@@ -227,15 +227,7 @@ export function CompteTreballador({
           </p>
         </div>
         <div className="flex flex-col justify-center gap-2 bg-white p-4">
-          <Button
-            type="button"
-            size="sm"
-            disabled={treballant || pendents.length === 0}
-            onClick={() => demanarMarcarPeriode()}
-          >
-            <Check className="h-4 w-4" /> Marcar el pendent com a pagat
-          </Button>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2">
             <a
               href={pdfPeriode}
               title="Els dies de neteja del període, amb habitacions, imports i el que s'ha pagat"
@@ -248,7 +240,7 @@ export function CompteTreballador({
               title="Només el que queda per pagar, amb el total"
               className={classePdf('sm', 'px-2')}
             >
-              <FileText className="h-4 w-4" /> PDF pendent
+              <FileText className="h-4 w-4" /> PDF pendent de pagar
             </a>
           </div>
         </div>
