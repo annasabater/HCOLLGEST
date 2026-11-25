@@ -5,6 +5,7 @@ import { CalendarPlus, Copy, ExternalLink, MessageSquare, Plus, Printer, Trash2,
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { PeriodeEnLinia } from '@/components/ui/navegador-periode';
+import { MenuPagaments } from '@/components/neteja/menu-pagaments';
 import { ApiError, delJSON, getJSON, patchJSON, postJSON, putJSON } from '@/lib/api';
 import { toISODate } from '@/lib/dates';
 import type { EstatPeriode } from '@/lib/periode';
@@ -353,6 +354,7 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
           <a href={`/imprimir/neteja?desde=${desde}&fins=${fins}&auto=1`} target="_blank" rel="noreferrer">
             <Button variant="outline"><Printer className="h-4 w-4" /> Imprimir</Button>
           </a>
+          <MenuPagaments treballadors={dades.treballadors} />
         </span>
       </div>
 
