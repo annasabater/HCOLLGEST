@@ -395,30 +395,49 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
             <CardBody>
               <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 <Dl label="Entrada" value={formatDate(estancia.dataEntrada)} />
-                <Dl
-                  label={estancia.sortidaAnticipada ? 'Sortida (anticipada)' : estancia.sortidaProbable ? 'Sortida oficial' : 'Sortida'}
-                  value={
-                    estancia.sortidaAnticipada && estancia.dataSortidaPrevista ? (
-                      <span>
-                        {formatDate(estancia.dataSortida)}{' '}
-                        <span className="text-slate-400">(oficial {formatDate(estancia.dataSortidaPrevista)})</span>
-                      </span>
-                    ) : (
-                      formatDate(estancia.dataSortida)
-                    )
-                  }
-                />
-
-                {estancia.sortidaProbable && (
+                {estancia.sortidaProbable ? (
+                  // «Marxarà abans»: oficial · probable (el que va dir) · real (quan marxa).
+                  <>
+                    <Dl
+                      label="Sortida oficial"
+                      value={formatDate(
+                        estancia.sortidaAnticipada ? (estancia.dataSortidaPrevista ?? estancia.dataSortida) : estancia.dataSortida,
+                      )}
+                    />
+                    <Dl
+                      label="Sortida probable"
+                      value={
+                        <span className="text-amber-800">
+                          <b>{formatDate(estancia.sortidaProbable)}</b>
+                          {estancia.sortidaProbableNota && (
+                            <span className="block text-xs text-slate-500">{estancia.sortidaProbableNota}</span>
+                          )}
+                        </span>
+                      }
+                    />
+                    <Dl
+                      label="Sortida real"
+                      value={
+                        estancia.sortidaAnticipada ? (
+                          <b>{formatDate(estancia.dataSortida)}</b>
+                        ) : (
+                          <span className="text-slate-400">Encara no ha marxat</span>
+                        )
+                      }
+                    />
+                  </>
+                ) : (
                   <Dl
-                    label={estancia.sortidaAnticipada ? 'Va dir que marxaria' : 'Sortida probable'}
+                    label={estancia.sortidaAnticipada ? 'Sortida (anticipada)' : 'Sortida'}
                     value={
-                      <span className="text-amber-800">
-                        <b>{formatDate(estancia.sortidaProbable)}</b>
-                        {estancia.sortidaProbableNota && (
-                          <span className="block text-xs text-slate-500">{estancia.sortidaProbableNota}</span>
-                        )}
-                      </span>
+                      estancia.sortidaAnticipada && estancia.dataSortidaPrevista ? (
+                        <span>
+                          {formatDate(estancia.dataSortida)}{' '}
+                          <span className="text-slate-400">(oficial {formatDate(estancia.dataSortidaPrevista)})</span>
+                        </span>
+                      ) : (
+                        formatDate(estancia.dataSortida)
+                      )
                     }
                   />
                 )}
