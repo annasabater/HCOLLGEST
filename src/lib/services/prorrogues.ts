@@ -69,6 +69,8 @@ export interface CobramentEstada {
   factura: string | null;
   /** És un dipòsit (no un cobrament). */
   diposit?: boolean;
+  /** Fiança (es torna en marxar), no un dipòsit documentat. */
+  fianca?: boolean;
 }
 export interface PendentEstada {
   id: string;
@@ -278,7 +280,7 @@ export async function getEstadesEnCurs(now = new Date()): Promise<{ avui: string
       prisma.diposit.findMany({
         where: { estanciaId: { in: ids }, estat: { not: 'TORNAT' } },
         orderBy: { data: 'asc' },
-        select: { id: true, estanciaId: true, import: true, data: true, metode: true, factura: { select: { numero: true } } },
+        select: { id: true, estanciaId: true, import: true, data: true, metode: true, esDiposit: true, factura: { select: { numero: true } } },
       }),
     ]);
     for (const e of estades) {
@@ -289,7 +291,7 @@ export async function getEstadesEnCurs(now = new Date()): Promise<{ avui: string
           .map((c) => ({ id: c.id, tramId: c.estanciaId, import: Number(c.import), data: diaMadrid(c.data), metode: c.metode, factura: c.factura?.numero ?? null })),
         ...dips
           .filter((d) => meus.has(d.estanciaId))
-          .map((d) => ({ id: d.id, tramId: d.estanciaId, import: Number(d.import), data: diaMadrid(d.data), metode: d.metode, factura: d.factura?.numero ?? null, diposit: true })),
+          .map((d) => ({ id: d.id, tramId: d.estanciaId, import: Number(d.import), data: diaMadrid(d.data), metode: d.metode, factura: d.factura?.numero ?? null, diposit: true, fianca: !d.esDiposit })),
       ].sort((a, b) => a.data.localeCompare(b.data));
       e.pendents = prev
         .filter((p) => meus.has(p.estanciaId))

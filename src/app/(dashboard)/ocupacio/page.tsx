@@ -106,8 +106,12 @@ export default function OcupacioPage() {
   }, [desde, fins, triades, ambReserves]);
 
   const imprimeix = () => {
+    // Al mòbil (i a l'app de la pantalla d'inici) imprimir des de la vista prèvia no funciona:
+    // s'obre el full a la mateixa finestra, amb «← Tornar» i «Imprimir» a dalt.
+    const tactil = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
     const w = frame.current?.contentWindow;
-    if (w) { w.focus(); w.print(); }
+    if (tactil || !w) { window.location.href = `${url}&auto=1`; return; }
+    w.focus(); w.print();
   };
   const canviaTria = (n: Set<string>) => { setTriades(n); desaExcloses(n); };
   const alterna = (id: string) => {
@@ -124,8 +128,8 @@ export default function OcupacioPage() {
         actions={
           <div className="flex gap-2">
             <Button type="button" onClick={imprimeix} disabled={triades.size === 0}><Printer className="h-4 w-4" /> Imprimir / desar PDF</Button>
-            <a href={`${url}&auto=1`} target="_blank" rel="noreferrer" title="Obre el full en una pestanya nova">
-              <Button type="button" variant="outline" aria-label="Obrir en una pestanya nova"><ExternalLink className="h-4 w-4" /></Button>
+            <a href={url} title="Obre el full sencer (amb «← Tornar»)">
+              <Button type="button" variant="outline" aria-label="Obrir el full sencer"><ExternalLink className="h-4 w-4" /></Button>
             </a>
           </div>
         }

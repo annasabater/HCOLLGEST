@@ -87,7 +87,7 @@ export async function getOcupacio(
       viatgers: { select: { esTitular: true, huesped: { select: { id: true, nom: true, cognom1: true, telefon: true } } } },
       cobraments: { select: { import: true, metode: true, data: true, factura: { select: { numero: true } } } },
       // Els dipòsits també són pagaments de l'estada (els tornats no compten).
-      diposits: { where: { estat: { not: 'TORNAT' } }, select: { import: true, metode: true, data: true, factura: { select: { numero: true } } } },
+      diposits: { where: { estat: { not: 'TORNAT' } }, select: { import: true, metode: true, data: true, esDiposit: true, factura: { select: { numero: true } } } },
       pagamentsPrevistos: { select: { import: true, pagat: true, dataPrevista: true } },
     },
   });
@@ -119,6 +119,7 @@ export async function getOcupacio(
         metode: d.metode,
         factura: d.factura?.numero ?? null,
         diposit: true,
+        fianca: !d.esDiposit,
       })),
     ],
     previstos: e.pagamentsPrevistos.map((p) => ({ import: Number(p.import), dataPrevista: dia(p.dataPrevista) ?? '', pagat: p.pagat })),

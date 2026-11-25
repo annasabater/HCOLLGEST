@@ -49,7 +49,7 @@ export async function GET(req: Request) {
   const pagaments = (t: TramFull) => {
     const l = [
       ...t.pagaments.map(
-        (g) => `<span class="pg"><b>${eur(g.import)}</b> ${dc(g.data)}${g.factura ? ` <span class="fra">Fra. ${esc(g.factura)}</span>` : ''}${g.diposit ? ' <span class="fra">dipòsit</span>' : ''}</span>`,
+        (g) => `<span class="pg"><b>${eur(g.import)}</b> ${dc(g.data)}${g.factura ? ` <span class="fra">Fra. ${esc(g.factura)}</span>` : ''}${g.diposit ? ` <span class="fra">${g.fianca ? 'fiança' : 'dipòsit'}</span>` : ''}</span>`,
       ),
       ...t.pendents.map((x) => `<span class="pend">PENDENT ${eur(x.import)} · ${dc(x.data)}</span>`),
     ];
@@ -117,6 +117,10 @@ h1 { margin: 2px 0 0; font-size: 22px; font-weight: 600; color: #222; }
 .alt .nota { background: #fff; }
 .nota-in { display: block; width: 100%; margin-top: 5px; padding: 5px 9px; font: 12px Arial, sans-serif; border: 1px solid #7a1f2b; outline: none; resize: vertical; }
 @media print { .no-print { display: none !important; } }
+.barra { position: sticky; top: 0; z-index: 5; display: flex; justify-content: space-between; gap: 10px; max-width: 210mm; margin: -18px auto 12px; padding: 10px 0; background: #e9e9e9; }
+.barra a, .barra button { font: 600 14px Arial, sans-serif; padding: 9px 16px; border: 1px solid #7a1f2b; text-decoration: none; cursor: pointer; }
+.barra a { color: #7a1f2b; background: #fff; }
+.barra button { color: #fff; background: #7a1f2b; }
 footer { margin-top: 10px; font-size: 9.5px; color: #999; border-top: 1px solid #e4e4e4; padding-top: 6px; }
 @media screen {
   body { background: #e9e9e9; padding: 18px 12px; }
@@ -124,6 +128,7 @@ footer { margin-top: 10px; font-size: 9.5px; color: #999; border-top: 1px solid 
 }
 </style></head>
 <body>
+<div class="barra no-print" hidden><a href="/ocupacio" id="torna">← Tornar</a><button type="button" onclick="window.print()">Imprimir / desar PDF</button></div>
 <div class="full">
 <header>
   <div><div class="marca">HOSTAL COLL</div><h1>Ocupació</h1></div>
@@ -133,6 +138,13 @@ ${cos}
 <footer>Del més recent al més antic; els sense número de contracte, al final · Fra. = número de factura</footer>
 </div>
 <script>
+// La barra (Tornar / Imprimir) només quan el full s'obre sol, no dins la vista prèvia de /ocupacio.
+if (window.self === window.top) {
+  document.querySelector('.barra').hidden = false;
+  document.getElementById('torna').addEventListener('click', function (e) {
+    if (history.length > 1 && document.referrer.indexOf(location.origin) === 0) { e.preventDefault(); history.back(); }
+  });
+}
 document.addEventListener('click', function (ev) {
   var t = ev.target;
   var ent = t.closest ? t.closest('.ent') : null;
