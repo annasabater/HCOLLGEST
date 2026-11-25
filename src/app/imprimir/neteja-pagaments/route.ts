@@ -32,6 +32,7 @@ export async function GET(req: Request) {
   const treballadorId = p.get('treballador') ?? '';
   const mode = p.get('mode') === 'pendent' ? 'pendent' : 'desde';
   const desde = RE.test(p.get('desde') ?? '') ? p.get('desde')! : undefined;
+  const fins = RE.test(p.get('fins') ?? '') ? p.get('fins')! : undefined;
   const auto = p.get('auto') === '1';
   const avui = new Date().toISOString().slice(0, 10);
 
@@ -40,8 +41,14 @@ export async function GET(req: Request) {
     : null;
   if (!treballador) return new Response('Treballador no trobat', { status: 404 });
 
-  const rang = mode === 'desde' && desde ? { desde } : {};
-  const dataFiltre = rang.desde ? { gte: new Date(`${rang.desde}T00:00:00.000Z`) } : undefined;
+  const rang = mode === 'desde' ? { ...(desde ? { desde } : {}), ...(fins ? { fins } : {}) } : {};
+  const dataFiltre =
+    rang.desde || rang.fins
+      ? {
+          ...(rang.desde ? { gte: new Date(`${rang.desde}T00:00:00.000Z`) } : {}),
+          ...(rang.fins ? { lt: new Date(new Date(`${rang.fins}T00:00:00.000Z`).getTime() + 86_400_000) } : {}),
+        }
+      : undefined;
 
   const [moviments, tasquesRaw, notesRaw] = await Promise.all([
     movimentsCompte(treballador.id, rang),
@@ -60,7 +67,18 @@ export async function GET(req: Request) {
   const r2 = (n: number) => Math.round(n * 100) / 100;
   const primer = dies[0]?.dia ?? null; // dies ordenats de l'antic al recent
 
-  const subtitol = mode === 'pendent' ? 'Pendent de pagament' : desde ? `Des del ${dllarg(desde)}` : primer ? `Des del primer dia (${dllarg(primer)})` : 'Des del primer dia';
+  const subtitol =
+    mode === 'pendent'
+      ? 'Pendent de pagament'
+      : desde && fins
+        ? `Del ${dllarg(desde)} al ${dllarg(fins)}`
+        : desde
+          ? `Des del ${dllarg(desde)}`
+          : fins
+            ? `Fins al ${dllarg(fins)}`
+            : primer
+              ? `Des del primer dia (${dllarg(primer)})`
+              : 'Des del primer dia';
 
   const estat = (d: DiaPagament) =>
     d.pendent <= 0
@@ -136,7 +154,7 @@ footer { margin-top: 12px; font-size: 9.5px; color: #999; border-top: 1px solid 
 }
 </style></head>
 <body>
-<div class="barra no-print"><a href="/neteja" id="torna">← Tornar</a><button type="button" onclick="window.print()">Imprimir / desar PDF</button></div>
+<div class="barra no-print"><a href="/personal" id="torna">← Tornar</a><button type="button" onclick="window.print()">Imprimir / desar PDF</button></div>
 <div class="full">
 <header>
   <div><div class="marca">HOSTAL COLL</div><h1>Neteja · ${esc(treballador.nom)}</h1><div class="sub">${esc(subtitol)}</div></div>
@@ -162,7 +180,7 @@ ${auto ? '  window.addEventListener("load",function(){setTimeout(function(){wind
 }
 
 /** Tasques FETES de la treballadora (per dir les habitacions de cada dia). */
-async function tasques(treballadorId: string, data: { gte: Date } | undefined): Promise<TascaDia[]> {
+async function tasques(treballadorId: string, data: { gte?: Date; lt?: Date } | undefined): Promise<TascaDia[]> {
   const rows = await prisma.tascaNeteja.findMany({
     where: { assignadaA: treballadorId, estat: 'FETA', ...(data ? { data } : {}) },
     select: { data: true, tipus: true, notes: true, habitacio: { select: { nom: true } } },

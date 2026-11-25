@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Download, Plus, Trash2 } from 'lucide-react';
+import { Check, Download, FileText, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -189,6 +189,8 @@ export function CompteTreballador({
   }
 
   const exportUrl = `/api/treballadors/${treballadorId}/compte/export?desde=${desde}&fins=${fins}`;
+  const pdfPeriode = `/imprimir/neteja-pagaments?treballador=${treballadorId}&mode=desde&desde=${desde}&fins=${fins}`;
+  const pdfPendent = `/imprimir/neteja-pagaments?treballador=${treballadorId}&mode=pendent`;
 
   return (
     <div className="space-y-5">
@@ -240,6 +242,22 @@ export function CompteTreballador({
           >
             <Download className="h-4 w-4" /> Exportar el període
           </a>
+          <div className="grid grid-cols-2 gap-2">
+            <a
+              href={pdfPeriode}
+              title="Els dies de neteja del període, amb habitacions, imports i el que s'ha pagat"
+              className="inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-2 text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50"
+            >
+              <FileText className="h-4 w-4" /> PDF dels dies
+            </a>
+            <a
+              href={pdfPendent}
+              title="Només el que queda per pagar, amb el total"
+              className="inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-2 text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50"
+            >
+              <FileText className="h-4 w-4" /> PDF pendent
+            </a>
+          </div>
         </div>
       </div>
 
