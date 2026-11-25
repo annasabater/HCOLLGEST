@@ -295,6 +295,29 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
   };
 }
 
+/**
+ * Factures del trimestre fetes DESPRÉS de desar el llibre (`desat`) i que no hi són
+ * (per Nº S. | Nº F.). Un llibre desat es queda congelat; aquestes s'hi han d'afegir
+ * perquè no quedin fora. Les que ja existien en desar-lo i s'havien tret, no tornen.
+ */
+export async function facturesNovesDesDe(
+  year: number,
+  trimestre: number,
+  desat: Date,
+  jaHiSon: { numeroSimple?: unknown; numeroFiscal?: unknown }[],
+  actual?: FilaIngres[],
+): Promise<FilaIngres[]> {
+  const files = actual ?? (await getLlibreIngressos(year, trimestre)).files;
+  const clau = (f: { numeroSimple?: unknown; numeroFiscal?: unknown }) => `${String(f.numeroSimple ?? '')}|${String(f.numeroFiscal ?? '')}`;
+  const hiSon = new Set(jaHiSon.map(clau));
+  const noves = await prisma.factura.findMany({
+    where: { numero: { in: files.map((f) => f.numeroIntern) }, createdAt: { gt: desat } },
+    select: { numero: true },
+  });
+  const sonNoves = new Set(noves.map((f) => f.numero));
+  return files.filter((f) => sonNoves.has(f.numeroIntern) && !hiSon.has(clau(f)));
+}
+
 // ─── Dipòsits i fiances del trimestre (diners en custòdia, NO factures) ───
 
 export interface FilaDiposit extends DipositBase {

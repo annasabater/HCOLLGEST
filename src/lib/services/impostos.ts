@@ -16,7 +16,7 @@ import {
   type Resultat100, type Resultat347, type TotalsTrimestre,
 } from '../impostos';
 import { liniesIva } from '../gasto-iva';
-import { esCategoriaSenseIva, getDipositsTrimestre, getFiancesSoportades, getGastosSoportats, getLlibreIngressos, rangTrimestre } from './llibre-iva';
+import { esCategoriaSenseIva, facturesNovesDesDe, getDipositsTrimestre, getFiancesSoportades, getGastosSoportats, getLlibreIngressos, rangTrimestre } from './llibre-iva';
 import { getIeetPeriode } from './ieet';
 import { avisosBoePendents, type AvisBoe } from './boe-formularis';
 import { infoPeriode } from '../ieet';
@@ -126,10 +126,15 @@ interface FilaGastoLlibre { nif: string; proveidor: string; numFactura: string; 
 async function totalsTrimestre(any: number, t: number): Promise<{ totals: TotalsTrimestre; llibreDesat: boolean }> {
   const desat = await prisma.llibreIvaTrimestre.findUnique({ where: { periode: `${any}-${t}` } });
 
-  const ingressos = desat
-    ? (desat.files as unknown as { base?: number; iva?: number; ivaPercent?: number }[]).map((f) => ({
-        base: Number(f.base ?? 0), iva: Number(f.iva ?? 0), ivaPercent: Number(f.ivaPercent ?? 0),
-      }))
+  // Llibre desat + les factures fetes després de desar-lo (si no, quedarien fora del 303).
+  const filesDesades = desat
+    ? (desat.files as unknown as { base?: number; iva?: number; ivaPercent?: number; numeroSimple?: string; numeroFiscal?: string }[])
+    : null;
+  const ingressos = desat && filesDesades
+    ? [
+        ...filesDesades.map((f) => ({ base: Number(f.base ?? 0), iva: Number(f.iva ?? 0), ivaPercent: Number(f.ivaPercent ?? 0) })),
+        ...(await facturesNovesDesDe(any, t, desat.updatedAt, filesDesades)),
+      ]
     : (await getLlibreIngressos(any, t)).files;
 
   let gastos: FilaGastoLlibre[];
