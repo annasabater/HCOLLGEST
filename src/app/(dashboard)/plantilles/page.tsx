@@ -929,7 +929,7 @@ function BenvingudaCard() {
   return (
     <CollapsibleCard title="Benvinguda i valoració" icon={<Hand className="h-4 w-4 text-brand-600" />}>
       <div className="space-y-4">
-        <Field label="Enllaç de benvinguda" hint="La pàgina que reben els hostes. Es desa al navegador.">
+        <Field label="Enllaç de benvinguda">
           <Input value={enllac} onChange={(e) => setLink(e.target.value)} />
         </Field>
 
