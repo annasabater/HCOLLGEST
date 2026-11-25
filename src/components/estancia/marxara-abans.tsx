@@ -29,11 +29,14 @@ export function MarxaraAbans({
   dataEntrada,
   dataSortida,
   sortidaProbable,
+  jaMarxat = null,
 }: {
   estanciaId: string;
   dataEntrada: string; // YYYY-MM-DD
   dataSortida: string; // YYYY-MM-DD (oficial)
   sortidaProbable: string | null; // YYYY-MM-DD
+  /** Ja ha marxat (sortida real): el botó serveix per canviar-la. */
+  jaMarxat?: string | null;
 }) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -78,22 +81,27 @@ export function MarxaraAbans({
           variant="outline"
           disabled={saving}
           onClick={() => {
-            setQuin(avui > dit && avui < dataSortida ? 'avui' : 'dit');
-            setAltre('');
+            if (jaMarxat) {
+              setQuin(jaMarxat === dit ? 'dit' : 'altre');
+              setAltre(jaMarxat === dit ? '' : jaMarxat);
+            } else {
+              setQuin(avui > dit && avui < dataSortida ? 'avui' : 'dit');
+              setAltre('');
+            }
             setError(null);
             setOpen(true);
           }}
         >
-          <LogOut className="h-4 w-4" /> Ha marxat
+          <LogOut className="h-4 w-4" /> {jaMarxat ? 'Canviar la sortida real' : 'Ha marxat'}
         </Button>
-        <Button
+        {!jaMarxat && <Button
           variant="outline"
           disabled={saving}
           title="Treu la sortida probable: torna a estar ocupada fins a la sortida oficial"
           onClick={() => fes(() => delJSON(`/api/estancies/${estanciaId}/sortida-probable`), 'No s’ha pogut desfer')}
         >
           <Undo2 className="h-4 w-4" /> Al final es queda
-        </Button>
+        </Button>}
         {error && !open && <span className="text-sm text-red-600">{error}</span>}
 
         <dialog
@@ -152,7 +160,9 @@ export function MarxaraAbans({
                   fes(
                     () =>
                       quin === 'oficial'
-                        ? delJSON(`/api/estancies/${estanciaId}/sortida-probable`)
+                        ? jaMarxat
+                          ? postJSON(`/api/estancies/${estanciaId}/reactivar`, {})
+                          : delJSON(`/api/estancies/${estanciaId}/sortida-probable`)
                         : postJSON(`/api/estancies/${estanciaId}/finalitzar-anticipada`, { dataSortida: triat, retorn: false }),
                     'No s’ha pogut marcar la sortida',
                   )

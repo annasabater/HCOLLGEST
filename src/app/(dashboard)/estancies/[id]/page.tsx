@@ -419,7 +419,18 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                       label="Sortida real"
                       value={
                         estancia.sortidaAnticipada ? (
-                          <b>{formatDate(estancia.dataSortida)}</b>
+                          <span className="flex flex-wrap items-center gap-2">
+                            <b>{formatDate(estancia.dataSortida)}</b>
+                            {canWrite && estancia.dataEntrada && estancia.dataSortida && (
+                              <MarxaraAbans
+                                estanciaId={estancia.id}
+                                dataEntrada={toISODate(estancia.dataEntrada)}
+                                dataSortida={toISODate(estancia.dataSortidaPrevista ?? estancia.dataSortida)}
+                                sortidaProbable={toISODate(estancia.sortidaProbable)}
+                                jaMarxat={toISODate(estancia.dataSortida)}
+                              />
+                            )}
+                          </span>
                         ) : (
                           <span className="text-slate-400">Encara no ha marxat</span>
                         )

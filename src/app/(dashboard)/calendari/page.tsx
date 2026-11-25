@@ -17,6 +17,8 @@ interface Mov {
   data: string;
   titular: string;
   habitacio: string | null;
+  /** Sortides: «probable» (ha dit que marxa abans) o «oficial» (la del contracte, quan n'hi ha una de probable). */
+  marca?: 'probable' | 'oficial' | null;
 }
 interface Tasca {
   id: string;
@@ -301,16 +303,22 @@ export default function CalendariPage() {
                 ))}
                 {sortides.map((e) => (
                   <div
-                    key={e.id}
+                    key={`${e.id}-${e.marca ?? ''}`}
                     className={cn(
-                      'truncate rounded bg-brand-50 px-1.5 py-0.5 text-brand-800',
+                      'truncate rounded px-1.5 py-0.5',
+                      e.marca === 'probable'
+                        ? 'border border-dashed border-amber-400 bg-amber-50 text-amber-900'
+                        : e.marca === 'oficial'
+                          ? 'bg-slate-50 text-slate-400'
+                          : 'bg-brand-50 text-brand-800',
                       compact ? 'text-[10px]' : 'text-xs',
                     )}
-                    title={`Sortida: ${e.titular}${e.habitacio ? ` · Hab. ${e.habitacio}` : ''}`}
+                    title={`${e.marca === 'probable' ? 'Sortida probable (ha dit que marxa abans)' : e.marca === 'oficial' ? 'Sortida oficial (ha dit que marxarà abans)' : 'Sortida'}: ${e.titular}${e.habitacio ? ` · Hab. ${e.habitacio}` : ''}`}
                   >
                     <LogOut className="mr-0.5 inline h-3 w-3" />
                     {e.titular}
                     {e.habitacio ? ` H${e.habitacio}` : ''}
+                    {e.marca === 'probable' ? ' · probable' : e.marca === 'oficial' ? ' · oficial' : ''}
                   </div>
                 ))}
                 {tasques.map((t) => (
@@ -403,11 +411,12 @@ export default function CalendariPage() {
               ))}
               {selSort.map((e) => (
                 <Link
-                  key={`s${e.id}`}
+                  key={`s${e.id}-${e.marca ?? ''}`}
                   href={`/estancies/${e.id}`}
                   className="flex items-center gap-2 rounded-lg border border-slate-100 bg-brand-50/60 px-3 py-2 text-sm text-brand-800 hover:bg-brand-50"
                 >
-                  <LogOut className="h-4 w-4 shrink-0" /> Sortida · {e.titular}
+                  <LogOut className="h-4 w-4 shrink-0" />{' '}
+                  {e.marca === 'probable' ? 'Sortida probable' : e.marca === 'oficial' ? 'Sortida oficial' : 'Sortida'} · {e.titular}
                   {e.habitacio ? ` · Hab. ${e.habitacio}` : ''}
                 </Link>
               ))}

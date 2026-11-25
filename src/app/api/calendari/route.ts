@@ -27,7 +27,8 @@ export async function GET(req: Request) {
       orderBy: { dataEntrada: 'asc' },
     }),
     prisma.estancia.findMany({
-      where: { deletedAt: null, dataSortida: range },
+      // També les que han dit que marxaran abans (sortida probable dins del rang).
+      where: { deletedAt: null, OR: [{ dataSortida: range }, { sortidaProbable: range, sortidaAnticipada: false }] },
       include: titularInclude,
       orderBy: { dataSortida: 'asc' },
     }),
@@ -89,12 +90,16 @@ export async function GET(req: Request) {
       titular: titular(e),
       habitacio: e.habitacio?.nom ?? null,
     })),
-    sortides: sortides.map((e) => ({
-      id: e.id,
-      data: e.dataSortida,
-      titular: titular(e),
-      habitacio: e.habitacio?.nom ?? null,
-    })),
+    // «Marxarà abans»: surt el dia probable (marcat «probable») i el dia oficial (marcat «oficial»).
+    sortides: sortides.flatMap((e) => {
+      const base = { id: e.id, titular: titular(e), habitacio: e.habitacio?.nom ?? null };
+      const probable = e.sortidaProbable && !e.sortidaAnticipada ? e.sortidaProbable : null;
+      const dins = (d: Date | null) => !!d && d >= range.gte && d <= range.lte;
+      return [
+        ...(probable && dins(probable) ? [{ ...base, data: probable, marca: 'probable' as const }] : []),
+        ...(dins(e.dataSortida) ? [{ ...base, data: e.dataSortida, marca: probable ? ('oficial' as const) : null }] : []),
+      ];
+    }),
     tasques: tasques.map((t) => ({
       id: t.id,
       data: t.data,
