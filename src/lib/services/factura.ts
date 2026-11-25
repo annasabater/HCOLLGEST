@@ -868,7 +868,8 @@ export async function finalitzarEstanciaAnticipada(
 
   const nota =
     `Sortida anticipada: ha deixat ${habNom ? `l'habitació ${habNom}` : "l'allotjament"} el ${fmtDataHora(input.dataSortida)}` +
-    `${prevista ? ` (sortida prevista: ${fmt(prevista)})` : ''}.` +
+    `${prevista ? ` (sortida prevista: ${fmt(prevista)})` : ''}` +
+    `${est.sortidaProbable && !est.sortidaAnticipada ? `; havia dit que marxaria el ${fmt(est.sortidaProbable)}` : ''}.` +
     `${retornImport > 0 ? ` S'han retornat ${retornImport.toFixed(2)} €.` : ' No s\'ha retornat cap import.'}`;
 
   await prisma.$transaction(async (tx) => {
@@ -878,9 +879,6 @@ export async function finalitzarEstanciaAnticipada(
         dataSortida: input.dataSortida,
         estat: 'FINALITZADA',
         sortidaAnticipada: true,
-        // Ja ha marxat: la sortida «probable» ja no cal (ara és la real).
-        sortidaProbable: null,
-        sortidaProbableNota: null,
         // Guarda la sortida original només la primera vegada (per poder desfer-ho).
         ...(est.sortidaAnticipada ? {} : { dataSortidaPrevista: est.dataSortida }),
         observacions: est.observacions ? `${est.observacions}\n${nota}` : nota,

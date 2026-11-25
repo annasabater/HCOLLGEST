@@ -401,7 +401,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                     estancia.sortidaAnticipada && estancia.dataSortidaPrevista ? (
                       <span>
                         {formatDate(estancia.dataSortida)}{' '}
-                        <span className="text-slate-400">(prevista {formatDate(estancia.dataSortidaPrevista)})</span>
+                        <span className="text-slate-400">(oficial {formatDate(estancia.dataSortidaPrevista)})</span>
                       </span>
                     ) : (
                       formatDate(estancia.dataSortida)
@@ -409,9 +409,9 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   }
                 />
 
-                {estancia.sortidaProbable && !estancia.sortidaAnticipada && (
+                {estancia.sortidaProbable && (
                   <Dl
-                    label="Sortida probable"
+                    label={estancia.sortidaAnticipada ? 'Va dir que marxaria' : 'Sortida probable'}
                     value={
                       <span className="text-amber-800">
                         <b>{formatDate(estancia.sortidaProbable)}</b>

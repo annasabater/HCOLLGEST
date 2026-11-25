@@ -533,18 +533,6 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
       setBusy(null);
     }
   }
-  async function crida(id: string, fn: () => Promise<unknown>) {
-    setBusy(id);
-    setError(null);
-    try {
-      await fn();
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No s’ha pogut desar');
-    } finally {
-      setBusy(null);
-    }
-  }
   async function afegeixPendent(id: string) {
     const imp = parseFloat(pendImport.replace(',', '.'));
     if (!(imp > 0) || !pendData) return;
@@ -786,32 +774,14 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                               />
                             </div>
                           )}
-                          {e.sortidaProbable && (
+                          {e.sortidaProbable && e.trams.length > 0 && (
                             <div className="flex flex-wrap gap-2">
-                              {e.sortidaProbable <= avui && (
-                                <Button
-                                  size="sm"
-                                  disabled={busy === e.id}
-                                  onClick={() =>
-                                    crida(e.id, () =>
-                                      postJSON(`/api/estancies/${e.id}/finalitzar-anticipada`, {
-                                        dataSortida: e.sortidaProbable,
-                                        retorn: false,
-                                      }),
-                                    )
-                                  }
-                                >
-                                  Ha marxat el {dc(e.sortidaProbable)}
-                                </Button>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={busy === e.id}
-                                onClick={() => crida(e.id, () => delJSON(`/api/estancies/${e.id}/sortida-probable`))}
-                              >
-                                Al final es queda
-                              </Button>
+                              <MarxaraAbans
+                                estanciaId={e.id}
+                                dataEntrada={e.trams[e.trams.length - 1]!.entrada}
+                                dataSortida={e.sortida}
+                                sortidaProbable={e.sortidaProbable}
+                              />
                             </div>
                           )}
                           {!ambAmpliacio && !e.sortidaProbable && (

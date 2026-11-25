@@ -45,6 +45,7 @@ export async function GET(req: Request) {
         dataEntrada: true,
         dataSortida: true,
         sortidaProbable: true,
+        sortidaAnticipada: true,
         habitacioId: true,
         ...SELECT_CANVIS,
         viatgers: {
@@ -67,8 +68,8 @@ export async function GET(req: Request) {
         dataSortida: e.dataSortida ? toISODate(e.dataSortida) : null,
         // «Marxarà abans»: si marxa probablement abans (o el dia) que entri la nova,
         // és un avís suau, no un conflicte de debò.
-        sortidaProbable: e.sortidaProbable ? toISODate(e.sortidaProbable) : null,
-        probable: !!e.sortidaProbable && toISODate(e.sortidaProbable) <= desdeStr,
+        sortidaProbable: e.sortidaProbable && !e.sortidaAnticipada ? toISODate(e.sortidaProbable) : null,
+        probable: !!e.sortidaProbable && !e.sortidaAnticipada && toISODate(e.sortidaProbable) <= desdeStr,
       };
     });
 
