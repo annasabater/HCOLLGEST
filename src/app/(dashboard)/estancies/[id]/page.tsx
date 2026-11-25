@@ -286,7 +286,6 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
               estancia.estat !== 'CANCELLADA' &&
               estancia.estat !== 'FINALITZADA' &&
               !estancia.sortidaAnticipada &&
-              !estancia.esBorrany &&
               estancia.dataEntrada &&
               estancia.dataSortida && (
                 <MarxaraAbans
