@@ -78,7 +78,7 @@ export function MarxaraAbans({
           <LogOut className="h-4 w-4" /> Ha marxat
         </Button>
         <Button
-          variant="ghost"
+          variant="outline"
           disabled={saving}
           title="Treu la sortida probable: torna a estar ocupada fins a la sortida oficial"
           onClick={() => fes(() => delJSON(`/api/estancies/${estanciaId}/sortida-probable`), 'No s’ha pogut desfer')}
