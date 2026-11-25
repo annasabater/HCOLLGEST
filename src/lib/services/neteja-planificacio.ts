@@ -165,10 +165,11 @@ export async function esborrarPla(id: string, actor: Actor, ip: string | null) {
   await audit({ usuariId: actor?.id, accio: 'ELIMINACIO', entitat: 'neteja_planificada', entitatId: id, ip });
 }
 
-/** Treu les planificacions d'un dia (p. ex. per esborrar un dia sencer planificat). */
+/** Treu les planificacions d'un dia i la seva observació (per esborrar un dia sencer). */
 export async function esborrarDia(data: string, actor: Actor, ip: string | null) {
   z.string().regex(RE_DIA).parse(data);
   const r = await prisma.netejaPlanificada.deleteMany({ where: { data: diaDate(data) } });
+  await prisma.notaNeteja.deleteMany({ where: { data: diaDate(data), ambit: 'DIA' } });
   await audit({ usuariId: actor?.id, accio: 'ELIMINACIO', entitat: 'neteja_planificada', detall: { dia: data, n: r.count }, ip });
   return r.count;
 }
@@ -202,34 +203,66 @@ export async function desarNota(raw: unknown, actor: Actor, ip: string | null) {
  * «Repetir la setmana passada»: copia a la setmana del `dilluns` les habitacions i
  * els dies de la setmana anterior (fetes o planificades), com a planificació.
  */
-export async function repetirSetmana(dilluns: string, actor: Actor, ip: string | null) {
+export interface ResultatRepetir {
+  /** Habitacions noves copiades. */
+  creades: number;
+  /** Dilluns de la setmana d'on s'ha copiat (la d'abans o, si estava buida, la darrera amb neteja). */
+  origen: string | null;
+  /** Habitacions de l'origen que ja hi eren a la setmana (no es dupliquen). */
+  jaHi: number;
+}
+
+/** Màxim de setmanes enrere on busquem una setmana amb neteja si la d'abans és buida. */
+const SETMANES_ENRERE = 8;
+
+export async function repetirSetmana(dilluns: string, actor: Actor, ip: string | null): Promise<ResultatRepetir> {
   z.string().regex(RE_DIA).parse(dilluns);
   const dl = dillunsDe(dilluns);
-  const antDl = sumaDiesDia(dl, -7);
-  const gte = diaDate(antDl);
   const lt = diaDate(dl);
   const fiNova = diaDate(sumaDiesDia(dl, 7));
-  const [plans, tasques, jaPlans, jaTasques, sortides] = await Promise.all([
-    prisma.netejaPlanificada.findMany({ where: { data: { gte, lt } } }),
-    prisma.tascaNeteja.findMany({ where: { data: { gte, lt }, habitacioId: { not: null } } }),
+
+  // La setmana d'origen és la d'abans; si no hi havia res, la darrera amb neteja (fins a 8 setmanes enrere).
+  const llegeixOrigen = async (antDl: string) => {
+    const gte = diaDate(antDl);
+    const fi = diaDate(sumaDiesDia(antDl, 7));
+    const [plans, tasques] = await Promise.all([
+      prisma.netejaPlanificada.findMany({ where: { data: { gte, lt: fi } } }),
+      prisma.tascaNeteja.findMany({ where: { data: { gte, lt: fi }, habitacioId: { not: null } } }),
+    ]);
+    return [
+      ...tasques.map((t) => ({ data: isoDia(t.data), habitacioId: t.habitacioId!, treballadorId: t.assignadaA })),
+      ...plans.map((p) => ({ data: isoDia(p.data), habitacioId: p.habitacioId, treballadorId: p.treballadorId })),
+    ];
+  };
+  let origen: Awaited<ReturnType<typeof llegeixOrigen>> = [];
+  let origenDl: string | null = null;
+  for (let n = 1; n <= SETMANES_ENRERE; n++) {
+    const antDl = sumaDiesDia(dl, -7 * n);
+    const x = await llegeixOrigen(antDl);
+    if (x.length) { origen = x; origenDl = antDl; break; }
+  }
+  if (!origenDl) return { creades: 0, origen: null, jaHi: 0 };
+
+  // Dies de la setmana d'origen es porten a la nova (mateix dia de la setmana).
+  const desplaca = (7 * (Math.round((Date.parse(`${dl}T00:00:00Z`) - Date.parse(`${origenDl}T00:00:00Z`)) / 86_400_000 / 7))) - 7;
+  const origenAlineat = origen.map((o) => ({ ...o, data: sumaDiesDia(o.data, desplaca) }));
+
+  const [jaPlans, jaTasques, sortides] = await Promise.all([
     prisma.netejaPlanificada.findMany({ where: { data: { gte: lt, lt: fiNova } }, select: { data: true, habitacioId: true } }),
     prisma.tascaNeteja.findMany({ where: { data: { gte: lt, lt: fiNova }, habitacioId: { not: null } }, select: { data: true, habitacioId: true } }),
     sortidesEntre(dl, sumaDiesDia(dl, 6)),
   ]);
-  const origen = [
-    ...tasques.map((t) => ({ data: isoDia(t.data), habitacioId: t.habitacioId!, treballadorId: t.assignadaA })),
-    ...plans.map((p) => ({ data: isoDia(p.data), habitacioId: p.habitacioId, treballadorId: p.treballadorId })),
-  ];
   const jaHiSon = new Set([...jaPlans, ...jaTasques].map((x) => `${isoDia(x.data)}|${x.habitacioId}`));
-  const nous = copiaSetmana(origen, sortides, jaHiSon);
+  const nous = copiaSetmana(origenAlineat, sortides, jaHiSon);
+  const jaHi = new Set(origenAlineat.map((o) => `${sumaDiesDia(o.data, 7)}|${o.habitacioId}`).filter((k) => jaHiSon.has(k))).size;
   if (nous.length) {
     await prisma.netejaPlanificada.createMany({
       data: nous.map((n) => ({ data: diaDate(n.data), habitacioId: n.habitacioId, tipus: n.tipus, treballadorId: n.treballadorId })),
       skipDuplicates: true,
     });
   }
-  await audit({ usuariId: actor?.id, accio: 'CREACIO', entitat: 'neteja_planificada', detall: { repetirSetmana: dl, n: nous.length }, ip });
-  return nous.length;
+  await audit({ usuariId: actor?.id, accio: 'CREACIO', entitat: 'neteja_planificada', detall: { repetirSetmana: dl, origen: origenDl, n: nous.length }, ip });
+  return { creades: nous.length, origen: origenDl, jaHi };
 }
 
 /** Planificació d'un dia (per proposar-la al «Full del dia»). */

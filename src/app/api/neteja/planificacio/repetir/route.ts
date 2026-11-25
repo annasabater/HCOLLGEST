@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const auth = await authorize(ROLES_WRITE);
     if (auth instanceof Response) return auth;
     const body = (await req.json().catch(() => null)) as { dilluns?: string } | null;
-    return ok({ creades: await repetirSetmana(body?.dilluns ?? '', { id: auth.id }, clientIp(req)) });
+    return ok(await repetirSetmana(body?.dilluns ?? '', { id: auth.id }, clientIp(req)));
   } catch (err) {
     return handleApiError(err);
   }

@@ -201,6 +201,47 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
     }
   };
 
+  const [avis, setAvis] = useState<string | null>(null);
+
+  /** Repeteix la setmana anterior (o la darrera amb neteja) i diu què ha passat. */
+  const repeteix = (dilluns: string) =>
+    fes(async () => {
+      const r = await postJSON<{ creades: number; origen: string | null; jaHi: number }>('/api/neteja/planificacio/repetir', { dilluns });
+      const d = r.origen ? `${curt(r.origen)} – ${curt(sumaDies(r.origen, 6))}` : '';
+      setAvis(
+        !r.origen
+          ? 'No hi ha cap neteja a les setmanes anteriors per copiar.'
+          : r.creades === 0
+            ? `No s'ha afegit res: tot el de la setmana del ${d} ja hi és${r.jaHi ? ` (${r.jaHi} habitacions)` : ''}.`
+            : `Copiades ${r.creades} ${r.creades === 1 ? 'habitació' : 'habitacions'} de la setmana del ${d}${r.jaHi ? ` (${r.jaHi} ja hi eren)` : ''}.`,
+      );
+    });
+
+  /** Esborra un dia: el planificat, o el desat al full del dia si no té cap pagament registrat. */
+  const esborraDia = async (d: DiaNeteja) => {
+    const fetes = d.habitacions.filter((h) => h.origen === 'FETA');
+    if (d.habitacions.length === 0 && !d.nota) {
+      setDiesBuits((b) => b.filter((x) => x.data !== d.data));
+      return;
+    }
+    if (fetes.length > 0 && !window.confirm(`Esborrar el ${nomDia(d.data)}? També s'esborraran les ${fetes.length} neteges desades al full del dia.`)) return;
+    const plans = d.habitacions.filter((h) => h.origen === 'PLA');
+    const nota = d.nota?.text ?? null;
+    await fes(async () => {
+      for (const h of fetes) await delJSON(`/api/tasques-neteja/${h.id}`);
+      await delJSON(`/api/neteja/planificacio?dia=${d.data}`);
+      setDiesBuits((b) => b.filter((x) => x.data !== d.data));
+    });
+    if (fetes.length === 0) {
+      ofereixDesfer(`${nomDia(d.data)} esborrat`, async () => {
+        await fes(async () => {
+          for (const h of plans) await postJSON('/api/neteja/planificacio', { data: d.data, habitacioId: h.habitacioId, tipus: h.tipus, nota: h.nota, treballadorId: d.treballadorId });
+          if (nota) await putJSON('/api/neteja/notes', { data: d.data, ambit: 'DIA', text: nota });
+        });
+      });
+    }
+  };
+
   const afegeixHab = (data: string, habitacioId: string, persona: string | null) =>
     fes(async () => {
       await postJSON('/api/neteja/planificacio', { data, habitacioId, treballadorId: persona || null });
@@ -282,12 +323,16 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
           <button type="button" onClick={() => onObreDia(d.data, persona)} className="inline-flex items-center gap-1 font-semibold text-slate-400 hover:text-brand-700">
             Full del dia <ExternalLink className="h-3 w-3" />
           </button>
-          {planificat && d.habitacions.length > 0 && (
+          {d.fet && d.pagament ? (
+            <span className="ml-auto inline-flex items-center gap-1 text-slate-300" title="Aquest dia té un pagament registrat: desfés-lo abans d'esborrar-lo (a Neteja o a Treballadors).">
+              <Trash2 className="h-3 w-3" /> Amb pagament
+            </span>
+          ) : (
             <button
               type="button"
-              onClick={() => fes(() => delJSON(`/api/neteja/planificacio?dia=${d.data}`))}
-              className="ml-auto inline-flex items-center gap-1 text-slate-300 hover:text-red-700"
-              title="Treu tot el que hi ha planificat aquest dia"
+              onClick={() => void esborraDia(d)}
+              className="ml-auto inline-flex items-center gap-1 text-slate-400 hover:text-red-700"
+              title={d.fet ? 'Esborra el dia i les neteges desades' : 'Treu el dia i el que hi ha planificat'}
             >
               <Trash2 className="h-3 w-3" /> Esborrar el dia
             </button>
@@ -354,6 +399,12 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
+      {avis && (
+        <p role="status" className="flex items-start gap-2 border border-brand-200 bg-brand-50/50 px-3 py-2 text-sm text-slate-800">
+          <span className="flex-1">{avis}</span>
+          <button type="button" onClick={() => setAvis(null)} aria-label="Tanca l'avís" className="text-slate-400 hover:text-slate-700"><X className="h-4 w-4" /></button>
+        </p>
+      )}
 
       <div className="ui-card border border-slate-200 bg-white px-4">
         {[...dades.setmanes].reverse().map((s) => {
@@ -370,9 +421,9 @@ export function PlanificacioNeteja({ onObreDia }: { onObreDia: (data: string, pe
                 {futura && (
                   <button
                     type="button"
-                    onClick={() => fes(() => postJSON('/api/neteja/planificacio/repetir', { dilluns: s.dilluns }))}
+                    onClick={() => void repeteix(s.dilluns)}
                     className="mt-1 inline-flex items-center gap-1 text-left text-[11px] font-semibold text-slate-400 hover:text-brand-700"
-                    title="Copia les habitacions i els dies de la setmana anterior"
+                    title="Copia les habitacions i els dies de la setmana anterior (o de l'última setmana amb neteja)"
                   >
                     <Copy className="h-3 w-3" /> Repetir la setmana passada
                   </button>
