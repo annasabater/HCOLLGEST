@@ -4,6 +4,8 @@ import { ROLES_ADMIN } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
 import { ok, badRequest, handleApiError } from '@/lib/http';
 import { LlibreIvaSaveSchema } from '@/lib/validation/llibre-iva';
+import { filaLlibreDe, getLlibreIngressos } from '@/lib/services/llibre-iva';
+import { ambGen } from '@/lib/llibre-desat';
 
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -27,7 +29,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ periode: strin
     const totalTotal = round2(input.files.reduce((a, f) => a + f.total, 0));
 
     const data = {
-      any, trimestre, etiqueta: input.etiqueta, files: input.files,
+      // Cada fila guarda també com és ara la seva factura: si després canvia, el llibre es posa al dia sol.
+      any, trimestre, etiqueta: input.etiqueta,
+      files: ambGen(input.files, (await getLlibreIngressos(any, trimestre)).files.map(filaLlibreDe)),
       gastos: input.gastos ?? [],
       libroGastos: input.libroGastos ?? undefined,
       totalBase, totalIva, totalTotal, usuariId: auth.id,

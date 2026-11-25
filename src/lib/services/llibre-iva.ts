@@ -14,6 +14,7 @@ import 'server-only';
 import { prisma } from '../db';
 import { periodeDelText } from '../periode-factura';
 import { liniesIva } from '../gasto-iva';
+import { clauFila, fusionaLlibre, type FilaDesada, type FilaLlibre } from '../llibre-desat';
 import {
   importRetingutDe,
   importTornatDe,
@@ -295,27 +296,37 @@ export async function getLlibreIngressos(year: number, trimestre: number): Promi
   };
 }
 
+/** Files del llibre tal com surten ara de les factures (data «dd/mm/aaaa», com el llibre desat). */
+export function filaLlibreDe(f: FilaIngres): FilaLlibre {
+  return {
+    data: new Date(f.data).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+    numeroSimple: f.numeroSimple, numeroFiscal: f.numeroFiscal, client: f.client, periode: f.periode, nif: f.nif,
+    base: f.base, ivaPercent: f.ivaPercent, iva: f.iva, total: f.total, diposit: f.diposit,
+  };
+}
+
 /**
- * Factures del trimestre fetes DESPRÉS de desar el llibre (`desat`) i que no hi són
- * (per Nº S. | Nº F.). Un llibre desat es queda congelat; aquestes s'hi han d'afegir
- * perquè no quedin fora. Les que ja existien en desar-lo i s'havien tret, no tornen.
+ * Llibre DESAT al dia: es queden els retocs fets a mà, però mana la factura si ha
+ * canviat després de desar, surten les esborrades i s'afegeixen les noves
+ * (vegeu `fusionaLlibre`). `desades` = les files tal com es van desar.
  */
-export async function facturesNovesDesDe(
+export async function llibreDesatAlDia(
   year: number,
   trimestre: number,
-  desat: Date,
-  jaHiSon: { numeroSimple?: unknown; numeroFiscal?: unknown }[],
+  desat: { files: unknown; updatedAt: Date },
   actual?: FilaIngres[],
-): Promise<FilaIngres[]> {
-  const files = actual ?? (await getLlibreIngressos(year, trimestre)).files;
-  const clau = (f: { numeroSimple?: unknown; numeroFiscal?: unknown }) => `${String(f.numeroSimple ?? '')}|${String(f.numeroFiscal ?? '')}`;
-  const hiSon = new Set(jaHiSon.map(clau));
-  const noves = await prisma.factura.findMany({
-    where: { numero: { in: files.map((f) => f.numeroIntern) }, createdAt: { gt: desat } },
-    select: { numero: true },
+): Promise<{ files: FilaLlibre[]; canvis: number }> {
+  const fact = actual ?? (await getLlibreIngressos(year, trimestre)).files;
+  const actuals = fact.map(filaLlibreDe);
+  const desades = (Array.isArray(desat.files) ? desat.files : []) as FilaDesada[];
+  const posteriors = await prisma.factura.findMany({
+    where: { numero: { in: fact.map((f) => f.numeroIntern) }, OR: [{ createdAt: { gt: desat.updatedAt } }, { updatedAt: { gt: desat.updatedAt } }] },
+    select: { numero: true, createdAt: true },
   });
-  const sonNoves = new Set(noves.map((f) => f.numero));
-  return files.filter((f) => sonNoves.has(f.numeroIntern) && !hiSon.has(clau(f)));
+  const clauDe = new Map(fact.map((f) => [f.numeroIntern, clauFila(f)]));
+  const noves = new Set(posteriors.filter((p) => p.createdAt > desat.updatedAt).map((p) => clauDe.get(p.numero)!));
+  const tocades = new Set(posteriors.map((p) => clauDe.get(p.numero)!));
+  return fusionaLlibre(desades, actuals, noves, tocades);
 }
 
 // ─── Dipòsits i fiances del trimestre (diners en custòdia, NO factures) ───

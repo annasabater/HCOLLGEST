@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { carregaEdicions, edicionsBootstrap, EDICIONS_SCRIPT, type EdicioDades } from '@/lib/edicions';
 import { TAULES_CLIENT_SCRIPT } from '@/lib/pdf/taules-script';
-import { getLlibreIngressos, getGastosSoportats, getFiancesSoportades, getLibroGastos, getDipositsTrimestre, facturesNovesDesDe, rangTrimestre, COLUMNES_GASTO, COLUMNA_GASTO_LABELS, type FilaIngres, type FilaGasto, type FilaLibroGasto, type FilaDiposit } from '@/lib/services/llibre-iva';
+import { getLlibreIngressos, getGastosSoportats, getFiancesSoportades, getLibroGastos, getDipositsTrimestre, llibreDesatAlDia, rangTrimestre, COLUMNES_GASTO, COLUMNA_GASTO_LABELS, type FilaIngres, type FilaGasto, type FilaLibroGasto, type FilaDiposit } from '@/lib/services/llibre-iva';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,24 +58,17 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
         .filter((f) => f.numeroFiscal && f.nif)
         .map((f) => [f.numeroFiscal, f.nif]),
     );
-    rows = (desat.files as unknown as FilaEdit[]).map((f) => ({
+    const desades = (desat.files as unknown as (FilaEdit & { gen?: FilaEdit })[]).map((f) => ({
       data: String(f.data ?? ''), numeroSimple: String(f.numeroSimple ?? ''), numeroFiscal: String(f.numeroFiscal ?? ''),
       client: String(f.client ?? ''), periode: String(f.periode ?? ''),
       nif: f.nif != null ? String(f.nif) : (nifPerFiscal.get(String(f.numeroFiscal ?? '')) ?? ''),
       base: Number(f.base ?? 0), ivaPercent: Number(f.ivaPercent ?? 0), iva: Number(f.iva ?? 0), total: Number(f.total ?? 0),
       diposit: Number(f.diposit ?? 0),
+      ...(f.gen ? { gen: f.gen } : {}),
     }));
-    // Les factures fetes DESPRÉS de desar el llibre s'hi afegeixen soles (abans s'hi
-    // quedaven fora). Les que ja hi eren i s'havien tret a mà, no tornen.
-    const afegides = (await facturesNovesDesDe(year, trimestre, desat.updatedAt, rows, actual))
-      .map((f) => ({
-        data: fmtData(f.data), numeroSimple: f.numeroSimple, numeroFiscal: f.numeroFiscal, client: f.client,
-        periode: f.periode, nif: f.nif, base: f.base, ivaPercent: f.ivaPercent, iva: f.iva, total: f.total, diposit: f.diposit,
-      }));
-    if (afegides.length) {
-      const num = (r: FilaEdit) => r.numeroSimple || r.numeroFiscal;
-      rows = [...rows, ...afegides].sort((a, b) => num(a).localeCompare(num(b), 'es', { numeric: true }));
-    }
+    // Al dia amb les factures: les fetes o canviades DESPRÉS de desar hi entren soles;
+    // els retocs a mà es queden mentre la factura no canviï.
+    rows = (await llibreDesatAlDia(year, trimestre, { files: desades, updatedAt: desat.updatedAt }, actual)).files;
     // Si ja s'havien desat gastos, es carreguen; si no (llibre desat abans que
     // existís la part de despeses), es generen dels gastos del trimestre.
     const gDesat = desat.gastos as unknown as FilaGastoEdit[] | null;
