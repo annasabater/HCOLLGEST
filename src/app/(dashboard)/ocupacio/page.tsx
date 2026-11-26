@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { FileText, ExternalLink, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FileText, ExternalLink, PanelLeftClose, PanelLeftOpen, Minus, Plus, MoveHorizontal } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +28,14 @@ const LS_ESTAT = 'ocupacio_estat';
 const LS_EXCLOSES = 'ocupacio_excloses';
 const LS_AMAGADA = 'ocupacio_llista_amagada';
 const LS_RESERVES = 'ocupacio_reserves';
+const LS_ZOOM = 'ocupacio_zoom';
+
+// Zoom del full a la pantalla (no toca la impressió: només @media screen).
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 2;
+const FULL_PX = 794; // 210 mm
+type Zoom = number | 'ajusta';
+const arrodoneix = (z: number) => Math.round(z * 10) / 10;
 
 const dc = (iso: string | null) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(2, 4)}` : '');
 
@@ -44,6 +52,39 @@ export default function OcupacioPage() {
   const [triades, setTriades] = useState<Set<string>>(new Set());
   const [carregant, setCarregant] = useState(true);
   const frame = useRef<HTMLIFrameElement>(null);
+  const [zoom, setZoom] = useState<Zoom>(1);
+  const [zoomEfectiu, setZoomEfectiu] = useState(1);
+
+  // Aplica el zoom dins del full (mateix origen): un <style> només per a la pantalla.
+  const aplicaZoom = useCallback(() => {
+    const f = frame.current;
+    const doc = f?.contentDocument;
+    if (!f || !doc?.head) return;
+    const z = zoom === 'ajusta'
+      ? Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, (f.clientWidth - 56) / FULL_PX))
+      : zoom;
+    let st = doc.getElementById('hc-zoom');
+    if (!st) {
+      st = doc.createElement('style');
+      st.id = 'hc-zoom';
+      doc.head.appendChild(st);
+    }
+    st.textContent = `@media screen { html { zoom: ${z}; } }`;
+    setZoomEfectiu(z);
+  }, [zoom]);
+  useEffect(() => { aplicaZoom(); }, [aplicaZoom]);
+  useEffect(() => {
+    const f = frame.current;
+    if (!f || zoom !== 'ajusta') return;
+    const ro = new ResizeObserver(() => aplicaZoom());
+    ro.observe(f);
+    return () => ro.disconnect();
+  }, [zoom, aplicaZoom]);
+  const canviaZoom = (z: Zoom) => {
+    setZoom(z);
+    try { window.localStorage.setItem(LS_ZOOM, String(z)); } catch { /* ignora */ }
+  };
+  const mesZoom = (d: number) => canviaZoom(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, arrodoneix(zoomEfectiu + d))));
 
   // Es recorda al navegador l'últim que has deixat: període, estades que has tret i llista amagada.
   const [llistaAmagada, setLlistaAmagada] = useState(false);
@@ -59,6 +100,9 @@ export default function OcupacioPage() {
       if (Array.isArray(x)) excloses.current = new Set(x.filter((v): v is string => typeof v === 'string'));
       setLlistaAmagada(window.localStorage.getItem(LS_AMAGADA) === '1');
       setAmbReserves(window.localStorage.getItem(LS_RESERVES) !== '0');
+      const z = window.localStorage.getItem(LS_ZOOM);
+      if (z === 'ajusta') setZoom('ajusta');
+      else if (z && Number(z) >= ZOOM_MIN && Number(z) <= ZOOM_MAX) setZoom(Number(z));
     } catch { /* sense localStorage: valors per defecte */ }
     setRestaurat(true);
   }, []);
@@ -187,7 +231,28 @@ export default function OcupacioPage() {
         </Card>}
 
         <div className="min-w-0 border border-slate-200 bg-slate-200/60 p-3">
-          <iframe ref={frame} title="Full d'ocupació" src={url} className="block h-[85vh] w-full border-0" />
+          <div className="mb-2 flex flex-wrap justify-end gap-2">
+            <div className="inline-flex h-9 items-stretch border border-slate-300 bg-white text-sm font-semibold text-slate-800">
+              <button type="button" onClick={() => mesZoom(-0.1)} disabled={zoomEfectiu <= ZOOM_MIN} className="flex w-9 items-center justify-center hover:bg-slate-50 disabled:opacity-40" aria-label="Allunya" title="Allunya">
+                <Minus className="h-4 w-4" />
+              </button>
+              <button type="button" onClick={() => canviaZoom(1)} className="min-w-16 border-x border-slate-200 px-2 hover:bg-slate-50" title="Mida normal (100 %)">
+                {Math.round(zoomEfectiu * 100)} %
+              </button>
+              <button type="button" onClick={() => mesZoom(0.1)} disabled={zoomEfectiu >= ZOOM_MAX} className="flex w-9 items-center justify-center hover:bg-slate-50 disabled:opacity-40" aria-label="Apropa" title="Apropa">
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => canviaZoom('ajusta')}
+              aria-pressed={zoom === 'ajusta'}
+              className={`inline-flex h-9 items-center gap-1.5 border px-3 text-sm font-semibold ${zoom === 'ajusta' ? 'border-brand-700 bg-brand-50 text-brand-800' : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'}`}
+            >
+              <MoveHorizontal className="h-4 w-4" /> Ajusta a l&apos;amplada
+            </button>
+          </div>
+          <iframe ref={frame} title="Full d'ocupació" src={url} onLoad={aplicaZoom} className="block h-[85vh] w-full border-0" />
         </div>
       </div>
     </div>
