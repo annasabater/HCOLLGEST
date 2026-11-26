@@ -308,7 +308,9 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                     <Pencil className="h-4 w-4" /> Editar
                   </Button>
                 </Link>
-                {!estancia.esBorrany && estancia.estat !== 'CANCELLADA' && (
+                {/* El botó «Sortida anticipada» està amagat (es fa amb «Marxarà abans» → «Ha marxat»);
+                    el component i l'API es mantenen. «Reactivar» sí que ha de sortir si ja n'hi ha. */}
+                {estancia.sortidaAnticipada && !estancia.esBorrany && estancia.estat !== 'CANCELLADA' && (
                   <FinalitzarAnticipada
                     estanciaId={estancia.id}
                     dataEntrada={estancia.dataEntrada ? toISODate(estancia.dataEntrada) : null}
