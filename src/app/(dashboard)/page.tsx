@@ -1,7 +1,7 @@
 import { Pretitol } from '@/components/ui/pretitol';
 import Link from 'next/link';
 import {
-  AlertTriangle, LogIn, LogOut, Sparkles, Bell,
+  AlertTriangle, LogIn, LogOut, SprayCan, Bell,
 } from 'lucide-react';
 import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
 import { esNomesLectura } from '@/lib/auth/restriccions';
@@ -152,7 +152,7 @@ export default async function DashboardPage() {
       {/* Sortides avui */}
       {resum.sortidesToday.length > 0 && (
         <div className="flex items-start gap-4 rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 px-5 py-4">
-          <div className="rounded-xl bg-blue-100 p-2.5"><Sparkles className="h-5 w-5 text-blue-600" /></div>
+          <div className="rounded-xl bg-blue-100 p-2.5"><SprayCan className="h-5 w-5 text-blue-600" /></div>
           <div className="flex-1">
             <p className="font-semibold text-blue-900">
               {resum.sortidesToday.length === 1 ? '1 sortida avui' : `${resum.sortidesToday.length} sortides avui`}

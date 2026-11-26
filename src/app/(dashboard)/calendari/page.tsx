@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, LogIn, LogOut, Sparkles, Check, Wrench, X, Undo2, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LogIn, LogOut, SprayCan, Check, Wrench, X, Undo2, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { CalendariHabitacio } from '@/components/habitacio/calendari-habitacio';
@@ -341,7 +341,7 @@ export default function CalendariPage() {
                         : 'bg-amber-50 text-amber-800 hover:bg-amber-100',
                     )}
                   >
-                    {t.estat === 'FETA' ? <Check className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}
+                    {t.estat === 'FETA' ? <Check className="h-3 w-3" /> : <SprayCan className="h-3 w-3" />}
                     {t.habitacio ? `H${t.habitacio} ${TIPUS_NETEJA_LABELS[t.tipus]}` : 'Zones comunes'}
                   </button>
                 ))}
@@ -354,7 +354,7 @@ export default function CalendariPage() {
                     )}
                     title={`Planificada a Neteja · Hab. ${p.habitacio} · ${TIPUS_NETEJA_LABELS[p.tipus]}${p.assignada ? ` · ${p.assignada}` : ''}`}
                   >
-                    <Sparkles className="h-3 w-3 shrink-0" />
+                    <SprayCan className="h-3 w-3 shrink-0" />
                     H{p.habitacio} {TIPUS_NETEJA_LABELS[p.tipus]}
                   </div>
                 ))}
@@ -429,7 +429,7 @@ export default function CalendariPage() {
                   key={`t${t.id}`}
                   className="flex items-center gap-2 rounded-lg border border-slate-100 bg-amber-50/60 px-3 py-2 text-sm text-amber-900"
                 >
-                  <Sparkles className="h-4 w-4 shrink-0" />
+                  <SprayCan className="h-4 w-4 shrink-0" />
                   <Link href={`/neteja?data=${selected}`} className="flex-1 hover:underline" title="Veure a Neteja">
                     {t.habitacio ? `Neteja · Hab. ${t.habitacio} · ${TIPUS_NETEJA_LABELS[t.tipus]}` : 'Zones comunes'}
                     {t.assignada && <span className="ml-1 text-slate-400">· {t.assignada}</span>}
@@ -473,7 +473,7 @@ export default function CalendariPage() {
                   className="flex items-center gap-2 rounded-lg border border-dashed border-amber-300 bg-white px-3 py-2 text-sm text-amber-900 hover:bg-amber-50"
                   title="Veure a Neteja"
                 >
-                  <Sparkles className="h-4 w-4 shrink-0" />
+                  <SprayCan className="h-4 w-4 shrink-0" />
                   Planificada · Hab. {p.habitacio} · {TIPUS_NETEJA_LABELS[p.tipus]}
                   {p.assignada && <span className="text-slate-400">· {p.assignada}</span>}
                   {p.nota && <span className="text-slate-500">· {p.nota}</span>}
@@ -505,7 +505,7 @@ export default function CalendariPage() {
       )}
 
       <p className="mt-4 text-xs text-slate-400">
-        <Sparkles className="mr-1 inline h-3 w-3" /> Clica un dia per veure’n entrades, sortides i
+        <SprayCan className="mr-1 inline h-3 w-3" /> Clica un dia per veure’n entrades, sortides i
         neteja i entrar-hi. Les tasques de neteja es generen automàticament en registrar una estada.
       </p>
 

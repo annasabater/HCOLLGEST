@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { DoorOpen, BedDouble, Sparkles, LogIn } from 'lucide-react';
+import { DoorOpen, BedDouble, SprayCan, LogIn } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardBody } from '@/components/ui/card';
@@ -100,7 +100,7 @@ export default async function HabitacionsPage() {
 
                   {neteja && (
                     <Badge tone="warning" className="inline-flex items-center gap-1">
-                      <Sparkles className="h-3 w-3" />
+                      <SprayCan className="h-3 w-3" />
                       Neteja pendent: {neteja === 'CANVI_COMPLET' ? 'sortida (a fons)' : 'repàs'}
                     </Badge>
                   )}

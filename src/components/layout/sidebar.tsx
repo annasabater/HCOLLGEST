@@ -10,7 +10,7 @@ import {
   CalendarDays,
   BookText,
   FileCheck,
-  Sparkles,
+  SprayCan,
   MessageCircle,
   PiggyBank,
   UserCog,
@@ -53,7 +53,7 @@ const GROUPS: NavGroup[] = [
       { href: '/ocupacio', label: 'Ocupació', icon: ClipboardList },
       { href: '/llibre', label: 'Llibre registre de viatgers', icon: BookText },
       { href: '/calendari', label: 'Calendari', icon: CalendarDays },
-      { href: '/neteja', label: 'Neteja', icon: Sparkles, hideRestringit: true },
+      { href: '/neteja', label: 'Neteja', icon: SprayCan, hideRestringit: true },
     ],
   },
   {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MessageCircle, Copy, Sparkles, Users, Hand, Mail, CheckCircle, RotateCcw, CalendarPlus } from 'lucide-react';
+import { MessageCircle, Copy, SprayCan, Users, Hand, Mail, CheckCircle, RotateCcw, CalendarPlus } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input, Select, Textarea } from '@/components/ui/input';
@@ -375,7 +375,7 @@ function NetejaCard() {
   }
 
   return (
-    <CollapsibleCard title="Avís a la dona de neteja" icon={<Sparkles className="h-4 w-4 text-brand-600" />}>
+    <CollapsibleCard title="Avís a la dona de neteja" icon={<SprayCan className="h-4 w-4 text-brand-600" />}>
       <div className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Dia a netejar">

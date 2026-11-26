@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { SprayCan } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -52,7 +52,7 @@ export function TarifesNeteja() {
   return (
     <Card>
       <CardHeader className="flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-brand-600" />
+        <SprayCan className="h-4 w-4 text-brand-600" />
         <CardTitle>Tarifes de neteja</CardTitle>
       </CardHeader>
       <CardBody>
