@@ -92,7 +92,7 @@ export function CalendariHabitacio({ habitacions }: { habitacions: { id: string;
             Avui
           </Button>
           <Select
-            className="ml-2 min-w-40"
+            className="ml-2 w-44 shrink-0"
             value={habitacioId}
             onChange={(e) => setHabitacioId(e.target.value)}
           >
