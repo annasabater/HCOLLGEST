@@ -753,8 +753,25 @@ function OcupacioDies({ entrada, sortida, habitacions, proposta }: {
                       );
                     })}
                   </div>
-                  <div className="relative mt-0.5 h-1">
-                    {t && <div className="absolute h-1 rounded-sm bg-brand-700" style={{ left: pct(entrada, t.desde), width: pct(t.desde, t.fins) }} />}
+                  <div className={`relative mt-0.5 ${t ? 'h-5' : 'h-1'}`}>
+                    {t && proposta && (() => {
+                      const idx = proposta.trams.indexOf(t);
+                      const ant = idx > 0 ? proposta.trams[idx - 1] : null;
+                      const seg = proposta.trams[idx + 1] ?? null;
+                      const text = proposta.trams.length === 1
+                        ? `Proposta: ${fmt(t.desde)} → ${fmt(t.fins)}`
+                        : ant
+                          ? `Canvi a la Hab. ${t.habitacio} el ${fmt(t.desde)} → fins al ${fmt(t.fins)}`
+                          : `Comença a la Hab. ${t.habitacio} → fins al ${fmt(t.fins)}${seg ? `, després Hab. ${seg.habitacio}` : ''}`;
+                      return (
+                        <>
+                          <span className="absolute top-0 whitespace-nowrap text-[11px] font-medium leading-none text-brand-700" style={{ left: pct(entrada, t.desde) }}>
+                            {text}
+                          </span>
+                          <div className="absolute bottom-0 h-1 rounded-sm bg-brand-700" style={{ left: pct(entrada, t.desde), width: pct(t.desde, t.fins) }} />
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
