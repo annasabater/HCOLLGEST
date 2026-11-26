@@ -335,7 +335,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
     gap:10px; padding:12px 20px; background:rgba(255,252,248,.95); backdrop-filter:blur(10px); border-bottom:1px solid #E1D9D7; }
   .tb-brand{ font-family:Georgia,serif; color:var(--ink); font-size:16px; }
   .tb-actions{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
-  .badge-saved{ font-size:11px; color:#0a7d33; background:#e7f6ec; border:1px solid #b6e2c4; border-radius:20px; padding:3px 10px; }
+  .badge-saved{ cursor:help; font-size:11px; color:#0a7d33; background:#e7f6ec; border:1px solid #b6e2c4; border-radius:20px; padding:3px 10px; }
   .btn{ font:inherit; font-size:13px; padding:9px 14px; border-radius:9px; cursor:pointer; border:1px solid; }
   .btn.ghost{ background:#fff; color:var(--ink); border-color:var(--ink); }
   .btn.solid{ background:var(--accent); color:#fff; border-color:var(--accent); }
@@ -440,7 +440,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
 <div class="toolbar">
   <div class="tb-brand">Hostal Coll · Llibre d'IVA · ${esc(etiqueta)}</div>
   <div class="tb-actions">
-    <span id="saved" class="badge-saved" style="${desatAt ? '' : 'display:none'}">Desat ${esc(desatAt)}</span>
+    <span id="saved" class="badge-saved" title="Els canvis fets a mà es guarden. Les factures noves s’afegeixen soles i, si una factura ha canviat, mana la factura." style="${desatAt ? '' : 'display:none'}">Retocs desats el ${esc(desatAt)} ⓘ</span>
     <button id="addRow" class="btn ghost">+ Afegir fila</button>
     <button id="save" class="btn ghost">Desar</button>
     <button id="printTarifes" class="btn ghost" title="Imprimeix només el full intern de tarifes">Imprimir tarifes</button>
@@ -1034,7 +1034,7 @@ ${edicionsBootstrap('trimestre', periode, edicions)}
       const d = await res.json();
       const s = document.getElementById('saved');
       const dt = new Date(d.updatedAt).toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' });
-      s.textContent = 'Desat ' + dt; s.style.display = '';
+      s.textContent = 'Retocs desats el ' + dt + ' ⓘ'; s.style.display = '';
       btn.textContent = 'Desat ✓'; setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1600);
     } catch (e) { alert(e && e.message ? e.message : 'No s\\'ha pogut desar'); btn.textContent = orig; btn.disabled = false; }
   });
