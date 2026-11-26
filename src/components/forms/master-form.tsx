@@ -744,7 +744,7 @@ export function MasterForm({
       className="space-y-6"
     >
       {!isEdit && (
-        <div className="flex items-center justify-between gap-3">
+        <div className="-mt-5 flex items-center justify-between gap-3">
           <p className="text-sm text-slate-500">{intro}</p>
           <button
             type="button"
