@@ -161,6 +161,8 @@ export function PagamentsPanel({
   // juliol i agost es reparteix en 2 línies), perquè la comptabilitat mensual
   // compti l'ingrés en el mes que correspon i no en el dia que es cobra.
   const [desglossar, setDesglossar] = useState(false);
+  // Es reparteix sol en desar: al formulari només hi ha un enllaç discret per fer-ho a mà.
+  const [veureRepartir, setVeureRepartir] = useState(false);
   const [periodes, setPeriodes] = useState<{ dataInici: string; dataFi: string; import: string }[]>([]);
   const [proposant, setProposant] = useState(false);
   const [propostaMsg, setPropostaMsg] = useState<string | null>(null);
@@ -234,6 +236,7 @@ export function PagamentsPanel({
     setImport('');
     setAltreText('');
     setDesglossar(false);
+    setVeureRepartir(false);
     setPeriodes([]);
     setPropostaMsg(null);
     setError(null);
@@ -904,6 +907,15 @@ export function PagamentsPanel({
             </p>
           )}
 
+          {!veureRepartir && !desglossar ? (
+            <button
+              type="button"
+              onClick={() => setVeureRepartir(true)}
+              className="inline-flex items-center gap-1 text-xs text-slate-400 underline hover:text-brand-700"
+            >
+              <CalendarRange className="h-3.5 w-3.5" /> Repartir a mà per mesos…
+            </button>
+          ) : (
           <div className="flex flex-wrap items-center justify-between gap-2">
             <label className="flex items-center gap-2 text-xs text-slate-600">
               <input type="checkbox" checked={desglossar} onChange={(e) => { setDesglossar(e.target.checked); if (e.target.checked && periodes.length === 0) afegirPeriode(); }} />
@@ -915,6 +927,7 @@ export function PagamentsPanel({
               <CalendarRange className="h-4 w-4" /> {proposant ? 'Calculant…' : 'Proposar per mesos'}
             </Button>
           </div>
+          )}
 
           {desglossar && (
             <div className="space-y-1.5 rounded-lg bg-slate-50 p-2">
