@@ -233,7 +233,7 @@ export default async function HuespedesPage({
             const ultima = ultimes.get(h.id);
             // Sempre igual: «Martín Infante Guanumen» (encara que estigui desat en majúscules).
             // Cada part per separat: «Diaz Romero, YULY PAOLA» → «Yuly Paola Diaz Romero».
-            const nomComplet = [h.nom, h.cognom1, h.cognom2].map((x) => nomPropi(x?.trim().replace(/s+/g, ' ') ?? '')).filter(Boolean).join(' ');
+            const nomComplet = [h.nom, h.cognom1, h.cognom2].map((x) => nomPropi(x?.trim().replace(/\s+/g, ' ') ?? '')).filter(Boolean).join(' ');
             const contacte = h.telefon || h.email;
             return (
             <Link key={h.id} href={`/huespedes/${h.id}`}
