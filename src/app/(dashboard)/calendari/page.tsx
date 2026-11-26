@@ -313,11 +313,11 @@ export default function CalendariPage() {
                         : e.marca === 'oficial'
                           ? 'bg-slate-50 text-slate-400'
                           : e.marca === 'marxat'
-                            ? 'bg-violet-50 text-violet-700'
+                            ? 'bg-slate-50 text-slate-400 line-through decoration-red-500 decoration-2'
                             : 'bg-brand-50 text-brand-800',
                       compact ? 'text-[10px]' : 'text-xs',
                     )}
-                    title={`${e.marca === 'probable' ? 'Sortida probable (ha dit que marxa abans)' : e.marca === 'oficial' ? 'Sortida oficial (ha dit que marxarà abans)' : e.marca === 'marxat' ? `Sortida oficial (ja ha marxat${e.real ? ` el ${formatDate(e.real)}` : ''})` : 'Sortida'}: ${e.titular}${e.habitacio ? ` · Hab. ${e.habitacio}` : ''}`}
+                    title={`${e.marca === 'probable' ? 'Sortida probable (ha dit que marxa abans)' : e.marca === 'oficial' ? 'Sortida oficial (ha dit que marxarà abans)' : e.marca === 'marxat' ? `Ja no hi és: ha marxat${e.real ? ` el ${formatDate(e.real)}` : ' abans'} (sortida oficial ${formatDate(e.data)})` : 'Sortida'}: ${e.titular}${e.habitacio ? ` · Hab. ${e.habitacio}` : ''}`}
                   >
                     <LogOut className="mr-0.5 inline h-3 w-3" />
                     {e.titular}
