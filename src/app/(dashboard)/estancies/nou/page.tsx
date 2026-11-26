@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db';
+import { BackLink } from '@/components/ui/back-link';
 import { PageHeader } from '@/components/ui/page-header';
 import { MasterForm } from '@/components/forms/master-form';
 import type { HosteLite } from '@/components/forms/hoste-search';
@@ -48,6 +49,7 @@ export default async function NovaEstanciaPage({
 
   return (
     <div>
+      <BackLink fallback="/estancies">Estades</BackLink>
       <PageHeader
         title="Nova estada"
         subtitle={
