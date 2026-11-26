@@ -75,14 +75,24 @@ export function CalendariHabitacio({ habitacions }: { habitacions: { id: string;
 
   return (
     <div className="mb-8 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <CalendarDays className="h-5 w-5 text-brand-600" />
           <span className="font-serif text-lg font-semibold text-slate-900">Ocupació per habitació</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setAnchor(addMonths(anchor, -1))} aria-label="Mes anterior">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="min-w-36 text-center text-sm font-semibold capitalize text-slate-700">{monthLabel}</span>
+          <Button variant="outline" size="sm" onClick={() => setAnchor(addMonths(anchor, 1))} aria-label="Mes següent">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setAnchor(new Date())}>
+            Avui
+          </Button>
           <Select
-            className="min-w-40"
+            className="ml-2 min-w-40"
             value={habitacioId}
             onChange={(e) => setHabitacioId(e.target.value)}
           >
@@ -92,19 +102,8 @@ export function CalendariHabitacio({ habitacions }: { habitacions: { id: string;
               </option>
             ))}
           </Select>
-          <Button variant="outline" size="sm" onClick={() => setAnchor(addMonths(anchor, -1))}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setAnchor(new Date())}>
-            Avui
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setAnchor(addMonths(anchor, 1))}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
         </div>
       </div>
-
-      <p className="mb-2 text-sm font-medium capitalize text-slate-600">{monthLabel}</p>
 
       {/* Llegenda */}
       <div className="mb-3 flex flex-wrap gap-3 text-xs text-slate-500">
