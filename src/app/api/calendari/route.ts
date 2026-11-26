@@ -28,7 +28,13 @@ export async function GET(req: Request) {
     }),
     prisma.estancia.findMany({
       // També les que han dit que marxaran abans (sortida probable dins del rang).
-      where: { deletedAt: null, OR: [{ dataSortida: range }, { sortidaProbable: range, sortidaAnticipada: false }] },
+      where: { deletedAt: null, OR: [
+          { dataSortida: range },
+          { sortidaProbable: range, sortidaAnticipada: false },
+          // Ja ha marxat abans: la sortida oficial (la del contracte) també surt, d'un altre color.
+          { sortidaAnticipada: true, dataSortidaPrevista: range },
+        ],
+      },
       include: titularInclude,
       orderBy: { dataSortida: 'asc' },
     }),
@@ -91,6 +97,7 @@ export async function GET(req: Request) {
       habitacio: e.habitacio?.nom ?? null,
     })),
     // «Marxarà abans»: surt el dia probable (marcat «probable») i el dia oficial (marcat «oficial»).
+    // Si ja ha marxat abans: la real (normal) i l'oficial (marcada «marxat»).
     sortides: sortides.flatMap((e) => {
       const base = { id: e.id, titular: titular(e), habitacio: e.habitacio?.nom ?? null };
       const probable = e.sortidaProbable && !e.sortidaAnticipada ? e.sortidaProbable : null;
@@ -98,6 +105,9 @@ export async function GET(req: Request) {
       return [
         ...(probable && dins(probable) ? [{ ...base, data: probable, marca: 'probable' as const }] : []),
         ...(dins(e.dataSortida) ? [{ ...base, data: e.dataSortida, marca: probable ? ('oficial' as const) : null }] : []),
+        ...(e.sortidaAnticipada && e.dataSortidaPrevista && dins(e.dataSortidaPrevista)
+          ? [{ ...base, data: e.dataSortidaPrevista, marca: 'marxat' as const, real: e.dataSortida }]
+          : []),
       ];
     }),
     tasques: tasques.map((t) => ({

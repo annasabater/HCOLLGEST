@@ -9,7 +9,7 @@ import { CalendariHabitacio } from '@/components/habitacio/calendari-habitacio';
 import { CalendariOcupacioTotal } from '@/components/habitacio/calendari-ocupacio-total';
 import { delJSON, getJSON, patchJSON } from '@/lib/api';
 import { addDays, addMonths, monthGridDays, sameMonth, toISODate, weekDays } from '@/lib/dates';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import { TIPUS_NETEJA_LABELS } from '@/lib/validation/enums';
 
 interface Mov {
@@ -18,7 +18,9 @@ interface Mov {
   titular: string;
   habitacio: string | null;
   /** Sortides: «probable» (ha dit que marxa abans) o «oficial» (la del contracte, quan n'hi ha una de probable). */
-  marca?: 'probable' | 'oficial' | null;
+  marca?: 'probable' | 'oficial' | 'marxat' | null;
+  /** «marxat»: el dia que va marxar de veritat. */
+  real?: string;
 }
 interface Tasca {
   id: string;
@@ -310,15 +312,17 @@ export default function CalendariPage() {
                         ? 'border border-dashed border-amber-400 bg-amber-50 text-amber-900'
                         : e.marca === 'oficial'
                           ? 'bg-slate-50 text-slate-400'
-                          : 'bg-brand-50 text-brand-800',
+                          : e.marca === 'marxat'
+                            ? 'bg-violet-50 text-violet-700'
+                            : 'bg-brand-50 text-brand-800',
                       compact ? 'text-[10px]' : 'text-xs',
                     )}
-                    title={`${e.marca === 'probable' ? 'Sortida probable (ha dit que marxa abans)' : e.marca === 'oficial' ? 'Sortida oficial (ha dit que marxarà abans)' : 'Sortida'}: ${e.titular}${e.habitacio ? ` · Hab. ${e.habitacio}` : ''}`}
+                    title={`${e.marca === 'probable' ? 'Sortida probable (ha dit que marxa abans)' : e.marca === 'oficial' ? 'Sortida oficial (ha dit que marxarà abans)' : e.marca === 'marxat' ? `Sortida oficial (ja ha marxat${e.real ? ` el ${formatDate(e.real)}` : ''})` : 'Sortida'}: ${e.titular}${e.habitacio ? ` · Hab. ${e.habitacio}` : ''}`}
                   >
                     <LogOut className="mr-0.5 inline h-3 w-3" />
                     {e.titular}
                     {e.habitacio ? ` H${e.habitacio}` : ''}
-                    {e.marca === 'probable' ? ' · probable' : e.marca === 'oficial' ? ' · oficial' : ''}
+                    {e.marca === 'probable' ? ' · probable' : e.marca === 'oficial' || e.marca === 'marxat' ? ' · oficial' : ''}
                   </div>
                 ))}
                 {tasques.map((t) => (
@@ -416,7 +420,7 @@ export default function CalendariPage() {
                   className="flex items-center gap-2 rounded-lg border border-slate-100 bg-brand-50/60 px-3 py-2 text-sm text-brand-800 hover:bg-brand-50"
                 >
                   <LogOut className="h-4 w-4 shrink-0" />{' '}
-                  {e.marca === 'probable' ? 'Sortida probable' : e.marca === 'oficial' ? 'Sortida oficial' : 'Sortida'} · {e.titular}
+                  {e.marca === 'probable' ? 'Sortida probable' : e.marca === 'oficial' ? 'Sortida oficial' : e.marca === 'marxat' ? `Sortida oficial (ja ha marxat${e.real ? ` el ${formatDate(e.real)}` : ''})` : 'Sortida'} · {e.titular}
                   {e.habitacio ? ` · Hab. ${e.habitacio}` : ''}
                 </Link>
               ))}
