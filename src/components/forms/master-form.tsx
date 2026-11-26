@@ -152,6 +152,7 @@ export interface MasterFormInitial {
 export function MasterForm({
   habitacions,
   initialHoste,
+  intro,
   mode = 'create',
   estanciaId,
   initial,
@@ -159,6 +160,8 @@ export function MasterForm({
 }: {
   habitacions: { id: string; nom: string }[];
   initialHoste?: HosteLite | null;
+  /** Text a l'esquerra de «Buidar tot el formulari» (només en una estada nova). */
+  intro?: string;
   mode?: 'create' | 'edit';
   estanciaId?: string;
   initial?: MasterFormInitial;
@@ -741,7 +744,8 @@ export function MasterForm({
       className="space-y-6"
     >
       {!isEdit && (
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-slate-500">{intro}</p>
           <button
             type="button"
             onClick={() => setConfirmReset(true)}

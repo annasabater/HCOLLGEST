@@ -50,15 +50,16 @@ export default async function NovaEstanciaPage({
   return (
     <div>
       <BackLink fallback="/estancies">Estades</BackLink>
-      <PageHeader
-        title="Nova estada"
-        subtitle={
+      <PageHeader title="Nova estada" />
+      <MasterForm
+        habitacions={habitacions}
+        initialHoste={initialHoste}
+        intro={
           initialHoste
             ? `Reaprofitant la fitxa de ${initialHoste.nom} ${initialHoste.cognom1} · posa dates i habitació`
-            : 'Formulari mestre · una sola entrada de dades per a Mossos, llibre i CRM'
+            : 'Una sola entrada de dades per a Mossos, llibre i CRM'
         }
       />
-      <MasterForm habitacions={habitacions} initialHoste={initialHoste} />
     </div>
   );
 }
