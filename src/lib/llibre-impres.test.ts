@@ -14,8 +14,11 @@ describe('llibrePerImprimir', () => {
     expect(llibrePerImprimir({ ...base, llibreImpresEl: '2026-11-27T10:00:00.000Z' })).toBe(false);
   });
 
-  it('esborranys, cancel·lades i eliminades no compten', () => {
-    expect(llibrePerImprimir({ ...base, esBorrany: true })).toBe(false);
+  it('els esborranys també compten (com qualsevol estada)', () => {
+    expect(llibrePerImprimir({ ...base, esBorrany: true })).toBe(true);
+  });
+
+  it('cancel·lades i eliminades no compten', () => {
     expect(llibrePerImprimir({ ...base, estat: 'CANCELLADA' })).toBe(false);
     expect(llibrePerImprimir({ ...base, deletedAt: new Date() })).toBe(false);
   });

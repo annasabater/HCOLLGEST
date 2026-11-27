@@ -149,7 +149,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
   // veuen el botó de sempre.
   const llibrePendent = llibrePerImprimir(estancia);
   const gestionaLlibre =
-    canWrite && !esNomesLectura(user) && !estancia.esBorrany && estancia.estat !== 'CANCELLADA';
+    canWrite && !esNomesLectura(user) && estancia.estat !== 'CANCELLADA';
   const titular = estancia.viatgers[0]?.huesped;
   // Declaració IEET si hi ha algun menor de 17 anys (exempció impost turístic).
   const teMenor = estancia.viatgers.some(
@@ -329,7 +329,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 </Link>
                 {/* El botó «Sortida anticipada» està amagat (es fa amb «Marxarà abans» → «Ha marxat»);
                     el component i l'API es mantenen. «Reactivar» sí que ha de sortir si ja n'hi ha. */}
-                {estancia.sortidaAnticipada && !estancia.esBorrany && estancia.estat !== 'CANCELLADA' && (
+                {estancia.sortidaAnticipada && estancia.estat !== 'CANCELLADA' && (
                   <FinalitzarAnticipada
                     estanciaId={estancia.id}
                     dataEntrada={estancia.dataEntrada ? toISODate(estancia.dataEntrada) : null}
@@ -415,7 +415,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                     <div className="mt-1 flex items-center gap-1 border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-900">
                       <BookText className="h-3.5 w-3.5 text-amber-700" /> Llibre per imprimir
                     </div>
-                  ) : c.llibreImpresEl && !c.esBorrany && c.estat !== 'CANCELLADA' ? (
+                  ) : c.llibreImpresEl && c.estat !== 'CANCELLADA' ? (
                     <div className="mt-1 flex items-center gap-1 text-xs font-semibold text-green-700">
                       <Check className="h-3.5 w-3.5" /> Llibre imprès
                     </div>
@@ -533,7 +533,8 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                     // Les ampliacions es van comunicar amb l'estada original; si s'ha descartat l'avís, no cal pujar-la.
                     if (estancia.estanciaOrigenId) return <span className="text-slate-500">Comunicat amb l&apos;estada original</span>;
                     if (estancia.avisMossosParat) return <span className="text-slate-500">No cal pujar-la (avís descartat)</span>;
-                    if (estancia.estat === 'CANCELLADA' || estancia.esBorrany) return null;
+                    if (estancia.estat === 'CANCELLADA') return null;
+                    // L'esborrany també té el termini de 24 h: surt igual (abans s'amagava).
                     // Termini legal: 24 h des de l'entrada (només la data; no hi ha hora d'entrada).
                     const termini = estancia.dataEntrada ? toISODate(new Date(estancia.dataEntrada.getTime() + 86_400_000)) : null;
                     const fora = termini !== null && avuiIso > termini;
@@ -544,6 +545,9 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                           <span className="text-slate-500">
                             {fora ? 'havia de pujar-se abans del' : 'abans del'} {formatDate(termini)}
                           </span>
+                        )}
+                        {estancia.esBorrany && (
+                          <span className="text-amber-700">· esborrany: completa les dades per poder-la pujar</span>
                         )}
                       </span>
                     );
