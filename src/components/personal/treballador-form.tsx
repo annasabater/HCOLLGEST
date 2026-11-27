@@ -239,6 +239,7 @@ export function TreballadorForm({ treballador }: { treballador?: TreballadorEdit
   if (isEdit) {
     return (
       <div
+        data-no-row-link
         className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-16"
         onClick={() => setOpen(false)}
       >

@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { PageHeader } from '@/components/ui/page-header';
-import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
+import { Table, Thead, Th, Td, EmptyState } from '@/components/ui/table';
+import { TrLink } from '@/components/ui/tr-link';
 import { TreballadorForm } from '@/components/personal/treballador-form';
 import { EliminarTreballador } from '@/components/personal/eliminar-treballador';
 import { formatEur } from '@/lib/utils';
@@ -50,7 +51,7 @@ export default async function PersonalPage() {
           </Thead>
           <tbody>
             {treballadors.map((t) => (
-              <Tr key={t.id}>
+              <TrLink key={t.id} href={`/personal/${t.id}`}>
                 <Td>
                   <span className="flex items-center gap-2">
                     <Link href={`/personal/${t.id}`} className="font-medium text-slate-900">
@@ -103,7 +104,7 @@ export default async function PersonalPage() {
                     <EliminarTreballador id={t.id} nom={t.nom} />
                   </div>
                 </Td>
-              </Tr>
+              </TrLink>
             ))}
           </tbody>
         </Table>
