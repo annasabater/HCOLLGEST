@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
 import { esNomesLectura } from '@/lib/auth/restriccions';
-import { recordatorisAra } from '@/lib/services/recordatoris';
+import { estatAvisos, recordatorisAra } from '@/lib/services/recordatoris';
 import { diaMadrid } from '@/lib/recordatoris';
 import { RecordatoriTarja } from '@/components/recordatori/tarja';
 import { getResum } from '@/lib/services/dashboard';
@@ -49,6 +49,7 @@ export default async function DashboardPage() {
   const isAdmin = user?.role === 'ADMIN';
   const canWrite = user ? hasRole(user.role, ROLES_WRITE) : false;
   const recordatoris = esNomesLectura(user) ? [] : await recordatorisAra();
+  const avisosRec = recordatoris.length > 0 ? await estatAvisos() : undefined;
   // Pop-up «Toca preguntar si vol allargar»: les estades que ja han arribat al dia
   // proposat (o triat) i encara no s'han preguntat ni decidit. Només qui gestiona.
   const tocaPreguntar: ProrrogaPopupItem[] =
@@ -150,7 +151,7 @@ export default async function DashboardPage() {
             </Link>
           </div>
           {recordatoris.map((r) => (
-            <RecordatoriTarja key={r.id} r={r} avui={diaMadrid()} canWrite={canWrite} compacte />
+            <RecordatoriTarja key={r.id} r={r} avui={diaMadrid()} canWrite={canWrite} compacte avisos={avisosRec} />
           ))}
         </section>
       )}

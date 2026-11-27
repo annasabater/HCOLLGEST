@@ -530,6 +530,7 @@ model Estancia {
   emailsProgramats   EmailProgramat[]
   pagamentsPrevistos PagamentPrevist[]
   pressupostos       Pressupost[]
+  recordatoris       Recordatori[]
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -1624,12 +1625,19 @@ model Recordatori {
   ajornatFins     DateTime? @map("ajornat_fins") @db.Date // "recorda-m'ho en X dies"
   ajornaments     Int       @default(0)
   fetAt           DateTime? @map("fet_at")
+  // Lligat a una estada (null = general): surt amb l'habitació i els hostes, i
+  // l'acció diu què et proposa el tauler aquell dia (vegeu ACCIONS_RECORDATORI).
+  estanciaId      String?   @map("estancia_id")
+  estancia        Estancia? @relation(fields: [estanciaId], references: [id], onDelete: SetNull)
+  accio           String? // PRORROGA | COBRAMENT | SORTIDA | FACTURA | ALTRES
+  import          Decimal?  @db.Decimal(10, 2) // «M'ha de pagar»: quant
   deletedAt       DateTime? @map("deleted_at")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
   @@index([data])
   @@index([fetAt])
+  @@index([estanciaId])
   @@map("recordatori")
 }
 

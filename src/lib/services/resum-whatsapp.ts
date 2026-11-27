@@ -17,6 +17,7 @@ import {
   resumBuit,
   sumaDies,
   textResum,
+  titolExtern,
   tocaAvisAHora,
   tocaWhatsapp,
   type ResumDiari,
@@ -46,6 +47,7 @@ export async function construeixResum(dia: string): Promise<ResumDiari> {
       // Els que tenen hora pròpia avisen a la seva hora, no al resum.
       where: { deletedAt: null, fetAt: null, whatsapp: true, hora: null, data: { lte: aData(sumaDies(dia, 366)) } },
       orderBy: { data: 'asc' },
+      include: { estancia: { select: { habitacio: { select: { nom: true } } } } },
     }),
     // Igual que el pop-up: avui, demà i demà passat.
     prisma.pagamentPrevist.findMany({
@@ -88,7 +90,8 @@ export async function construeixResum(dia: string): Promise<ResumDiari> {
           dia,
         ),
       )
-      .map((r) => ({ titol: r.titol, data: deData(r.data), notes: r.notes })),
+      // D'una estada: l'habitació davant, mai els noms dels hostes.
+      .map((r) => ({ titol: titolExtern(r.titol, r.estancia?.habitacio?.nom), data: deData(r.data), notes: r.notes })),
     cobraments: cobs.map((c) => ({
       titular: nomTitular(c.estancia),
       import: Number(c.import),
@@ -200,6 +203,7 @@ export async function enviaRecordatorisAHora(now: Date = new Date()): Promise<{ 
     },
     orderBy: { data: 'asc' },
     take: 50,
+    include: { estancia: { select: { habitacio: { select: { nom: true } } } } },
   });
   const toquen = recs.filter((r) =>
     tocaAvisAHora(
@@ -223,7 +227,7 @@ export async function enviaRecordatorisAHora(now: Date = new Date()): Promise<{ 
   let avisats = 0;
   const errorsTots: string[] = [];
   for (const r of toquen) {
-    const n = notificacioRecordatori({ titol: r.titol, data: deData(r.data), notes: r.notes }, dia);
+    const n = notificacioRecordatori({ titol: titolExtern(r.titol, r.estancia?.habitacio?.nom), data: deData(r.data), notes: r.notes }, dia);
     let ok = 0;
     try {
       ok += (await enviaPush({ resumMati: true },{ ...n, url: '/recordatoris', tag: `rec-${r.id}-${dia}` })).ok;

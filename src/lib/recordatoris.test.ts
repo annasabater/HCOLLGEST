@@ -177,3 +177,26 @@ describe('textos', () => {
     ]);
   });
 });
+
+describe('recordatoris lligats a una estada', () => {
+  it('fora de gestio surt l’habitació però no els noms', async () => {
+    const { titolExtern } = await import('./recordatoris');
+    expect(titolExtern('M’ha de dir si allarga', '4')).toBe('Hab. 4 · M’ha de dir si allarga');
+    expect(titolExtern('Renovar l’assegurança', null)).toBe('Renovar l’assegurança');
+  });
+
+  it('es tanquen sols quan l’estada ja no hi és o (allarga/sortida) ja s’ha acabat', async () => {
+    const { estadaTancaRecordatori } = await import('./recordatoris');
+    const viva = { deletedAt: null, estat: 'EN_CURS', sortida: '2027-01-06' };
+    expect(estadaTancaRecordatori('PRORROGA', viva, '2026-12-29')).toBe(false);
+    expect(estadaTancaRecordatori('PRORROGA', { ...viva, estat: 'CANCELLADA' }, '2026-12-29')).toBe(true);
+    expect(estadaTancaRecordatori('ALTRES', { ...viva, deletedAt: new Date() }, '2026-12-29')).toBe(true);
+    // Acabada: la pròrroga i la sortida ja no tenen sentit; cobrar i factura sí.
+    expect(estadaTancaRecordatori('PRORROGA', viva, '2027-01-07')).toBe(true);
+    expect(estadaTancaRecordatori('SORTIDA', viva, '2027-01-07')).toBe(true);
+    expect(estadaTancaRecordatori('COBRAMENT', viva, '2027-01-07')).toBe(false);
+    expect(estadaTancaRecordatori('FACTURA', viva, '2027-01-07')).toBe(false);
+    // El mateix dia de sortida encara no.
+    expect(estadaTancaRecordatori('SORTIDA', viva, '2027-01-06')).toBe(false);
+  });
+});

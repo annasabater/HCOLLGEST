@@ -10,7 +10,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { cn } from '@/lib/utils';
 import { dataCurta, textDiesAbans, textHora, textRepeticio } from '@/lib/recordatoris';
 import type { RecordatoriVista } from '@/lib/services/recordatoris';
-import { RecordatoriTarja } from './tarja';
+import { LiniaEstada, RecordatoriTarja } from './tarja';
 import { RecordatoriFormulari } from './formulari';
 
 const MESOS_LLARGS = ['GENER', 'FEBRER', 'MARÇ', 'ABRIL', 'MAIG', 'JUNY', 'JULIOL', 'AGOST', 'SETEMBRE', 'OCTUBRE', 'NOVEMBRE', 'DESEMBRE'];
@@ -41,7 +41,11 @@ export function RecordatorisLlista({
   const [cerca, setCerca] = useState('');
 
   const q = cerca.trim().toLowerCase();
-  const coincideix = (r: RecordatoriVista) => !q || `${r.titol} ${r.notes ?? ''}`.toLowerCase().includes(q);
+  const coincideix = (r: RecordatoriVista) =>
+    !q ||
+    `${r.titol} ${r.notes ?? ''} ${r.estada ? `hab ${r.estada.habitacio ?? ''} ${r.estada.noms.join(' ')}` : ''}`
+      .toLowerCase()
+      .includes(q);
   const ara = pendents.filter((r) => r.tocaAra);
   const properament = pendents.filter((r) => !r.tocaAra);
   // Agrupats per mes (amb l'any només si no és el d'aquest any).
@@ -98,6 +102,11 @@ export function RecordatorisLlista({
             {fet && r.fetAt ? `Fet el ${dataCurta(r.fetAt.slice(0, 10))}` : `Avisa ${textDiesAbans(r.diesAbans)}${r.hora ? ` ${textHora(r.hora)}` : ''}`} ·{textRepeticio(r.repeticioCada, r.repeticioUnitat).toLowerCase()}
             {r.notes ? ` · ${r.notes}` : ''}
           </p>
+          {r.estada && (
+            <div className="mt-1">
+              <LiniaEstada r={r} avui={avui} />
+            </div>
+          )}
         </div>
         {canWrite && (
           <div className="flex gap-1">
@@ -145,7 +154,9 @@ export function RecordatorisLlista({
       {ara.length > 0 && (
         <section aria-label="Ara toca" className="space-y-3">
           <h2 className="font-serif text-xl font-semibold text-slate-900">Ara toca</h2>
-          {ara.map((r) => <RecordatoriTarja key={r.id} r={r} avui={avui} canWrite={canWrite} />)}
+          {ara.map((r) => (
+            <RecordatoriTarja key={r.id} r={r} avui={avui} canWrite={canWrite} avisos={{ mobilActiu, calendariConnectat }} />
+          ))}
         </section>
       )}
 

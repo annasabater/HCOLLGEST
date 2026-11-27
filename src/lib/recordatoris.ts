@@ -234,3 +234,39 @@ export function textResum(r: ResumDiari, urlBase: string): string {
   l.push('', `${urlBase.replace(/\/$/, '')}/recordatoris`);
   return l.join('\n');
 }
+
+// ── Recordatoris lligats a una estada ────────────────────────────────────────
+// Què et proposa el tauler el dia del recordatori (a més de l'habitació i els hostes).
+
+export const ACCIONS_RECORDATORI = ['PRORROGA', 'COBRAMENT', 'SORTIDA', 'FACTURA', 'ALTRES'] as const;
+export type AccioRecordatori = (typeof ACCIONS_RECORDATORI)[number];
+export const ACCIO_RECORDATORI_LABELS: Record<AccioRecordatori, string> = {
+  PRORROGA: 'M’ha de dir si allarga',
+  COBRAMENT: 'M’ha de pagar',
+  SORTIDA: 'Enviar el recordatori de sortida',
+  FACTURA: 'Fer-li la factura',
+  ALTRES: 'Una altra cosa',
+};
+
+/**
+ * Text que surt fora de gestio (Google Calendar, WhatsApp, notificació al mòbil):
+ * si és d'una estada, porta davant l'habitació però MAI els noms dels hostes.
+ */
+export function titolExtern(titol: string, habitacio: string | null | undefined): string {
+  return habitacio ? `Hab. ${habitacio} · ${titol}` : titol;
+}
+
+/**
+ * Un recordatori d'estada es tanca sol quan l'estada ja no hi és (esborrada o
+ * cancel·lada) o, si era per preguntar si allarga o pel recordatori de sortida,
+ * quan l'estada ja s'ha acabat. Els de cobrar i de factura es mantenen: encara cal fer-ho.
+ */
+export function estadaTancaRecordatori(
+  accio: string | null,
+  e: { deletedAt: Date | string | null; estat: string; sortida: string | null },
+  avui: string,
+): boolean {
+  if (e.deletedAt || e.estat === 'CANCELLADA') return true;
+  if ((accio === 'PRORROGA' || accio === 'SORTIDA') && e.sortida && e.sortida < avui) return true;
+  return false;
+}

@@ -8,6 +8,8 @@ import type { EstatEstancia, Prisma } from '@prisma/client';
 import { prisma } from '../db';
 import { audit } from '../audit';
 import { numeroContinuacio } from './numero-contracte';
+import { recordatorisEnAmpliar } from './recordatoris';
+import { sincronitzaRecordatoris } from './calendari-recordatoris';
 import { isMenor } from '../dates';
 import type { RegistreParsed } from '../validation/registre';
 
@@ -433,8 +435,15 @@ export async function ampliarEstancia(
         tx,
       );
 
-      return { estanciaId: nova.id, numContracte };
+      // Recordatoris lligats: «M'ha de dir si allarga» queda resolt; la resta passa
+      // a l'estada nova (el recordatori segueix l'estada).
+      const recordatorisTocats = await recordatorisEnAmpliar(tx, [...new Set([base.id, rootId])], nova.id);
+
+      return { estanciaId: nova.id, numContracte, recordatorisTocats };
     },
     { isolationLevel: 'Serializable' },
-  );
+  ).then(async ({ recordatorisTocats, ...res }) => {
+    if (recordatorisTocats.length) await sincronitzaRecordatoris(recordatorisTocats);
+    return res;
+  });
 }

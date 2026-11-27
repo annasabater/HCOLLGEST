@@ -9,7 +9,7 @@ import { prisma } from '../db';
 import { decryptString } from '../crypto';
 import { getAccessToken } from '../drive';
 import { desaEvent, esborraEvent } from '../google-calendar';
-import { dataCurta, textRepeticio } from '../recordatoris';
+import { dataCurta, textRepeticio, titolExtern } from '../recordatoris';
 
 const urlBase = () => process.env.NEXT_PUBLIC_APP_URL || 'https://gestio.hostalcoll.com';
 
@@ -25,7 +25,10 @@ async function connexio() {
 type Con = NonNullable<Awaited<ReturnType<typeof connexio>>>;
 
 async function sincronitzaUn(con: Con, id: string): Promise<void> {
-  const r = await prisma.recordatori.findUnique({ where: { id } });
+  const r = await prisma.recordatori.findUnique({
+    where: { id },
+    include: { estancia: { select: { habitacio: { select: { nom: true } } } } },
+  });
   if (!r) return;
   const viu = !r.deletedAt && !r.fetAt && r.calendari;
   if (!viu) {
@@ -43,7 +46,9 @@ async function sincronitzaUn(con: Con, id: string): Promise<void> {
   ]
     .filter(Boolean)
     .join('\n\n');
-  const eventId = await desaEvent(con.token, con.calId, r.googleEventId, { titol: r.titol, descripcio, dia, hora: r.hora, diesAbans: r.diesAbans });
+  // D'una estada: l'habitació davant, mai els noms dels hostes (és fora de gestio).
+  const titol = titolExtern(r.titol, r.estancia?.habitacio?.nom);
+  const eventId = await desaEvent(con.token, con.calId, r.googleEventId, { titol, descripcio, dia, hora: r.hora, diesAbans: r.diesAbans });
   if (eventId !== r.googleEventId) await prisma.recordatori.update({ where: { id }, data: { googleEventId: eventId } });
 }
 

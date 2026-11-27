@@ -10,6 +10,9 @@ import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
 import { esNomesLectura } from '@/lib/auth/restriccions';
 import { llibrePerImprimir } from '@/lib/llibre-impres';
 import { LlibreRegistreButton } from '@/components/estancia/llibre-registre-button';
+import { RecordatorisEstada } from '@/components/recordatori/recordatoris-estada';
+import { estatAvisos, recordatorisDeEstada } from '@/lib/services/recordatoris';
+import { diaMadrid } from '@/lib/recordatoris';
 import { MascotesPanel } from '@/components/huesped/mascotes-panel';
 import { BugaderiaPanel } from '@/components/estancia/bugaderia-panel';
 import { PressupostosEstadaList } from '@/components/pressupost/pressupostos-estada-list';
@@ -137,6 +140,11 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
   const user = await getSessionUser();
   const isAdmin = user?.role === 'ADMIN';
   const canWrite = user ? hasRole(user.role, ROLES_WRITE) : false;
+  // Recordatoris d'aquesta estada (els comptes de només lectura no en gestionen).
+  const gestionaRecordatoris = canWrite && !esNomesLectura(user);
+  const recordatorisEstada = gestionaRecordatoris
+    ? await Promise.all([recordatorisDeEstada(estancia.id), estatAvisos()]).then(([items, avisos]) => ({ items, avisos }))
+    : null;
   // Llibre registre «per imprimir» (botó taronja). Els comptes de només lectura
   // veuen el botó de sempre.
   const llibrePendent = llibrePerImprimir(estancia);
@@ -737,6 +745,23 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                 }))}
               />
             </CollapsibleCard>
+          )}
+
+          {/* Recordatoris lligats a aquesta estada (si allarga, cobrar, sortida, factura…) */}
+          {gestionaRecordatoris && recordatorisEstada && (
+            <RecordatorisEstada
+              estada={{
+                id: estancia.id,
+                habitacio: estancia.habitacio?.nom ?? null,
+                noms: estancia.viatgers.map((v) => `${v.huesped.nom} ${v.huesped.cognom1}`.trim()),
+                contracte: estancia.numContracte ? `${estancia.numContracte}/${estancia.anyContracte}` : null,
+                entrada: estancia.dataEntrada ? diaMadrid(estancia.dataEntrada) : null,
+                sortida: estancia.dataSortida ? diaMadrid(estancia.dataSortida) : null,
+              }}
+              items={recordatorisEstada.items}
+              avui={diaMadrid()}
+              avisos={recordatorisEstada.avisos}
+            />
           )}
 
           {/* Cobraments pendents (avís al tauler el dia abans) — reception + admin */}

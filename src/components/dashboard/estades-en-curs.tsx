@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { BedDouble, ChevronDown, ChevronUp, ExternalLink, MessageCircle, Pencil, Plus, X } from 'lucide-react';
-import { ApiError, delJSON, postJSON } from '@/lib/api';
+import { ApiError, delJSON, patchJSON, postJSON } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -32,6 +32,7 @@ const PAS: Record<string, { t: string; dot: string }> = {
   NO_CONTESTA: { t: 'No contesta: enviat l’avís', dot: 'bg-orange-600' },
   RECORDATORI: { t: 'Recordatori de sortida enviat', dot: 'bg-emerald-600' },
   APLACAT: { t: 'Aplaçat', dot: 'bg-amber-500' },
+  HO_DIRA: { t: 'Diu que ho dirà més endavant', dot: 'bg-blue-700' },
   SI: { t: 'Ha dit que sí: allarga', dot: 'bg-green-700' },
   NO: { t: 'Ha dit que no: marxa', dot: 'bg-red-700' },
   NOTA: { t: 'Nota', dot: 'bg-stone-400' },
@@ -67,10 +68,12 @@ function Situacio({ e, avui }: { e: EstadaEnCurs; avui: string }) {
     PER_PREGUNTAR: { t: 'Per preguntar', c: 'bg-stone-100 text-stone-600' },
     TOCA: { t: 'Toca preguntar', c: 'bg-amber-50 text-amber-900' },
     ESPERANT: { t: 'Esperant resposta', c: 'bg-blue-50 text-blue-800' },
-    APLACAT: {
-      t: `Aplaçat fins al ${e.aplacatFins ? dc(e.aplacatFins) : ''}`,
-      c: 'bg-amber-50 text-amber-900',
-    },
+    APLACAT: e.hoDira
+      ? { t: `Ho dirà el ${dc(e.hoDira.dia)}`, c: 'bg-blue-50 text-blue-900' }
+      : {
+          t: `Aplaçat fins al ${e.aplacatFins ? dc(e.aplacatFins) : ''}`,
+          c: 'bg-amber-50 text-amber-900',
+        },
     ALLARGA: { t: 'Allarga', c: 'bg-green-50 text-green-800' },
     MARXA: { t: 'Marxa', c: 'bg-red-50 text-red-800' },
   }[e.situacio];
@@ -355,6 +358,16 @@ function Historial({
       triat: e.preguntarTriat,
     });
   }
+  if (e.hoDira && !decidit) {
+    items.push({
+      key: 'ho-dira',
+      dia: e.hoDira.dia < avui ? avui : e.hoDira.dia,
+      t: 'El tauler et preguntarà: Allarga / Marxa',
+      m: 'Recordatori «M’ha de dir si allarga»',
+      dot: 'bg-white ring-2 ring-blue-600',
+      futur: true,
+    });
+  }
   if (e.recordatoriPendent && e.situacio !== 'ALLARGA') {
     const dia = e.recordatoriDia < avui ? avui : e.recordatoriDia;
     items.push({
@@ -503,22 +516,35 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
   }, []);
   // «Preguntar» del pop-up del tauler: obre l'estada amb el missatge de preguntar.
   useEffect(() => {
-    const obre = (ev: Event) => {
-      const id = (ev as CustomEvent<{ id?: string }>).detail?.id;
-      if (!id) return;
+    // `missatge: 'sortida'` (des d'un recordatori «Enviar el recordatori de sortida»)
+    // obre el de sortida; si no, el de preguntar si vol allargar.
+    const obreEstada = (id: string, missatge?: string) => {
+      const e = estades.find((x) => x.id === id);
+      if (!e) return;
       setPlegat(false);
       setFiltre('totes');
       setObert(id);
-      setComposer({ id, missatge: 'pregunta' });
+      setComposer({ id, missatge: missatge === 'sortida' ? sortidaRecomanada(e) : 'pregunta' });
       setNota('');
       setAplacaDia(false);
       setNouPendent(false);
       // Quan ja s'ha pintat oberta, la porta a la vista.
       window.setTimeout(() => document.getElementById(`estada-en-curs-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
     };
+    const obre = (ev: Event) => {
+      const d = (ev as CustomEvent<{ id?: string; missatge?: string }>).detail;
+      if (d?.id) obreEstada(d.id, d.missatge);
+    };
+    // Des de /recordatoris: /?missatge=sortida&estada=… obre el missatge en arribar.
+    const params = new URLSearchParams(window.location.search);
+    const estadaUrl = params.get('estada');
+    if (estadaUrl && params.get('missatge') === 'sortida') {
+      obreEstada(estadaUrl, 'sortida');
+      window.history.replaceState(null, '', window.location.pathname);
+    }
     window.addEventListener(EVENT_PREGUNTAR_PRORROGA, obre);
     return () => window.removeEventListener(EVENT_PREGUNTAR_PRORROGA, obre);
-  }, []);
+  }, [estades]);
   const canviaPlegat = (v: boolean) => {
     setPlegat(v);
     try {
@@ -583,6 +609,52 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
   }
   const enviat = (id: string) => (info: InfoEnviat) =>
     accio(id, { accio: ACCIO_MISSATGE[info.missatge], detall: info.detall });
+
+  /**
+   * «Ho dirà el dia…»: crea el recordatori «M'ha de dir si allarga» lligat a
+   * l'estada (o en canvia el dia si ja n'hi ha un). El servidor aplaça la pròrroga
+   * fins aquell dia i ho apunta a la línia del temps.
+   */
+  async function hoDira(e: EstadaEnCurs, dia: string) {
+    setBusy(e.id);
+    setError(null);
+    try {
+      if (e.hoDira) {
+        await patchJSON(`/api/recordatoris/${e.hoDira.recordatoriId}`, { accio: 'MOU', data: dia });
+      } else {
+        await postJSON('/api/recordatoris', {
+          titol: 'M’ha de dir si allarga',
+          tipus: 'ALTRES',
+          data: dia,
+          diesAbans: [0],
+          whatsapp: true,
+          calendari: true,
+          estanciaId: e.id,
+          accio: 'PRORROGA',
+        });
+      }
+      setAplacaDia(false);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No s’ha pogut desar');
+    } finally {
+      setBusy(null);
+    }
+  }
+  /** Treu el «Ho dirà el dia…» (esborra el recordatori: l'estada torna a sortir com abans). */
+  async function treuHoDira(e: EstadaEnCurs) {
+    if (!e.hoDira) return;
+    setBusy(e.id);
+    setError(null);
+    try {
+      await delJSON(`/api/recordatoris/${e.hoDira.recordatoriId}`);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No s’ha pogut treure');
+    } finally {
+      setBusy(null);
+    }
+  }
 
   if (estades.length === 0) return null;
 
@@ -830,7 +902,26 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                                 </Button>
                               )}
                               {!decidida(e) &&
-                                (e.situacio === 'APLACAT' ? (
+                                (e.hoDira ? (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      disabled={busy === e.id}
+                                      onClick={() => setAplacaDia(true)}
+                                    >
+                                      Canvia el dia que ho dirà
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      disabled={busy === e.id}
+                                      onClick={() => treuHoDira(e)}
+                                    >
+                                      Treu el recordatori
+                                    </Button>
+                                  </>
+                                ) : e.situacio === 'APLACAT' ? (
                                   <Button
                                     size="sm"
                                     variant="ghost"
@@ -861,29 +952,30 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                                       disabled={busy === e.id}
                                       onClick={() => setAplacaDia(true)}
                                     >
-                                      Aplaça fins al…
+                                      Ho dirà el dia…
                                     </Button>
                                   </>
                                 ))}
                             </div>
                           )}
-                          {aplacaDia && !decidida(e) && e.situacio !== 'APLACAT' && (
-                            <TriaDia
-                              inicial={sumaDiesDia(avui, 3)}
-                              min={sumaDiesDia(avui, 1)}
-                              max={e.sortida}
-                              busy={busy === e.id}
-                              text="Aplaça"
-                              onDesa={(d) =>
-                                d &&
-                                accio(e.id, {
-                                  accio: 'APLACA',
-                                  fins: d,
-                                  detall: `Torna a sortir el ${dc(d)}`,
-                                })
-                              }
-                              onTanca={() => setAplacaDia(false)}
-                            />
+                          {aplacaDia && !decidida(e) && (e.hoDira || e.situacio !== 'APLACAT') && (
+                            <div>
+                              <p className="text-xs font-semibold text-slate-700">
+                                {e.hoDira ? 'Quin dia t’ho dirà?' : 'Quin dia t’ha dit que t’ho dirà?'}
+                              </p>
+                              <TriaDia
+                                inicial={e.hoDira?.dia ?? sumaDiesDia(avui, 3)}
+                                min={sumaDiesDia(avui, 1)}
+                                max={e.sortida}
+                                busy={busy === e.id}
+                                text="Recorda-m’ho"
+                                onDesa={(d) => d && hoDira(e, d)}
+                                onTanca={() => setAplacaDia(false)}
+                              />
+                              <p className="mt-1 text-xs text-slate-500">
+                                Es crea el recordatori «M’ha de dir si allarga» (el veus a Recordatoris i a la fitxa) i aquell dia el tauler et pregunta Allarga / Marxa.
+                              </p>
+                            </div>
                           )}
                           {e.situacio === 'ALLARGA' && (
                             <p className="text-xs text-slate-600">

@@ -5,6 +5,7 @@ import { ROLES_WRITE } from '@/lib/auth/rbac';
 import { audit } from '@/lib/audit';
 import { badRequest, handleApiError, notFound, ok } from '@/lib/http';
 import { inicDia } from '@/lib/prorroga';
+import { tancaRecordatorisProrroga } from '@/lib/services/recordatoris';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -96,6 +97,10 @@ export async function POST(req: Request, ctx: Ctx) {
       detall: { prorroga: body.accio },
       ip: clientIp(req),
     });
+    // Ja ha contestat: el recordatori «M'ha de dir si allarga» (si n'hi ha) queda fet.
+    if (body.accio === 'SI' || body.accio === 'NO' || body.accio === 'NO_CONTESTA') {
+      await tancaRecordatorisProrroga(id).catch(() => undefined);
+    }
     return ok({ ok: true });
   } catch (err) {
     return handleApiError(err);

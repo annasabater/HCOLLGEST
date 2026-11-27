@@ -1,11 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CalendarDays, Smartphone, X } from 'lucide-react';
 import { ApiError, postJSON, putJSON } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { TargetaEstada, TriaEstada } from './tria-estada';
 import {
+  ACCIONS_RECORDATORI,
+  ACCIO_RECORDATORI_LABELS,
+  type AccioRecordatori,
   dataCurta,
   diaMadrid,
   DIES_ABANS_PROPOSATS,
@@ -17,7 +21,18 @@ import {
   type TipusRecordatori,
   type UnitatRepeticio,
 } from '@/lib/recordatoris';
-import type { RecordatoriVista } from '@/lib/services/recordatoris';
+import type { EstadaRecordatori, RecordatoriVista } from '@/lib/services/recordatoris';
+
+const dcm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+/** Què passarà aquell dia, segons l'acció triada. */
+const AJUDA_ACCIO: Record<AccioRecordatori, (data: string) => string> = {
+  PRORROGA: (d) =>
+    `Va a la pròrroga: a «Estades en curs» surt «Ho dirà el ${dcm(d)}» i aquell dia el tauler et pregunta Allarga / Marxa.`,
+  COBRAMENT: () => 'Aquell dia el tauler et recorda que ha de pagar, amb l’enllaç per registrar el pagament.',
+  SORTIDA: () => 'Aquell dia el tauler t’obre el missatge de sortida per WhatsApp, en el seu idioma.',
+  FACTURA: () => 'Aquell dia el tauler et porta a l’estada per fer-li la factura.',
+  ALTRES: () => 'Surt amb l’habitació i els hostes; el marques «Fet» quan ho hagis fet.',
+};
 
 type Repeticio = 'CAP' | 'MES' | 'SEMESTRE' | 'ANY' | 'PERSONALITZAT';
 const REPETICIONS: { r: Repeticio; label: string; cada?: number; unitat?: UnitatRepeticio }[] = [
@@ -47,12 +62,15 @@ export function RecordatoriFormulari({
   inicial,
   mobilActiu,
   calendariConnectat,
+  estadaInicial,
   onTanca,
   onDesat,
 }: {
   inicial: RecordatoriVista | null;
   mobilActiu: boolean;
   calendariConnectat: boolean;
+  /** Nou recordatori ja lligat a aquesta estada (des de la fitxa de l'estada). */
+  estadaInicial?: EstadaRecordatori | null;
   onTanca: () => void;
   onDesat: () => void;
 }) {
@@ -66,7 +84,27 @@ export function RecordatoriFormulari({
   const [rep, setRep] = useState<Repeticio>(repeticioDe(inicial));
   const [cada, setCada] = useState(String(inicial?.repeticioCada ?? 2));
   const [unitat, setUnitat] = useState<UnitatRepeticio>((inicial?.repeticioUnitat as UnitatRepeticio) ?? 'ANYS');
-  const [dies, setDies] = useState<number[]>(inicial?.diesAbans ?? [30, 7]);
+  // Lligat a una estada: un d'estada nou avisa el mateix dia (es pot canviar).
+  const estadaDe = inicial?.estada ?? estadaInicial ?? null;
+  const [lligat, setLligat] = useState(!!estadaDe);
+  const [estada, setEstada] = useState<EstadaRecordatori | null>(estadaDe);
+  const [triant, setTriant] = useState(false);
+  const [accio, setAccio] = useState<AccioRecordatori>(inicial?.accio ?? 'PRORROGA');
+  const [importCobrar, setImportCobrar] = useState(inicial?.import != null ? String(inicial.import).replace('.', ',') : '');
+  const [dies, setDies] = useState<number[]>(inicial?.diesAbans ?? (estadaDe ? [0] : [30, 7]));
+  // Títol proposat per l'acció (es posa sol si encara no n'has escrit cap altre).
+  const titolsAccio = Object.values(ACCIO_RECORDATORI_LABELS) as string[];
+  const triaAccio = (a: AccioRecordatori) => {
+    setAccio(a);
+    if (!titol.trim() || titolsAccio.includes(titol.trim())) setTitol(a === 'ALTRES' ? '' : ACCIO_RECORDATORI_LABELS[a]);
+    if (a === 'PRORROGA') setRep('CAP');
+  };
+  useEffect(() => {
+    // Un nou que neix lligat (des de la fitxa) ja porta el títol de l'acció.
+    if (!inicial && estadaInicial && !titol) setTitol(ACCIO_RECORDATORI_LABELS.PRORROGA);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const esProrroga = lligat && accio === 'PRORROGA';
   const [altres, setAltres] = useState('');
   const [whatsapp, setWhatsapp] = useState(inicial?.whatsapp ?? true);
   const [calendari, setCalendari] = useState(inicial?.calendari ?? true);
@@ -89,19 +127,29 @@ export function RecordatoriFormulari({
     setBusy(true);
     setErr(null);
     const p = REPETICIONS.find((x) => x.r === rep)!;
+    const repeteix = rep !== 'CAP' && !esProrroga;
+    const ambEstada = lligat && estada;
     const body = {
       titol,
       notes: notes || null,
-      tipus,
+      tipus: ambEstada ? 'ALTRES' : tipus,
       data,
       hora: hora || null,
-      repeticioCada: rep === 'CAP' ? null : rep === 'PERSONALITZAT' ? Number(cada) : p.cada,
-      repeticioUnitat: rep === 'CAP' ? null : rep === 'PERSONALITZAT' ? unitat : p.unitat,
+      repeticioCada: !repeteix ? null : rep === 'PERSONALITZAT' ? Number(cada) : p.cada,
+      repeticioUnitat: !repeteix ? null : rep === 'PERSONALITZAT' ? unitat : p.unitat,
       diesAbans: dies,
       whatsapp,
       calendari,
-      fix: rep !== 'CAP' && fix,
+      fix: repeteix && fix,
+      estanciaId: ambEstada ? estada.id : null,
+      accio: ambEstada ? accio : null,
+      import: ambEstada && accio === 'COBRAMENT' && importCobrar.trim() ? Number(importCobrar.trim().replace(',', '.')) : null,
     };
+    if (lligat && !estada) {
+      setErr('Tria l’estada (o marca «No, és general»).');
+      setBusy(false);
+      return;
+    }
     try {
       if (inicial) await putJSON(`/api/recordatoris/${inicial.id}`, body);
       else await postJSON('/api/recordatoris', body);
@@ -137,26 +185,110 @@ export function RecordatoriFormulari({
           <Input aria-label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (opcional): companyia, pòlissa, telèfon…" />
         </div>
 
-        <div className="space-y-2">
-          <span className="text-sm font-bold text-slate-800">Tipus</span>
-          <div className="flex flex-wrap gap-2">
-            {TIPUS_RECORDATORI.map((t) => (
-              <button key={t} type="button" aria-pressed={tipus === t} onClick={() => setTipus(t)} className={pill(tipus === t)}>
-                {TIPUS_RECORDATORI_LABELS[t]}
-              </button>
-            ))}
+        {/* Lligat a una estada: surt amb l'habitació i els hostes, i el tauler proposa l'acció. */}
+        <fieldset className="space-y-3 rounded-2xl border border-slate-200 p-4">
+          <legend className="px-1 text-sm font-bold text-slate-800">Va lligat a una estada?</legend>
+          <div role="radiogroup" aria-label="Lligat a una estada" className="flex flex-wrap gap-2">
+            <button type="button" role="radio" aria-checked={!lligat} onClick={() => setLligat(false)} className={pill(!lligat)}>
+              No, és general
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={lligat}
+              onClick={() => {
+                setLligat(true);
+                if (!estada) setTriant(true);
+                if (!inicial) {
+                  setDies([0]);
+                  if (!titol.trim()) setTitol(ACCIO_RECORDATORI_LABELS[accio]);
+                }
+              }}
+              className={pill(lligat)}
+            >
+              Sí, d’una estada
+            </button>
           </div>
-        </div>
+          {lligat && (
+            <>
+              {estada && !triant ? (
+                <TargetaEstada
+                  e={estada}
+                  accio={
+                    <button type="button" onClick={() => setTriant(true)} className="h-9 shrink-0 border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                      Canviar
+                    </button>
+                  }
+                />
+              ) : (
+                <TriaEstada
+                  onTria={(e) => {
+                    setEstada(e);
+                    setTriant(false);
+                  }}
+                />
+              )}
+              <div className="space-y-2">
+                <span className="text-sm font-bold text-slate-800">Què és?</span>
+                <div className="flex flex-wrap gap-2">
+                  {ACCIONS_RECORDATORI.map((a) => (
+                    <button key={a} type="button" aria-pressed={accio === a} onClick={() => triaAccio(a)} className={pill(accio === a)}>
+                      {ACCIO_RECORDATORI_LABELS[a]}
+                    </button>
+                  ))}
+                </div>
+                <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-900">{AJUDA_ACCIO[accio](data)}</p>
+                {accio === 'COBRAMENT' && (
+                  <label className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-700">
+                    Quant?
+                    <span className="relative">
+                      <Input
+                        inputMode="decimal"
+                        placeholder="0,00"
+                        value={importCobrar}
+                        onChange={(e) => setImportCobrar(e.target.value.replace(/[^\d.,]/g, ''))}
+                        className="h-11 w-36 pr-8 text-right text-base font-bold"
+                        aria-label="Import que ha de pagar"
+                      />
+                      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-slate-500">€</span>
+                    </span>
+                    <span className="text-xs font-normal text-slate-500">(opcional)</span>
+                  </label>
+                )}
+              </div>
+            </>
+          )}
+        </fieldset>
+
+        {!lligat && (
+          <div className="space-y-2">
+            <span className="text-sm font-bold text-slate-800">Tipus</span>
+            <div className="flex flex-wrap gap-2">
+              {TIPUS_RECORDATORI.map((t) => (
+                <button key={t} type="button" aria-pressed={tipus === t} onClick={() => setTipus(t)} className={pill(tipus === t)}>
+                  {TIPUS_RECORDATORI_LABELS[t]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2">
           <label htmlFor="rec-data" className="text-sm font-bold text-slate-800">Quan és?</label>
           <div className="flex flex-wrap items-center gap-2">
             <Input id="rec-data" type="date" value={data} onChange={(e) => setData(e.target.value)} className="h-12 w-48 text-base font-bold" />
-            {[
-              { l: 'd’aquí a 1 mes', d: seguentData(avui, 1, 'MESOS') },
-              { l: '6 mesos', d: seguentData(avui, 6, 'MESOS') },
-              { l: '1 any', d: seguentData(avui, 1, 'ANYS') },
-            ].map((x) => (
+            {(lligat && estada?.sortida
+              ? [
+                  { l: 'una setmana abans de sortir', d: sumaDies(estada.sortida, -7) },
+                  { l: '3 dies abans', d: sumaDies(estada.sortida, -3) },
+                  { l: 'el dia abans', d: sumaDies(estada.sortida, -1) },
+                ].filter((x) => x.d >= avui)
+              : [
+                  { l: 'd’aquí a 1 mes', d: seguentData(avui, 1, 'MESOS') },
+                  { l: '6 mesos', d: seguentData(avui, 6, 'MESOS') },
+                  { l: '1 any', d: seguentData(avui, 1, 'ANYS') },
+                ]
+            ).map((x) => (
               <button key={x.l} type="button" onClick={() => setData(x.d)} className="h-9 rounded-full bg-stone-100 px-3 text-sm font-semibold text-stone-700 hover:bg-stone-200">
                 {x.l}
               </button>
@@ -195,6 +327,11 @@ export function RecordatoriFormulari({
           </p>
         </div>
 
+        {esProrroga ? (
+          <p className="text-sm text-slate-600">
+            <span className="font-bold text-slate-800">Es repeteix?</span> Un sol cop (va lligat a la pròrroga d’aquesta sortida).
+          </p>
+        ) : (
         <div className="space-y-3 rounded-2xl bg-stone-50 p-4">
           <span className="text-sm font-bold text-slate-800">Es repeteix?</span>
           <div className="flex flex-wrap gap-2">
@@ -235,6 +372,7 @@ export function RecordatoriFormulari({
             </>
           )}
         </div>
+        )}
 
         <div className="space-y-3">
           <span className="text-sm font-bold text-slate-800">Avisa’m abans</span>
@@ -316,10 +454,15 @@ export function RecordatoriFormulari({
             <input type="checkbox" checked={calendari} onChange={(e) => setCalendari(e.target.checked)} className="h-6 w-6 accent-blue-700" />
           </label>
           <p className="text-xs text-slate-500">
-            {rep !== 'CAP'
+            {rep !== 'CAP' && !esProrroga
               ? 'Al tauler surt des del primer dia d’avís fins al mateix dia (o fins que el marquis «Fet»).'
               : 'Al tauler surt sempre, des del primer dia d’avís fins que el marquis «Fet».'}
           </p>
+          {lligat && (
+            <p className="text-xs text-slate-500">
+              Al mòbil, al WhatsApp i al Calendar només hi surt «Hab. {estada?.habitacio ?? '…'} · {titol.trim() || '…'}», sense els noms.
+            </p>
+          )}
         </div>
 
         {err && <p className="text-sm text-red-600">{err}</p>}
