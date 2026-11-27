@@ -15,6 +15,7 @@ import type { MissatgeProrroga } from '@/lib/plantilles';
 import type { EstadaEnCurs, EventProrroga } from '@/lib/services/prorrogues';
 import { MarxaraAbans } from '@/components/estancia/marxara-abans';
 import { MissatgeProrrogaComposer, sortidaRecomanada, type InfoEnviat } from './missatge-prorroga';
+import { EVENT_PREGUNTAR_PRORROGA } from './prorroga-popup';
 
 const dc = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 const diaDe = (iso: string) => diaMadrid(new Date(iso));
@@ -500,6 +501,24 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
       /* sense localStorage: desplegat */
     }
   }, []);
+  // «Preguntar» del pop-up del tauler: obre l'estada amb el missatge de preguntar.
+  useEffect(() => {
+    const obre = (ev: Event) => {
+      const id = (ev as CustomEvent<{ id?: string }>).detail?.id;
+      if (!id) return;
+      setPlegat(false);
+      setFiltre('totes');
+      setObert(id);
+      setComposer({ id, missatge: 'pregunta' });
+      setNota('');
+      setAplacaDia(false);
+      setNouPendent(false);
+      // Quan ja s'ha pintat oberta, la porta a la vista.
+      window.setTimeout(() => document.getElementById(`estada-en-curs-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    };
+    window.addEventListener(EVENT_PREGUNTAR_PRORROGA, obre);
+    return () => window.removeEventListener(EVENT_PREGUNTAR_PRORROGA, obre);
+  }, []);
   const canviaPlegat = (v: boolean) => {
     setPlegat(v);
     try {
@@ -652,7 +671,7 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
             const falta = e.recordatoriPendent && avui >= e.recordatoriDia && e.situacio !== 'ALLARGA';
             const ambAmpliacio = e.situacio === 'ALLARGA' && e.estat !== 'SI';
             return (
-              <div key={e.id} className="border-t border-stone-100">
+              <div key={e.id} id={`estada-en-curs-${e.id}`} className="scroll-mt-4 border-t border-stone-100">
                 <button
                   type="button"
                   aria-expanded={esObert}

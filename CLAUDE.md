@@ -224,7 +224,9 @@ etiqueta `ui-etiqueta`. Nombres TODO EN MAYÚSCULAS → «Adnan Besic» al mostr
   sortides»): totes les estades que ja han entrat i no han sortit, amb una línia del temps de la pròrroga (model
   `ProrrogaEvent`: PREGUNTAT, NO_CONTESTA, RECORDATORI, APLACAT, SI, NO, NOTA). Es proposa preguntar 18 dies abans
   (≥20 nits, comptant tota la cadena d’ampliacions) o 3 (curtes), però es pot fer quan es vulgui. Si ja ha allargat, surt l’última ampliació (encara que no hagi començat) amb la història de tota la cadena i un pas «Ha allargat». Lògica pura `situacioEstada`/`dataProposadaProrroga` a
-  `src/lib/prorroga.ts`; API `POST/DELETE /api/estancies/:id/prorroga`.
+  `src/lib/prorroga.ts`; API `POST/DELETE /api/estancies/:id/prorroga`. **Pop-up al tauler** «Toca preguntar si
+  vol allargar» (`components/dashboard/prorroga-popup.tsx`): les estades en situació TOCA, un cop al dia per estada
+  (localStorage); «Preguntar» obre l'estada a Estades en curs amb el WhatsApp a punt (event `hcoll:preguntar-prorroga`).
 - **Neteja · Planificació** (pestanya a /neteja): el full «per setmanes» com el de paper. Model
   `NetejaPlanificada` (dia + habitació + sortida/manteniment + observació; NO compta per pagar) i `NotaNeteja`
   (observació del DIA o de la SETMANA = dilluns). Si un dia té TascaNeteja (desada al «Full del dia»), la feta mana.

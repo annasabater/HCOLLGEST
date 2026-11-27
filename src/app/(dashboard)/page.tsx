@@ -16,6 +16,8 @@ import { teVistaRestringida } from '@/lib/auth/restriccions';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { BenvingudesPendents } from '@/components/dashboard/benvingudes-pendents';
 import { EstadesEnCurs } from '@/components/dashboard/estades-en-curs';
+import { ProrrogaPopup, type ProrrogaPopupItem } from '@/components/dashboard/prorroga-popup';
+import { nomPropi } from '@/lib/nom-propi';
 import { getEstadesEnCurs } from '@/lib/services/prorrogues';
 import { CalculadoraPreu } from '@/components/dashboard/calculadora-preu';
 import { GlobalSearch } from '@/components/layout/global-search';
@@ -47,6 +49,20 @@ export default async function DashboardPage() {
   const isAdmin = user?.role === 'ADMIN';
   const canWrite = user ? hasRole(user.role, ROLES_WRITE) : false;
   const recordatoris = esNomesLectura(user) ? [] : await recordatorisAra();
+  // Pop-up «Toca preguntar si vol allargar»: les estades que ja han arribat al dia
+  // proposat (o triat) i encara no s'han preguntat ni decidit. Només qui gestiona.
+  const tocaPreguntar: ProrrogaPopupItem[] =
+    canWrite && !esNomesLectura(user)
+      ? estadesEnCurs.estades
+          .filter((e) => e.situacio === 'TOCA')
+          .map((e) => ({
+            id: e.id,
+            titular: e.viatgers[0] ? nomPropi(`${e.viatgers[0].nom} ${e.viatgers[0].cognom1}`) : `Contracte ${e.numContracte}`,
+            habitacio: e.habitacio,
+            sortida: e.sortida,
+            diesFalten: e.diesFalten,
+          }))
+      : [];
 
   // Llistes accionables per als 3 avisos desplegables (persones pendents).
   const itemsMossos: AvisItem[] = resum.pendentsEnviament.map((e) => ({
@@ -148,6 +164,7 @@ export default async function DashboardPage() {
       />
 
       <EstadesEnCurs avui={estadesEnCurs.avui} estades={estadesEnCurs.estades} />
+      {tocaPreguntar.length > 0 && <ProrrogaPopup items={tocaPreguntar} />}
 
       {/* Sortides avui */}
       {resum.sortidesToday.length > 0 && (
