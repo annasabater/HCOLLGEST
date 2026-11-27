@@ -478,6 +478,9 @@ model Estancia {
   // Import total d'aquest contracte, NOMÉS de referència: no crea factura ni
   // cobrament i no compta enlloc (Balanç, llibre d'IVA…). Es mostra a l'estada.
   importOrientatiu    Decimal?        @map("import_orientatiu") @db.Decimal(10, 2)
+  // Quan es va marcar com a imprès el llibre registre d'aquest contracte (null =
+  // per imprimir: el botó surt de color taronja). Cada ampliació té el seu.
+  llibreImpresEl      DateTime?       @map("llibre_impres_el")
   idioma              String?         @default("ca") // ca / es / en / fr
   estat               EstatEstancia   @default(RESERVA)
   // Registre desat amb dades incompletes (§2.3): editable, però no es pot pujar a

@@ -1,12 +1,15 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Send, Receipt, FileSignature, Pencil, Clock, FileText } from 'lucide-react';
+import { Send, Receipt, FileSignature, Pencil, Clock, FileText, BookText, Check } from 'lucide-react';
 import { BackLink } from '@/components/ui/back-link';
 import { prisma } from '@/lib/db';
 import { habitacioLlibre } from '@/lib/habitacio-llibre';
 import { formataRebuigMossos } from '@/lib/mossos/errors';
 import { getSessionUser } from '@/lib/auth/session';
 import { hasRole, ROLES_WRITE } from '@/lib/auth/rbac';
+import { esNomesLectura } from '@/lib/auth/restriccions';
+import { llibrePerImprimir } from '@/lib/llibre-impres';
+import { LlibreRegistreButton } from '@/components/estancia/llibre-registre-button';
 import { MascotesPanel } from '@/components/huesped/mascotes-panel';
 import { BugaderiaPanel } from '@/components/estancia/bugaderia-panel';
 import { PressupostosEstadaList } from '@/components/pressupost/pressupostos-estada-list';
@@ -105,6 +108,8 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
       dataSortida: true,
       estat: true,
       importOrientatiu: true,
+      llibreImpresEl: true,
+      esBorrany: true,
       // Cobraments previstos NO pagats d'aquest tram (per marcar-lo en lila).
       pagamentsPrevistos: { where: { pagat: false }, select: { id: true }, take: 1 },
     },
@@ -132,6 +137,11 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
   const user = await getSessionUser();
   const isAdmin = user?.role === 'ADMIN';
   const canWrite = user ? hasRole(user.role, ROLES_WRITE) : false;
+  // Llibre registre «per imprimir» (botó taronja). Els comptes de només lectura
+  // veuen el botó de sempre.
+  const llibrePendent = llibrePerImprimir(estancia);
+  const gestionaLlibre =
+    canWrite && !esNomesLectura(user) && !estancia.esBorrany && estancia.estat !== 'CANCELLADA';
   const titular = estancia.viatgers[0]?.huesped;
   // Declaració IEET si hi ha algun menor de 17 anys (exempció impost turístic).
   const teMenor = estancia.viatgers.some(
@@ -217,11 +227,13 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                     <FileSignature className="h-4 w-4" /> Reglament intern (LOPD)
                   </Button>
                 </a>
-                <a href={`/imprimir/registre/${estancia.id}`} target="_blank" rel="noreferrer">
-                  <Button variant="outline">
-                    <FileSignature className="h-4 w-4" /> Llibre registre
-                  </Button>
-                </a>
+                <LlibreRegistreButton
+                  estanciaId={estancia.id}
+                  href={`/imprimir/registre/${estancia.id}`}
+                  impresEl={estancia.llibreImpresEl?.toISOString() ?? null}
+                  perImprimir={llibrePendent}
+                  gestiona={gestionaLlibre}
+                />
               </>
             ) : (
               // Un joc de botons per full: el principal (si hi ha) i cada habitació separada.
@@ -246,15 +258,13 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                       <FileSignature className="h-4 w-4" /> Reglament (LOPD)
                     </Button>
                   </a>
-                  <a
+                  <LlibreRegistreButton
+                    estanciaId={estancia.id}
                     href={`/imprimir/registre/${estancia.id}?hab=${encodeURIComponent(c.hab)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <Button variant="outline">
-                      <FileSignature className="h-4 w-4" /> Llibre registre
-                    </Button>
-                  </a>
+                    impresEl={estancia.llibreImpresEl?.toISOString() ?? null}
+                    perImprimir={llibrePendent}
+                    gestiona={gestionaLlibre}
+                  />
                 </span>
               ))
             )}
@@ -392,6 +402,16 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                       {formatEur(Number(c.importOrientatiu))}
                     </div>
                   )}
+                  {/* Llibre registre d'aquest contracte: per imprimir (taronja) o fet. */}
+                  {llibrePerImprimir(c) ? (
+                    <div className="mt-1 flex items-center gap-1 border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-900">
+                      <BookText className="h-3.5 w-3.5 text-amber-700" /> Llibre per imprimir
+                    </div>
+                  ) : c.llibreImpresEl && !c.esBorrany && c.estat !== 'CANCELLADA' ? (
+                    <div className="mt-1 flex items-center gap-1 text-xs font-semibold text-green-700">
+                      <Check className="h-3.5 w-3.5" /> Llibre imprès
+                    </div>
+                  ) : null}
                 </Link>
               );
             })}

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { esNomesLectura } from '@/lib/auth/restriccions';
+import { WHERE_LLIBRE_PER_IMPRIMIR } from '@/lib/llibre-impres';
 import { AppShell } from '@/components/layout/app-shell';
 import { CobramentPopup, type CobramentItem } from '@/components/dashboard/cobrament-popup';
 import { RessenyaPopup, type OpinioNova } from '@/components/dashboard/ressenya-popup';
@@ -85,12 +86,21 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!user) redirect('/login');
 
   // Els usuaris de només lectura (propietat) no gestionen cobraments ni opinions → sense pop-ups.
-  const [cobraments, opinions] = esNomesLectura(user)
-    ? [[], []]
-    : await Promise.all([cobramentsPopup(), opinionsPopup()]);
+  const [cobraments, opinions, llibresPerImprimir] = esNomesLectura(user)
+    ? [[], [], 0]
+    : await Promise.all([
+        cobramentsPopup(),
+        opinionsPopup(),
+        // Contractes amb el llibre registre per imprimir (número taronja al menú).
+        prisma.estancia.count({ where: WHERE_LLIBRE_PER_IMPRIMIR }).catch(() => 0),
+      ]);
 
   return (
-    <AppShell user={{ nom: user.nom, role: user.role }} readOnly={esNomesLectura(user)}>
+    <AppShell
+      user={{ nom: user.nom, role: user.role }}
+      readOnly={esNomesLectura(user)}
+      comptadors={{ '/llibre': llibresPerImprimir }}
+    >
       {cobraments.length > 0 && <CobramentPopup items={cobraments} />}
       {opinions.length > 0 && <RessenyaPopup items={opinions} />}
       {children}

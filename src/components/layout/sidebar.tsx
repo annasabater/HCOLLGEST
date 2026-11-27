@@ -90,7 +90,18 @@ export function apartatDe(pathname: string): string | null {
   return null;
 }
 
-export function Sidebar({ role, restringit = false, compacta = false }: { role: Role; restringit?: boolean; compacta?: boolean }) {
+export function Sidebar({
+  role,
+  restringit = false,
+  compacta = false,
+  comptadors = {},
+}: {
+  role: Role;
+  restringit?: boolean;
+  compacta?: boolean;
+  /** Número taronja per adreça (p. ex. `/llibre`: llibres registre per imprimir). */
+  comptadors?: Record<string, number>;
+}) {
   const pathname = usePathname();
 
   return (
@@ -110,21 +121,34 @@ export function Sidebar({ role, restringit = false, compacta = false }: { role: 
             {items.map((item) => {
               const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
               const Icon = item.icon;
+              const n = comptadors[item.href] ?? 0;
+              const etiqueta = n > 0 ? `${item.label} (${n} per imprimir)` : item.label;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   aria-current={active ? 'page' : undefined}
-                  title={compacta ? item.label : undefined}
-                  aria-label={compacta ? item.label : undefined}
+                  title={compacta ? etiqueta : undefined}
+                  aria-label={compacta ? etiqueta : undefined}
                   className={cn(
                     'app-nav-item flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                    compacta && 'lg:justify-center lg:px-0',
+                    compacta && 'lg:relative lg:justify-center lg:px-0',
                     active ? 'bg-brand-700 text-white' : 'text-brand-100 hover:bg-brand-800',
                   )}
                 >
                   <Icon className={cn('h-4 w-4 shrink-0', compacta && 'lg:h-5 lg:w-5')} />
                   <span className={cn('flex-1', compacta && 'lg:hidden')}>{item.label}</span>
+                  {n > 0 && (
+                    <span
+                      title={`${n} per imprimir`}
+                      className={cn(
+                        'min-w-5 shrink-0 rounded-full bg-amber-700 px-1.5 py-0.5 text-center text-[11px] font-bold leading-none text-white',
+                        compacta && 'lg:absolute lg:right-1 lg:top-0.5 lg:min-w-4 lg:px-1 lg:text-[10px]',
+                      )}
+                    >
+                      {n}
+                    </span>
+                  )}
                 </Link>
               );
             })}

@@ -20,10 +20,13 @@ const ROLE_LABEL: Record<string, string> = {
 export function AppShell({
   user,
   readOnly = false,
+  comptadors,
   children,
 }: {
   user: { nom: string; role: Role };
   readOnly?: boolean;
+  /** Número taronja al costat d'un apartat del menú (per adreça), p. ex. llibres per imprimir. */
+  comptadors?: Record<string, number>;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -88,7 +91,7 @@ export function AppShell({
             {amagada ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
           </button>
         </div>
-        <Sidebar role={user.role} restringit={readOnly} compacta={amagada} />
+        <Sidebar role={user.role} restringit={readOnly} compacta={amagada} comptadors={comptadors} />
         <div className="border-t border-brand-800 p-3">
           {user.role === 'ADMIN' ? (
             <Link

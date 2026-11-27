@@ -29,6 +29,8 @@ const UpdateSchema = z
     numHabitacions: z.coerce.number().int().min(0).nullable().optional(),
     teInternet: z.boolean().optional(),
     idioma: z.enum(['ca', 'es', 'en', 'fr']).nullable().optional(),
+    // Llibre registre imprès (true = ara; false = torna a «per imprimir»).
+    llibreImpres: z.boolean().optional(),
   })
   .superRefine((d, ctx) => {
     if (d.dataEntrada && d.dataSortida && d.dataSortida <= d.dataEntrada) {
@@ -69,10 +71,17 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
     const body = await req.json().catch(() => null);
     const data = UpdateSchema.parse(body);
+    const { llibreImpres, ...camps } = data;
 
     const exists = await prisma.estancia.findFirst({ where: { id, deletedAt: null }, select: { id: true } });
     if (!exists) return notFound();
-    const estancia = await prisma.estancia.update({ where: { id }, data });
+    const estancia = await prisma.estancia.update({
+      where: { id },
+      data: {
+        ...camps,
+        ...(llibreImpres !== undefined ? { llibreImpresEl: llibreImpres ? new Date() : null } : {}),
+      },
+    });
     const tancades = await tancaProbablesEnEntrar(id, { id: auth.id }, clientIp(req)).catch(() => []);
 
     await audit({

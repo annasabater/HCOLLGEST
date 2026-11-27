@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { EliminarEstada } from '@/components/estancia/eliminar-estada';
+import { LlibresPerImprimir } from '@/components/llibre/llibres-per-imprimir';
 import { ESTAT_ENVIAMENT_LABELS } from '@/lib/validation/enums';
 import { getJSON } from '@/lib/api';
 import type { EstatEnviament } from '@prisma/client';
@@ -157,6 +158,9 @@ export default function LlibrePage() {
           </Link>
         }
       />
+
+      {/* Contractes (estades noves i ampliacions) amb el llibre per imprimir. */}
+      <LlibresPerImprimir />
 
       <Card className="mb-6">
         <CardBody className="flex flex-wrap items-end gap-3">
