@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, Check, Clock } from 'lucide-react';
+import { Plus, Trash2, Check, Clock, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -69,6 +69,41 @@ export function PagamentsPrevistos({
     }
   }
 
+  // Edició d'un cobrament previst (import, data i concepte), a la mateixa fila.
+  const [editant, setEditant] = useState<string | null>(null);
+  const [eImp, setEImp] = useState('');
+  const [eData, setEData] = useState('');
+  const [eConcepte, setEConcepte] = useState('');
+  const [eError, setEError] = useState<string | null>(null);
+
+  function obreEdicio(p: PagamentPrevistRow) {
+    setEditant(p.id);
+    setEImp(String(p.import).replace('.', ','));
+    setEData(toISODate(new Date(p.dataPrevista)));
+    setEConcepte(p.concepte ?? '');
+    setEError(null);
+  }
+
+  async function desaEdicio(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editant) return;
+    setBusy(editant);
+    setEError(null);
+    try {
+      await patchJSON(`/api/pagaments-previstos/${editant}`, {
+        import: parseFloat(eImp.replace(',', '.')) || 0,
+        dataPrevista: eData,
+        concepte: eConcepte,
+      });
+      setEditant(null);
+      router.refresh();
+    } catch (err) {
+      setEError(err instanceof ApiError ? err.message : 'No s’ha pogut desar');
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function elimina(id: string) {
     setBusy(id);
     try {
@@ -102,6 +137,32 @@ export function PagamentsPrevistos({
         <ul className="space-y-2">
           {previstos.map((p) => {
             const venc = !p.pagat && toISODate(new Date(p.dataPrevista)) <= avuiIso;
+            if (editant === p.id) {
+              return (
+                <li key={p.id} className="rounded-lg border border-brand-300 bg-brand-50/40 px-3 py-2">
+                  <form onSubmit={desaEdicio} className="grid items-end gap-2 sm:grid-cols-[120px_150px_1fr_auto]">
+                    <Field label="Import (€)">
+                      <Input inputMode="decimal" value={eImp} onChange={(e) => setEImp(e.target.value)} className="text-right" autoFocus />
+                    </Field>
+                    <Field label="Data prevista">
+                      <Input type="date" value={eData} onChange={(e) => setEData(e.target.value)} />
+                    </Field>
+                    <Field label="Concepte (opcional)">
+                      <Input value={eConcepte} onChange={(e) => setEConcepte(e.target.value)} placeholder="Resta de l’allotjament…" />
+                    </Field>
+                    <div className="flex gap-1">
+                      <Button type="submit" disabled={busy === p.id || !eImp || !eData}>
+                        <Check className="h-4 w-4" /> Desar
+                      </Button>
+                      <Button type="button" variant="ghost" onClick={() => setEditant(null)}>
+                        Cancel·lar
+                      </Button>
+                    </div>
+                  </form>
+                  {eError && <p className="mt-1 text-sm text-red-600">{eError}</p>}
+                </li>
+              );
+            }
             return (
               <li
                 key={p.id}
@@ -131,6 +192,9 @@ export function PagamentsPrevistos({
                       Desfer
                     </Button>
                   )}
+                  <button type="button" className="p-2 touch-manipulation text-slate-400 hover:text-brand-700" onClick={() => obreEdicio(p)} disabled={busy === p.id} title="Editar">
+                    <Pencil className="h-4 w-4" />
+                  </button>
                   <button type="button" className="p-2 touch-manipulation text-slate-400 hover:text-red-600" onClick={() => elimina(p.id)} disabled={busy === p.id} title="Eliminar">
                     <Trash2 className="h-4 w-4" />
                   </button>
