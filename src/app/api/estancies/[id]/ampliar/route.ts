@@ -9,7 +9,8 @@ import { numeroContinuacio, numeroContracteEnUs, seguentNumeroContracte } from '
 type Ctx = { params: Promise<{ id: string }> };
 
 // GET /api/estancies/:id/ampliar — opcions de número de contracte per a una nova
-// ampliació: la continuació de l'arrel (26009_1, o null si no té número) i el
+// ampliació: la continuació del contracte de l'estada (26009_1; null si cap
+// estada de la cadena té número) i el
 // següent número lliure de l'any.
 export async function GET(_req: Request, ctx: Ctx) {
   try {
@@ -34,7 +35,7 @@ export async function GET(_req: Request, ctx: Ctx) {
       select: { numContracte: true, anyContracte: true, dataEntrada: true, dataSortida: true },
     });
     const [continuacio, nou] = await Promise.all([
-      numeroContinuacio(rootId, root.numContracte),
+      numeroContinuacio(base.id),
       seguentNumeroContracte(root.anyContracte),
     ]);
     return ok({

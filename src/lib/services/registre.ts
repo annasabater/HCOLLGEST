@@ -365,12 +365,13 @@ export async function ampliarEstancia(
       const viatgers = triats.map((v, i) => ({ ...v, esTitular: titularContinua ? v.esTitular : i === 0 }));
 
       // Número de la nova estada: el que s'ha triat al formulari o, per defecte, la
-      // continuació de l'arrel (26009_1). Si l'arrel encara no té número, l'ampliació
-      // tampoc (deixar-lo en blanc és vàlid: l'índex únic exclou els buits).
+      // continuació del contracte de l'estada que s'amplia (26009_1). Si cap estada de
+      // la cadena té número, l'ampliació tampoc (deixar-lo en blanc és vàlid: l'índex
+      // únic exclou els buits).
       const numContracte =
         dates.numContracte !== undefined
           ? dates.numContracte.trim()
-          : ((await numeroContinuacio(rootId, root.numContracte, tx)) ?? '');
+          : ((await numeroContinuacio(base.id, tx)) ?? '');
 
       const nova = await tx.estancia.create({
         data: {

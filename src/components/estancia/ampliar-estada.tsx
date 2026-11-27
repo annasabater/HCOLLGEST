@@ -227,19 +227,15 @@ export function AmpliarEstada({
           <legend className="text-sm font-semibold text-slate-800">Número de contracte de la nova estada</legend>
           {!infoNum.continuacio && (
             <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
-              La primera estada
-              {infoNum.arrel.dataEntrada && infoNum.arrel.dataSortida
-                ? ` (${formatDate(infoNum.arrel.dataEntrada)} – ${formatDate(infoNum.arrel.dataSortida)})`
-                : ''}{' '}
-              no té número de contracte. La primera es queda tal com està.
+              Cap contracte d&apos;aquesta estada té número encara: no es pot fer una continuació.
             </p>
           )}
           {(
             [
-              ['continuacio', infoNum.continuacio ? <>Continuació: <b>{infoNum.continuacio}</b> <span className="text-slate-500">· el mateix contracte, allargat</span></> : <>Continuació <span className="text-slate-500">· no es pot: la primera no té número</span></>],
+              ['continuacio', infoNum.continuacio ? <>Continuació: <b>{infoNum.continuacio}</b> <span className="text-slate-500">· el mateix contracte, allargat</span></> : <>Continuació <span className="text-slate-500">· no es pot: cap contracte té número</span></>],
               ['nou', <>Número nou: <b>{infoNum.nou}</b> <span className="text-slate-500">· el següent lliure</span></>],
               ['manual', <>Escriure&apos;l</>],
-              ...(infoNum.continuacio ? [] : [['cap', <>Sense número <span className="text-slate-500">· com ara (es pot posar després editant l&apos;estada)</span></>] as const]),
+              ['cap', <>Sense número <span className="text-slate-500">· (fiança)</span></>],
             ] as const
           ).map(([k, label]) => {
             const desactivat = k === 'continuacio' && !infoNum.continuacio;

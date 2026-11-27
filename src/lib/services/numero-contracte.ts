@@ -43,25 +43,42 @@ export async function numeroContracteEnUs(anyNum: number, numero: string, exclou
   return found != null || foundSeparat != null;
 }
 
+/** «26012_1» → «26012»; «26012» → «26012»; buit → buit. */
+function numeroBase(num: string): string {
+  return num.trim().replace(/_\d+$/, '');
+}
+
 /**
- * Número de «continuació» per a una nova ampliació d'una estada arrel: el seu
- * número + el sufix lliure més baix (_1, _2…) entre les ampliacions vives. Sense
- * forats: si se n'ha esborrat alguna, el seu sufix torna a quedar lliure. S'usa
- * "_" (no ".") per distingir el CONTRACTE de les FACTURES. `null` si l'arrel no té número.
+ * Número de «continuació» per a una nova ampliació de l'estada `estanciaId`:
+ * el número BASE (sense sufix) + el sufix lliure més baix (_1, _2…). La base és
+ * la de l'estada que s'amplia; si no en té, la de l'estada més recent de la
+ * cadena que en tingui (la primera pot ser sense número —p. ex. una fiança— i
+ * la segona ja tenir-ne: 26012 → 26012_1). Sense forats: si se n'ha esborrat
+ * alguna, el seu sufix torna a quedar lliure. S'usa "_" (no ".") per distingir
+ * el CONTRACTE de les FACTURES. `null` si cap estada de la cadena té número.
  */
-export async function numeroContinuacio(rootId: string, rootNum: string, db: Db = prisma): Promise<string | null> {
-  if (!rootNum.trim()) return null;
-  const germanes = await db.estancia.findMany({
-    where: { estanciaOrigenId: rootId, deletedAt: null },
-    select: { numContracte: true },
+export async function numeroContinuacio(estanciaId: string, db: Db = prisma): Promise<string | null> {
+  const est = await db.estancia.findUniqueOrThrow({
+    where: { id: estanciaId },
+    select: { id: true, estanciaOrigenId: true, numContracte: true, anyContracte: true },
   });
+  const rootId = est.estanciaOrigenId ?? est.id;
+  const cadena = await db.estancia.findMany({
+    where: { OR: [{ id: rootId }, { estanciaOrigenId: rootId }], deletedAt: null },
+    select: { numContracte: true },
+    orderBy: { dataEntrada: 'desc' },
+  });
+  const base = numeroBase(est.numContracte) || (cadena.map((c) => numeroBase(c.numContracte)).find((n) => n) ?? '');
+  if (!base) return null;
+
+  const prefix = `${base}_`;
   const usats = new Set(
-    germanes
-      .map((g) => g.numContracte.match(/_(\d+)$/)?.[1])
-      .filter((s): s is string => s != null)
-      .map(Number),
+    cadena
+      .map((c) => c.numContracte.trim())
+      .filter((n) => n.startsWith(prefix) && /^\d+$/.test(n.slice(prefix.length)))
+      .map((n) => Number(n.slice(prefix.length))),
   );
   let seq = 1;
-  while (usats.has(seq)) seq += 1;
-  return `${rootNum}_${seq}`;
+  while (usats.has(seq) || (await numeroContracteEnUs(est.anyContracte, `${prefix}${seq}`, null, db))) seq += 1;
+  return `${prefix}${seq}`;
 }
