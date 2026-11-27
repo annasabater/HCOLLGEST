@@ -28,6 +28,9 @@ export async function POST(req: Request) {
     let clientNif: string | null = null;
     let clientAdreca: string | null = null;
     let clientLocalitat: string | null = null;
+    let telefon: string | null = null;
+    let entrada: Date | null = null;
+    let sortida: Date | null = null;
     let estanciaOk: string | null = null;
     if (estanciaId) {
       const est = await prisma.estancia.findFirst({
@@ -36,8 +39,11 @@ export async function POST(req: Request) {
       });
       if (est) {
         estanciaOk = est.id;
+        entrada = est.dataEntrada;
+        sortida = est.dataSortida;
         const h = est.viatgers[0]?.huesped ?? null;
         if (h) {
+          telefon = h.telefon?.trim() || null;
           clientNom = [h.nom, h.cognom1, h.cognom2].filter(Boolean).join(' ') || null;
           clientNif = h.numDocument ? `${h.tipusDocument ?? 'DNI'} ${h.numDocument}` : null;
           clientAdreca = h.adreca ?? null;
@@ -51,6 +57,11 @@ export async function POST(req: Request) {
     const linies = calcul.success && calcul.data.linies.length ? calcul.data.linies : [{ descripcio: '', import: 0 }];
     const ivaPercent = calcul.success ? calcul.data.ivaPercent : 21;
     const totals = calculaTotalsPressupost(linies, ivaPercent);
+    // Dates de la calculadora del tauler (entrada del primer tram, sortida de l'últim).
+    if (calcul.success && calcul.data.entrada && calcul.data.sortida && calcul.data.sortida > calcul.data.entrada) {
+      entrada = new Date(calcul.data.entrada);
+      sortida = new Date(calcul.data.sortida);
+    }
 
     const numero = await proximNumeroPressupost(prisma);
     const est = await prisma.establiment.findFirst({ select: { iban: true } });
@@ -62,6 +73,9 @@ export async function POST(req: Request) {
         clientNif,
         clientAdreca,
         clientLocalitat,
+        telefon,
+        entrada,
+        sortida,
         compte: est?.iban ?? null,
         notes: calcul.success ? calcul.data.notes || null : null,
         ivaPercent,

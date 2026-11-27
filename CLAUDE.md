@@ -237,6 +237,13 @@ etiqueta `ui-etiqueta`. Nombres TODO EN MAYÚSCULAS → «Adnan Besic» al mostr
   (efectiu → caixa; targeta/transferència/Bizum → banc; «Altres» no hi entra i s'avisa). A mà (`MovimentTresoreria`):
   saldo inicial/arqueig, traspassos caixa↔banc i altres entrades/sortides (p. ex. personal, que no porta forma de
   pagament). Càlcul pur a `src/lib/tresoreria.ts` (testejat), servei `services/tresoreria.ts`, API `/api/tresoreria`.
+- **Pressupost per WhatsApp** (`/pressupostos/:id` → bloc «Enviar per WhatsApp», i columna a la llista):
+  `Pressupost.telefon/entrada/sortida/whatsappEnviatEl`. Les dates venen soles de la calculadora del tauler
+  (entrada del 1r tram, sortida de l'últim) o de l'estada enllaçada; el telèfon, del titular. Text per defecte
+  fix per idioma (`src/lib/pressupost-whatsapp.ts`, testejat; sense «en PDF» ni «Vàlid fins al»: decisió de
+  l'Anna). wa.me no pot adjuntar fitxers: al mòbil «Compartir amb el PDF» (Web Share amb el PDF de
+  `GET /api/pressupostos/:id/pdf`, fet al servidor amb `lib/pdf/pressupost.ts`); a l'ordinador, «Descarregar el PDF».
+  No s'envia res sol: només s'anota quan s'obre (`POST …/whatsapp`, audit ENVIAMENT sense telèfon ni text).
 - **Ficha PDF firmable**: `GET /api/estancies/:id/fitxa-pdf` genera el model "Registre de persones
   allotjades" (pdf-lib) amb les dades dels viatgers i la **signatura capturada incrustada** (o una
   línia per signar a mà). Botó "Fitxa PDF" al detall de l'estada. Generador a `src/lib/pdf/fitxa.ts`.

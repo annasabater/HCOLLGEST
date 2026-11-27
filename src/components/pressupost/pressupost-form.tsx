@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, Printer, Save } from 'lucide-react';
+import { Plus, Trash2, Printer, Save, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Textarea, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
@@ -11,6 +11,7 @@ import { patchJSON, delJSON, ApiError } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EstadaPicker } from '@/components/pressupost/estada-picker';
 import { CanviHabitacioCard } from '@/components/pressupost/canvi-habitacio-card';
+import { EnviarWhatsappCard } from '@/components/pressupost/enviar-whatsapp-card';
 import type { GrupTarifa } from '@/lib/validation/tarifa-tipus';
 import { LANGS, type Lang } from '@/lib/plantilles';
 import { formatEur } from '@/lib/utils';
@@ -32,6 +33,11 @@ export interface PressupostData {
   ivaPercent: number;
   ocultaIva: boolean; // al document imprès, només el Total (sense Base ni IVA)
   linies: { descripcio: string; import: string }[];
+  // Per enviar-lo per WhatsApp.
+  telefon: string;
+  entrada: string; // ISO yyyy-mm-dd o ''
+  sortida: string;
+  whatsappEnviatEl: string | null; // ISO
 }
 
 /** Pressupost creat des de la calculadora amb canvi d'habitació (dades a la URL). */
@@ -44,7 +50,15 @@ export interface CalculOrigen {
 
 const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
-export function PressupostForm({ inicial, calcul = null }: { inicial: PressupostData; calcul?: CalculOrigen | null }) {
+export function PressupostForm({
+  inicial,
+  calcul = null,
+  signatura,
+}: {
+  inicial: PressupostData;
+  calcul?: CalculOrigen | null;
+  signatura: string; // final del missatge de WhatsApp («Anna · Hostal Coll»)
+}) {
   const router = useRouter();
   const [v, setV] = useState<PressupostData>(inicial);
   const [saving, setSaving] = useState(false);
@@ -81,6 +95,9 @@ export function PressupostForm({ inicial, calcul = null }: { inicial: Pressupost
         notes: v.notes,
         ivaPercent: Number(v.ivaPercent) || 0,
         ocultaIva: v.ocultaIva,
+        telefon: v.telefon,
+        entrada: v.entrada,
+        sortida: v.sortida,
         linies: v.linies
           .filter((l) => l.descripcio.trim() || l.import.trim())
           .map((l) => ({ descripcio: l.descripcio, import: parseFloat(l.import.replace(',', '.')) || 0 })),
@@ -121,6 +138,9 @@ export function PressupostForm({ inicial, calcul = null }: { inicial: Pressupost
         <Button variant="outline" onClick={imprimeix} disabled={saving}>
           <Printer className="h-4 w-4" /> {saving ? 'Desant…' : 'Imprimir / PDF'}
         </Button>
+        <a href="#whatsapp" className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 hover:bg-slate-50">
+          <MessageCircle className="h-4 w-4" /> WhatsApp
+        </a>
         <Button variant="ghost" onClick={() => setConfirmDel(true)} className="text-red-600">
           <Trash2 className="h-4 w-4" /> Eliminar
         </Button>
@@ -139,7 +159,13 @@ export function PressupostForm({ inicial, calcul = null }: { inicial: Pressupost
           <Field label="Vàlid fins a" hint="Opcional">
             <Input type="date" value={v.validesa ?? ''} onChange={(e) => set('validesa', e.target.value)} />
           </Field>
-          <Field label="Idioma del document" hint="En quin idioma es genera el pressupost imprès.">
+          <Field label="Entrada" hint="Ve sola de la calculadora o de l’estada.">
+            <Input type="date" value={v.entrada} onChange={(e) => set('entrada', e.target.value)} />
+          </Field>
+          <Field label="Sortida">
+            <Input type="date" value={v.sortida} min={v.entrada || undefined} onChange={(e) => set('sortida', e.target.value)} />
+          </Field>
+          <Field label="Idioma del document" hint="En quin idioma es genera el pressupost imprès i el WhatsApp.">
             <Select value={v.idioma} onChange={(e) => set('idioma', e.target.value as Lang)}>
               {LANGS.map((l) => (
                 <option key={l.code} value={l.code}>
@@ -187,6 +213,9 @@ export function PressupostForm({ inicial, calcul = null }: { inicial: Pressupost
           </Field>
           <Field label="NIF / CIF">
             <Input uppercase value={v.clientNif} onChange={(e) => set('clientNif', e.target.value)} />
+          </Field>
+          <Field label="Telèfon" hint="Per enviar-li per WhatsApp. Sense prefix s’entén +34.">
+            <Input type="tel" inputMode="tel" value={v.telefon} onChange={(e) => set('telefon', e.target.value)} placeholder="+34 600 000 000" />
           </Field>
           <Field label="Adreça" className="xl:col-span-2">
             <Input value={v.clientAdreca} onChange={(e) => set('clientAdreca', e.target.value)} />
@@ -242,6 +271,22 @@ export function PressupostForm({ inicial, calcul = null }: { inicial: Pressupost
           </div>
         </CardBody>
       </Card>
+
+      <EnviarWhatsappCard
+        pressupostId={v.id}
+        numero={v.numero}
+        idioma={v.idioma}
+        telefon={v.telefon}
+        clientNom={v.clientNom}
+        entrada={v.entrada || null}
+        sortida={v.sortida || null}
+        linies={v.linies}
+        total={totals.total}
+        iva={totals.iva}
+        signatura={signatura}
+        enviatEl={v.whatsappEnviatEl}
+        desa={desa}
+      />
 
       <Card>
         <CardHeader><CardTitle>Pagament i notes</CardTitle></CardHeader>

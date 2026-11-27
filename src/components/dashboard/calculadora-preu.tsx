@@ -259,7 +259,12 @@ export function CalculadoraPreu({ potFerPressupost = false }: { potFerPressupost
     setCreant(true);
     setError(null);
     try {
-      const r = await postJSON<{ id: string }>('/api/pressupostos', dades);
+      // Dates de l'estada (entrada del primer tram, sortida de l'últim) per al WhatsApp.
+      const r = await postJSON<{ id: string }>('/api/pressupostos', {
+        ...dades,
+        entrada: efectius[0]!.dates.desde,
+        sortida: efectius[efectius.length - 1]!.dates.fins,
+      });
       const c = efectius[0]!;
       const q = efectius.length === 1 && plaUnTram ? `?${new URLSearchParams({ grup: c.grup, entrada: c.entrada, sortida: c.sortida, canvi: '1' }).toString()}` : '';
       router.push(`/pressupostos/${r.id}${q}`);

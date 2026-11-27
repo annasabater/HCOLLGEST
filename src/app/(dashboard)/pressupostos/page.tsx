@@ -9,6 +9,11 @@ import { Table, Thead, Th, Td, Tr, EmptyState } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { NouPressupostButton } from '@/components/pressupost/nou-pressupost-button';
 import { formatDate, formatEur } from '@/lib/utils';
+import { WhatsappLlistaButton } from '@/components/pressupost/whatsapp-llista-button';
+import { missatgePressupost, telefonWhatsApp } from '@/lib/pressupost-whatsapp';
+import { idiomaPressupost } from '@/lib/pdf/pressupost';
+import { nomPropi } from '@/lib/nom-propi';
+import { toISODate } from '@/lib/dates';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +32,40 @@ export default async function PressupostosPage({ searchParams }: { searchParams:
     },
     orderBy: { numero: 'desc' },
     take: 200,
+    include: {
+      linies: { orderBy: { createdAt: 'asc' }, select: { descripcio: true } },
+      estancia: {
+        select: {
+          dataEntrada: true,
+          dataSortida: true,
+          viatgers: { where: { esTitular: true }, take: 1, select: { huesped: { select: { nom: true, cognom1: true, cognom2: true, telefon: true } } } },
+        },
+      },
+    },
   });
+
+  // Text per defecte del WhatsApp (el mateix que al detall del pressupost).
+  const signatura = [user.nom.trim() ? nomPropi(user.nom.trim().split(/\s+/)[0]!) : '', 'Hostal Coll'].filter(Boolean).join(' · ');
+  const whatsapp = (p: (typeof pressupostos)[number]) => {
+    const t = p.estancia?.viatgers[0]?.huesped ?? null;
+    const client = p.clientNom || (t ? [t.nom, t.cognom1, t.cognom2].filter(Boolean).join(' ') : '');
+    const entrada = p.entrada ?? p.estancia?.dataEntrada ?? null;
+    const sortida = p.sortida ?? p.estancia?.dataSortida ?? null;
+    return {
+      client,
+      telefon: telefonWhatsApp(p.telefon || t?.telefon),
+      text: missatgePressupost({
+        idioma: idiomaPressupost(p.idioma),
+        clientNom: client,
+        entrada: entrada ? toISODate(entrada) : null,
+        sortida: sortida ? toISODate(sortida) : null,
+        linies: p.linies,
+        total: Number(p.total),
+        iva: Number(p.iva),
+        signatura,
+      }),
+    };
+  };
 
   return (
     <div>
@@ -60,10 +98,13 @@ export default async function PressupostosPage({ searchParams }: { searchParams:
               <Th>Data</Th>
               <Th>Client</Th>
               <Th className="text-right">Total</Th>
+              <Th className="text-center">WhatsApp</Th>
             </tr>
           </Thead>
           <tbody>
-            {pressupostos.map((p) => (
+            {pressupostos.map((p) => {
+              const wa = whatsapp(p);
+              return (
               <Tr key={p.id}>
                 <Td>
                   <Link href={`/pressupostos/${p.id}`} className="font-medium text-brand-700 hover:underline">
@@ -74,8 +115,12 @@ export default async function PressupostosPage({ searchParams }: { searchParams:
                 <Td>{p.clientNom || '—'}</Td>
                 {/* Sempre visible: un pressupost no és un import de caixa (no s'amaga amb l'ull). */}
                 <Td className="text-right font-medium">{formatEur(Number(p.total))}</Td>
+                <Td className="text-center">
+                  <WhatsappLlistaButton id={p.id} telefon={wa.telefon} text={wa.text} client={wa.client} enviat={!!p.whatsappEnviatEl} />
+                </Td>
               </Tr>
-            ))}
+              );
+            })}
           </tbody>
         </Table>
       )}

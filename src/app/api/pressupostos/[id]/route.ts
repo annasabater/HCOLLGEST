@@ -54,6 +54,10 @@ export async function PATCH(req: Request, ctx: Ctx) {
           notes: input.notes === undefined ? undefined : input.notes,
           ivaPercent: input.ivaPercent,
           ocultaIva: input.ocultaIva,
+          // Absent (p. ex. des de l'editor d'impressió) → es conserven.
+          telefon: input.telefon,
+          entrada: input.entrada === undefined ? undefined : input.entrada ? new Date(input.entrada) : null,
+          sortida: input.sortida === undefined ? undefined : input.sortida ? new Date(input.sortida) : null,
           base: totals.base,
           iva: totals.iva,
           total: totals.total,

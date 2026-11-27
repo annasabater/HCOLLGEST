@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { PDF_CLIENT_SCRIPT } from '@/lib/pdf/client-script';
+import { DICT_PRESSUPOST, clientPressupost, emissorPressupost, idiomaPressupost } from '@/lib/pdf/pressupost';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,34 +49,22 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   // els omplim amb les dades del titular (com fa la factura fiscal). En imprimir
   // es desa, així queden materialitzats al pressupost.
   const titular = p.estancia?.viatgers[0]?.huesped ?? null;
-  const clientNom = p.clientNom || (titular ? [titular.nom, titular.cognom1, titular.cognom2].filter(Boolean).join(' ') : '');
-  const clientNif = p.clientNif || (titular?.numDocument ? `${titular.tipusDocument ?? 'DNI'} ${titular.numDocument}` : '');
-  const clientAdreca = p.clientAdreca || titular?.adreca || '';
-  const clientLocalitat = p.clientLocalitat || (titular ? [titular.codiPostal, titular.municipi || titular.localitat].filter(Boolean).join(' ') : '');
+  const { nom: clientNom, nif: clientNif, adreca: clientAdreca, localitat: clientLocalitat } = clientPressupost(p, titular);
 
   // Traduccions de les etiquetes del document imprès (per defecte català).
-  const idioma = (['ca', 'es', 'fr', 'en'].includes(p.idioma) ? p.idioma : 'ca') as 'ca' | 'es' | 'fr' | 'en';
-  const DICT = {
-    ca: { doc: 'Pressupost', oferta: 'Oferta', casa: 'Casa de Hostes', per: 'Per a', numero: 'Número', data: 'Data', valid: 'Vàlid fins a', estada: 'Estada · contracte', concepte: 'Concepte', import: 'Import (€)', base: 'Base', iva: 'IVA', total: 'Total', ivaIncl: '(IVA inclòs)', formaPag: 'Forma de pagament', phCli: 'Nom del client / empresa', phNif: 'NIF / CIF (opcional)', phDom: 'Domicili (opcional)', phLoc: 'Localitat (opcional)', phData: 'dd/mm/aaaa' },
-    es: { doc: 'Presupuesto', oferta: 'Oferta', casa: 'Casa de Huéspedes', per: 'Para', numero: 'Número', data: 'Fecha', valid: 'Válido hasta', estada: 'Estancia · contrato', concepte: 'Concepto', import: 'Importe (€)', base: 'Base', iva: 'IVA', total: 'Total', ivaIncl: '(IVA incluido)', formaPag: 'Forma de pago', phCli: 'Nombre del cliente / empresa', phNif: 'NIF / CIF (opcional)', phDom: 'Domicilio (opcional)', phLoc: 'Localidad (opcional)', phData: 'dd/mm/aaaa' },
-    fr: { doc: 'Devis', oferta: 'Offre', casa: "Maison d'hôtes", per: 'Pour', numero: 'Numéro', data: 'Date', valid: "Valable jusqu'au", estada: 'Séjour · contrat', concepte: 'Description', import: 'Montant (€)', base: 'Base', iva: 'TVA', total: 'Total', ivaIncl: '(TVA incluse)', formaPag: 'Mode de paiement', phCli: 'Nom du client / entreprise', phNif: 'NIF / CIF (facultatif)', phDom: 'Adresse (facultatif)', phLoc: 'Ville (facultatif)', phData: 'jj/mm/aaaa' },
-    en: { doc: 'Quote', oferta: 'Offer', casa: 'Guest House', per: 'For', numero: 'Number', data: 'Date', valid: 'Valid until', estada: 'Stay · contract', concepte: 'Description', import: 'Amount (€)', base: 'Subtotal', iva: 'VAT', total: 'Total', ivaIncl: '(VAT included)', formaPag: 'Payment method', phCli: 'Client / company name', phNif: 'Tax ID (optional)', phDom: 'Address (optional)', phLoc: 'City (optional)', phData: 'dd/mm/yyyy' },
-  } as const;
-  const T = DICT[idioma];
+  const idioma = idiomaPressupost(p.idioma);
+  const T = DICT_PRESSUPOST[idioma];
 
   const establiment = await prisma.establiment.findFirst();
-  const emNom = esc(establiment?.raoSocial || establiment?.nom || 'Hostal Coll');
-  const emDescriptor = esc(establiment?.poblacio ? `${T.casa} · ${establiment.poblacio}` : `${T.casa} · Calella`);
   // Emissor (dades del hostal) — igual que a la factura fiscal.
-  const emTitular = esc(establiment?.facturaTitular || 'Elisabeth Nualart Coll');
-  const emNif = esc(establiment?.facturaNif ? `NIF ${establiment.facturaNif}` : 'NIF 38835174L');
-  const emAdreca = esc(establiment?.adreca || 'C/ Sant Isidre, 54');
-  const emLocalitat = esc(
-    [establiment?.codiPostal, establiment?.poblacio, establiment?.provincia ? `(${establiment.provincia})` : null]
-      .filter(Boolean)
-      .join(' ') || '08370 Calella (Barcelona)',
-  );
-  const emTelefon = esc(establiment?.telefon ? `Tel. ${establiment.telefon}` : '');
+  const em = emissorPressupost(establiment, idioma);
+  const emNom = esc(em.nom);
+  const emDescriptor = esc(em.descriptor);
+  const emTitular = esc(em.titular);
+  const emNif = esc(em.nif);
+  const emAdreca = esc(em.adreca);
+  const emLocalitat = esc(em.localitat);
+  const emTelefon = esc(em.telefon);
 
   const ivaPercent = Number(p.ivaPercent);
   const base = Number(p.base);

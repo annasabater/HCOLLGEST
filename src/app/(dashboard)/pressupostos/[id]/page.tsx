@@ -5,6 +5,7 @@ import { BackLink } from '@/components/ui/back-link';
 import { PageHeader } from '@/components/ui/page-header';
 import { PressupostForm, type PressupostData, type CalculOrigen } from '@/components/pressupost/pressupost-form';
 import { toISODate } from '@/lib/dates';
+import { nomPropi } from '@/lib/nom-propi';
 import { GRUP_TARIFA, type GrupTarifa } from '@/lib/validation/tarifa-tipus';
 
 export const dynamic = 'force-dynamic';
@@ -29,6 +30,8 @@ export default async function PressupostDetailPage({
         select: {
           numContracte: true,
           anyContracte: true,
+          dataEntrada: true,
+          dataSortida: true,
           viatgers: { where: { esTitular: true }, take: 1, include: { huesped: true } },
         },
       },
@@ -58,7 +61,13 @@ export default async function PressupostDetailPage({
     linies: p.linies.length
       ? p.linies.map((l) => ({ descripcio: l.descripcio, import: String(Number(l.import)) }))
       : [{ descripcio: '', import: '' }],
+    // Si és buit i està enllaçat a una estada: el telèfon del titular i les dates de l'estada.
+    telefon: p.telefon || titular?.telefon || '',
+    entrada: p.entrada ? toISODate(p.entrada) : p.estancia?.dataEntrada ? toISODate(p.estancia.dataEntrada) : '',
+    sortida: p.sortida ? toISODate(p.sortida) : p.estancia?.dataSortida ? toISODate(p.estancia.dataSortida) : '',
+    whatsappEnviatEl: p.whatsappEnviatEl ? p.whatsappEnviatEl.toISOString() : null,
   };
+  const signatura = [user.nom.trim() ? nomPropi(user.nom.trim().split(/\s+/)[0]!) : '', 'Hostal Coll'].filter(Boolean).join(' · ');
 
   // Ve de la calculadora amb canvi d'habitació: permet mostrar-lo o amagar-lo.
   const calcul: CalculOrigen | null =
@@ -70,7 +79,7 @@ export default async function PressupostDetailPage({
     <div>
       <BackLink fallback="/pressupostos">Pressupostos</BackLink>
       <PageHeader title={`Pressupost ${p.numero}`} subtitle="Edita’l i imprimeix-lo" />
-      <PressupostForm inicial={inicial} calcul={calcul} />
+      <PressupostForm inicial={inicial} calcul={calcul} signatura={signatura} />
     </div>
   );
 }
