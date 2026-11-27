@@ -489,7 +489,6 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   }
                 />
                 <Dl
-                  wide
                   label="Mossos"
                   value={(() => {
                     const tipus = estancia.tipusRegistre === 'RESERVA' ? 'Reserva' : 'Contracte en curs';
