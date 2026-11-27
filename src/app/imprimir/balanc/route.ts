@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/auth/session';
+import { botoTornar } from '@/lib/imprimir-tornar';
 import { teVistaRestringida } from '@/lib/auth/restriccions';
 import { getBalanc, getBalancDetall, parseCriteri } from '@/lib/services/dashboard';
 import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
@@ -235,7 +236,7 @@ body { margin: 0; font: 11px/1.35 Arial, Helvetica, sans-serif; color: #111; }
 .ind div { border: 1px solid #ddd; padding: 7px 9px; display: flex; flex-direction: column; }
 .ind b { font-size: 7.5px; letter-spacing: .1em; color: #666; } .ind span { font-size: 15px; font-weight: 700; margin-top: 2px; } .ind i { font-style: normal; font-size: 8px; color: #888; }
 .peu { margin-top: auto; display: flex; justify-content: space-between; font-size: 9px; color: #888; border-top: 1px solid #ddd; padding-top: 5px; }
-</style></head><body>${cos}${auto ? '<script>window.addEventListener("load",function(){setTimeout(function(){window.print()},400)})</script>' : ''}</body></html>`;
+</style></head><body>${botoTornar('/balanc', { flotant: true })}${cos}${auto ? '<script>window.addEventListener("load",function(){setTimeout(function(){window.print()},400)})</script>' : ''}</body></html>`;
 
   return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
 }

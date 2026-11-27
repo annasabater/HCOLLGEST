@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { PDF_CLIENT_SCRIPT } from '@/lib/pdf/client-script';
+import { botoTornar } from '@/lib/imprimir-tornar';
 import { DICT_PRESSUPOST, clientPressupost, emissorPressupost, idiomaPressupost } from '@/lib/pdf/pressupost';
 
 export const dynamic = 'force-dynamic';
@@ -226,7 +227,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 <body${p.ocultaIva ? ' class="oculta-iva"' : ''}>
 
 <div class="toolbar">
-  <div class="tb-brand">Hostal Coll<span class="tb-badge">Pressupost</span></div>
+  <div class="tb-brand">${botoTornar(`/pressupostos/${id}`)}Hostal Coll<span class="tb-badge">Pressupost</span></div>
   <div class="tb-actions">
     <label class="tb-toggle" title="Al PDF només surt el Total (IVA inclòs)"><input type="checkbox" id="ocultaIva"${p.ocultaIva ? ' checked' : ''}> Amagar base i IVA</label>
     <button id="addLine" class="btn ghost">+ Afegir línia</button>

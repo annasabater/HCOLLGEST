@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/auth/session';
+import { botoTornar } from '@/lib/imprimir-tornar';
 import { getPlanificacio } from '@/lib/services/neteja-planificacio';
 import type { DiaNeteja, SetmanaNeteja } from '@/lib/neteja-planificacio';
 
@@ -115,6 +116,7 @@ footer { margin-top: 10px; padding-top: 6px; border-top: 1px solid #e4e4e4; font
 }
 </style></head>
 <body>
+${botoTornar('/neteja', { flotant: true })}
 <div class="full">
 <header>
   <div><div class="marca">HOSTAL COLL</div><h1>Neteja${persones.length ? ` · ${esc(persones.join(', '))}` : ''}</h1></div>

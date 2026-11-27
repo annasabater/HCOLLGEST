@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { PDF_CLIENT_SCRIPT } from '@/lib/pdf/client-script';
 import { METODE_COBRAMENT_LABELS } from '@/lib/validation/enums';
+import { botoTornar } from '@/lib/imprimir-tornar';
 import { carregaEdicions, edicionsBootstrap, EDICIONS_SCRIPT } from '@/lib/edicions';
 
 export const dynamic = 'force-dynamic';
@@ -211,7 +212,7 @@ export async function GET(
 <body>
 
 <div class="toolbar">
-  <div class="tb-brand">Hostal Coll<span class="tb-badge">Rebut de fiança</span></div>
+  <div class="tb-brand">${botoTornar(`/estancies/${estanciaId}`)}Hostal Coll<span class="tb-badge">Rebut de fiança</span></div>
   <div class="tb-actions">
     <button id="addLine" class="btn ghost">+ Afegir línia</button>
     <button id="save" class="btn ghost" data-desa-edicions title="Desa tot el que hi ha escrit al document (queda guardat per sempre)">Desar canvis</button>

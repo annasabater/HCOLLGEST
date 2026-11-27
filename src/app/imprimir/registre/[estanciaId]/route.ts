@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { PARENTESC_LABELS } from '@/lib/validation/enums';
 import { LAYOUT_CLIENT_SCRIPT } from '@/lib/pdf/layout-script';
+import { botoTornar } from '@/lib/imprimir-tornar';
 
 export const dynamic = 'force-dynamic';
 
@@ -348,7 +349,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ estanciaId: str
 </head>
 <body>
   <div class="toolbar">
-    <div class="brand">Hostal Coll · Llibre de registre</div>
+    <div class="brand">${botoTornar(estanciaId === 'blank' ? '/justificants' : `/estancies/${estanciaId}`)}Hostal Coll · Llibre de registre</div>
     <button id="printPdf" class="btn">Imprimir PDF</button>
   </div>
   <div class="wrap">

@@ -5,6 +5,7 @@ import { habitacioLlibre } from '@/lib/habitacio-llibre';
 import { getSessionUser } from '@/lib/auth/session';
 import { PDF_CLIENT_SCRIPT } from '@/lib/pdf/client-script';
 import { VERIFACTU_LLEGENDA } from '@/lib/verifactu/software';
+import { botoTornar } from '@/lib/imprimir-tornar';
 import { carregaEdicions, edicionsBootstrap, EDICIONS_SCRIPT } from '@/lib/edicions';
 
 export const dynamic = 'force-dynamic';
@@ -299,7 +300,7 @@ export async function GET(
 <body>
 
 <div class="toolbar">
-  <div class="tb-brand">Hostal Coll <span class="tb-badge">${ambFianca ? 'Factura fiscal amb fiança' : 'Factura fiscal'}</span></div>
+  <div class="tb-brand">${botoTornar(`/factures/${id}`)}Hostal Coll <span class="tb-badge">${ambFianca ? 'Factura fiscal amb fiança' : 'Factura fiscal'}</span></div>
   <div class="tb-actions">
     <button id="addLine" class="btn ghost">+ Afegir línia</button>
     ${bloquejada ? '' : '<button id="save" class="btn ghost" title="Desa tot el que hi ha escrit al document (queda guardat per sempre)">Desar canvis</button>'}

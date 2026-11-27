@@ -9,6 +9,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
 import { ageAt } from '@/lib/dates';
+import { botoTornar } from '@/lib/imprimir-tornar';
 import { carregaEdicions, edicionsBootstrap, EDICIONS_SCRIPT } from '@/lib/edicions';
 
 function esc(s: string | null | undefined): string {
@@ -119,7 +120,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estanciaId: st
 </head>
 <body>
 <div class="toolbar">
-  <div class="tb-brand">Hostal Coll<span class="tb-badge">Declaración IEET · menores</span></div>
+  <div class="tb-brand">${botoTornar(estanciaId === 'blank' ? '/justificants' : `/estancies/${estanciaId}`)}Hostal Coll<span class="tb-badge">Declaración IEET · menores</span></div>
   <div class="tb-actions">
     ${estancia ? '<button id="save" class="btn ghost" data-desa-edicions title="Desa tot el que hi ha escrit al document (queda guardat per sempre)">Desar canvis</button>' : ''}
     <button id="print" class="btn">Imprimir / Guardar PDF</button>

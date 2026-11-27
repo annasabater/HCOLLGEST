@@ -10,6 +10,7 @@
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
+import { botoTornar } from '@/lib/imprimir-tornar';
 import { teVistaRestringida } from '@/lib/auth/restriccions';
 import {
   agrupaDespeses,
@@ -118,7 +119,7 @@ export async function GET(req: Request) {
 </style>
 </head>
 <body>
-<div class="eines"><button type="button" onclick="window.print()">Imprimeix / PDF</button><a href="?${esc(sp.toString())}&amp;format=csv">Descarrega l'Excel (CSV)</a></div>
+<div class="eines">${botoTornar('/balanc')}<button type="button" onclick="window.print()">Imprimeix / PDF</button><a href="?${esc(sp.toString())}&amp;format=csv">Descarrega l'Excel (CSV)</a></div>
 <div class="full">
   <div class="cap">
     <div>

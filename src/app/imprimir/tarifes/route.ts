@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
+import { botoTornar } from '@/lib/imprimir-tornar';
 import { GRUP_TARIFA_LABELS, type GrupTarifa } from '@/lib/validation/tarifa-tipus';
 
 export const dynamic = 'force-dynamic';
@@ -197,7 +198,7 @@ export async function GET(req: Request) {
 </head>
 <body>
 <div class="toolbar">
-  <div class="tb-brand">Hostal Coll · Tarifes</div>
+  <div class="tb-brand">${botoTornar('/tarifes')}Hostal Coll · Tarifes</div>
   <div class="tb-dreta">
     <span class="tb-hint">✎ Clica el text de dalt a la dreta del full per canviar-lo (es manté a tots els fulls).</span>
     <button type="button" id="per-reset" class="tb-reset" hidden>Torna al text original</button>

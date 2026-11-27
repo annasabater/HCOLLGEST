@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
+import { botoTornar } from '@/lib/imprimir-tornar';
 import { carregaEdicions, edicionsBootstrap, EDICIONS_SCRIPT, type EdicioDades } from '@/lib/edicions';
 import { TAULES_CLIENT_SCRIPT } from '@/lib/pdf/taules-script';
 import { getLlibreIngressos, getGastosSoportats, getFiancesSoportades, getLibroGastos, getDipositsTrimestre, llibreDesatAlDia, rangTrimestre, COLUMNES_GASTO, COLUMNA_GASTO_LABELS, type FilaIngres, type FilaGasto, type FilaLibroGasto, type FilaDiposit } from '@/lib/services/llibre-iva';
@@ -438,7 +439,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ periode: strin
 </head>
 <body>
 <div class="toolbar">
-  <div class="tb-brand">Hostal Coll · Llibre d'IVA · ${esc(etiqueta)}</div>
+  <div class="tb-brand">${botoTornar('/impostos')}Hostal Coll · Llibre d'IVA · ${esc(etiqueta)}</div>
   <div class="tb-actions">
     <span id="saved" class="badge-saved" title="Els canvis fets a mà es guarden. Les factures noves s’afegeixen soles i, si una factura ha canviat, mana la factura." style="${desatAt ? '' : 'display:none'}">Retocs desats el ${esc(desatAt)} ⓘ</span>
     <button id="addRow" class="btn ghost">+ Afegir fila</button>
