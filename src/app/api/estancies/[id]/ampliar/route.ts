@@ -61,7 +61,7 @@ export async function POST(req: Request, ctx: Ctx) {
     if (auth instanceof Response) return auth;
     const { id } = await ctx.params;
     const body = await req.json().catch(() => null);
-    const { dataEntrada, dataSortida, habitacioId, reaprofitarFirmes, dataSignatura, llocSignatura, numContracte, viatgerIds } =
+    const { dataEntrada, dataSortida, habitacioId, reaprofitarFirmes, dataSignatura, llocSignatura, numContracte, viatgerIds, importOrientatiu } =
       AmpliacioSchema.parse(body);
 
     if (numContracte) {
@@ -74,7 +74,7 @@ export async function POST(req: Request, ctx: Ctx) {
 
     const result = await ampliarEstancia(
       id,
-      { dataEntrada, dataSortida, habitacioId, reaprofitarFirmes, dataSignatura, llocSignatura, numContracte, viatgerIds },
+      { dataEntrada, dataSortida, habitacioId, reaprofitarFirmes, dataSignatura, llocSignatura, numContracte, viatgerIds, importOrientatiu },
       { id: auth.id },
       clientIp(req),
     );

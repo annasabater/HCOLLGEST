@@ -33,6 +33,7 @@ import { PROVINCIES, PAISOS, provinciaDesDeCodiPostal, matchProvincia } from '@/
 import { DocumentScanner, type PendingDoc } from '@/components/ocr/document-scanner';
 import { HosteSearch, type HosteLite } from '@/components/forms/hoste-search';
 import { AvisSolapament } from '@/components/estancia/avis-solapament';
+import { AJUDA_IMPORT_ORIENTATIU, ImportOrientatiuInput } from '@/components/estancia/import-orientatiu';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import type { ViatgerOcr } from '@/lib/ocr/mrz';
 
@@ -143,6 +144,7 @@ export interface MasterFormInitial {
     habitacioId: string;
     teInternet: boolean;
     observacions: string;
+    importOrientatiu: string;
     idioma: string;
   };
   viatgers: ViatgerState[];
@@ -184,6 +186,7 @@ export function MasterForm({
       habitacioId: '',
       teInternet: true,
       observacions: '',
+      importOrientatiu: '',
       idioma: 'es',
     },
   );
@@ -233,6 +236,7 @@ export function MasterForm({
       habitacioId: '',
       teInternet: true,
       observacions: '',
+      importOrientatiu: '',
       idioma: 'es',
     });
     setViatgers([emptyViatger(true)]);
@@ -454,6 +458,8 @@ export function MasterForm({
         habitacioId: estancia.habitacioId || undefined,
         teInternet: estancia.teInternet,
         observacions: estancia.observacions || undefined,
+        // '' → sense import (l'esquema el converteix; accepta «900,50»).
+        importOrientatiu: (estancia.importOrientatiu ?? '').trim(),
         idioma: (estancia.idioma || 'ca') as 'ca' | 'es' | 'en' | 'fr',
       },
       viatgers: viatgers.map((v) => ({
@@ -962,6 +968,16 @@ export function MasterForm({
               <option value="en">Anglès</option>
               <option value="fr">Francès</option>
             </Select>
+          </Field>
+          <Field label="Import total" htmlFor="estancia-import" error={err('estancia.importOrientatiu')}>
+            <ImportOrientatiuInput
+              id="estancia-import"
+              value={estancia.importOrientatiu ?? ''}
+              onChange={(v) => setEstancia({ ...estancia, importOrientatiu: v })}
+            />
+            <p className="truncate text-xs text-slate-500" title={AJUDA_IMPORT_ORIENTATIU}>
+              {AJUDA_IMPORT_ORIENTATIU}
+            </p>
           </Field>
           <Field label="Observacions" className="sm:col-span-2 lg:col-span-2">
             <Input

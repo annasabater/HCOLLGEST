@@ -215,3 +215,33 @@ describe('RegistreEsborranySchema — desar incomplet', () => {
     }
   });
 });
+
+describe('Import total (només de referència)', () => {
+  const amb = (v: unknown) => {
+    const data = validContracte();
+    (data.estancia as Record<string, unknown>).importOrientatiu = v;
+    return RegistreSchema.safeParse(data);
+  };
+
+  it('és opcional: buit o null → sense import', () => {
+    for (const v of [undefined, '', null]) {
+      const res = amb(v);
+      expect(res.success).toBe(true);
+      if (res.success) expect(res.data.estancia.importOrientatiu).toBeUndefined();
+    }
+  });
+
+  it('accepta coma decimal («900,50») i números', () => {
+    const a = amb('900,50');
+    const b = amb(1200);
+    expect(a.success && a.data.estancia.importOrientatiu).toBe(900.5);
+    expect(b.success && b.data.estancia.importOrientatiu).toBe(1200);
+  });
+
+  it('rebutja negatius i text que no és un número', () => {
+    const neg = amb(-5);
+    expect(neg.success).toBe(false);
+    if (!neg.success) expect(hasIssueAt(neg.error, ['estancia', 'importOrientatiu'])).toBe(true);
+    expect(amb('9,0,0').success).toBe(false);
+  });
+});

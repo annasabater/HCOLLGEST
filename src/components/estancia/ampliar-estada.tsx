@@ -6,6 +6,7 @@ import { CalendarPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
 import { Field } from '@/components/ui/field';
+import { ImportOrientatiuInput } from '@/components/estancia/import-orientatiu';
 import { postJSON, getJSON, ApiError } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { toISODate } from '@/lib/dates';
@@ -55,6 +56,8 @@ export function AmpliarEstada({
   const [manualEnUs, setManualEnUs] = useState(false);
   // Hostes que continuen a l'ampliació (per defecte, tots).
   const [continuen, setContinuen] = useState<string[]>([]);
+  // Import total de l'ampliació, només de referència (buit = sense import).
+  const [importOrientatiu, setImportOrientatiu] = useState('');
 
   function obre() {
     setOpen(true);
@@ -128,6 +131,7 @@ export function AmpliarEstada({
         ...(reaprofitar ? { dataSignatura, llocSignatura } : {}),
         ...(numeroTriat !== undefined ? { numContracte: numeroTriat } : {}),
         ...(infoNum && infoNum.viatgers.length > 1 ? { viatgerIds: continuen } : {}),
+        ...(importOrientatiu.trim() ? { importOrientatiu: importOrientatiu.trim() } : {}),
       });
       router.push(`/estancies/${res.estanciaId}`);
     } catch (err) {
@@ -170,6 +174,14 @@ export function AmpliarEstada({
             value={dataSortida}
             max={limit ?? undefined}
             onChange={(e) => setDataSortida(e.target.value)}
+          />
+        </Field>
+        <Field label="Import total" htmlFor={`import-${estanciaId}`}>
+          <ImportOrientatiuInput
+            id={`import-${estanciaId}`}
+            value={importOrientatiu}
+            onChange={setImportOrientatiu}
+            className="w-36"
           />
         </Field>
         {/* Ocupada/sobrepassa són AVISOS, no bloquejos: l'hostal a vegades comparteix

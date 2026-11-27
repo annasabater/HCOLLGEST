@@ -126,6 +126,7 @@ export async function createRegistre(
         numHabitacions: estancia.numHabitacions ?? null,
         teInternet: estancia.teInternet ?? null,
         observacions: estancia.observacions ?? null,
+        importOrientatiu: estancia.importOrientatiu ?? null,
         idioma: estancia.idioma ?? 'ca',
         estat: estatFromTipus(estancia.tipusRegistre),
         esBorrany: opts.esBorrany ?? false,
@@ -284,6 +285,7 @@ export async function updateRegistre(
         numHabitacions: estancia.numHabitacions ?? null,
         teInternet: estancia.teInternet ?? null,
         observacions: estancia.observacions ?? null,
+        importOrientatiu: estancia.importOrientatiu ?? null,
         idioma: estancia.idioma ?? 'ca',
         esBorrany: opts.esBorrany ?? false,
         habitacioId: estancia.habitacioId ?? null,
@@ -333,6 +335,8 @@ export async function ampliarEstancia(
     /** Hostes que continuen (ids d'EstanciaViatger de l'estada que s'amplia).
      *  Sense indicar-ho, continuen tots. */
     viatgerIds?: string[];
+    /** Import total de l'ampliació, només de referència. */
+    importOrientatiu?: number;
   },
   actor: { id: string } | null,
   ip: string | null,
@@ -382,6 +386,7 @@ export async function ampliarEstancia(
           tipusPagament: root.tipusPagament,
           numHabitacions: root.numHabitacions,
           teInternet: root.teInternet,
+          importOrientatiu: dates.importOrientatiu ?? null,
           estat: 'EN_CURS',
           ...(habId ? { habitacio: { connect: { id: habId } } } : {}),
         },

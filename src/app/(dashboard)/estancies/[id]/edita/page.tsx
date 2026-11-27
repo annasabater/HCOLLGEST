@@ -36,6 +36,8 @@ export default async function EditarEstadaPage({ params }: { params: Promise<{ i
       habitacioId: estancia.habitacioId ?? '',
       teInternet: estancia.teInternet ?? false,
       observacions: estancia.observacions ?? '',
+      // «900,5» (format del camp) a partir del Decimal; buit si no en té.
+      importOrientatiu: estancia.importOrientatiu != null ? String(Number(estancia.importOrientatiu)).replace('.', ',') : '',
       idioma: estancia.idioma ?? 'ca',
     },
     viatgers: estancia.viatgers.map((ev) => ({

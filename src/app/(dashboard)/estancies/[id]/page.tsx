@@ -32,7 +32,7 @@ import { FacturaPanel } from '@/components/factura/factura-panel';
 import { PagamentsPanel } from '@/components/factura/pagaments-panel';
 import { ocupaMesDunMes } from '@/lib/repartiment';
 import { PagamentsPrevistos } from '@/components/estancia/pagaments-previstos';
-import { formatDate, cn } from '@/lib/utils';
+import { formatDate, formatEur, cn } from '@/lib/utils';
 import { toISODate, ageAt } from '@/lib/dates';
 import {
   TIPUS_PAGAMENT_LABELS,
@@ -104,6 +104,7 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
       dataEntrada: true,
       dataSortida: true,
       estat: true,
+      importOrientatiu: true,
       // Cobraments previstos NO pagats d'aquest tram (per marcar-lo en lila).
       pagamentsPrevistos: { where: { pagat: false }, select: { id: true }, take: 1 },
     },
@@ -380,6 +381,17 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                   <div className={cn('text-xs', cobramentPendent ? 'text-violet-400' : 'text-slate-400')}>
                     {formatDate(c.dataEntrada)} – {formatDate(c.dataSortida)}
                   </div>
+                  {/* Import total del contracte (només de referència). */}
+                  {c.importOrientatiu != null && (
+                    <div
+                      className={cn(
+                        'mt-1 border-t border-dashed pt-1 text-sm font-semibold',
+                        cobramentPendent ? 'border-violet-200 text-violet-800' : actual ? 'border-brand-200 text-brand-900' : 'border-slate-200 text-slate-700',
+                      )}
+                    >
+                      {formatEur(Number(c.importOrientatiu))}
+                    </div>
+                  )}
                 </Link>
               );
             })}
@@ -509,6 +521,10 @@ export default async function EstanciaDetailPage({ params }: { params: Promise<{
                       </span>
                     );
                   })()}
+                />
+                <Dl
+                  label="Import total"
+                  value={estancia.importOrientatiu != null ? formatEur(Number(estancia.importOrientatiu)) : null}
                 />
                 <Dl label="Observacions" value={estancia.observacions} />
               </dl>

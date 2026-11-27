@@ -475,6 +475,9 @@ model Estancia {
   numHabitacions      Int?            @map("num_habitacions")
   teInternet          Boolean?        @map("te_internet")
   observacions        String?
+  // Import total d'aquest contracte, NOMÉS de referència: no crea factura ni
+  // cobrament i no compta enlloc (Balanç, llibre d'IVA…). Es mostra a l'estada.
+  importOrientatiu    Decimal?        @map("import_orientatiu") @db.Decimal(10, 2)
   idioma              String?         @default("ca") // ca / es / en / fr
   estat               EstatEstancia   @default(RESERVA)
   // Registre desat amb dades incompletes (§2.3): editable, però no es pot pujar a

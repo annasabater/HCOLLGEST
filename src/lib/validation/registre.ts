@@ -33,6 +33,16 @@ const optDate = z.preprocess(
 // por sí solo tipa la entrada como Date). La salida sigue siendo Date.
 const reqDate = z.preprocess((v) => v, z.coerce.date());
 
+/** Import opcional (€): '' / null → undefined; accepta «900,50». */
+const optImport = z.preprocess(
+  (v) => {
+    if (v === '' || v === null) return undefined;
+    if (typeof v === 'string') return Number(v.trim().replace(',', '.'));
+    return v;
+  },
+  z.number({ invalid_type_error: 'Import no vàlid' }).min(0, 'L’import no pot ser negatiu').max(99_999_999).optional(),
+);
+
 const optEmail = z.preprocess(
   (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
   z.string().email('Correu no vàlid').optional(),
@@ -108,6 +118,8 @@ export const EstanciaInputSchema = z
   habitacioId: optStr,
   teInternet: z.boolean().optional(),
   observacions: optStr,
+  // Import total només de referència ('' / null = sense import).
+  importOrientatiu: optImport,
   idioma: z.enum(['ca', 'es', 'en', 'fr']).optional(),
 })
 ;
@@ -250,6 +262,8 @@ export const AmpliacioSchema = z
     // Hostes que continuen (ids d'EstanciaViatger de l'estada que s'amplia).
     // Sense el camp, continuen tots.
     viatgerIds: z.array(z.string().min(1)).min(1, 'Cal que continuï almenys un hoste').optional(),
+    // Import total de l'ampliació, només de referència.
+    importOrientatiu: optImport,
   })
   .superRefine((d, ctx) => {
     if (d.dataSortida <= d.dataEntrada) {
