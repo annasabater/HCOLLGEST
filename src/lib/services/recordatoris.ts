@@ -575,8 +575,8 @@ export async function tancaRecordatorisProrroga(estanciaId: string): Promise<voi
 
 /**
  * Recordatoris (pendents i fets) d'unes estades, per a la línia del temps d'Estades
- * en curs. Sense els de pròrroga (ja hi surten com «Ho dirà el…» i la resposta) ni
- * els lligats a un cobrament pendent (hi surten com a cobrament).
+ * en curs. Sense els lligats a un cobrament pendent (hi surten com a cobrament).
+ * Els de pròrroga hi són: qui crida els separa («Ho dirà el…»).
  */
 export async function recordatorisPerEstades(ids: string[]): Promise<RecordatoriVista[]> {
   if (ids.length === 0) return [];
@@ -586,7 +586,6 @@ export async function recordatorisPerEstades(ids: string[]): Promise<Recordatori
       estanciaId: { in: ids },
       deletedAt: null,
       pagamentPrevistId: null,
-      OR: [{ accio: null }, { accio: { not: 'PRORROGA' } }],
     },
     orderBy: { data: 'asc' },
     take: 300,

@@ -357,7 +357,9 @@ function Historial({
       pendent: true,
     })),
   ];
-  if (!decidit && !e.events.some((x) => x.tipus === 'PREGUNTAT')) {
+  // «Et proposo preguntar-li»: només si encara no li has preguntat ni t'ha dit res
+  // (amb un «Ho dirà el…» o una pregunta oberta, ja no cal).
+  if (!decidit && !e.hoDira && e.estat !== 'PREGUNTAT' && !e.events.some((x) => x.tipus === 'PREGUNTAT')) {
     items.push({
       key: 'proposta',
       dia: e.dataProposada,
@@ -406,9 +408,10 @@ function Historial({
       key: 'ho-dira',
       dia: e.hoDira.dia < avui ? avui : e.hoDira.dia,
       t: 'El tauler et preguntarà: Allarga / Marxa',
-      m: 'Recordatori «M’ha de dir si allarga»',
+      m: `Recordatori «${e.hoDira.recordatori.titol}»`,
       dot: 'bg-white ring-2 ring-blue-600',
       futur: true,
+      recordatori: e.hoDira.recordatori,
     });
   }
   if (e.recordatoriPendent && e.situacio !== 'ALLARGA') {

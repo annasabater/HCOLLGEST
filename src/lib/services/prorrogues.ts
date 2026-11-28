@@ -54,7 +54,7 @@ export interface EstadaEnCurs {
   /** Cobraments previstos encara no marcats com a pagats (de tota la cadena). */
   pendents: PendentEstada[];
   /** «Ho dirà el dia…»: recordatori «M'ha de dir si allarga» pendent (de tota la cadena). */
-  hoDira: { dia: string; recordatoriId: string } | null;
+  hoDira: { dia: string; recordatoriId: string; recordatori: RecordatoriVista } | null;
   /** Els altres recordatoris lligats (de tota la cadena): pendents i fets, per a la línia del temps. */
   recordatoris: RecordatoriVista[];
 }
@@ -276,19 +276,15 @@ export async function getEstadesEnCurs(now = new Date()): Promise<{ avui: string
   // Pagaments i cobraments previstos de cada cadena (una sola consulta per a totes).
   const ids = [...new Set(estades.flatMap((e) => e.trams.map((t) => t.id)))];
   if (ids.length) {
-    // «Ho dirà el dia…»: el recordatori de pròrroga pendent de cada cadena (el dia
-    // efectiu és el de l'ajornament, si n'hi ha).
-    const recs = await prisma.recordatori.findMany({
-      where: { estanciaId: { in: ids }, accio: 'PRORROGA', fetAt: null, deletedAt: null },
-      orderBy: { data: 'asc' },
-      select: { id: true, estanciaId: true, data: true, ajornatFins: true },
-    });
-    const altres = await recordatorisPerEstades(ids);
+    // Recordatoris lligats de cada cadena. «Ho dirà el dia…» = el de pròrroga pendent
+    // (el dia efectiu és el de l'ajornament, si n'hi ha); la resta, a la línia del temps.
+    const recs = await recordatorisPerEstades(ids);
     for (const e of estades) {
       const meus = new Set(e.trams.map((t) => t.id));
-      const r = recs.find((x) => x.estanciaId && meus.has(x.estanciaId));
-      if (r) e.hoDira = { dia: (r.ajornatFins ?? r.data).toISOString().slice(0, 10), recordatoriId: r.id };
-      e.recordatoris = altres.filter((x) => x.estanciaId && meus.has(x.estanciaId));
+      const delsMeus = recs.filter((x) => x.estanciaId && meus.has(x.estanciaId));
+      const r = delsMeus.find((x) => x.accio === 'PRORROGA' && !x.fetAt);
+      if (r) e.hoDira = { dia: r.ajornatFins ?? r.data, recordatoriId: r.id, recordatori: r };
+      e.recordatoris = delsMeus.filter((x) => x.accio !== 'PRORROGA');
     }
   }
   if (ids.length) {
