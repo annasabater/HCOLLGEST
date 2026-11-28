@@ -86,3 +86,17 @@ describe('estades en curs', () => {
     expect(situacioEstada({ ...b, teAmpliacio: true }, '2026-11-14')).toBe('ALLARGA');
   });
 });
+
+describe('estatEnAplacar («Ho dirà el dia…»)', () => {
+  it('si ja havia dit que sí o que no, torna a quedar oberta (preguntat)', async () => {
+    const { estatEnAplacar } = await import('./prorroga');
+    expect(estatEnAplacar('NO', true)).toBe('PREGUNTAT');
+    expect(estatEnAplacar('SI', true)).toBe('PREGUNTAT');
+  });
+  it('preguntat o per preguntar es mantenen; una sortida diferent comença de zero', async () => {
+    const { estatEnAplacar } = await import('./prorroga');
+    expect(estatEnAplacar('PREGUNTAT', true)).toBe('PREGUNTAT');
+    expect(estatEnAplacar(null, true)).toBe(null);
+    expect(estatEnAplacar('NO', false)).toBe(null);
+  });
+});

@@ -36,9 +36,9 @@ const PAS: Record<string, { t: string; dot: string }> = {
   NO_CONTESTA: { t: 'No contesta: enviat l’avís', dot: 'bg-orange-600' },
   RECORDATORI: { t: 'Recordatori de sortida enviat', dot: 'bg-emerald-600' },
   APLACAT: { t: 'Aplaçat', dot: 'bg-amber-500' },
-  HO_DIRA: { t: 'Diu que ho dirà més endavant', dot: 'bg-blue-700' },
-  SI: { t: 'Ha dit que sí: allarga', dot: 'bg-green-700' },
-  NO: { t: 'Ha dit que no: marxa', dot: 'bg-red-700' },
+  HO_DIRA: { t: 'M’ha dit que encara no ho sap', dot: 'bg-blue-700' },
+  SI: { t: 'M’ha dit que allarga', dot: 'bg-green-700' },
+  NO: { t: 'M’ha dit que marxa', dot: 'bg-red-700' },
   NOTA: { t: 'Nota', dot: 'bg-stone-400' },
   AMPLIAT: { t: 'Ha allargat', dot: 'bg-violet-600' },
 };
@@ -564,6 +564,8 @@ export function EstadesEnCurs({
   avisos?: AvisosRecordatori;
 }) {
   const router = useRouter();
+  // «Què t'ha dit?»: el que ha dit, amb les seves paraules (opcional).
+  const [diu, setDiu] = useState('');
   // Formulari de recordatori obert (nou, ja lligat a l'estada, o editant-ne un).
   const [formRec, setFormRec] = useState<{ r: RecordatoriVista | null; e: EstadaEnCurs } | null>(null);
   const [obert, setObert] = useState<string | null>(null);
@@ -691,12 +693,15 @@ export function EstadesEnCurs({
   async function hoDira(e: EstadaEnCurs, dia: string) {
     setBusy(e.id);
     setError(null);
+    // «M'ha dit que…» (opcional): queda al pas de la línia del temps.
+    const nota = diu.trim() ? `M’ha dit que ${diu.trim()}` : null;
     try {
       if (e.hoDira) {
-        await patchJSON(`/api/recordatoris/${e.hoDira.recordatoriId}`, { accio: 'MOU', data: dia });
+        await patchJSON(`/api/recordatoris/${e.hoDira.recordatoriId}`, { accio: 'MOU', data: dia, nota });
       } else {
         await postJSON('/api/recordatoris', {
           titol: 'M’ha de dir si allarga',
+          notes: nota,
           tipus: 'ALTRES',
           data: dia,
           diesAbans: [0],
@@ -707,12 +712,18 @@ export function EstadesEnCurs({
         });
       }
       setAplacaDia(false);
+      setDiu('');
       router.refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No s’ha pogut desar');
     } finally {
       setBusy(null);
     }
+  }
+  /** «Què t'ha dit?» → Allarga / Marxa (amb el «M'ha dit que…», si n'hi ha). L'última val. */
+  async function respon(e: EstadaEnCurs, resposta: 'SI' | 'NO') {
+    const detall = diu.trim() ? `M’ha dit que ${diu.trim()}` : null;
+    if (await accio(e.id, { accio: resposta, detall })) setDiu('');
   }
   /** Treu el «Ho dirà el dia…» (esborra el recordatori: l'estada torna a sortir com abans). */
   async function treuHoDira(e: EstadaEnCurs) {
@@ -949,106 +960,88 @@ export function EstadesEnCurs({
                               />
                             </div>
                           )}
+                          {/* «Què t'ha dit?»: una sola pregunta; l'última resposta és la que val
+                              (les d'abans queden a la història). */}
                           {!ambAmpliacio && !e.sortidaProbable && (
-                            <div className="flex flex-wrap gap-2">
-                              {e.situacio !== 'ALLARGA' && (
+                            <div className="grid gap-2 rounded-lg border border-stone-200 bg-white p-3">
+                              <p className="text-xs font-bold text-slate-800">Què t’ha dit?</p>
+                              <div className="flex flex-wrap gap-2" role="group" aria-label="Què t’ha dit">
                                 <Button
                                   size="sm"
                                   variant="outline"
+                                  aria-pressed={e.situacio === 'ALLARGA'}
                                   disabled={busy === e.id}
-                                  onClick={() => accio(e.id, { accio: 'SI' })}
+                                  className={cn(e.situacio === 'ALLARGA' && 'border-green-700 bg-green-700 text-white hover:bg-green-800')}
+                                  onClick={() => respon(e, 'SI')}
                                 >
-                                  {e.situacio === 'MARXA'
-                                    ? 'Ha canviat d’idea: allarga'
-                                    : 'Ha dit que sí'}
+                                  Allarga
                                 </Button>
-                              )}
-                              {e.situacio !== 'MARXA' && (
                                 <Button
                                   size="sm"
                                   variant="outline"
+                                  aria-pressed={e.situacio === 'MARXA'}
                                   disabled={busy === e.id}
-                                  onClick={() => accio(e.id, { accio: 'NO' })}
+                                  className={cn(e.situacio === 'MARXA' && 'border-red-700 bg-red-700 text-white hover:bg-red-800')}
+                                  onClick={() => respon(e, 'NO')}
                                 >
-                                  {e.situacio === 'ALLARGA'
-                                    ? 'Ha canviat d’idea: marxa'
-                                    : 'Ha dit que no'}
+                                  Marxa el {dc(e.sortida)}
                                 </Button>
-                              )}
-                              {!decidida(e) &&
-                                (e.hoDira ? (
-                                  <>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      disabled={busy === e.id}
-                                      onClick={() => setAplacaDia(true)}
-                                    >
-                                      Canvia el dia que ho dirà
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      disabled={busy === e.id}
-                                      onClick={() => treuHoDira(e)}
-                                    >
-                                      Treu el recordatori
-                                    </Button>
-                                  </>
-                                ) : e.situacio === 'APLACAT' ? (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    disabled={busy === e.id}
-                                    onClick={() => accio(e.id, { accio: 'MOSTRA' })}
-                                  >
-                                    Treu l’aplaçament
-                                  </Button>
-                                ) : (
-                                  <>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      disabled={busy === e.id}
-                                      onClick={() =>
-                                        accio(e.id, {
-                                          accio: 'APLACA',
-                                          dies: 3,
-                                          detall: `Torna a sortir el ${dc(sumaDiesDia(avui, 3))}`,
-                                        })
-                                      }
-                                    >
-                                      Recorda-m’ho en 3 dies
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      disabled={busy === e.id}
-                                      onClick={() => setAplacaDia(true)}
-                                    >
-                                      Ho dirà el dia…
-                                    </Button>
-                                  </>
-                                ))}
-                            </div>
-                          )}
-                          {aplacaDia && !decidida(e) && (e.hoDira || e.situacio !== 'APLACAT') && (
-                            <div>
-                              <p className="text-xs font-semibold text-slate-700">
-                                {e.hoDira ? 'Quin dia t’ho dirà?' : 'Quin dia t’ha dit que t’ho dirà?'}
-                              </p>
-                              <TriaDia
-                                inicial={e.hoDira?.dia ?? sumaDiesDia(avui, 3)}
-                                min={sumaDiesDia(avui, 1)}
-                                max={e.sortida}
-                                busy={busy === e.id}
-                                text="Recorda-m’ho"
-                                onDesa={(d) => d && hoDira(e, d)}
-                                onTanca={() => setAplacaDia(false)}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  aria-pressed={!!e.hoDira || e.situacio === 'APLACAT'}
+                                  disabled={busy === e.id}
+                                  className={cn((e.hoDira || e.situacio === 'APLACAT') && 'border-blue-700 bg-blue-700 text-white hover:bg-blue-800')}
+                                  onClick={() => setAplacaDia(true)}
+                                >
+                                  Encara no ho sap…
+                                </Button>
+                              </div>
+                              <Input
+                                value={diu}
+                                onChange={(ev) => setDiu(ev.target.value)}
+                                placeholder="M’ha dit que… (opcional, amb les seves paraules)"
+                                aria-label="Què t’ha dit, amb les seves paraules"
+                                maxLength={250}
+                                className="h-9"
                               />
-                              <p className="mt-1 text-xs text-slate-500">
-                                Es crea el recordatori «M’ha de dir si allarga» (el veus a Recordatoris i a la fitxa) i aquell dia el tauler et pregunta Allarga / Marxa.
-                              </p>
+                              {e.hoDira ? (
+                                <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
+                                  <span>
+                                    Ho dirà el <b>{dc(e.hoDira.dia)}</b>: aquell dia el tauler t’ho torna a preguntar.
+                                  </span>
+                                  <button type="button" disabled={busy === e.id} onClick={() => setAplacaDia(true)} className="font-semibold text-brand-700 hover:underline">
+                                    Canvia el dia
+                                  </button>
+                                  <button type="button" disabled={busy === e.id} onClick={() => treuHoDira(e)} className="font-semibold text-slate-500 hover:underline">
+                                    Treu-lo
+                                  </button>
+                                </p>
+                              ) : e.situacio === 'APLACAT' ? (
+                                <p className="flex flex-wrap items-center gap-x-3 text-xs text-slate-600">
+                                  <span>Aplaçat fins al {e.aplacatFins ? dc(e.aplacatFins) : ''}.</span>
+                                  <button type="button" disabled={busy === e.id} onClick={() => accio(e.id, { accio: 'MOSTRA' })} className="font-semibold text-slate-500 hover:underline">
+                                    Treu l’aplaçament
+                                  </button>
+                                </p>
+                              ) : null}
+                              {aplacaDia && (
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-700">Quin dia t’ho dirà?</p>
+                                  <TriaDia
+                                    inicial={e.hoDira?.dia ?? sumaDiesDia(avui, 3)}
+                                    min={sumaDiesDia(avui, 1)}
+                                    max={e.sortida}
+                                    busy={busy === e.id}
+                                    text="Recorda-m’ho"
+                                    onDesa={(d) => d && hoDira(e, d)}
+                                    onTanca={() => setAplacaDia(false)}
+                                  />
+                                  <p className="mt-1 text-xs text-slate-500">
+                                    Es crea el recordatori «M’ha de dir si allarga» (el veus a Recordatoris i a la fitxa) i aquell dia el tauler et pregunta Allarga / Marxa.
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           )}
                           {e.situacio === 'ALLARGA' && (

@@ -119,3 +119,14 @@ export function recordatoriSortida(
   const pendent = !ultimEnviat || (!!valid && valid > ultimEnviat);
   return { dia, pendent, triat: !!valid };
 }
+
+/**
+ * Estat de la pròrroga en apuntar «Ho dirà el dia…» (recordatori «M'ha de dir si
+ * allarga»): la pregunta torna a quedar oberta. Si ja havia dit que sí o que no
+ * (per a aquesta sortida), passa a «preguntat» (esperant resposta); si no, es manté.
+ */
+export function estatEnAplacar(anterior: string | null, mateixaSortida: boolean): string | null {
+  if (!mateixaSortida) return null;
+  if (anterior === 'SI' || anterior === 'NO') return 'PREGUNTAT';
+  return anterior;
+}

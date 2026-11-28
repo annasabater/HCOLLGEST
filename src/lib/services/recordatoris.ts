@@ -23,6 +23,7 @@ import {
   type UnitatRepeticio,
 } from '../recordatoris';
 import { RecordatoriAccioSchema, RecordatoriSchema } from '../validation/recordatori';
+import { estatEnAplacar } from '../prorroga';
 import { sincronitzaRecordatoris } from './calendari-recordatoris';
 import { cobramentDesDeRecordatori, cobramentPagatDesDeRecordatori } from './cobrament-recordatori';
 
@@ -325,7 +326,8 @@ async function aplacaProrroga(tx: Tx, estanciaId: string, dia: string, detall: s
     where: { id: v.id },
     data: {
       prorrogaSortida: v.dataSortida,
-      prorrogaEstat: mateixa ? v.prorrogaEstat : null,
+      // La pregunta torna a quedar oberta: un «sí/no» d'abans passa a «preguntat».
+      prorrogaEstat: estatEnAplacar(v.prorrogaEstat, mateixa),
       prorrogaAplacatFins: new Date(`${dia}T12:00:00Z`),
     },
   });
@@ -390,7 +392,8 @@ export async function creaRecordatori(raw: unknown, actor: Actor, ip: string | n
     const nou = await tx.recordatori.create({ data: d, include: INCLUDE });
     await cobramentDesDeRecordatori(tx, nou); // «M'ha de pagar» amb import → cobrament pendent
     if (d.accio === 'PRORROGA' && d.estanciaId) {
-      await aplacaProrroga(tx, d.estanciaId, deData(d.data), `Ho dirà el ${dc(deData(d.data))}`, actor?.id ?? null);
+      const detall = `Ho dirà el ${dc(deData(d.data))}${d.notes ? ` · ${d.notes}` : ''}`;
+      await aplacaProrroga(tx, d.estanciaId, deData(d.data), detall, actor?.id ?? null);
     }
     await audit({ usuariId: actor?.id ?? null, accio: 'CREACIO', entitat: 'recordatori', entitatId: nou.id, detall: { titol: nou.titol, data: deData(nou.data), estanciaId: d.estanciaId, accio: d.accio }, ip }, tx);
     return nou;
@@ -471,7 +474,9 @@ export async function accioRecordatori(id: string, raw: unknown, actor: Actor, i
   if (a.accio === 'MOU') {
     await prisma.$transaction(async (tx) => {
       await tx.recordatori.update({ where: { id }, data: { data: aData(a.data), ajornatFins: null, avisatDia: null } });
-      if (prorroga) await aplacaProrroga(tx, r.estanciaId!, a.data, `Ho dirà el ${dc(a.data)}`, usuariId);
+      if (prorroga) {
+        await aplacaProrroga(tx, r.estanciaId!, a.data, `Ho dirà el ${dc(a.data)}${a.nota ? ` · ${a.nota}` : ''}`, usuariId);
+      }
     });
     await audit({ usuariId, accio: 'MODIFICACIO', entitat: 'recordatori', entitatId: id, detall: { data: a.data }, ip });
     await sincronitzaRecordatoris([id]);

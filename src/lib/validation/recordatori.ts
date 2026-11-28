@@ -41,7 +41,7 @@ export const RecordatoriAccioSchema = z.discriminatedUnion('accio', [
   // «M'ha de dir si allarga»: la resposta (s'apunta a la pròrroga i el recordatori queda fet).
   z.object({ accio: z.literal('RESPOSTA'), resposta: z.enum(['SI', 'NO']) }),
   // Canvia el dia (des de «Estades en curs»: «Ho dirà el dia…»).
-  z.object({ accio: z.literal('MOU'), data: dia }),
+  z.object({ accio: z.literal('MOU'), data: dia, nota: z.string().trim().max(300).nullish() }),
 ]);
 
 export const WhatsappConfigSchema = z.object({
