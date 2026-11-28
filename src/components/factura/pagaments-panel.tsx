@@ -907,7 +907,9 @@ export function PagamentsPanel({
             </p>
           )}
 
-          {!veureRepartir && !desglossar ? (
+          {/* Els pagaments es reparteixen sols per mesos en desar-los (i després es
+              poden «Canviar»); només les fiances es reparteixen aquí a mà. */}
+          {tipus !== 'FIANCA' ? null : !veureRepartir && !desglossar ? (
             <button
               type="button"
               onClick={() => setVeureRepartir(true)}
