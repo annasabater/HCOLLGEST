@@ -45,7 +45,8 @@ export async function construeixResum(dia: string): Promise<ResumDiari> {
   const [recs, cobs, sortides, ressenyes, valoracions] = await Promise.all([
     prisma.recordatori.findMany({
       // Els que tenen hora pròpia avisen a la seva hora, no al resum.
-      where: { deletedAt: null, fetAt: null, whatsapp: true, hora: null, data: { lte: aData(sumaDies(dia, 366)) } },
+      // Els «M'ha de pagar» lligats a un cobrament pendent ja surten a «cobraments».
+      where: { deletedAt: null, fetAt: null, whatsapp: true, hora: null, pagamentPrevistId: null, data: { lte: aData(sumaDies(dia, 366)) } },
       orderBy: { data: 'asc' },
       include: { estancia: { select: { habitacio: { select: { nom: true } } } } },
     }),

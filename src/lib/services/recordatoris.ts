@@ -24,6 +24,7 @@ import {
 } from '../recordatoris';
 import { RecordatoriAccioSchema, RecordatoriSchema } from '../validation/recordatori';
 import { sincronitzaRecordatoris } from './calendari-recordatoris';
+import { cobramentDesDeRecordatori, cobramentPagatDesDeRecordatori } from './cobrament-recordatori';
 
 type Actor = { id: string } | null;
 type Tx = Prisma.TransactionClient;
@@ -201,6 +202,7 @@ export async function avancaRepeticions(avui = diaMadrid()): Promise<number> {
       if (tancat.count === 0) return null;
       const d = seguentFutura(deData(r.data), r.repeticioCada!, r.repeticioUnitat as UnitatRepeticio, avui);
       const nou = await tx.recordatori.create({ data: copiaPerRepeticio(r, d) });
+      await cobramentDesDeRecordatori(tx, nou); // el següent «M'ha de pagar» porta el seu cobrament
       await audit({ usuariId: null, accio: 'MODIFICACIO', entitat: 'recordatori', entitatId: r.id, detall: { fet: true, automatic: true, seguent: d } }, tx);
       await audit({ usuariId: null, accio: 'CREACIO', entitat: 'recordatori', entitatId: nou.id, detall: { repeticioDe: r.id, data: d, automatic: true } }, tx);
       return nou.id;
@@ -227,7 +229,9 @@ export async function recordatorisAra(): Promise<RecordatoriVista[]> {
   const avui = diaMadrid();
   await avancaRepeticions(avui);
   const rows = await prisma.recordatori.findMany({
-    where: { deletedAt: null, fetAt: null, data: { lte: aData(sumaDies(avui, 366)) } },
+    // Els «M'ha de pagar» lligats a un cobrament pendent ja surten al tauler com a
+    // cobrament (avís i pop-up): no es repeteixen aquí.
+    where: { deletedAt: null, fetAt: null, pagamentPrevistId: null, data: { lte: aData(sumaDies(avui, 366)) } },
     orderBy: { data: 'asc' },
     take: 200,
     include: INCLUDE,
@@ -252,7 +256,8 @@ export async function recordatorisDeEstada(estanciaId: string): Promise<Recordat
   const avui = diaMadrid();
   const ids = await idsCadena(estanciaId);
   const rows = await prisma.recordatori.findMany({
-    where: { deletedAt: null, fetAt: null, estanciaId: { in: ids } },
+    // Els lligats a un cobrament pendent ja surten a «Cobraments pendents» de la fitxa.
+    where: { deletedAt: null, fetAt: null, pagamentPrevistId: null, estanciaId: { in: ids } },
     orderBy: { data: 'asc' },
     take: 50,
     include: INCLUDE,
@@ -383,6 +388,7 @@ export async function creaRecordatori(raw: unknown, actor: Actor, ip: string | n
       if (!e) throw new Error('L’estada no existeix');
     }
     const nou = await tx.recordatori.create({ data: d, include: INCLUDE });
+    await cobramentDesDeRecordatori(tx, nou); // «M'ha de pagar» amb import → cobrament pendent
     if (d.accio === 'PRORROGA' && d.estanciaId) {
       await aplacaProrroga(tx, d.estanciaId, deData(d.data), `Ho dirà el ${dc(deData(d.data))}`, actor?.id ?? null);
     }
@@ -412,6 +418,7 @@ export async function editaRecordatori(id: string, raw: unknown, actor: Actor, i
       },
       include: INCLUDE,
     });
+    await cobramentDesDeRecordatori(tx, r2); // el cobrament pendent lligat segueix el recordatori
     // Pròrroga: si deixa de ser-ho (o canvia d'estada), treu l'aplaçament d'abans;
     // si ho és i és nou o canvia el dia, aplaça fins al dia nou.
     if (eraProrroga && !abans.fetAt && (!esProrroga || !mateixaEstada)) {
@@ -430,6 +437,8 @@ export async function editaRecordatori(id: string, raw: unknown, actor: Actor, i
 export async function eliminaRecordatori(id: string, actor: Actor, ip: string | null) {
   const r = await prisma.$transaction(async (tx) => {
     const r2 = await tx.recordatori.update({ where: { id }, data: { deletedAt: new Date() } });
+    // «M'ha de pagar»: el cobrament pendent (si no s'ha pagat) s'esborra amb ell.
+    await cobramentDesDeRecordatori(tx, r2);
     // Si era el «Ho dirà el dia…» d'una estada, l'estada torna a sortir com abans.
     if (r2.accio === 'PRORROGA' && r2.estanciaId && !r2.fetAt) {
       await treuAplacament(tx, r2.estanciaId, deData(r2.ajornatFins ?? r2.data));
@@ -470,7 +479,10 @@ export async function accioRecordatori(id: string, raw: unknown, actor: Actor, i
   }
 
   if (a.accio === 'DESFES') {
-    await prisma.recordatori.update({ where: { id }, data: { fetAt: null } });
+    await prisma.$transaction(async (tx) => {
+      await tx.recordatori.update({ where: { id }, data: { fetAt: null } });
+      await cobramentPagatDesDeRecordatori(tx, r, false); // el cobrament torna a estar pendent
+    });
     await audit({ usuariId, accio: 'MODIFICACIO', entitat: 'recordatori', entitatId: id, detall: { desfetFet: true }, ip });
     await sincronitzaRecordatoris([id]);
     return { ok: true };
@@ -491,12 +503,15 @@ export async function accioRecordatori(id: string, raw: unknown, actor: Actor, i
   const res = await prisma.$transaction(async (tx) => {
     if (r.fetAt) return { ok: true, seguent: null, nouId: null as string | null };
     await tx.recordatori.update({ where: { id }, data: { fetAt: new Date() } });
+    // «M'ha de pagar» fet = cobrat: el cobrament pendent queda pagat.
+    await cobramentPagatDesDeRecordatori(tx, r, true);
     let seguent: string | null = null;
     let nouId: string | null = null;
     if (r.repeticioCada && r.repeticioUnitat) {
       // La següent data ha de ser futura (si s'ha marcat tard, salta períodes).
       const d = seguentFutura(deData(r.data), r.repeticioCada, r.repeticioUnitat as UnitatRepeticio, avui);
       const nou = await tx.recordatori.create({ data: copiaPerRepeticio(r, d) });
+      await cobramentDesDeRecordatori(tx, nou);
       seguent = d;
       nouId = nou.id;
       await audit({ usuariId, accio: 'CREACIO', entitat: 'recordatori', entitatId: nou.id, detall: { repeticioDe: id, data: d }, ip }, tx);
@@ -551,4 +566,26 @@ export async function tancaRecordatorisProrroga(estanciaId: string): Promise<voi
   if (pendents.length === 0) return;
   await prisma.recordatori.updateMany({ where: { id: { in: pendents.map((p) => p.id) } }, data: { fetAt: new Date() } });
   await sincronitzaRecordatoris(pendents.map((p) => p.id));
+}
+
+/**
+ * Recordatoris (pendents i fets) d'unes estades, per a la línia del temps d'Estades
+ * en curs. Sense els de pròrroga (ja hi surten com «Ho dirà el…» i la resposta) ni
+ * els lligats a un cobrament pendent (hi surten com a cobrament).
+ */
+export async function recordatorisPerEstades(ids: string[]): Promise<RecordatoriVista[]> {
+  if (ids.length === 0) return [];
+  const avui = diaMadrid();
+  const rows = await prisma.recordatori.findMany({
+    where: {
+      estanciaId: { in: ids },
+      deletedAt: null,
+      pagamentPrevistId: null,
+      OR: [{ accio: null }, { accio: { not: 'PRORROGA' } }],
+    },
+    orderBy: { data: 'asc' },
+    take: 300,
+    include: INCLUDE,
+  });
+  return rows.map((r) => vista(r, avui));
 }

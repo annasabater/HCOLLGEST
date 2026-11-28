@@ -49,7 +49,8 @@ export default async function DashboardPage() {
   const isAdmin = user?.role === 'ADMIN';
   const canWrite = user ? hasRole(user.role, ROLES_WRITE) : false;
   const recordatoris = esNomesLectura(user) ? [] : await recordatorisAra();
-  const avisosRec = recordatoris.length > 0 ? await estatAvisos() : undefined;
+  // Per editar i crear recordatoris des del tauler (targetes i Estades en curs).
+  const avisosRec = canWrite && !esNomesLectura(user) ? await estatAvisos() : undefined;
   // Pop-up «Toca preguntar si vol allargar»: les estades que ja han arribat al dia
   // proposat (o triat) i encara no s'han preguntat ni decidit. Només qui gestiona.
   const tocaPreguntar: ProrrogaPopupItem[] =
@@ -164,7 +165,7 @@ export default async function DashboardPage() {
         tothom={resum.benvingudes.tothom}
       />
 
-      <EstadesEnCurs avui={estadesEnCurs.avui} estades={estadesEnCurs.estades} />
+      <EstadesEnCurs avui={estadesEnCurs.avui} estades={estadesEnCurs.estades} avisos={avisosRec} />
       {tocaPreguntar.length > 0 && <ProrrogaPopup items={tocaPreguntar} />}
 
       {/* Sortides avui */}

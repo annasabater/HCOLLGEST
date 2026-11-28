@@ -1,6 +1,7 @@
 import 'server-only';
 import { prisma } from '../db';
 import { diaMadrid } from '../recordatoris';
+import { recordatorisPerEstades, type RecordatoriVista } from './recordatoris';
 import {
   dataProposadaProrroga,
   diesEntreDies,
@@ -54,6 +55,8 @@ export interface EstadaEnCurs {
   pendents: PendentEstada[];
   /** «Ho dirà el dia…»: recordatori «M'ha de dir si allarga» pendent (de tota la cadena). */
   hoDira: { dia: string; recordatoriId: string } | null;
+  /** Els altres recordatoris lligats (de tota la cadena): pendents i fets, per a la línia del temps. */
+  recordatoris: RecordatoriVista[];
 }
 
 export interface TramEstada {
@@ -266,6 +269,7 @@ export async function getEstadesEnCurs(now = new Date()): Promise<{ avui: string
       cobraments: [],
       pendents: [],
       hoDira: null,
+      recordatoris: [],
     });
   }
 
@@ -279,10 +283,12 @@ export async function getEstadesEnCurs(now = new Date()): Promise<{ avui: string
       orderBy: { data: 'asc' },
       select: { id: true, estanciaId: true, data: true, ajornatFins: true },
     });
+    const altres = await recordatorisPerEstades(ids);
     for (const e of estades) {
       const meus = new Set(e.trams.map((t) => t.id));
       const r = recs.find((x) => x.estanciaId && meus.has(x.estanciaId));
       if (r) e.hoDira = { dia: (r.ajornatFins ?? r.data).toISOString().slice(0, 10), recordatoriId: r.id };
+      e.recordatoris = altres.filter((x) => x.estanciaId && meus.has(x.estanciaId));
     }
   }
   if (ids.length) {

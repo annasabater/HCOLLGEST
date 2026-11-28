@@ -13,6 +13,10 @@ import { diaMadrid } from '@/lib/recordatoris';
 import { diesEntreDies, sumaDiesDia } from '@/lib/prorroga';
 import type { MissatgeProrroga } from '@/lib/plantilles';
 import type { EstadaEnCurs, EventProrroga } from '@/lib/services/prorrogues';
+import type { EstadaRecordatori, RecordatoriVista } from '@/lib/services/recordatoris';
+import { ACCIO_RECORDATORI_LABELS, textDiesAbans, textHora } from '@/lib/recordatoris';
+import { RecordatoriFormulari } from '@/components/recordatori/formulari';
+import type { AvisosRecordatori } from '@/components/recordatori/tarja';
 import { MarxaraAbans } from '@/components/estancia/marxara-abans';
 import { MissatgeProrrogaComposer, sortidaRecomanada, type InfoEnviat } from './missatge-prorroga';
 import { EVENT_PREGUNTAR_PRORROGA } from './prorroga-popup';
@@ -119,6 +123,16 @@ function Pista({ e, avui }: { e: EstadaEnCurs; avui: string }) {
           style={{ left: `${pos(d)}%` }}
         />
       ))}
+      {e.recordatoris
+        .filter((r) => !r.fetAt)
+        .map((r) => (
+          <div
+            key={r.id}
+            title={`Recordatori · ${r.titol} · ${dc(r.ajornatFins ?? r.data)}`}
+            className="absolute top-[6px] h-3 w-3 -translate-x-1/2 rounded-sm border-2 border-white bg-brand-600"
+            style={{ left: `${pos(r.ajornatFins ?? r.data)}%` }}
+          />
+        ))}
       {e.pendents.map((p) => (
         <div
           key={p.id}
@@ -234,6 +248,8 @@ interface Item {
   triat?: boolean;
   /** Cobrament previst: s'enllaça a la fitxa per registrar-lo. */
   pendent?: boolean;
+  /** Recordatori lligat a l'estada (pendent): es pot editar des d'aquí. */
+  recordatori?: RecordatoriVista;
 }
 
 type QuinDia = 'preguntar' | 'recordatori';
@@ -290,12 +306,14 @@ function Historial({
   avui,
   onTreu,
   onDia,
+  onEditaRecordatori,
   busy,
 }: {
   e: EstadaEnCurs;
   avui: string;
   onTreu: (x: EventProrroga) => void;
   onDia: (quin: QuinDia, dia: string | null) => Promise<boolean>;
+  onEditaRecordatori?: (r: RecordatoriVista) => void;
   busy: boolean;
 }) {
   const [editant, setEditant] = useState<QuinDia | null>(null);
@@ -357,6 +375,31 @@ function Historial({
       edita: 'preguntar',
       triat: e.preguntarTriat,
     });
+  }
+  // Recordatoris lligats a l'estada (no els de pròrroga ni els de cobrament, que ja hi
+  // surten d'una altra manera): els pendents com a pas que ve; els fets, com a fet.
+  for (const r of e.recordatoris) {
+    const etiqueta = r.accio ? ACCIO_RECORDATORI_LABELS[r.accio] : 'Recordatori';
+    if (r.fetAt) {
+      items.push({
+        key: `rec-${r.id}`,
+        dia: diaDe(r.fetAt),
+        t: `Recordatori fet: ${r.titol}`,
+        m: etiqueta,
+        dot: 'bg-brand-600',
+      });
+    } else {
+      const dia = r.ajornatFins ?? r.data;
+      items.push({
+        key: `rec-${r.id}`,
+        dia,
+        t: `Recordatori: ${r.titol}`,
+        m: `${etiqueta} · avisa ${textDiesAbans(r.diesAbans)}${r.hora ? ` ${textHora(r.hora)}` : ''}${dia < avui ? ' · encara per fer' : ''}`,
+        dot: 'bg-white ring-2 ring-brand-600',
+        futur: true,
+        recordatori: r,
+      });
+    }
   }
   if (e.hoDira && !decidit) {
     items.push({
@@ -426,6 +469,15 @@ function Historial({
               )}
             </p>
             {i.m && <p className="ui-tl-detall text-sm text-slate-600">{i.m}</p>}
+            {i.recordatori && onEditaRecordatori && (
+              <button
+                type="button"
+                onClick={() => onEditaRecordatori(i.recordatori!)}
+                className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline"
+              >
+                <Pencil className="h-3 w-3" /> Editar
+              </button>
+            )}
             {i.pendent && (
               <Link
                 href={`/estancies/${e.id}`}
@@ -491,8 +543,29 @@ type Filtre = 'totes' | 'pendents' | 'setmana';
  * (preguntar si vol allargar, recordatori de sortida, respostes i notes). Es
  * proposa quan preguntar, però es pot fer en qualsevol moment.
  */
-export function EstadesEnCurs({ avui, estades }: { avui: string; estades: EstadaEnCurs[] }) {
+/** L'estada, tal com la vol el formulari de recordatoris. */
+const estadaPerRecordatori = (e: EstadaEnCurs): EstadaRecordatori => ({
+  id: e.id,
+  habitacio: e.habitacio,
+  noms: e.viatgers.map((v) => `${v.nom} ${v.cognom1}`.trim()),
+  contracte: e.numContracte,
+  entrada: e.trams.at(-1)?.entrada ?? e.entrada,
+  sortida: e.sortida,
+});
+
+export function EstadesEnCurs({
+  avui,
+  estades,
+  avisos,
+}: {
+  avui: string;
+  estades: EstadaEnCurs[];
+  /** Si hi és, es poden crear i editar recordatoris de l'estada des d'aquí. */
+  avisos?: AvisosRecordatori;
+}) {
   const router = useRouter();
+  // Formulari de recordatori obert (nou, ja lligat a l'estada, o editant-ne un).
+  const [formRec, setFormRec] = useState<{ r: RecordatoriVista | null; e: EstadaEnCurs } | null>(null);
   const [obert, setObert] = useState<string | null>(null);
   const [filtre, setFiltre] = useState<Filtre>('totes');
   const [composer, setComposer] = useState<{ id: string; missatge: MissatgeProrroga } | null>(null);
@@ -810,6 +883,7 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                         busy={busy === e.id}
                         onTreu={(x) => treu(e.id, x)}
                         onDia={canviaDia(e.id)}
+                        onEditaRecordatori={avisos ? (r) => setFormRec({ r, e }) : undefined}
                       />
                     </div>
                     <div className="grid content-start gap-2.5 rounded-xl bg-stone-50 p-3.5">
@@ -1015,7 +1089,7 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                               </Button>
                             </form>
                           ) : (
-                            <div>
+                            <div className="flex flex-wrap gap-2">
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -1027,6 +1101,11 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
                               >
                                 <Plus className="h-4 w-4" /> Cobrament pendent
                               </Button>
+                              {avisos && (
+                                <Button size="sm" variant="outline" onClick={() => setFormRec({ r: null, e })}>
+                                  <Plus className="h-4 w-4" /> Recordatori
+                                </Button>
+                              )}
                             </div>
                           )}
                           <form
@@ -1095,6 +1174,22 @@ export function EstadesEnCurs({ avui, estades }: { avui: string; estades: Estada
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2.5 w-2.5 rotate-45 bg-amber-400" /> Cobrament pendent
             </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-sm bg-brand-600" /> Recordatori
+            </span>
+            {formRec && avisos && (
+              <RecordatoriFormulari
+                inicial={formRec.r}
+                estadaInicial={formRec.r ? null : estadaPerRecordatori(formRec.e)}
+                mobilActiu={avisos.mobilActiu}
+                calendariConnectat={avisos.calendariConnectat}
+                onTanca={() => setFormRec(null)}
+                onDesat={() => {
+                  setFormRec(null);
+                  router.refresh();
+                }}
+              />
+            )}
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2.5 w-4 rounded border border-dashed border-amber-600 bg-amber-50" />{' '}
               Quan et proposo preguntar
